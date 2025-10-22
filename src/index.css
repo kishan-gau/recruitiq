@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Using Tailwind via CDN for demo. Add small base rules here. */
+html, body, #root { height: 100%; background: #f8fafc; font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial }
+
+/* Minimal dark-mode overrides */
+.dark html, .dark body, .dark #root { background: #0f172a }
+.dark .bg-white { background: #1e293b !important }
+.dark header.bg-white { background: #1e293b !important; border-color: rgba(255,255,255,0.1) }
+.dark .text-slate-800 { color: #e2e8f0 !important }
+.dark .text-slate-500 { color: #94a3b8 !important }
+.dark .text-slate-600 { color: #cbd5e1 !important }
+.dark .bg-slate-50 { background: #1e293b !important }
+.dark .bg-slate-100 { background: #334155 !important }
+.dark .bg-emerald-50 { background: rgba(16,185,129,0.1) !important }
+.dark .bg-emerald-100 { background: rgba(16,185,129,0.15) !important }
+.dark .bg-emerald-500 { background: linear-gradient(180deg,#059669,#10b981) !important }
+.dark .border { border-color: rgba(255,255,255,0.1) !important }
+.dark .shadow { box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important }
+.dark .shadow-sm { box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important }
+.dark .shadow-md { box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important }
+.dark .bg-gradient-to-br.from-emerald-500 { background-image: linear-gradient(180deg,#059669,#10b981) !important }
+.dark .nav-accent .text-slate-700 { color: #e2e8f0 !important }
+.dark .nav-accent .text-slate-400 { color: #94a3b8 !important }
+
+/* Basic reset for links */
+a { color: inherit; text-decoration: none }
+
+/* Accent bar for active sidebar item */
+.nav-accent { position: relative }
+.nav-accent { position: relative }
+.nav-accent::before { content: ''; /* removed visual accent; handled by animated pill */ position: absolute; left: -12px; top: 10px; bottom: 10px; width: 4px; background: transparent; border-radius: 4px; transition: background-color 220ms cubic-bezier(.2,.9,.2,1), transform 220ms cubic-bezier(.2,.9,.2,1), opacity 160ms ease; transform: translateX(-6px); opacity: 0; }
+.nav-accent.active::before { /* no-op: left-accent drawn by motion element */ background: transparent; transform: translateX(-6px); opacity: 0; }
+.nav-accent:focus-within::before { background: transparent; }
+
+/* Focus-visible styles for keyboard navigation */
+.focus-ring:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(6,95,70,0.12); border-radius: 6px }
+
+/* Mobile drawer transitions */
+.drawer-enter { transform: translateX(-10%); opacity: 0 }
+.drawer-enter-active { transform: translateX(0); opacity: 1; transition: transform 220ms cubic-bezier(.2,.9,.2,1), opacity 160ms ease }
+.drawer-exit { transform: translateX(0); opacity: 1 }
+.drawer-exit-active { transform: translateX(-10%); opacity: 0; transition: transform 180ms cubic-bezier(.2,.9,.2,1), opacity 120ms ease }
+
+/* Fallback utilities (ensure essential classes exist if Tailwind omits them) */
+/* (removed temporary fallback utilities) */

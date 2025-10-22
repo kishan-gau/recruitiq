@@ -1,0 +1,12 @@
+{
+  "jobs": [
+    { "id": 1, "title": "Frontend Engineer", "location": "Remote", "type": "Full-time", "openings": 2, "description": "Build beautiful UIs and user experiences." },
+    { "id": 2, "title": "Backend Engineer", "location": "NYC", "type": "Full-time", "openings": 1, "description": "Design scalable APIs and services." },
+    { "id": 3, "title": "Product Designer", "location": "San Francisco", "type": "Contract", "openings": 1, "description": "Design delightful product experiences." }
+  ],
+  "candidates": [
+    { "id": 1, "name": "Alice Johnson", "title": "Software Engineer", "location": "Remote", "jobId": 1, "stage": "Phone Screen", "experience": "3 years at TechCorp", "resume": "" },
+    { "id": 2, "name": "Bob Smith", "title": "Software Engineer", "location": "NYC", "jobId": 2, "stage": "Applied", "experience": "5 years at WebApps", "resume": "" },
+    { "id": 3, "name": "Cara Nguyen", "title": "Product Designer", "location": "SF", "jobId": 3, "stage": "Interview", "experience": "4 years at DesignStudio", "resume": "" }
+  ]
+}
