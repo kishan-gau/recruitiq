@@ -773,49 +773,464 @@ function DataProvider({ children }) {
 
 ---
 
-## Testing Strategy
+## Testing Strategy (Each Phase)
 
-### Unit Tests
+### Phase-by-Phase Testing Requirements
+
+**Phase 1: Backend Foundation**
+- ✅ Unit tests for all models, services, middleware
+- ✅ Integration tests for database connections
+- ✅ Health check endpoint test
+- ✅ API documentation (Swagger/OpenAPI)
+- **Coverage Target:** 80%+
+
+**Phase 2: Authentication**
+- ✅ Unit tests: Password hashing, JWT generation, token validation
+- ✅ Integration tests: Login, register, refresh token, logout flows
+- ✅ Security tests: SQL injection, rate limiting, password strength
+- ✅ E2E tests: Complete auth flow in browser
+- **Coverage Target:** 90%+ (critical security code)
+
+**Phase 3: Data Layer Migration**
+- ✅ Unit tests: Repository methods, data transformations
+- ✅ Integration tests: CRUD operations with multi-tenant isolation
+- ✅ Migration tests: Dual-write verification, data consistency
+- ✅ Regression tests: Ensure existing features still work
+- **Coverage Target:** 85%+
+
+**Phase 4: Organization Layer**
+- ✅ Unit tests: License validation, tier limits, organization logic
+- ✅ Integration tests: Multi-org scenarios, data segregation
+- ✅ E2E tests: Organization signup, user invitations
+- **Coverage Target:** 85%+
+
+**Phase 5: Advanced Features**
+- ✅ Unit tests: Real-time events, file uploads, background jobs
+- ✅ Integration tests: WebSocket connections, file storage
+- ✅ Performance tests: Load testing, stress testing
+- **Coverage Target:** 80%+
+
+**Phase 6: Production Readiness**
+- ✅ Security testing: SAST, DAST, penetration test
+- ✅ Performance testing: Load tests, endurance tests
+- ✅ Accessibility testing: WCAG 2.1 AA compliance
+- ✅ Browser compatibility: Cross-browser, mobile
+- ✅ Chaos engineering: Failure injection tests
+- **Coverage Target:** 80%+ (full system)
+
+### Comprehensive Test Suite
+
+**Unit Tests (70% of tests)**
 ```javascript
-// tests/api/jobs.test.js
-describe('Jobs API', () => {
-  it('should create a job', async () => {
+// tests/unit/models/job.test.js
+describe('Job Model', () => {
+  describe('validation', () => {
+    it('should validate required fields', () => {
+      const job = new Job({ title: '', workspaceId: 'ws_1' });
+      expect(job.validate()).toHaveProperty('errors.title');
+    });
+    
+    it('should validate salary range', () => {
+      const job = new Job({ 
+        title: 'Engineer',
+        salaryMin: 100000,
+        salaryMax: 80000
+      });
+      expect(job.validate()).toHaveProperty('errors.salary');
+    });
+  });
+  
+  describe('business logic', () => {
+    it('should calculate days open', () => {
+      const job = new Job({ 
+        createdAt: new Date('2025-01-01'),
+        status: 'open'
+      });
+      expect(job.getDaysOpen()).toBe(
+        Math.floor((Date.now() - job.createdAt) / (1000 * 60 * 60 * 24))
+      );
+    });
+  });
+});
+
+// tests/unit/services/licenseService.test.js
+describe('License Service', () => {
+  it('should enforce user limits by tier', () => {
+    const org = { tier: 'starter', userCount: 11 };
+    expect(licenseService.canAddUser(org)).toBe(false);
+    
+    const proOrg = { tier: 'professional', userCount: 11 };
+    expect(licenseService.canAddUser(proOrg)).toBe(true);
+  });
+  
+  it('should handle expired licenses', () => {
+    const org = { 
+      tier: 'professional',
+      licenseExpiresAt: new Date('2024-01-01')
+    };
+    expect(licenseService.isLicenseValid(org)).toBe(false);
+    expect(licenseService.getGracePeriodDays(org)).toBe(0);
+  });
+});
+```
+
+**Integration Tests (20% of tests)**
+```javascript
+// tests/integration/multitenancy.test.js
+describe('Multi-Tenancy Isolation', () => {
+  let org1, org2, user1, user2, token1, token2;
+  
+  beforeAll(async () => {
+    // Create two separate organizations
+    org1 = await createTestOrganization({ name: 'Company A' });
+    org2 = await createTestOrganization({ name: 'Company B' });
+    
+    user1 = await createTestUser({ organizationId: org1.id });
+    user2 = await createTestUser({ organizationId: org2.id });
+    
+    token1 = generateToken(user1);
+    token2 = generateToken(user2);
+  });
+  
+  it('should isolate jobs between organizations', async () => {
+    // User 1 creates job
     const job = await request(app)
       .post('/api/jobs')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        title: 'Test Job',
-        workspaceId: 'workspace_1'
-      });
+      .set('Authorization', `Bearer ${token1}`)
+      .send({ title: 'Secret Job', workspaceId: org1.workspaces[0].id });
     
     expect(job.status).toBe(201);
-    expect(job.body.title).toBe('Test Job');
+    const jobId = job.body.id;
+    
+    // User 1 can see job
+    const getJob1 = await request(app)
+      .get(`/api/jobs/${jobId}`)
+      .set('Authorization', `Bearer ${token1}`);
+    expect(getJob1.status).toBe(200);
+    
+    // User 2 CANNOT see job
+    const getJob2 = await request(app)
+      .get(`/api/jobs/${jobId}`)
+      .set('Authorization', `Bearer ${token2}`);
+    expect(getJob2.status).toBe(404);
+    
+    // Verify database-level isolation (RLS)
+    const dbResult = await db.query(
+      'SELECT * FROM jobs WHERE organization_id = $1',
+      [org2.id]
+    );
+    expect(dbResult.rows.find(j => j.id === jobId)).toBeUndefined();
+  });
+  
+  it('should prevent cross-org data manipulation', async () => {
+    const job = await createTestJob({ organizationId: org1.id });
+    
+    // User 2 tries to update User 1's job
+    const update = await request(app)
+      .put(`/api/jobs/${job.id}`)
+      .set('Authorization', `Bearer ${token2}`)
+      .send({ title: 'Hacked Job' });
+    
+    expect(update.status).toBe(404); // Not found (not 403 to avoid leaking info)
+    
+    // Verify job unchanged
+    const original = await db.query(
+      'SELECT * FROM jobs WHERE id = $1',
+      [job.id]
+    );
+    expect(original.rows[0].title).toBe(job.title);
+  });
+});
+
+// tests/integration/auth-flow.test.js
+describe('Authentication Flow', () => {
+  it('should complete full auth lifecycle', async () => {
+    // 1. Register
+    const register = await request(app)
+      .post('/api/auth/register')
+      .send({
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'SecurePass123!',
+        organizationName: 'Test Org'
+      });
+    
+    expect(register.status).toBe(201);
+    expect(register.body).toHaveProperty('user');
+    expect(register.body).toHaveProperty('token');
+    
+    const { token, refreshToken } = register.body;
+    
+    // 2. Verify email (simulate)
+    await db.query(
+      'UPDATE users SET email_verified = true WHERE email = $1',
+      ['test@example.com']
+    );
+    
+    // 3. Access protected route
+    const profile = await request(app)
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${token}`);
+    
+    expect(profile.status).toBe(200);
+    expect(profile.body.email).toBe('test@example.com');
+    
+    // 4. Refresh token
+    const refresh = await request(app)
+      .post('/api/auth/refresh')
+      .send({ refreshToken });
+    
+    expect(refresh.status).toBe(200);
+    expect(refresh.body).toHaveProperty('token');
+    expect(refresh.body.token).not.toBe(token);
+    
+    // 5. Logout
+    const logout = await request(app)
+      .post('/api/auth/logout')
+      .set('Authorization', `Bearer ${token}`);
+    
+    expect(logout.status).toBe(200);
+    
+    // 6. Verify token invalidated
+    const afterLogout = await request(app)
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${token}`);
+    
+    expect(afterLogout.status).toBe(401);
   });
 });
 ```
 
-### Integration Tests
+**E2E Tests (10% of tests)**
 ```javascript
-// tests/integration/workflow.test.js
-describe('Complete Workflow', () => {
-  it('should allow creating job and adding candidate', async () => {
-    // 1. Login
-    const auth = await login();
+// e2e/tests/recruitment-workflow.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Complete Recruitment Workflow', () => {
+  test('recruiter posts job, candidate applies, gets hired', async ({ page, context }) => {
+    // PART 1: Recruiter posts job
+    await page.goto('/login');
+    await page.fill('[name="email"]', 'recruiter@test.com');
+    await page.fill('[name="password"]', 'password123');
+    await page.click('button:has-text("Sign In")');
     
-    // 2. Create job
-    const job = await createJob(auth.token);
+    await expect(page).toHaveURL('/dashboard');
     
-    // 3. Add candidate
-    const candidate = await addCandidate(auth.token, job.id);
+    // Create job
+    await page.click('text=Post New Job');
+    await page.fill('[name="title"]', 'Senior React Developer');
+    await page.fill('[name="department"]', 'Engineering');
+    await page.fill('[name="location"]', 'San Francisco, CA');
+    await page.fill('[name="salaryMin"]', '150000');
+    await page.fill('[name="salaryMax"]', '200000');
+    await page.check('[name="isPublic"]');
+    await page.fill('[name="description"]', 'We are looking for...');
+    await page.click('button:has-text("Publish Job")');
     
-    // 4. Verify in database
-    const dbCandidate = await db.query('SELECT * FROM candidates WHERE id = $1', [candidate.id]);
-    expect(dbCandidate.rows[0]).toBeDefined();
+    await expect(page.locator('.success-toast')).toContainText('Job posted');
+    
+    const jobUrl = await page.getAttribute('[data-public-url]', 'href');
+    
+    // PART 2: Candidate applies
+    const candidatePage = await context.newPage();
+    await candidatePage.goto(jobUrl);
+    
+    await candidatePage.click('button:has-text("Apply Now")');
+    await candidatePage.fill('[name="name"]', 'Jane Doe');
+    await candidatePage.fill('[name="email"]', 'jane@example.com');
+    await candidatePage.fill('[name="phone"]', '555-0123');
+    await candidatePage.fill('[name="location"]', 'San Francisco, CA');
+    await candidatePage.fill('[name="linkedin"]', 'linkedin.com/in/janedoe');
+    await candidatePage.fill('[name="coverLetter"]', 'I am excited to apply...');
+    
+    // Upload resume (simulate)
+    await candidatePage.setInputFiles('[name="resume"]', 'tests/fixtures/resume.pdf');
+    
+    await candidatePage.click('button:has-text("Submit Application")');
+    
+    await expect(candidatePage.locator('h1')).toContainText('Application Submitted');
+    
+    const trackingCode = await candidatePage.textContent('[data-tracking-code]');
+    expect(trackingCode).toMatch(/TRACK-[A-Z0-9]{8}/);
+    
+    // PART 3: Recruiter reviews and hires
+    await page.reload();
+    await page.click('text=Candidates');
+    await page.click('text=Jane Doe');
+    
+    // Verify application details
+    await expect(page.locator('.candidate-email')).toContainText('jane@example.com');
+    await expect(page.locator('.candidate-phone')).toContainText('555-0123');
+    
+    // Move through pipeline
+    await page.click('button:has-text("Schedule Phone Screen")');
+    await page.fill('[name="scheduledDate"]', '2025-11-01');
+    await page.click('button:has-text("Confirm")');
+    
+    await expect(page.locator('.candidate-stage')).toContainText('Phone Screen');
+    
+    // Advance to interview
+    await page.click('button:has-text("Pass to Interview")');
+    await page.click('button:has-text("Schedule Onsite")');
+    await page.fill('[name="scheduledDate"]', '2025-11-08');
+    await page.click('button:has-text("Confirm")');
+    
+    // Make offer
+    await page.click('button:has-text("Make Offer")');
+    await page.fill('[name="salary"]', '175000');
+    await page.fill('[name="startDate"]', '2025-12-01');
+    await page.click('button:has-text("Send Offer")');
+    
+    await expect(page.locator('.candidate-stage')).toContainText('Offer Sent');
+    
+    // Mark as hired
+    await page.click('button:has-text("Mark as Hired")');
+    await page.fill('[name="actualStartDate"]', '2025-12-01');
+    await page.click('button:has-text("Confirm Hire")');
+    
+    await expect(page.locator('.success-message')).toContainText('Candidate hired');
+    await expect(page.locator('.candidate-status')).toContainText('Hired');
+    
+    // PART 4: Verify job status changed
+    await page.goto('/jobs');
+    await page.click('text=Senior React Developer');
+    await expect(page.locator('.job-status')).toContainText('Filled');
+  });
+  
+  test('should maintain data isolation between organizations', async ({ browser }) => {
+    // Create two browser contexts (two separate orgs)
+    const org1Context = await browser.newContext();
+    const org2Context = await browser.newContext();
+    
+    const org1Page = await org1Context.newPage();
+    const org2Page = await org2Context.newPage();
+    
+    // Org 1: Create job
+    await org1Page.goto('/login');
+    await org1Page.fill('[name="email"]', 'org1@test.com');
+    await org1Page.fill('[name="password"]', 'password123');
+    await org1Page.click('button[type="submit"]');
+    
+    await org1Page.click('text=Post Job');
+    await org1Page.fill('[name="title"]', 'Confidential Position');
+    await org1Page.click('button:has-text("Publish")');
+    
+    // Org 2: Try to access jobs
+    await org2Page.goto('/login');
+    await org2Page.fill('[name="email"]', 'org2@test.com');
+    await org2Page.fill('[name="password"]', 'password123');
+    await org2Page.click('button[type="submit"]');
+    
+    await org2Page.goto('/jobs');
+    
+    // Verify Org 2 CANNOT see Org 1's job
+    await expect(org2Page.locator('text=Confidential Position')).not.toBeVisible();
   });
 });
 ```
 
-### E2E Tests (Keep existing Playwright tests)
+**Performance Tests**
+```javascript
+// load-tests/scenarios/typical-usage.js
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = {
+  stages: [
+    { duration: '2m', target: 100 },  // Ramp up to 100 users
+    { duration: '5m', target: 100 },  // Stay at 100 users
+    { duration: '2m', target: 200 },  // Ramp to 200 users
+    { duration: '5m', target: 200 },  // Stay at 200 users
+    { duration: '2m', target: 0 },    // Ramp down
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<200', 'p(99)<500'], // 95% < 200ms, 99% < 500ms
+    http_req_failed: ['rate<0.01'],                // Error rate < 1%
+  },
+};
+
+export default function () {
+  // Login
+  const loginRes = http.post('https://api.recruitiq.com/auth/login', {
+    email: 'test@example.com',
+    password: 'password123',
+  });
+  
+  check(loginRes, {
+    'login successful': (r) => r.status === 200,
+    'token received': (r) => r.json('token') !== '',
+  });
+  
+  const token = loginRes.json('token');
+  const headers = { Authorization: `Bearer ${token}` };
+  
+  sleep(1);
+  
+  // Fetch jobs
+  const jobsRes = http.get('https://api.recruitiq.com/api/jobs', { headers });
+  check(jobsRes, {
+    'jobs fetched': (r) => r.status === 200,
+    'response time OK': (r) => r.timings.duration < 200,
+  });
+  
+  sleep(2);
+  
+  // Create candidate
+  const candidateRes = http.post(
+    'https://api.recruitiq.com/api/candidates',
+    JSON.stringify({
+      name: 'Test Candidate',
+      email: `candidate${Date.now()}@test.com`,
+    }),
+    { headers }
+  );
+  
+  check(candidateRes, {
+    'candidate created': (r) => r.status === 201,
+  });
+  
+  sleep(3);
+}
+```
+
+### Test Coverage Requirements
+
+**Minimum Coverage by Module:**
+- Authentication: 90%+
+- Authorization: 90%+
+- Multi-tenancy: 95%+
+- License Management: 90%+
+- Core Business Logic: 85%+
+- API Controllers: 80%+
+- Database Repositories: 85%+
+- Utilities: 80%+
+
+**Overall Target:** 80% code coverage minimum
+
+### CI/CD Test Gates
+
+**Pull Request Checks:**
+- ✅ All unit tests pass
+- ✅ All integration tests pass
+- ✅ No security vulnerabilities (high/critical)
+- ✅ Code coverage doesn't decrease
+- ✅ Lint checks pass
+- ✅ TypeScript compilation succeeds
+
+**Pre-Deployment Checks:**
+- ✅ Full regression suite passes
+- ✅ E2E tests pass in staging
+- ✅ Performance tests meet thresholds
+- ✅ Security scans clean
+- ✅ Database migrations tested
+
+**Post-Deployment Validation:**
+- ✅ Smoke tests pass in production
+- ✅ Health checks return 200
+- ✅ Error rate < 0.1%
+- ✅ Response times within SLA
+
+> **Note:** See ARCHITECTURE_SUMMARY.md for complete testing strategy including security testing, accessibility testing, chaos engineering, and more.
 ```javascript
 // e2e/migration.spec.js
 test('should work with API backend', async ({ page }) => {
