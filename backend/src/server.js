@@ -1,10 +1,12 @@
 import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import config from './config/index.js';
 import logger from './utils/logger.js';
 import { healthCheck as dbHealthCheck, closePool } from './config/database.js';
+
+// Import security middleware
+import { enhancedHelmetMiddleware, additionalSecurityHeaders } from './middleware/securityHeaders.js';
+import { enhancedCorsMiddleware, corsErrorHandler, handlePreflight, logCorsRequests } from './middleware/cors.js';
+import rateLimit from 'express-rate-limit';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -45,38 +47,19 @@ if (config.security.requireHttps) {
   });
 }
 
-// Helmet - Security headers
-app.use(helmet({
-  contentSecurityPolicy: config.env === 'production' ? {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", config.frontend.url],
-      fontSrc: ["'self'", 'data:'],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'none'"],
-    },
-  } : false,
-  hsts: config.env === 'production' ? {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true,
-  } : false,
-  noSniff: true,
-  xssFilter: true,
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-}));
+// Enhanced Security Headers (Helmet)
+app.use(enhancedHelmetMiddleware());
 
-// CORS
-app.use(cors({
-  origin: config.frontend.allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+// Additional custom security headers
+app.use(additionalSecurityHeaders());
+
+// Enhanced CORS with whitelist validation
+app.use(logCorsRequests());
+app.use(enhancedCorsMiddleware());
+app.use(handlePreflight());
+
+// CORS error handler
+app.use(corsErrorHandler);
 
 // Rate limiting
 const limiter = rateLimit({
