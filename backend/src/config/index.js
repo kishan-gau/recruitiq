@@ -98,6 +98,14 @@ const config = {
     cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE, 10) || 86400000, // 24 hours
   },
   
+  // Redis (for rate limiting and caching)
+  redis: {
+    enabled: process.env.REDIS_ENABLED === 'true',
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    password: process.env.REDIS_PASSWORD,
+    db: parseInt(process.env.REDIS_DB, 10) || 0,
+  },
+  
   // Logging
   logging: {
     level: process.env.LOG_LEVEL || 'info',

@@ -6,7 +6,13 @@ import { healthCheck as dbHealthCheck, closePool } from './config/database.js';
 // Import security middleware
 import { enhancedHelmetMiddleware, additionalSecurityHeaders } from './middleware/securityHeaders.js';
 import { enhancedCorsMiddleware, corsErrorHandler, handlePreflight, logCorsRequests } from './middleware/cors.js';
-import rateLimit from 'express-rate-limit';
+import { 
+  globalLimiter, 
+  authLimiter, 
+  apiLimiter,
+  addRateLimitHeaders,
+  rateLimitManager 
+} from './middleware/rateLimit.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -61,27 +67,18 @@ app.use(handlePreflight());
 // CORS error handler
 app.use(corsErrorHandler);
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: config.security.rateLimitWindowMs,
-  max: config.security.rateLimitMaxRequests,
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Add rate limit info to response headers
+app.use(addRateLimitHeaders);
 
-app.use('/api/', limiter);
+// Enhanced rate limiting with Redis support
+// Apply global rate limiter to all API routes
+app.use('/api/', globalLimiter);
 
-// Stricter rate limiting for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 requests per 15 minutes
-  message: 'Too many login attempts, please try again later.',
-  skipSuccessfulRequests: true,
-});
-
+// Stricter rate limiting for authentication endpoints
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 
 // ============================================================================
 // BODY PARSING
