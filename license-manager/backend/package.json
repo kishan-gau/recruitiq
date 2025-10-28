@@ -1,0 +1,29 @@
+{
+  "name": "recruitiq-license-manager-backend",
+  "version": "1.0.0",
+  "description": "RecruitIQ License Manager - Backend API",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "generate-keys": "node keys/generate-keys.js"
+  },
+  "keywords": ["license-manager", "recruitiq"],
+  "author": "RecruitIQ",
+  "license": "PROPRIETARY",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "date-fns": "^2.30.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
