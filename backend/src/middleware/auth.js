@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 import pool from '../config/database.js';
+import tokenBlacklist from '../services/tokenBlacklist.js';
 
 export const authenticate = async (req, res, next) => {
   try {
@@ -17,6 +18,15 @@ export const authenticate = async (req, res, next) => {
     
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
+    // Check if token is blacklisted
+    const isBlacklisted = await tokenBlacklist.isBlacklisted(token);
+    if (isBlacklisted) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Token has been revoked',
+      });
+    }
+    
     // Verify token
     let decoded;
     try {
@@ -31,6 +41,18 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'Invalid token',
+      });
+    }
+    
+    // Check if all user tokens are blacklisted
+    const userTokensBlacklisted = await tokenBlacklist.areUserTokensBlacklisted(
+      decoded.userId,
+      decoded.iat
+    );
+    if (userTokensBlacklisted) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Session has been invalidated',
       });
     }
     

@@ -6,6 +6,9 @@ import Organization from '../models/Organization.js';
 import RefreshToken from '../models/RefreshToken.js';
 import logger from '../utils/logger.js';
 import { ValidationError, UnauthorizedError, ConflictError } from '../middleware/errorHandler.js';
+import tokenBlacklist from '../services/tokenBlacklist.js';
+import accountLockout from '../services/accountLockout.js';
+import ipTracking from '../services/ipTracking.js';
 
 // Validation schemas
 const registerSchema = Joi.object({
@@ -142,33 +145,99 @@ export async function login(req, res, next) {
     }
 
     const { email, password } = value;
+    const ip = req.ip || req.connection.remoteAddress;
+
+    // Check if email is locked
+    const emailLockStatus = await accountLockout.checkLockout(email, 'email');
+    if (emailLockStatus.isLocked) {
+      logger.warn(`Login attempt for locked account: ${email}`, { ip });
+      throw new UnauthorizedError(
+        `Account temporarily locked due to multiple failed login attempts. Try again in ${emailLockStatus.lockoutRemainingMinutes} minutes.`
+      );
+    }
+
+    // Check if IP is locked
+    const ipLockStatus = await accountLockout.checkLockout(ip, 'ip');
+    if (ipLockStatus.isLocked) {
+      logger.warn(`Login attempt from locked IP: ${ip}`, { email });
+      throw new UnauthorizedError(
+        `Too many failed login attempts from this location. Try again in ${ipLockStatus.lockoutRemainingMinutes} minutes.`
+      );
+    }
+
+    // Check for manual locks
+    const isManuallyLockedEmail = await accountLockout.isManuallyLocked(email, 'email');
+    const isManuallyLockedIp = await accountLockout.isManuallyLocked(ip, 'ip');
+    
+    if (isManuallyLockedEmail || isManuallyLockedIp) {
+      logger.warn(`Login attempt for manually locked account/IP: ${email}/${ip}`);
+      throw new UnauthorizedError('Account has been locked. Please contact support.');
+    }
 
     // Find user
     const user = await User.findByEmail(email);
     if (!user) {
+      // Record failed attempt (even for non-existent users to prevent enumeration)
+      await accountLockout.recordFailedAttempt(email, 'email');
+      await accountLockout.recordFailedAttempt(ip, 'ip');
       throw new UnauthorizedError('Invalid credentials');
     }
 
-    // Check if account is locked
-    if (User.isAccountLocked(user)) {
-      throw new UnauthorizedError('Account locked due to multiple failed login attempts. Please contact support.');
+    // Check if account is locked (legacy check from User model)
+    if (User.isAccountLocked && User.isAccountLocked(user)) {
+      throw new UnauthorizedError('Account locked. Please contact support.');
     }
 
     // Verify password
     const isPasswordValid = await User.verifyPassword(user, password);
     if (!isPasswordValid) {
-      // Increment failed login attempts
-      const failedAttempts = await User.incrementFailedLogins(email);
-      logger.warn(`Failed login attempt for ${email} (${failedAttempts} attempts)`);
+      // Record failed attempts
+      const emailResult = await accountLockout.recordFailedAttempt(email, 'email');
+      const ipResult = await accountLockout.recordFailedAttempt(ip, 'ip');
+      
+      logger.warn(`Failed login attempt for ${email} from ${ip}`, {
+        emailAttempts: emailResult.failedAttempts,
+        ipAttempts: ipResult.failedAttempts,
+      });
+      
+      // Add progressive delay
+      const delay = accountLockout.getProgressiveDelay(emailResult.failedAttempts);
+      if (delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
       
       throw new UnauthorizedError('Invalid credentials');
     }
 
-    // Reset failed login attempts on successful login
-    await User.resetFailedLogins(email);
+    // Clear failed login attempts on successful login
+    await accountLockout.clearFailedAttempts(email, 'email');
+    await accountLockout.clearFailedAttempts(ip, 'ip');
+    
+    // Legacy: Reset failed logins in User model if exists
+    if (User.resetFailedLogins) {
+      await User.resetFailedLogins(email);
+    }
 
     // Update last login timestamp
     await User.updateLastLogin(user.id, user.organization_id);
+
+    // Track IP address and detect anomalies
+    const ipAnalysis = await ipTracking.recordIP(user.id, ip, {
+      userAgent: req.get('user-agent'),
+      timestamp: new Date().toISOString(),
+    });
+
+    // Log IP anomalies (but don't block login)
+    if (ipAnalysis.isSuspicious) {
+      logger.warn('Suspicious login detected', {
+        userId: user.id,
+        email: user.email,
+        ip,
+        reasons: ipAnalysis.suspiciousReasons,
+        knownIPs: ipAnalysis.totalKnownIPs,
+      });
+      // TODO: Send security alert email to user
+    }
 
     // Generate tokens
     const accessToken = generateAccessToken(user);
@@ -179,10 +248,10 @@ export async function login(req, res, next) {
     expiresAt.setDate(expiresAt.getDate() + 30);
     await RefreshToken.create(user.id, refreshToken, expiresAt);
 
-    logger.info(`User logged in: ${user.email} (${user.id})`);
+    logger.info(`User logged in: ${user.email} (${user.id}) from ${ip}`);
 
-    // Return user data and tokens
-    res.json({
+    // Return user data and tokens (include security notice if suspicious)
+    const response = {
       message: 'Login successful',
       user: {
         id: user.id,
@@ -198,7 +267,18 @@ export async function login(req, res, next) {
       },
       accessToken,
       refreshToken
-    });
+    };
+
+    // Add security notice if this is a new/suspicious IP
+    if (ipAnalysis.isSuspicious) {
+      response.securityNotice = {
+        message: 'Login from new location detected',
+        reasons: ipAnalysis.suspiciousReasons,
+        isNewIP: ipAnalysis.isNewIP,
+      };
+    }
+
+    res.json(response);
 
   } catch (error) {
     next(error);
@@ -206,7 +286,7 @@ export async function login(req, res, next) {
 }
 
 /**
- * Logout user (revoke refresh token)
+ * Logout user (revoke refresh token and blacklist access token)
  */
 export async function logout(req, res, next) {
   try {
@@ -216,7 +296,45 @@ export async function logout(req, res, next) {
       throw new ValidationError('Refresh token is required');
     }
 
-    // Revoke the token
+    // Get access token from header
+    const authHeader = req.headers.authorization;
+    let accessToken = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      accessToken = authHeader.substring(7);
+    }
+
+    // Blacklist the access token if provided
+    if (accessToken) {
+      try {
+        const decoded = jwt.decode(accessToken);
+        if (decoded && decoded.exp) {
+          const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+          if (expiresIn > 0) {
+            await tokenBlacklist.blacklistToken(accessToken, expiresIn);
+            logger.debug('Access token blacklisted on logout');
+          }
+        }
+      } catch (err) {
+        logger.error('Failed to blacklist access token:', err);
+        // Continue with logout even if blacklisting fails
+      }
+    }
+
+    // Blacklist the refresh token
+    try {
+      const decoded = jwt.decode(refreshToken);
+      if (decoded && decoded.exp) {
+        const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+        if (expiresIn > 0) {
+          await tokenBlacklist.blacklistToken(refreshToken, expiresIn);
+          logger.debug('Refresh token blacklisted on logout');
+        }
+      }
+    } catch (err) {
+      logger.error('Failed to blacklist refresh token:', err);
+    }
+
+    // Revoke the refresh token from database
     await RefreshToken.revoke(refreshToken);
 
     logger.info(`User logged out: ${req.user?.email || 'Unknown'}`);
@@ -229,7 +347,7 @@ export async function logout(req, res, next) {
 }
 
 /**
- * Refresh access token
+ * Refresh access token with token rotation
  */
 export async function refresh(req, res, next) {
   try {
@@ -237,6 +355,13 @@ export async function refresh(req, res, next) {
 
     if (!refreshToken) {
       throw new ValidationError('Refresh token is required');
+    }
+
+    // Check if refresh token is blacklisted
+    const isBlacklisted = await tokenBlacklist.isBlacklisted(refreshToken);
+    if (isBlacklisted) {
+      logger.warn('Attempt to use blacklisted refresh token');
+      throw new UnauthorizedError('Refresh token has been revoked');
     }
 
     // Verify refresh token
@@ -247,9 +372,10 @@ export async function refresh(req, res, next) {
       throw new UnauthorizedError('Invalid or expired refresh token');
     }
 
-    // Check if token exists and is not revoked
+    // Check if token exists and is not revoked in database
     const tokenRecord = await RefreshToken.findByToken(refreshToken);
     if (!tokenRecord) {
+      logger.warn('Refresh token not found in database', { userId: payload.userId });
       throw new UnauthorizedError('Invalid or expired refresh token');
     }
 
@@ -259,11 +385,35 @@ export async function refresh(req, res, next) {
       throw new UnauthorizedError('User not found');
     }
 
-    // Generate new access token
+    // Blacklist the old refresh token
+    try {
+      const expiresIn = payload.exp - Math.floor(Date.now() / 1000);
+      if (expiresIn > 0) {
+        await tokenBlacklist.blacklistToken(refreshToken, expiresIn);
+        logger.debug('Old refresh token blacklisted during rotation');
+      }
+    } catch (err) {
+      logger.error('Failed to blacklist old refresh token:', err);
+      // Continue even if blacklisting fails
+    }
+
+    // Revoke old refresh token from database
+    await RefreshToken.revoke(refreshToken);
+
+    // Generate new tokens (token rotation)
     const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+
+    // Store new refresh token
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    await RefreshToken.create(user.id, newRefreshToken, expiresAt);
+
+    logger.info(`Tokens refreshed for user: ${user.email} (${user.id})`);
 
     res.json({
-      accessToken: newAccessToken
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
     });
 
   } catch (error) {
