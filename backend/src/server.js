@@ -28,8 +28,9 @@ import publicRoutes from './routes/public.js';
 import communicationRoutes from './routes/communications.js';
 
 // Import middleware
-import { errorHandler } from './middleware/errorHandler.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import requestIdMiddleware from './middleware/requestId.js';
 import { authenticate } from './middleware/auth.js';
 
 const app = express();
@@ -88,9 +89,13 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ============================================================================
-// LOGGING
+// REQUEST TRACKING & LOGGING
 // ============================================================================
 
+// Add unique request ID to each request
+app.use(requestIdMiddleware);
+
+// Log all requests with enhanced context
 app.use(requestLogger);
 
 // ============================================================================
@@ -189,16 +194,10 @@ app.use('/api', apiRouter);
 // ERROR HANDLING
 // ============================================================================
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'Not Found',
-    message: `Cannot ${req.method} ${req.path}`,
-    path: req.path,
-  });
-});
+// 404 handler for undefined routes
+app.use(notFoundHandler);
 
-// Global error handler
+// Global error handler (must be last)
 app.use(errorHandler);
 
 // ============================================================================
