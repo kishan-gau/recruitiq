@@ -98,6 +98,8 @@ class User {
     }
 
     values.push(id);
+    // sql-injection-safe: Dynamic SET clause uses parameterized placeholders ($1, $2, etc.)
+    // User input goes into values array, not directly into SQL string
     const query = `
       UPDATE users 
       SET ${setClause.join(', ')}, updated_at = NOW()

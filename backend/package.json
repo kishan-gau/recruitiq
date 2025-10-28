@@ -15,6 +15,7 @@
     "test:validation:full": "node scripts/test-validation.js",
     "test:security": "node scripts/test-security-headers.js",
     "test:auth": "node scripts/test-auth-enhanced.js",
+    "audit:sql": "node scripts/sql-injection-audit.js",
     "migrate": "node src/database/migrate.js up",
     "migrate:up": "node src/database/migrate.js up",
     "migrate:down": "node src/database/migrate.js down",

@@ -441,6 +441,8 @@ export async function updateJob(req, res, next) {
 
     values.push(id, organizationId);
 
+    // sql-injection-safe: Dynamic SET clause uses parameterized placeholders ($1, $2, etc.)
+    // User input goes into values array, not directly into SQL string
     const query = `
       UPDATE jobs
       SET ${updates.join(', ')}, updated_at = NOW()

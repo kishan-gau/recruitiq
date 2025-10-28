@@ -196,6 +196,8 @@ export async function updateWorkspace(req, res, next) {
 
     values.push(id, organizationId);
 
+    // sql-injection-safe: Dynamic SET clause uses parameterized placeholders ($1, $2, etc.)
+    // User input goes into values array, not directly into SQL string
     const query = `
       UPDATE workspaces
       SET ${updates.join(', ')}, updated_at = NOW()

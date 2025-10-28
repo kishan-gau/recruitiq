@@ -1,6 +1,7 @@
 import pg from 'pg';
 import config from './index.js';
 import logger from '../utils/logger.js';
+import { logQuery, logSlowQuery, logQueryError, analyzeQuery } from '../middleware/queryLogger.js';
 
 const { Pool } = pg;
 
@@ -29,8 +30,8 @@ pool.on('error', (err) => {
   process.exit(1);
 });
 
-// Helper to execute queries with automatic organization filtering
-export const query = async (text, params, organizationId = null) => {
+// Helper to execute queries with automatic organization filtering and security logging
+export const query = async (text, params, organizationId = null, metadata = {}) => {
   const start = Date.now();
   
   try {
@@ -45,13 +46,29 @@ export const query = async (text, params, organizationId = null) => {
       }
     }
     
+    // Security logging and analysis
+    const suspiciousPatterns = analyzeQuery(modifiedText, modifiedParams);
+    if (suspiciousPatterns.length > 0) {
+      logQuery(modifiedText, modifiedParams, {
+        ...metadata,
+        suspicious: true,
+        patterns: suspiciousPatterns,
+      });
+    }
+    
     const result = await pool.query(modifiedText, modifiedParams);
     const duration = Date.now() - start;
+    
+    // Log slow queries
+    if (duration > 1000) {
+      logSlowQuery(modifiedText, modifiedParams, duration, metadata);
+    }
     
     logger.debug('Executed query', { text, duration, rows: result.rowCount });
     
     return result;
   } catch (error) {
+    logQueryError(modifiedText, modifiedParams, error, metadata);
     logger.error('Database query error:', { text, error: error.message });
     throw error;
   }

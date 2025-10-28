@@ -428,6 +428,8 @@ export async function updateInterview(req, res, next) {
       updates.push(`updated_at = CURRENT_TIMESTAMP`);
       params.push(id);
 
+      // sql-injection-safe: Dynamic SET clause uses parameterized placeholders ($1, $2, etc.)
+      // User input goes into params array, not directly into SQL string
       const query = `
         UPDATE interviews 
         SET ${updates.join(', ')}
