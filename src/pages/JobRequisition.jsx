@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
+import { useFlow } from '../context/FlowContext'
 
 const STEPS = [
   { id: 'basics', label: 'Basics' },
@@ -14,11 +15,12 @@ const STEPS = [
 export default function JobRequisition() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { state, addJob, updateJob } = useData()
+  const { jobs, candidates, loading, error, addJob, updateJob } = useData()
   const toast = useToast()
+  const { flowTemplates, createJobFlow, ensureLoaded } = useFlow()
   
   const isEdit = !!id
-  const existingJob = isEdit ? state.jobs.find(j => String(j.id) === id) : null
+  const existingJob = isEdit ? jobs.find(j => String(j.id) === id) : null
   
   const [activeStep, setActiveStep] = useState('basics')
   const [isDraft, setIsDraft] = useState(true)
@@ -27,15 +29,26 @@ export default function JobRequisition() {
   const [title, setTitle] = useState('')
   const [department, setDepartment] = useState('Engineering')
   const [location, setLocation] = useState('San Francisco')
-  const [type, setType] = useState('Full-time')
+  const [type, setType] = useState('full-time')
   const [openings, setOpenings] = useState(1)
   const [description, setDescription] = useState('')
   const [requirements, setRequirements] = useState('')
-  const [experienceLevel, setExperienceLevel] = useState('Mid-level')
+  const [experienceLevel, setExperienceLevel] = useState('mid')
   const [salary, setSalary] = useState('')
+  const [flowTemplateId, setFlowTemplateId] = useState('')
+  const [titleError, setTitleError] = useState('')
+  const [descriptionError, setDescriptionError] = useState('')
+  const [touched, setTouched] = useState({ title: false, description: false })
   
-  // Ref for description textarea
+  // Refs for textareas
   const descriptionRef = React.useRef(null)
+  const requirementsRef = React.useRef(null)
+  const titleRef = React.useRef(null)
+  
+  // Ensure flow templates are loaded when component mounts
+  useEffect(() => {
+    ensureLoaded()
+  }, [ensureLoaded])
   
   // Load existing job data
   useEffect(() => {
@@ -43,19 +56,105 @@ export default function JobRequisition() {
       setTitle(existingJob.title || '')
       setDepartment(existingJob.department || 'Engineering')
       setLocation(existingJob.location || 'San Francisco')
-      setType(existingJob.type || 'Full-time')
+      setType(existingJob.employmentType || existingJob.type || 'full-time') // Handle both field names
       setOpenings(existingJob.openings || 1)
       setDescription(existingJob.description || '')
       setRequirements(existingJob.requirements || '')
-      setExperienceLevel(existingJob.experienceLevel || 'Mid-level')
+      setExperienceLevel(existingJob.experienceLevel || 'mid')
       setSalary(existingJob.salary || '')
+      setFlowTemplateId(existingJob.flowTemplateId || '')
       setIsDraft(existingJob.status === 'draft')
     }
   }, [existingJob])
   
+  const validateTitle = (value) => {
+    if (!value.trim()) {
+      return 'Job title is required'
+    }
+    return ''
+  }
+
+  const validateDescription = (value) => {
+    if (!value.trim()) {
+      return 'Job description is required'
+    }
+    return ''
+  }
+
+  const handleTitleChange = (e) => {
+    const value = e.target.value
+    setTitle(value)
+    if (touched.title) {
+      setTitleError(validateTitle(value))
+    }
+  }
+
+  const handleTitleBlur = () => {
+    setTouched(prev => ({ ...prev, title: true }))
+    setTitleError(validateTitle(title))
+  }
+
+  const handleDescriptionChange = (e) => {
+    const value = e.target.value
+    setDescription(value)
+    if (touched.description) {
+      setDescriptionError(validateDescription(value))
+    }
+  }
+
+  const handleDescriptionBlur = () => {
+    setTouched(prev => ({ ...prev, description: true }))
+    setDescriptionError(validateDescription(description))
+  }
+
   const handleSaveDraft = async () => {
-    if (!title.trim()) {
+    // Mark as touched
+    setTouched({ title: true, description: true })
+    
+    const titleValidationError = validateTitle(title)
+    const descriptionValidationError = validateDescription(description)
+    setTitleError(titleValidationError)
+    setDescriptionError(descriptionValidationError)
+    
+    if (titleValidationError) {
       toast.show('Please enter a job title')
+      setActiveStep('basics')
+      
+      // Scroll to and focus with animation
+      if (titleRef.current) {
+        setTimeout(() => {
+          titleRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          titleRef.current.classList.add('animate-shake')
+          setTimeout(() => {
+            titleRef.current?.classList.remove('animate-shake')
+            titleRef.current?.focus()
+          }, 400)
+        }, 100)
+      }
+      return
+    }
+
+    if (descriptionValidationError) {
+      toast.show('Please enter a job description')
+      setActiveStep('description')
+      
+      // Scroll to and focus with animation
+      if (descriptionRef.current) {
+        setTimeout(() => {
+          descriptionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          descriptionRef.current.classList.add('animate-shake')
+          setTimeout(() => {
+            descriptionRef.current?.classList.remove('animate-shake')
+            descriptionRef.current?.focus()
+          }, 400)
+        }, 100)
+      }
+      return
+    }
+    
+    if (!flowTemplateId) {
+      toast.show('Please select a flow template')
+      setActiveStep('distribution')
       return
     }
     
@@ -63,13 +162,11 @@ export default function JobRequisition() {
       title,
       department,
       location,
-      type,
-      openings: Number(openings),
+      employmentType: type, // Backend expects 'employmentType', not 'type'
       description,
       requirements,
       experienceLevel,
-      salary,
-      status: 'draft'
+      flowTemplateId: flowTemplateId // Required flow template ID
     }
     
     try {
@@ -77,7 +174,8 @@ export default function JobRequisition() {
         await updateJob(existingJob.id, jobData)
         toast.show('Draft saved')
       } else {
-        await addJob(jobData)
+        const newJob = await addJob(jobData)
+        // Flow template is now sent with job data, no need for separate createJobFlow
         toast.show('Draft saved')
         navigate('/jobs')
       }
@@ -88,9 +186,53 @@ export default function JobRequisition() {
   }
   
   const handlePublish = async () => {
-    if (!title.trim()) {
+    // Mark as touched
+    setTouched({ title: true, description: true })
+    
+    const titleValidationError = validateTitle(title)
+    const descriptionValidationError = validateDescription(description)
+    setTitleError(titleValidationError)
+    setDescriptionError(descriptionValidationError)
+    
+    if (titleValidationError) {
       toast.show('Please enter a job title')
       setActiveStep('basics')
+      
+      // Scroll to and focus with animation
+      if (titleRef.current) {
+        setTimeout(() => {
+          titleRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          titleRef.current.classList.add('animate-shake')
+          setTimeout(() => {
+            titleRef.current?.classList.remove('animate-shake')
+            titleRef.current?.focus()
+          }, 400)
+        }, 100)
+      }
+      return
+    }
+
+    if (descriptionValidationError) {
+      toast.show('Please enter a job description')
+      setActiveStep('description')
+      
+      // Scroll to and focus with animation
+      if (descriptionRef.current) {
+        setTimeout(() => {
+          descriptionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          descriptionRef.current.classList.add('animate-shake')
+          setTimeout(() => {
+            descriptionRef.current?.classList.remove('animate-shake')
+            descriptionRef.current?.focus()
+          }, 400)
+        }, 100)
+      }
+      return
+    }
+    
+    if (!flowTemplateId) {
+      toast.show('Please select a flow template before publishing')
+      setActiveStep('distribution')
       return
     }
     
@@ -98,13 +240,11 @@ export default function JobRequisition() {
       title,
       department,
       location,
-      type,
-      openings: Number(openings),
+      employmentType: type, // Backend expects 'employmentType', not 'type'
       description,
       requirements,
       experienceLevel,
-      salary,
-      status: 'published'
+      flowTemplateId: flowTemplateId // Required flow template ID
     }
     
     try {
@@ -114,6 +254,7 @@ export default function JobRequisition() {
         navigate(`/jobs/${existingJob.id}`)
       } else {
         const newJob = await addJob(jobData)
+        // Flow template is now sent with job data, no need for separate createJobFlow
         toast.show('Job published')
         navigate(`/jobs/${newJob.id}`)
       }
@@ -135,7 +276,7 @@ export default function JobRequisition() {
   
   // Get candidates for this job (if editing existing job)
   const jobCandidates = isEdit && existingJob 
-    ? state.candidates.filter(c => c.jobId === existingJob.id)
+    ? candidates.filter(c => c.jobId === existingJob.id)
     : []
   
   // Get recent activity for this job
@@ -170,7 +311,7 @@ export default function JobRequisition() {
         .slice(0, 3)
     : []
   
-  // Text formatting functions
+  // Text formatting functions for description
   const applyFormat = (formatType) => {
     const textarea = descriptionRef.current
     if (!textarea) return
@@ -210,6 +351,54 @@ export default function JobRequisition() {
     
     const newDescription = description.substring(0, start) + formattedText + description.substring(end)
     setDescription(newDescription)
+    
+    // Restore focus and cursor position
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
+    }, 0)
+  }
+
+  // Text formatting functions for requirements
+  const applyFormatRequirements = (formatType) => {
+    const textarea = requirementsRef.current
+    if (!textarea) return
+    
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = requirements.substring(start, end)
+    
+    if (!selectedText) {
+      toast.show('Please select text to format')
+      return
+    }
+    
+    let formattedText = ''
+    let newCursorPos = end
+    
+    switch (formatType) {
+      case 'bold':
+        formattedText = `**${selectedText}**`
+        newCursorPos = end + 4
+        break
+      case 'italic':
+        formattedText = `*${selectedText}*`
+        newCursorPos = end + 2
+        break
+      case 'underline':
+        formattedText = `__${selectedText}__`
+        newCursorPos = end + 4
+        break
+      case 'strikethrough':
+        formattedText = `~~${selectedText}~~`
+        newCursorPos = end + 4
+        break
+      default:
+        formattedText = selectedText
+    }
+    
+    const newRequirements = requirements.substring(0, start) + formattedText + requirements.substring(end)
+    setRequirements(newRequirements)
     
     // Restore focus and cursor position
     setTimeout(() => {
@@ -290,6 +479,179 @@ export default function JobRequisition() {
     }, 0)
   }
 
+  // Requirements formatting functions
+  const insertListRequirements = (listType) => {
+    const textarea = requirementsRef.current
+    if (!textarea) return
+    
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = requirements.substring(start, end)
+    
+    let formattedText = ''
+    
+    if (selectedText) {
+      // Format selected lines
+      const lines = selectedText.split('\n')
+      formattedText = lines.map((line, index) => {
+        if (line.trim()) {
+          return listType === 'bullet' ? `• ${line.trim()}` : `${index + 1}. ${line.trim()}`
+        }
+        return line
+      }).join('\n')
+    } else {
+      // Insert new list item
+      formattedText = listType === 'bullet' ? '• ' : '1. '
+    }
+    
+    const newRequirements = requirements.substring(0, start) + formattedText + requirements.substring(end)
+    setRequirements(newRequirements)
+    
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + formattedText.length, start + formattedText.length)
+    }, 0)
+  }
+  
+  const insertLinkRequirements = () => {
+    const textarea = requirementsRef.current
+    if (!textarea) return
+    
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = requirements.substring(start, end)
+    
+    const linkText = selectedText || 'link text'
+    const formattedText = `[${linkText}](https://example.com)`
+    
+    const newRequirements = requirements.substring(0, start) + formattedText + requirements.substring(end)
+    setRequirements(newRequirements)
+    
+    setTimeout(() => {
+      textarea.focus()
+      // Select the URL part for easy editing
+      const urlStart = start + linkText.length + 3
+      textarea.setSelectionRange(urlStart, urlStart + 19)
+    }, 0)
+  }
+  
+  const insertHeadingRequirements = () => {
+    const textarea = requirementsRef.current
+    if (!textarea) return
+    
+    const start = textarea.selectionStart
+    const lineStart = requirements.lastIndexOf('\n', start - 1) + 1
+    
+    const formattedText = '## '
+    const newRequirements = requirements.substring(0, lineStart) + formattedText + requirements.substring(lineStart)
+    setRequirements(newRequirements)
+    
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(lineStart + formattedText.length, lineStart + formattedText.length)
+    }, 0)
+  }
+
+  // Convert markdown to HTML for preview
+  // Show loading state
+  if (loading.jobs || loading.candidates) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading job...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error.jobs || error.candidates) {
+    return (
+      <div className="text-center py-12">
+        <svg className="w-16 h-16 text-slate-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Failed to load job</h2>
+        <p className="text-slate-600 dark:text-slate-400 mb-4">{error.jobs || error.candidates}</p>
+        <button
+          onClick={() => navigate('/jobs')}
+          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-medium transition-colors"
+        >
+          Back to Jobs
+        </button>
+      </div>
+    )
+  }
+
+  // Show not found for edit mode
+  if (isEdit && !existingJob) {
+    return (
+      <div className="text-center py-12">
+        <svg className="w-16 h-16 text-slate-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Job not found</h2>
+        <p className="text-slate-600 dark:text-slate-400 mb-4">The job you're looking for doesn't exist or has been deleted.</p>
+        <button
+          onClick={() => navigate('/jobs')}
+          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-medium transition-colors"
+        >
+          Back to Jobs
+        </button>
+      </div>
+    )
+  }
+
+  const parseMarkdown = (text) => {
+    if (!text) return ''
+    
+    let html = text
+    
+    // Convert headings (## Heading)
+    html = html.replace(/^## (.+)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-slate-900 dark:text-slate-100">$1</h3>')
+    
+    // Convert bold (**text**)
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold">$1</strong>')
+    
+    // Convert italic (*text*)
+    html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em class="italic">$1</em>')
+    
+    // Convert underline (__text__)
+    html = html.replace(/__(.+?)__/g, '<u class="underline">$1</u>')
+    
+    // Convert strikethrough (~~text~~)
+    html = html.replace(/~~(.+?)~~/g, '<s class="line-through">$1</s>')
+    
+    // Convert links ([text](url))
+    html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-emerald-600 dark:text-emerald-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
+    
+    // Convert bullet points (• item)
+    html = html.replace(/^• (.+)$/gm, '<li class="ml-4">$1</li>')
+    
+    // Convert numbered lists (1. item, 2. item, etc.)
+    html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
+    
+    // Wrap consecutive <li> elements in <ul> or <ol>
+    html = html.replace(/(<li class="ml-4">.*?<\/li>\n?)+/g, (match) => {
+      return `<ul class="list-disc space-y-1 my-2">${match}</ul>`
+    })
+    html = html.replace(/(<li class="ml-4 list-decimal">.*?<\/li>\n?)+/g, (match) => {
+      return `<ol class="list-decimal space-y-1 my-2">${match}</ol>`
+    })
+    
+    // Convert line breaks to <br> but preserve paragraph spacing
+    html = html.replace(/\n\n/g, '</p><p class="mt-3">')
+    html = html.replace(/\n/g, '<br />')
+    
+    // Wrap in paragraph if not empty
+    if (html && !html.startsWith('<')) {
+      html = `<p>${html}</p>`
+    }
+    
+    return html
+  }
+
   return (
     <div>
       {/* Header */}
@@ -315,14 +677,26 @@ export default function JobRequisition() {
             Cancel
           </button>
           <button
+            data-testid="save-draft-button"
             onClick={handleSaveDraft}
-            className="px-4 py-2 bg-white dark:bg-slate-800 border dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-300 rounded font-medium shadow-sm hover:shadow transition-all duration-200"
+            disabled={!title.trim() || !flowTemplateId}
+            className={`px-4 py-2 border rounded font-medium shadow-sm transition-all duration-200 ${
+              !title.trim() || !flowTemplateId
+                ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 text-slate-700 dark:text-slate-300 hover:shadow'
+            }`}
           >
             Save Draft
           </button>
           <button
+            data-testid="publish-button"
             onClick={handlePublish}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded font-medium shadow-sm hover:shadow-md transition-all duration-200"
+            disabled={!title.trim() || !flowTemplateId}
+            className={`px-4 py-2 rounded font-medium shadow-sm transition-all duration-200 ${
+              !title.trim() || !flowTemplateId
+                ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
+                : 'bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white hover:shadow-md'
+            }`}
           >
             Publish
           </button>
@@ -391,22 +765,39 @@ export default function JobRequisition() {
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Basic Info</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                        Job Title
+                      <label htmlFor="job-title-input" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Job Title <span className="text-red-500">*</span>
                       </label>
                       <input
+                        id="job-title-input"
+                        data-testid="job-title-input"
+                        ref={titleRef}
                         type="text"
                         value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="QA Engineer"
-                        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
+                        onChange={handleTitleChange}
+                        onBlur={handleTitleBlur}
+                        placeholder="e.g., QA Engineer"
+                        aria-required="true"
+                        aria-invalid={titleError ? 'true' : 'false'}
+                        aria-describedby={titleError ? 'title-error' : undefined}
+                        className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-all ${
+                          titleError 
+                            ? 'border-red-400 dark:border-red-500 focus:ring-red-500 focus:border-red-500' 
+                            : 'border-slate-300 dark:border-slate-600 focus:ring-emerald-500 focus:border-emerald-500'
+                        }`}
                       />
+                      {titleError && (
+                        <div id="title-error" className="mt-2 text-sm text-red-600 dark:text-red-400 animate-fadeIn" role="alert">
+                          {titleError}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Department
                       </label>
                       <select
+                        data-testid="department-select"
                         value={department}
                         onChange={(e) => setDepartment(e.target.value)}
                         className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
@@ -427,6 +818,7 @@ export default function JobRequisition() {
                         Office
                       </label>
                       <select
+                        data-testid="location-select"
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
                         className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
@@ -443,14 +835,15 @@ export default function JobRequisition() {
                         Employment Type
                       </label>
                       <select
+                        data-testid="type-select"
                         value={type}
                         onChange={(e) => setType(e.target.value)}
                         className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
                       >
-                        <option>Full-time</option>
-                        <option>Part-time</option>
-                        <option>Contract</option>
-                        <option>Internship</option>
+                        <option value="full-time">Full-time</option>
+                        <option value="part-time">Part-time</option>
+                        <option value="contract">Contract</option>
+                        <option value="internship">Internship</option>
                       </select>
                     </div>
                   </div>
@@ -461,6 +854,7 @@ export default function JobRequisition() {
                         Number of Openings
                       </label>
                       <input
+                        data-testid="openings-input"
                         type="number"
                         min="1"
                         value={openings}
@@ -473,16 +867,101 @@ export default function JobRequisition() {
                         Experience Level
                       </label>
                       <select
+                        data-testid="experience-select"
                         value={experienceLevel}
                         onChange={(e) => setExperienceLevel(e.target.value)}
                         className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
                       >
-                        <option>Entry-level</option>
-                        <option>Mid-level</option>
-                        <option>Senior</option>
-                        <option>Lead</option>
-                        <option>Principal</option>
+                        <option value="entry">Entry-level</option>
+                        <option value="mid">Mid-level</option>
+                        <option value="senior">Senior</option>
+                        <option value="lead">Lead</option>
+                        <option value="executive">Executive</option>
                       </select>
+                    </div>
+                  </div>
+                  
+                  {/* Hiring Flow Section */}
+                  <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Hiring Flow</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                      Select a flow template to define the interview stages for this job. You can customize it later.
+                    </p>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Flow Template <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        data-testid="flow-template-select"
+                        value={flowTemplateId}
+                        onChange={(e) => setFlowTemplateId(e.target.value)}
+                        required
+                        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow"
+                      >
+                        <option value="">Select a flow template...</option>
+                        {flowTemplates.map(template => (
+                          <option key={template.id} value={template.id}>
+                            {template.name} ({template.stages.length} stages)
+                          </option>
+                        ))}
+                      </select>
+                      
+                      {flowTemplateId && (
+                        <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <svg className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div className="flex-1">
+                              <h4 className="text-sm font-medium text-emerald-900 dark:text-emerald-100 mb-1">
+                                {flowTemplates.find(t => t.id === flowTemplateId)?.name}
+                              </h4>
+                              <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-2">
+                                {flowTemplates.find(t => t.id === flowTemplateId)?.description}
+                              </p>
+                              <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400">
+                                <span>
+                                  {flowTemplates.find(t => t.id === flowTemplateId)?.stages.length} stages
+                                </span>
+                                <span>•</span>
+                                <span>
+                                  {flowTemplates.find(t => t.id === flowTemplateId)?.stages.filter(s => s.required).length} required
+                                </span>
+                              </div>
+                              
+                              {/* Stage Preview */}
+                              <div className="mt-3 flex items-center gap-1 overflow-x-auto pb-1">
+                                {flowTemplates.find(t => t.id === flowTemplateId)?.stages.slice(0, 5).map((stage, idx, arr) => (
+                                  <React.Fragment key={stage.id}>
+                                    <div className="flex-shrink-0 px-2 py-1 bg-white dark:bg-emerald-900/40 rounded text-xs text-emerald-900 dark:text-emerald-200 font-medium border border-emerald-200 dark:border-emerald-700">
+                                      {stage.name}
+                                    </div>
+                                    {idx < arr.length - 1 && (
+                                      <svg className="w-3 h-3 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                      </svg>
+                                    )}
+                                  </React.Fragment>
+                                ))}
+                                {flowTemplates.find(t => t.id === flowTemplateId)?.stages.length > 5 && (
+                                  <span className="flex-shrink-0 text-xs text-emerald-600 dark:text-emerald-400">
+                                    +{flowTemplates.find(t => t.id === flowTemplateId)?.stages.length - 5} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {!flowTemplateId && (
+                        <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            💡 <strong>Tip:</strong> Using a flow template helps standardize your hiring process and makes it easier to track candidate progress. You can always customize stages for specific candidates later.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -494,106 +973,129 @@ export default function JobRequisition() {
               <div className="space-y-6">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Description</h2>
-                  <div className="mb-4 flex flex-wrap items-center gap-1 p-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded">
+                  <div className="mb-4 flex flex-wrap items-center gap-0.5 p-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm">
                     <button 
                       type="button" 
                       onClick={() => applyFormat('bold')}
-                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors" 
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
                       title="Bold (**text**)"
+                      aria-label="Bold"
                     >
-                      <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M6 4v12h4.5c2.5 0 4.5-1.5 4.5-4 0-1.5-.8-2.8-2-3.5.7-.7 1-1.6 1-2.5 0-2-1.5-3-3.5-3H6zm2.5 2h2c1 0 1.5.5 1.5 1.5S11.5 9 10.5 9h-2V6zm0 5h2.5c1.3 0 2 .7 2 2s-.7 2-2 2H8.5v-4z"/>
-                      </svg>
+                      <span className="block w-5 h-5 text-center font-bold text-base leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">B</span>
                     </button>
                     <button 
                       type="button" 
                       onClick={() => applyFormat('italic')}
-                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors" 
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
                       title="Italic (*text*)"
+                      aria-label="Italic"
                     >
-                      <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9 4v2h1.5l-2 8H7v2h6v-2h-1.5l2-8H15V4H9z"/>
-                      </svg>
+                      <span className="block w-5 h-5 text-center italic font-serif text-base leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">I</span>
                     </button>
                     <button 
                       type="button" 
                       onClick={() => applyFormat('underline')}
-                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors" 
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
                       title="Underline (__text__)"
+                      aria-label="Underline"
                     >
-                      <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 15c-2.8 0-5-2.2-5-5V4h2v6c0 1.7 1.3 3 3 3s3-1.3 3-3V4h2v6c0 2.8-2.2 5-5 5zM5 17h10v1H5v-1z"/>
-                      </svg>
+                      <span className="block w-5 h-5 text-center underline text-base leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">U</span>
                     </button>
                     <button 
                       type="button" 
                       onClick={() => applyFormat('strikethrough')}
-                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors" 
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
                       title="Strikethrough (~~text~~)"
+                      aria-label="Strikethrough"
                     >
-                      <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12h12M6 12c0 1.657 1.343 3 3 3h6c1.657 0 3-1.343 3-3M6 12c0-1.657 1.343-3 3-3h6c1.657 0 3 1.343 3 3" />
-                      </svg>
+                      <span className="block w-5 h-5 text-center line-through text-base leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">S</span>
                     </button>
                     
-                    <div className="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                    <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
                     
                     <button 
                       type="button" 
                       onClick={() => insertHeading()}
-                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors" 
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
                       title="Heading (## text)"
+                      aria-label="Heading"
                     >
-                      <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h10m-6 4h6" />
-                      </svg>
+                      <span className="block w-5 h-5 text-center font-bold text-lg leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">H</span>
                     </button>
                     
-                    <div className="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                    <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
                     
                     <button 
                       type="button" 
                       onClick={() => insertList('bullet')}
-                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors" 
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
                       title="Bullet list (• item)"
+                      aria-label="Bullet list"
                     >
-                      <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M3 7h2v2H3V7zm0 4h2v2H3v-2zM7 7h10v2H7V7zm0 4h10v2H7v-2z"/>
+                      <svg className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <line x1="8" y1="6" x2="21" y2="6" strokeLinecap="round"/>
+                        <line x1="8" y1="12" x2="21" y2="12" strokeLinecap="round"/>
+                        <line x1="8" y1="18" x2="21" y2="18" strokeLinecap="round"/>
+                        <circle cx="4" cy="6" r="1.5" fill="currentColor"/>
+                        <circle cx="4" cy="12" r="1.5" fill="currentColor"/>
+                        <circle cx="4" cy="18" r="1.5" fill="currentColor"/>
                       </svg>
                     </button>
                     <button 
                       type="button" 
                       onClick={() => insertList('numbered')}
-                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors" 
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
                       title="Numbered list (1. item)"
+                      aria-label="Numbered list"
                     >
-                      <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M4 5h1v2H4v1h2V6h1v3H3V5h1zm0 6h1.8L4 13.1v.9h3v-1H5.2L7 10.9V10H4v1zm1 4H4v1h2v.5H5v1h1v.5H4v1h3v-4H5v1zM9 7h8v2H9V7zm0 4h8v2H9v-2z"/>
+                      <svg className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z"/>
                       </svg>
                     </button>
                     
-                    <div className="w-px h-6 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                    <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
                     
                     <button 
                       type="button" 
                       onClick={insertLink}
-                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors" 
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
                       title="Insert link ([text](url))"
+                      aria-label="Insert link"
                     >
-                      <svg className="w-4 h-4 text-slate-700 dark:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      <svg className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                       </svg>
                     </button>
                   </div>
                   
-                  <textarea
-                    ref={descriptionRef}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Write a compelling job description...&#10;&#10;Example:&#10;We're looking for a talented QA Engineer to join our growing team.&#10;&#10;## Responsibilities&#10;• Design and implement test automation frameworks&#10;• Collaborate with development teams&#10;• Ensure product quality"
-                    rows="10"
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow resize-none font-mono text-sm"
-                  />
+                  <div>
+                    <label htmlFor="job-description" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Job Description <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      id="job-description"
+                      data-testid="description-textarea"
+                      ref={descriptionRef}
+                      value={description}
+                      onChange={handleDescriptionChange}
+                      onBlur={handleDescriptionBlur}
+                      placeholder="Write a compelling job description...&#10;&#10;Example:&#10;We're looking for a talented QA Engineer to join our growing team.&#10;&#10;## Responsibilities&#10;• Design and implement test automation frameworks&#10;• Collaborate with development teams&#10;• Ensure product quality"
+                      rows="10"
+                      aria-required="true"
+                      aria-invalid={descriptionError ? 'true' : 'false'}
+                      aria-describedby={descriptionError ? 'description-error' : undefined}
+                      className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-shadow resize-none font-mono text-sm ${
+                        descriptionError 
+                          ? 'border-red-400 dark:border-red-500 focus:ring-red-500 focus:border-red-500' 
+                          : 'border-slate-300 dark:border-slate-600 focus:ring-emerald-500 focus:border-emerald-500'
+                      }`}
+                    />
+                    {descriptionError && (
+                      <div id="description-error" className="mt-2 text-sm text-red-600 dark:text-red-400 animate-fadeIn" role="alert">
+                        {descriptionError}
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
                     <div className="flex items-center gap-2 mb-2">
@@ -605,7 +1107,10 @@ export default function JobRequisition() {
                     </div>
                     <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300">
                       {description ? (
-                        <div className="whitespace-pre-wrap">{description}</div>
+                        <div 
+                          className="leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: parseMarkdown(description) }}
+                        />
                       ) : (
                         <div className="text-slate-400 italic">Your formatted description will appear here...</div>
                       )}
@@ -661,13 +1166,130 @@ export default function JobRequisition() {
               <div className="space-y-6">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Requirements</h2>
+                  <div className="mb-4 flex flex-wrap items-center gap-0.5 p-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm">
+                    <button 
+                      type="button" 
+                      onClick={() => applyFormatRequirements('bold')}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
+                      title="Bold (**text**)"
+                      aria-label="Bold"
+                    >
+                      <span className="block w-5 h-5 text-center font-bold text-base leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">B</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => applyFormatRequirements('italic')}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
+                      title="Italic (*text*)"
+                      aria-label="Italic"
+                    >
+                      <span className="block w-5 h-5 text-center italic font-serif text-base leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">I</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => applyFormatRequirements('underline')}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
+                      title="Underline (__text__)"
+                      aria-label="Underline"
+                    >
+                      <span className="block w-5 h-5 text-center underline text-base leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">U</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => applyFormatRequirements('strikethrough')}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
+                      title="Strikethrough (~~text~~)"
+                      aria-label="Strikethrough"
+                    >
+                      <span className="block w-5 h-5 text-center line-through text-base leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">S</span>
+                    </button>
+                    
+                    <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                    
+                    <button 
+                      type="button" 
+                      onClick={() => insertHeadingRequirements()}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
+                      title="Heading (## text)"
+                      aria-label="Heading"
+                    >
+                      <span className="block w-5 h-5 text-center font-bold text-lg leading-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100">H</span>
+                    </button>
+                    
+                    <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                    
+                    <button 
+                      type="button" 
+                      onClick={() => insertListRequirements('bullet')}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
+                      title="Bullet list (• item)"
+                      aria-label="Bullet list"
+                    >
+                      <svg className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <line x1="8" y1="6" x2="21" y2="6" strokeLinecap="round"/>
+                        <line x1="8" y1="12" x2="21" y2="12" strokeLinecap="round"/>
+                        <line x1="8" y1="18" x2="21" y2="18" strokeLinecap="round"/>
+                        <circle cx="4" cy="6" r="1.5" fill="currentColor"/>
+                        <circle cx="4" cy="12" r="1.5" fill="currentColor"/>
+                        <circle cx="4" cy="18" r="1.5" fill="currentColor"/>
+                      </svg>
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => insertListRequirements('numbered')}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
+                      title="Numbered list (1. item)"
+                      aria-label="Numbered list"
+                    >
+                      <svg className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z"/>
+                      </svg>
+                    </button>
+                    
+                    <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                    
+                    <button 
+                      type="button" 
+                      onClick={insertLinkRequirements}
+                      className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors group" 
+                      title="Insert link ([text](url))"
+                      aria-label="Insert link"
+                    >
+                      <svg className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-slate-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                    </button>
+                  </div>
+                  
                   <textarea
+                    data-testid="requirements-textarea"
+                    ref={requirementsRef}
                     value={requirements}
                     onChange={(e) => setRequirements(e.target.value)}
-                    placeholder="• Bachelor's degree in Computer Science or related field&#10;• 3+ years of experience in QA testing&#10;• Strong knowledge of testing frameworks..."
-                    rows="12"
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow resize-none"
+                    placeholder="Write the job requirements...&#10;&#10;Example:&#10;## Required Qualifications&#10;• Bachelor's degree in Computer Science or related field&#10;• 3+ years of experience in QA testing&#10;• Strong knowledge of testing frameworks"
+                    rows="10"
+                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-shadow resize-none font-mono text-sm"
                   />
+                  
+                  <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Preview</span>
+                    </div>
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300">
+                      {requirements ? (
+                        <div 
+                          className="leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: parseMarkdown(requirements) }}
+                        />
+                      ) : (
+                        <div className="text-slate-400 italic">Your formatted requirements will appear here...</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
                 <div>
@@ -730,9 +1352,120 @@ export default function JobRequisition() {
             {/* Distribution Step */}
             {activeStep === 'distribution' && (
               <div className="space-y-6">
+                {/* Public Career Portal Section */}
+                <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-lg border-2 border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 bg-emerald-500 dark:bg-emerald-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100 mb-2">Public Career Portal</h3>
+                      <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-4">
+                        Make this job publicly available on your career page. Candidates can apply directly and track their application status.
+                      </p>
+                      
+                      <div className="space-y-4">
+                        <label className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900/50 rounded-lg border border-emerald-200 dark:border-emerald-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            defaultChecked={existingJob?.publicPortal?.enabled || false}
+                            className="w-4 h-4 text-emerald-600 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
+                          />
+                          <span className="font-medium text-slate-900 dark:text-slate-100">Enable Public Applications</span>
+                        </label>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-emerald-900 dark:text-emerald-100 mb-2">
+                              Company Name
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g., TechCorp Inc."
+                              defaultValue={existingJob?.publicPortal?.companyName || ''}
+                              className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-emerald-900 dark:text-emerald-100 mb-2">
+                              Company Logo URL
+                            </label>
+                            <input
+                              type="url"
+                              placeholder="https://example.com/logo.png"
+                              defaultValue={existingJob?.publicPortal?.companyLogo || ''}
+                              className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-emerald-900 dark:text-emerald-100 mb-2">
+                            Company Description
+                          </label>
+                          <textarea
+                            rows="3"
+                            placeholder="Brief description of your company for job seekers..."
+                            defaultValue={existingJob?.publicPortal?.companyDescription || ''}
+                            className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm resize-none"
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-emerald-900 dark:text-emerald-100 mb-2">
+                              Min Salary
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="120000"
+                              defaultValue={existingJob?.publicPortal?.salaryMin || ''}
+                              className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-emerald-900 dark:text-emerald-100 mb-2">
+                              Max Salary
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="180000"
+                              defaultValue={existingJob?.publicPortal?.salaryMax || ''}
+                              className="w-full px-3 py-2 border border-emerald-200 dark:border-emerald-700 rounded-lg bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <label className="flex items-center gap-2 p-3 bg-white dark:bg-slate-900/50 rounded-lg border border-emerald-200 dark:border-emerald-700 cursor-pointer w-full">
+                              <input
+                                type="checkbox"
+                                defaultChecked={existingJob?.publicPortal?.salaryPublic || false}
+                                className="w-4 h-4 text-emerald-600 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0"
+                              />
+                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Show publicly</span>
+                            </label>
+                          </div>
+                        </div>
+                        
+                        <div className="p-3 bg-white dark:bg-slate-900/50 rounded-lg border border-emerald-200 dark:border-emerald-700">
+                          <div className="flex items-start gap-2 text-xs text-emerald-700 dark:text-emerald-300">
+                            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>
+                              Once published, candidates can apply at <span className="font-mono font-semibold">recruitiq.com/apply/{isEdit ? existingJob.id : '[job-id]'}</span> and track their application with a unique code.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Job Distribution</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Select job boards and platforms to post this position</p>
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Job Board Distribution</h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Select additional job boards and platforms to post this position</p>
                   
                   <div className="space-y-3">
                     <label className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer hover:border-emerald-500/50 transition-colors">
@@ -782,6 +1515,7 @@ export default function JobRequisition() {
             {/* Navigation Buttons */}
             <div className="flex justify-between mt-8 pt-6 border-t dark:border-slate-700">
               <button
+                data-testid="previous-button"
                 onClick={() => {
                   const currentIndex = STEPS.findIndex(s => s.id === activeStep)
                   if (currentIndex > 0) {
@@ -794,6 +1528,7 @@ export default function JobRequisition() {
                 Previous
               </button>
               <button
+                data-testid="next-button"
                 onClick={() => {
                   const currentIndex = STEPS.findIndex(s => s.id === activeStep)
                   if (currentIndex < STEPS.length - 1) {

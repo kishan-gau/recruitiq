@@ -1,9 +1,19 @@
 import React from 'react'
 import { render } from '@testing-library/react'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import MobileDashboardSummary from './MobileDashboardSummary'
 import { DataProvider } from '../context/DataContext'
 import { MemoryRouter } from 'react-router-dom'
+
+// Mock WorkspaceContext
+vi.mock('../context/WorkspaceContext', () => ({
+  useWorkspace: () => ({
+    currentWorkspace: { id: '1', name: 'Test Workspace' },
+    workspaces: [{ id: '1', name: 'Test Workspace' }],
+    switchWorkspace: vi.fn(),
+    loading: false
+  })
+}))
 
 describe('MobileDashboardSummary (snapshot)', ()=>{
   it('renders compact summary', ()=>{

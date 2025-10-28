@@ -8,9 +8,15 @@
     "build:css": "postcss src/index.css -o src/tailwind.css",
     "preview": "vite preview",
     "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
     "test:visual": "playwright test --project=chromium"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.5",
+    "axios": "^1.12.2",
     "clsx": "^1.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -20,6 +26,7 @@
     "@playwright/test": "^1.56.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.21",
     "framer-motion": "^10.18.0",

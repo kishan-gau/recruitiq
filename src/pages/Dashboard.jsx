@@ -1,10 +1,18 @@
 import React from 'react'
-import { useData } from '../context/DataContext'
+import { useJobs } from '../hooks/useJobs'
+import { useCandidates } from '../hooks/useCandidates'
 import DashboardQuickResults from '../components/DashboardQuickResults'
 import MobileDashboardSummary from '../components/MobileDashboardSummary'
 
 export default function Dashboard(){
-  const { state } = useData()
+  const { jobs, isLoading: jobsLoading } = useJobs()
+  const { candidates, isLoading: candidatesLoading } = useCandidates()
+  
+  // Calculate totals safely
+  const totalOpenings = jobs.reduce((s, j) => s + (j.openings || 0), 0)
+  const totalCandidates = candidates.length
+  const totalHired = candidates.filter(c => c.stage === 'Hired').length
+  
   return (
     <div>
       {/* Mobile summary: replace full dashboard with compact summary on small screens */}
@@ -22,18 +30,36 @@ export default function Dashboard(){
         </div>
       </div>
 
-  <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="p-4 bg-white dark:bg-slate-800/50 rounded-lg border dark:border-slate-700/50 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-emerald-500/5 transition-all duration-200">
           <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Open roles</div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{state.jobs.reduce((s,j)=>s+j.openings,0)}</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            {jobsLoading ? (
+              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
+            ) : (
+              totalOpenings
+            )}
+          </div>
         </div>
         <div className="p-4 bg-white dark:bg-slate-800/50 rounded-lg border dark:border-slate-700/50 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-emerald-500/5 transition-all duration-200">
           <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Candidates</div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{state.candidates.length}</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            {candidatesLoading ? (
+              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
+            ) : (
+              totalCandidates
+            )}
+          </div>
         </div>
         <div className="p-4 bg-white dark:bg-slate-800/50 rounded-lg border dark:border-slate-700/50 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-emerald-500/5 transition-all duration-200">
           <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Hires</div>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{state.candidates.filter(c=> c.stage==='Hired').length}</div>
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            {candidatesLoading ? (
+              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
+            ) : (
+              totalHired
+            )}
+          </div>
         </div>
       </div>
 

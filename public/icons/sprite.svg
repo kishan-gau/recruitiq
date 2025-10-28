@@ -43,4 +43,8 @@
   <symbol id="icon-search" viewBox="0 0 20 20">
     <path d="M11 11l4 4M6.5 11A4.5 4.5 0 1011 6.5 4.5 4.5 0 006.5 11z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
   </symbol>
+
+  <symbol id="icon-calendar" viewBox="0 0 24 24">
+    <path d="M5 6h14M5 6v13a1 1 0 001 1h12a1 1 0 001-1V6M5 6V5a1 1 0 011-1h1M18 6V5a1 1 0 00-1-1h-1M7 4V2M17 4V2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
 </svg>

@@ -1,9 +1,19 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { test, expect, beforeEach } from 'vitest'
+import { test, expect, beforeEach, vi } from 'vitest'
 import QuickSearch from './QuickSearch'
 import { DataProvider } from '../context/DataContext'
 import { MemoryRouter } from 'react-router-dom'
+
+// Mock WorkspaceContext
+vi.mock('../context/WorkspaceContext', () => ({
+  useWorkspace: () => ({
+    currentWorkspace: { id: '1', name: 'Test Workspace' },
+    workspaces: [{ id: '1', name: 'Test Workspace' }],
+    switchWorkspace: vi.fn(),
+    loading: false
+  })
+}))
 
 beforeEach(()=>{
   localStorage.removeItem('recruitiq_qs_history')

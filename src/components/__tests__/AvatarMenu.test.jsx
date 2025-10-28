@@ -1,7 +1,18 @@
 import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { vi } from 'vitest'
 import AvatarMenu from '../../components/AvatarMenu'
 import { BrowserRouter } from 'react-router-dom'
+
+// Mock the AuthContext
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { name: 'Test User', email: 'test@example.com' },
+    logout: vi.fn(),
+    isAuthenticated: true,
+    isLoading: false
+  })
+}))
 
 test('AvatarMenu opens and has profile and logout', ()=>{
   render(<BrowserRouter><AvatarMenu /></BrowserRouter>)
@@ -9,7 +20,7 @@ test('AvatarMenu opens and has profile and logout', ()=>{
   // open by clicking the button
   fireEvent.click(btn)
   expect(screen.getByText(/Profile/)).toBeTruthy()
-  expect(screen.getByText(/Log out/)).toBeTruthy()
+  expect(screen.getByText(/Sign Out/)).toBeTruthy()
   // navigate with ArrowDown
   fireEvent.keyDown(document, { key: 'ArrowDown' })
   // close with Escape

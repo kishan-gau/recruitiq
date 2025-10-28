@@ -1,11 +1,13 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function Profile(){
   const [theme, setTheme] = React.useState(()=>{
     try{ return localStorage.getItem('recruitiq_theme') || 'light' }catch(e){ return 'light' }
   })
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
 
   React.useEffect(()=>{
     try{ localStorage.setItem('recruitiq_theme', theme) }catch(e){}
@@ -17,10 +19,38 @@ export default function Profile(){
     setTheme(theme === 'light' ? 'dark' : 'light')
   }
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Profile Settings</h1>
+      </div>
+
+      {/* User Info Card */}
+      <div className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm border dark:border-slate-700/50 mb-4">
+        <h2 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Account</h2>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+            {user?.name?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div>
+            <div className="font-medium text-slate-900 dark:text-slate-100">{user?.name || 'User'}</div>
+            <div className="text-sm text-slate-500 dark:text-slate-400">{user?.email || 'user@example.com'}</div>
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-medium transition-colors flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Sign Out
+        </button>
       </div>
       
       <div className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm border dark:border-slate-700/50 mb-4">
@@ -48,20 +78,6 @@ export default function Profile(){
               )}
             </span>
           </button>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm border dark:border-slate-700/50 mb-4">
-        <h2 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Theme Selection</h2>
-        <div className="flex items-center gap-3">
-          <label className={`px-4 py-2 rounded-lg cursor-pointer border-2 transition-all duration-200 ${theme==='light'? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-500': 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
-            <input type="radio" name="theme" checked={theme==='light'} onChange={()=>setTheme('light')} className="sr-only" /> 
-            <span className="font-medium">Light</span>
-          </label>
-          <label className={`px-4 py-2 rounded-lg cursor-pointer border-2 transition-all duration-200 ${theme==='dark'? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-500': 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
-            <input type="radio" name="theme" checked={theme==='dark'} onChange={()=>setTheme('dark')} className="sr-only" /> 
-            <span className="font-medium">Dark</span>
-          </label>
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import React from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import ConfirmationModal from '../components/ConfirmationModal'
+import ApplicationSourceBadge from '../components/ApplicationSourceBadge'
 import { useToast } from '../context/ToastContext'
 
 const STAGE_COLORS = {
@@ -14,17 +15,74 @@ const STAGE_COLORS = {
 
 export default function CandidateDetail(){
   const { id } = useParams()
-  const { state } = useData()
-  const c = state.candidates.find(x=> String(x.id) === id)
-  const [activeTab, setActiveTab] = React.useState('overview')
-  
-  if(!c) return <div className="p-6 text-slate-500 dark:text-slate-400">Candidate not found</div>
-  
-  const { deleteCandidate } = useData()
+  const { jobs, candidates, loading, error, deleteCandidate } = useData()
   const toast = useToast()
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = React.useState('overview')
   const [confirmOpen, setConfirmOpen] = React.useState(false)
-  const job = state.jobs.find(j=> j.id === c.jobId)
+  
+  const c = candidates.find(x=> String(x.id) === id)
+  
+  // Show loading state
+  if (loading.candidates || loading.jobs) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">Loading candidate details...</div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error.candidates) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center">
+          <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">Failed to load candidate</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">{error.candidates}</div>
+          </div>
+          <Link
+            to="/candidates"
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200"
+          >
+            Back to candidates
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if(!c) return (
+    <div className="flex items-center justify-center py-12">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+          <svg className="w-6 h-6 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <div>
+          <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">Candidate not found</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">The candidate you're looking for doesn't exist</div>
+        </div>
+        <Link
+          to="/candidates"
+          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200"
+        >
+          Back to candidates
+        </Link>
+      </div>
+    </div>
+  )
+  
+  const job = jobs.find(j=> j.id === c.jobId)
   const stageColor = STAGE_COLORS[c.stage] || STAGE_COLORS['Applied']
   
   const tabs = [
@@ -64,7 +122,15 @@ export default function CandidateDetail(){
             {/* Name and status */}
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">{c.name}</h1>
-              <div className="text-sm text-slate-600 dark:text-slate-400">{c.title}</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                <span>{c.title}</span>
+                {c.application_source && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                    <ApplicationSourceBadge source={c.application_source} />
+                  </>
+                )}
+              </div>
             </div>
             
             {/* Status badge */}

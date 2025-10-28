@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { bypassAuth } from '../helpers/auth-helper';
+
+/**
+ * Sidebar Navigation Tests
+ * NOTE: These tests connect to the real backend API at http://localhost:4000
+ */
 
 test('sidebar expanded and collapsed snapshots with active pill', async ({ page }) => {
+  await bypassAuth(page);
   // set desktop viewport before navigation so responsive classes are applied server-side
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');

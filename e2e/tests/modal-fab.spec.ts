@@ -1,8 +1,15 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test'
+import { bypassAuth } from '../helpers/auth-helper';
+
+/**
+ * Modal and FAB Tests
+ * NOTE: These tests connect to the real backend API at http://localhost:4000
+ */
 
 test('modal opens, FAB hidden, screenshots', async ({ page }) => {
-  await page.goto('/');
-  await page.setViewportSize({ width: 375, height: 812 });
+  await bypassAuth(page);
+  await page.goto('/')
+  await page.setViewportSize({ width: 375, height: 812 })
 
   // mobile FAB has an explicit aria-label 'New'
   const fab = page.locator('button[aria-label="New"]');
