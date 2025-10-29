@@ -10,7 +10,7 @@
 
 import express from 'express';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import pool from '../db.js';
+import { queryCentralDb } from '../config/centralDatabase.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
@@ -89,7 +89,7 @@ router.get('/logs', async (req, res) => {
 
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM system_logs ${whereClause}`;
-    const countResult = await pool.query(countQuery, values);
+    const countResult = await queryCentralDb(countQuery, values);
     const totalCount = parseInt(countResult.rows[0].count, 10);
 
     // Get logs
@@ -107,7 +107,7 @@ router.get('/logs', async (req, res) => {
     const limitValue = Math.min(parseInt(limit, 10), 1000);
     const offsetValue = parseInt(offset, 10);
 
-    const logsResult = await pool.query(logsQuery, [...values, limitValue, offsetValue]);
+    const logsResult = await queryCentralDb(logsQuery, [...values, limitValue, offsetValue]);
 
     // Audit log
     logger.logSecurityEvent('portal_logs_accessed', {
@@ -193,7 +193,7 @@ router.get('/logs/security', async (req, res) => {
 
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM security_events ${whereClause}`;
-    const countResult = await pool.query(countQuery, values);
+    const countResult = await queryCentralDb(countQuery, values);
     const totalCount = parseInt(countResult.rows[0].count, 10);
 
     // Get events
@@ -208,7 +208,7 @@ router.get('/logs/security', async (req, res) => {
     const limitValue = Math.min(parseInt(limit, 10), 1000);
     const offsetValue = parseInt(offset, 10);
 
-    const eventsResult = await pool.query(eventsQuery, [...values, limitValue, offsetValue]);
+    const eventsResult = await queryCentralDb(eventsQuery, [...values, limitValue, offsetValue]);
 
     // Audit log
     logger.logSecurityEvent('portal_security_events_accessed', {
@@ -273,7 +273,7 @@ router.get('/logs/search', async (req, res) => {
       LIMIT $${values.length + 1}
     `;
 
-    const result = await pool.query(query, [...values, Math.min(parseInt(limit, 10), 500)]);
+    const result = await queryCentralDb(query, [...values, Math.min(parseInt(limit, 10), 500)]);
 
     // Audit log
     logger.logSecurityEvent('portal_logs_searched', {
@@ -339,7 +339,7 @@ router.get('/logs/download', async (req, res) => {
       LIMIT 10000
     `;
 
-    const result = await pool.query(query, values);
+    const result = await queryCentralDb(query, values);
 
     // Convert to CSV
     const headers = ['timestamp', 'level', 'message', 'tenant_id', 'instance_id', 'user_id', 'ip_address', 'endpoint', 'method'];
@@ -404,10 +404,10 @@ router.get('/stats', async (req, res) => {
     `;
 
     const [tenants, instances, logCounts, securityCounts] = await Promise.all([
-      pool.query(tenantsQuery),
-      pool.query(instancesQuery),
-      pool.query(logCountsQuery),
-      pool.query(securityCountsQuery),
+      queryCentralDb(tenantsQuery),
+      queryCentralDb(instancesQuery),
+      queryCentralDb(logCountsQuery),
+      queryCentralDb(securityCountsQuery),
     ]);
 
     res.json({

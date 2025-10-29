@@ -2,6 +2,7 @@ import express from 'express';
 import config from './config/index.js';
 import logger from './utils/logger.js';
 import { healthCheck as dbHealthCheck, closePool } from './config/database.js';
+import { closeCentralPool } from './config/centralDatabase.js';
 
 // Import security middleware
 import { enhancedHelmetMiddleware, additionalSecurityHeaders } from './middleware/securityHeaders.js';
@@ -26,6 +27,8 @@ import interviewRoutes from './routes/interviews.js';
 import flowTemplateRoutes from './routes/flowTemplates.js';
 import publicRoutes from './routes/public.js';
 import communicationRoutes from './routes/communications.js';
+import portalRoutes from './routes/portal.js';
+import securityRoutes from './routes/security.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -188,6 +191,10 @@ apiRouter.use('/interviews', authenticate, interviewRoutes);
 apiRouter.use('/flow-templates', authenticate, flowTemplateRoutes);
 apiRouter.use('/communications', communicationRoutes);
 
+// Portal routes (platform admin only - auth handled in routes)
+apiRouter.use('/portal', portalRoutes);
+apiRouter.use('/security', securityRoutes);
+
 app.use('/api', apiRouter);
 
 // ============================================================================
@@ -227,6 +234,8 @@ const gracefulShutdown = async (signal) => {
     try {
       await closePool();
       logger.info('Database connections closed');
+      await closeCentralPool();
+      logger.info('Central database connections closed');
       process.exit(0);
     } catch (error) {
       logger.error('Error during shutdown:', error);

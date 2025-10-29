@@ -7,8 +7,7 @@
 import express from 'express';
 import securityMonitor from '../services/securityMonitor.js';
 import { getSecurityMetrics, getSecurityMonitoringHealth } from '../middleware/securityMonitoring.js';
-import { authenticateToken } from '../middleware/auth.js';
-import { requireRole } from '../middleware/rbac.js';
+import { authenticateToken, requireRole } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
 import encryption from '../services/encryption.js';
 import tlsConfig from '../utils/tlsConfig.js';
