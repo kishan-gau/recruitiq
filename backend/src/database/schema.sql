@@ -1,7 +1,7 @@
 -- ============================================================================
 -- RecruitIQ Database Schema
 -- Single source of truth for database structure
--- Last updated: 2025-10-26
+-- Last updated: 2025-10-28
 -- ============================================================================
 
 -- Enable UUID extension
@@ -20,6 +20,16 @@ DROP TABLE IF EXISTS refresh_tokens CASCADE;
 DROP TABLE IF EXISTS workspaces CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS organizations CASCADE;
+
+-- Drop central logging tables
+DROP TABLE IF EXISTS security_alerts CASCADE;
+DROP TABLE IF EXISTS security_events CASCADE;
+DROP TABLE IF EXISTS system_logs CASCADE;
+
+-- Drop views
+DROP VIEW IF EXISTS active_threats CASCADE;
+DROP VIEW IF EXISTS security_summary_by_tenant CASCADE;
+DROP VIEW IF EXISTS recent_errors_by_tenant CASCADE;
 
 -- ============================================================================
 -- ORGANIZATIONS TABLE
@@ -438,6 +448,194 @@ CREATE TABLE communications (
 CREATE INDEX idx_communications_application_id ON communications(application_id);
 CREATE INDEX idx_communications_from_type ON communications(from_type);
 CREATE INDEX idx_communications_created_at ON communications(created_at);
+
+-- ============================================================================
+-- CENTRAL LOGGING TABLES (for cloud instances)
+-- ============================================================================
+
+-- System Logs Table
+CREATE TABLE system_logs (
+  id BIGSERIAL PRIMARY KEY,
+  
+  -- Timestamp
+  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  
+  -- Log details
+  level VARCHAR(10) NOT NULL CHECK (level IN ('info', 'warn', 'error', 'debug')),
+  message TEXT NOT NULL,
+  
+  -- Multi-tenant/instance identification
+  tenant_id VARCHAR(50) NOT NULL,
+  instance_id VARCHAR(50),
+  
+  -- Request context
+  request_id VARCHAR(50),
+  user_id UUID,
+  ip_address INET,
+  endpoint VARCHAR(255),
+  method VARCHAR(10),
+  
+  -- Error details
+  error_stack TEXT,
+  error_code VARCHAR(50),
+  
+  -- Additional metadata
+  metadata JSONB
+);
+
+CREATE INDEX idx_system_logs_timestamp ON system_logs(timestamp DESC);
+CREATE INDEX idx_system_logs_tenant_id ON system_logs(tenant_id);
+CREATE INDEX idx_system_logs_level ON system_logs(level);
+CREATE INDEX idx_system_logs_request_id ON system_logs(request_id);
+CREATE INDEX idx_system_logs_user_id ON system_logs(user_id);
+CREATE INDEX idx_system_logs_tenant_timestamp ON system_logs(tenant_id, timestamp DESC);
+CREATE INDEX idx_system_logs_metadata ON system_logs USING GIN (metadata);
+
+COMMENT ON TABLE system_logs IS 'Centralized system logs from all cloud instances';
+COMMENT ON COLUMN system_logs.tenant_id IS 'Identifier for the cloud tenant (for multi-tenant SaaS)';
+COMMENT ON COLUMN system_logs.instance_id IS 'Identifier for the cloud instance (if multiple regions/instances)';
+
+-- Security Events Table
+CREATE TABLE security_events (
+  id BIGSERIAL PRIMARY KEY,
+  
+  -- Timestamp
+  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  
+  -- Event details
+  event_type VARCHAR(50) NOT NULL,
+  severity VARCHAR(20) NOT NULL CHECK (severity IN ('info', 'warning', 'error', 'critical')),
+  description TEXT,
+  
+  -- Multi-tenant/instance identification
+  tenant_id VARCHAR(50) NOT NULL,
+  instance_id VARCHAR(50),
+  
+  -- User/source information
+  user_id UUID,
+  username VARCHAR(255),
+  ip_address INET,
+  user_agent TEXT,
+  
+  -- Additional metadata
+  metadata JSONB,
+  
+  -- Alert information
+  alert_sent BOOLEAN DEFAULT FALSE,
+  alert_channels TEXT[]
+);
+
+CREATE INDEX idx_security_events_timestamp ON security_events(timestamp DESC);
+CREATE INDEX idx_security_events_tenant_id ON security_events(tenant_id);
+CREATE INDEX idx_security_events_event_type ON security_events(event_type);
+CREATE INDEX idx_security_events_severity ON security_events(severity);
+CREATE INDEX idx_security_events_ip_address ON security_events(ip_address);
+CREATE INDEX idx_security_events_tenant_timestamp ON security_events(tenant_id, timestamp DESC);
+CREATE INDEX idx_security_events_severity_timestamp ON security_events(severity, timestamp DESC);
+CREATE INDEX idx_security_events_metadata ON security_events USING GIN (metadata);
+
+COMMENT ON TABLE security_events IS 'Security events tracked across all cloud instances';
+COMMENT ON COLUMN security_events.alert_sent IS 'Whether an alert was sent for this event';
+
+-- Security Alerts Table
+CREATE TABLE security_alerts (
+  id BIGSERIAL PRIMARY KEY,
+  
+  -- Timestamp
+  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  
+  -- Alert details
+  alert_id VARCHAR(100) UNIQUE NOT NULL,
+  alert_type VARCHAR(50) NOT NULL,
+  severity VARCHAR(20) NOT NULL,
+  description TEXT NOT NULL,
+  
+  -- Source
+  tenant_id VARCHAR(50) NOT NULL,
+  instance_id VARCHAR(50),
+  
+  -- Related event
+  security_event_id BIGINT REFERENCES security_events(id),
+  
+  -- Alert delivery
+  channels_sent TEXT[],
+  delivery_status JSONB,
+  
+  -- Resolution
+  resolved BOOLEAN DEFAULT FALSE,
+  resolved_at TIMESTAMP,
+  resolved_by UUID,
+  resolution_notes TEXT,
+  
+  -- Metadata
+  metadata JSONB
+);
+
+CREATE INDEX idx_security_alerts_timestamp ON security_alerts(timestamp DESC);
+CREATE INDEX idx_security_alerts_tenant_id ON security_alerts(tenant_id);
+CREATE INDEX idx_security_alerts_alert_type ON security_alerts(alert_type);
+CREATE INDEX idx_security_alerts_severity ON security_alerts(severity);
+CREATE INDEX idx_security_alerts_resolved ON security_alerts(resolved);
+
+COMMENT ON TABLE security_alerts IS 'Security alerts generated and sent to administrators';
+COMMENT ON COLUMN security_alerts.delivery_status IS 'JSON object tracking delivery status for each channel';
+
+-- Log Retention Function
+CREATE OR REPLACE FUNCTION cleanup_old_logs()
+RETURNS void AS $$
+BEGIN
+  -- Delete system logs older than 90 days
+  DELETE FROM system_logs
+  WHERE timestamp < NOW() - INTERVAL '90 days';
+  
+  -- Delete security events older than 1 year (keep longer for compliance)
+  DELETE FROM security_events
+  WHERE timestamp < NOW() - INTERVAL '1 year'
+  AND severity NOT IN ('critical', 'error');
+  
+  -- Delete resolved alerts older than 6 months
+  DELETE FROM security_alerts
+  WHERE timestamp < NOW() - INTERVAL '6 months'
+  AND resolved = TRUE;
+  
+  RAISE NOTICE 'Old logs cleaned up successfully';
+END;
+$$ LANGUAGE plpgsql;
+
+-- Views for Common Queries
+CREATE OR REPLACE VIEW recent_errors_by_tenant AS
+SELECT 
+  tenant_id,
+  COUNT(*) as error_count,
+  MAX(timestamp) as last_error,
+  array_agg(DISTINCT error_code) as error_codes
+FROM system_logs
+WHERE level = 'error'
+AND timestamp > NOW() - INTERVAL '24 hours'
+GROUP BY tenant_id;
+
+CREATE OR REPLACE VIEW security_summary_by_tenant AS
+SELECT 
+  tenant_id,
+  event_type,
+  severity,
+  COUNT(*) as event_count,
+  MAX(timestamp) as last_occurrence
+FROM security_events
+WHERE timestamp > NOW() - INTERVAL '24 hours'
+GROUP BY tenant_id, event_type, severity;
+
+CREATE OR REPLACE VIEW active_threats AS
+SELECT 
+  a.*,
+  e.ip_address,
+  e.username,
+  e.metadata as event_metadata
+FROM security_alerts a
+LEFT JOIN security_events e ON a.security_event_id = e.id
+WHERE a.resolved = FALSE
+AND a.severity IN ('critical', 'error')
+ORDER BY a.timestamp DESC;
 
 -- ============================================================================
 -- GRANT PERMISSIONS
