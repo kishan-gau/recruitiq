@@ -26,6 +26,38 @@ import cloudWatchClient from '../integrations/cloudwatch.js';
 import datadogClient from '../integrations/datadog.js';
 
 // ============================================================================
+// CENTRAL MONITORING DATABASE
+// ============================================================================
+
+let centralMonitoringPool = null;
+
+// Initialize central monitoring database pool for cloud instances
+if (config.deployment?.type === 'cloud' && config.centralMonitoring?.enabled) {
+  (async () => {
+    try {
+      const { Pool } = await import('pg');
+      centralMonitoringPool = new Pool({
+        host: config.centralMonitoring.host,
+        port: config.centralMonitoring.port,
+        database: config.centralMonitoring.database,
+        user: config.centralMonitoring.user,
+        password: config.centralMonitoring.password,
+        ssl: config.centralMonitoring.ssl,
+        max: 5,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      });
+      
+      await centralMonitoringPool.query('SELECT 1');
+      console.log('✓ Central monitoring database connected');
+    } catch (error) {
+      console.error('✗ Failed to connect to central monitoring database:', error.message);
+      centralMonitoringPool = null;
+    }
+  })();
+}
+
+// ============================================================================
 // CONFIGURATION
 // ============================================================================
 
@@ -159,10 +191,98 @@ class SecurityMonitor extends EventEmitter {
     // Log event
     logger.logSecurityEvent(eventType, metadata);
     
+    // Send to central monitoring database if cloud deployment
+    this.sendToCentralMonitoring(event, metadata);
+    
     // Emit event for processing
     this.emit('security-event', event);
     
     return event;
+  }
+  
+  /**
+   * Send security event to central monitoring database (cloud only)
+   * 
+   * @param {Object} event - Security event
+   * @param {Object} metadata - Event metadata
+   */
+  async sendToCentralMonitoring(event, metadata) {
+    // Only for cloud deployments with central monitoring enabled
+    if (config.deployment?.type !== 'cloud' || !centralMonitoringPool) {
+      return;
+    }
+    
+    try {
+      const query = `
+        INSERT INTO security_events (
+          timestamp, event_type, severity, description,
+          tenant_id, instance_id, user_id, username,
+          ip_address, user_agent, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `;
+      
+      const values = [
+        event.timestamp,
+        event.type,
+        event.severity,
+        metadata.reason || metadata.message || event.type,
+        config.deployment.tenantId,
+        config.deployment.instanceId,
+        metadata.userId || null,
+        metadata.username || metadata.userEmail || null,
+        metadata.ip || metadata.ipAddress || null,
+        metadata.userAgent || null,
+        JSON.stringify(metadata),
+      ];
+      
+      await centralMonitoringPool.query(query, values);
+    } catch (error) {
+      // Don't throw - just log locally to avoid monitoring loops
+      logger.error('Failed to send security event to central monitoring', {
+        error: error.message,
+        eventType: event.type,
+      });
+    }
+  }
+  
+  /**
+   * Send security alert to central monitoring database (cloud only)
+   * 
+   * @param {Object} alert - Security alert
+   */
+  async sendAlertToCentralDatabase(alert) {
+    // Only for cloud deployments with central monitoring enabled
+    if (config.deployment?.type !== 'cloud' || !centralMonitoringPool) {
+      return;
+    }
+    
+    try {
+      const query = `
+        INSERT INTO security_alerts (
+          timestamp, alert_id, alert_type, severity, description,
+          tenant_id, instance_id, channels_sent, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `;
+      
+      const values = [
+        alert.timestamp,
+        alert.id,
+        alert.type || alert.event?.type,
+        alert.severity,
+        alert.message,
+        config.deployment.tenantId,
+        config.deployment.instanceId,
+        alert.channels || [],
+        JSON.stringify(alert.event?.metadata || {}),
+      ];
+      
+      await centralMonitoringPool.query(query, values);
+    } catch (error) {
+      logger.error('Failed to send alert to central monitoring', {
+        error: error.message,
+        alertId: alert.id,
+      });
+    }
   }
   
   /**
@@ -400,8 +520,10 @@ class SecurityMonitor extends EventEmitter {
       type: event.type,
       severity,
       timestamp: event.timestamp,
+      event,
       metadata: event.metadata,
       description: this.getAlertDescription(event),
+      message: this.getAlertDescription(event),
     };
     
     // Update metrics
@@ -410,6 +532,9 @@ class SecurityMonitor extends EventEmitter {
     
     // Log alert
     logger.warn('Security Alert', alert);
+    
+    // Send to central database (cloud only)
+    this.sendAlertToCentralDatabase(alert);
     
     // Emit alert for external handlers
     this.emit('alert', alert);

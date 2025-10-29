@@ -186,6 +186,35 @@ const config = {
     },
   },
   
+  // Deployment Configuration
+  deployment: {
+    type: process.env.DEPLOYMENT_TYPE || 'onpremise', // 'cloud' or 'onpremise'
+    tenantId: process.env.TENANT_ID, // Required for cloud multi-tenant SaaS
+    instanceId: process.env.INSTANCE_ID || process.env.HOSTNAME || 'unknown',
+  },
+  
+  // Central Logging (for cloud instances only)
+  centralLogging: {
+    enabled: process.env.CENTRAL_LOGGING_ENABLED === 'true',
+    host: process.env.CENTRAL_LOG_DB_HOST,
+    port: parseInt(process.env.CENTRAL_LOG_DB_PORT, 10) || 5432,
+    database: process.env.CENTRAL_LOG_DB_NAME || 'platform_logs',
+    user: process.env.CENTRAL_LOG_DB_USER,
+    password: process.env.CENTRAL_LOG_DB_PASSWORD,
+    ssl: process.env.CENTRAL_LOG_DB_SSL !== 'false',
+  },
+  
+  // Central Monitoring (for cloud instances only)
+  centralMonitoring: {
+    enabled: process.env.CENTRAL_MONITORING_ENABLED === 'true',
+    host: process.env.CENTRAL_MONITOR_DB_HOST,
+    port: parseInt(process.env.CENTRAL_MONITOR_DB_PORT, 10) || 5432,
+    database: process.env.CENTRAL_MONITOR_DB_NAME || 'platform_logs',
+    user: process.env.CENTRAL_MONITOR_DB_USER,
+    password: process.env.CENTRAL_MONITOR_DB_PASSWORD,
+    ssl: process.env.CENTRAL_MONITOR_DB_SSL !== 'false',
+  },
+  
   // Feature Flags
   features: {
     websockets: process.env.ENABLE_WEBSOCKETS === 'true',

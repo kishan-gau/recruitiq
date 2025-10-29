@@ -1,4 +1,5 @@
 import winston from 'winston';
+import Transport from 'winston-transport';
 import config from '../config/index.js';
 import fs from 'fs';
 import path from 'path';
@@ -158,6 +159,172 @@ const jsonFormat = combine(
 );
 
 // ============================================================================
+// DATABASE TRANSPORT FOR CENTRAL LOGGING
+// ============================================================================
+
+/**
+ * Custom Winston transport that writes logs to PostgreSQL database
+ * Only active for cloud deployments with central logging enabled
+ */
+class DatabaseTransport extends Transport {
+  constructor(opts) {
+    super(opts);
+    this.pool = opts.pool;
+    this.tenantId = opts.tenantId;
+    this.instanceId = opts.instanceId;
+    this.batchSize = opts.batchSize || 100;
+    this.flushInterval = opts.flushInterval || 5000; // 5 seconds
+    this.buffer = [];
+    this.flushTimer = null;
+    
+    // Start periodic flush
+    this.startPeriodicFlush();
+  }
+  
+  /**
+   * Log method called by Winston
+   */
+  log(info, callback) {
+    setImmediate(() => {
+      this.emit('logged', info);
+    });
+    
+    // Add to buffer
+    this.buffer.push(info);
+    
+    // Flush if buffer is full
+    if (this.buffer.length >= this.batchSize) {
+      this.flush();
+    }
+    
+    callback();
+  }
+  
+  /**
+   * Start periodic flush timer
+   */
+  startPeriodicFlush() {
+    this.flushTimer = setInterval(() => {
+      if (this.buffer.length > 0) {
+        this.flush();
+      }
+    }, this.flushInterval);
+  }
+  
+  /**
+   * Flush buffered logs to database
+   */
+  async flush() {
+    if (this.buffer.length === 0) return;
+    
+    const logs = [...this.buffer];
+    this.buffer = [];
+    
+    try {
+      // Batch insert into system_logs table
+      const values = logs.map(log => {
+        return `(
+          NOW(),
+          '${log.level}',
+          '${this.escapeSql(log.message)}',
+          '${this.tenantId}',
+          '${this.instanceId}',
+          ${log.requestId ? `'${log.requestId}'` : 'NULL'},
+          ${log.userId ? log.userId : 'NULL'},
+          ${log.ip ? `'${log.ip}'::inet` : 'NULL'},
+          ${log.path ? `'${this.escapeSql(log.path)}'` : 'NULL'},
+          ${log.method ? `'${log.method}'` : 'NULL'},
+          ${log.stack ? `'${this.escapeSql(log.stack)}'` : 'NULL'},
+          ${log.code ? `'${log.code}'` : 'NULL'},
+          '${JSON.stringify(this.getMetadata(log))}'::jsonb
+        )`;
+      }).join(',');
+      
+      const query = `
+        INSERT INTO system_logs (
+          timestamp, level, message, tenant_id, instance_id,
+          request_id, user_id, ip_address, endpoint, method,
+          error_stack, error_code, metadata
+        ) VALUES ${values}
+      `;
+      
+      await this.pool.query(query);
+    } catch (error) {
+      // Don't throw - log locally instead to avoid logging loops
+      console.error('Failed to write logs to database:', error.message);
+      // Could write to file as fallback here
+    }
+  }
+  
+  /**
+   * Extract metadata from log info
+   */
+  getMetadata(info) {
+    const metadata = {};
+    const excludeKeys = [
+      'level', 'message', 'timestamp', 'requestId', 'userId',
+      'ip', 'path', 'method', 'stack', 'code', 'service',
+      'environment', 'hostname', 'securityEvent'
+    ];
+    
+    for (const [key, value] of Object.entries(info)) {
+      if (!excludeKeys.includes(key) && key !== Symbol.for('level') && key !== Symbol.for('message')) {
+        metadata[key] = value;
+      }
+    }
+    
+    return metadata;
+  }
+  
+  /**
+   * Escape SQL string values
+   */
+  escapeSql(str) {
+    if (!str) return '';
+    return str.toString().replace(/'/g, "''");
+  }
+  
+  /**
+   * Close transport and flush remaining logs
+   */
+  async close() {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+    }
+    await this.flush();
+  }
+}
+
+/**
+ * Create database pool for central logging (if enabled)
+ */
+let centralLoggingPool = null;
+
+if (config.deployment?.type === 'cloud' && config.centralLogging?.enabled) {
+  try {
+    const { Pool } = await import('pg');
+    centralLoggingPool = new Pool({
+      host: config.centralLogging.host,
+      port: config.centralLogging.port || 5432,
+      database: config.centralLogging.database,
+      user: config.centralLogging.user,
+      password: config.centralLogging.password,
+      ssl: config.centralLogging.ssl !== false, // Default to true
+      max: 5, // Keep pool small for logging
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+    
+    // Test connection
+    await centralLoggingPool.query('SELECT 1');
+    console.log('✓ Central logging database connected');
+  } catch (error) {
+    console.error('✗ Failed to connect to central logging database:', error.message);
+    centralLoggingPool = null;
+  }
+}
+
+// ============================================================================
 // LOGGER CONFIGURATION
 // ============================================================================
 
@@ -170,6 +337,70 @@ if (!fs.existsSync(logsDir)) {
 /**
  * Main application logger with enhanced security and structure
  */
+const transports = [
+  // Console output (human-readable in development)
+  new winston.transports.Console({
+    format: config.env === 'development' 
+      ? combine(colorize(), timestamp({ format: 'HH:mm:ss' }), redactFormat, consoleFormat)
+      : jsonFormat,
+  }),
+  
+  // Error logs
+  new winston.transports.File({
+    filename: path.join(logsDir, 'error.log'),
+    level: 'error',
+    maxsize: 10485760, // 10MB
+    maxFiles: 10,
+    tailable: true,
+  }),
+  
+  // Warning logs
+  new winston.transports.File({
+    filename: path.join(logsDir, 'warn.log'),
+    level: 'warn',
+    maxsize: 10485760, // 10MB
+    maxFiles: 5,
+    tailable: true,
+  }),
+  
+  // All logs
+  new winston.transports.File({
+    filename: path.join(logsDir, 'combined.log'),
+    maxsize: 10485760, // 10MB
+    maxFiles: 15,
+    tailable: true,
+  }),
+  
+  // Security audit logs (separate file for compliance)
+  new winston.transports.File({
+    filename: path.join(logsDir, 'security.log'),
+    level: 'info',
+    maxsize: 10485760, // 10MB
+    maxFiles: 30, // Keep longer for security audits
+    tailable: true,
+    format: combine(
+      winston.format((info) => {
+        // Only log security-related events
+        return info.securityEvent ? info : false;
+      })(),
+      jsonFormat
+    ),
+  }),
+];
+
+// Add database transport for cloud instances
+if (centralLoggingPool && config.deployment?.type === 'cloud') {
+  transports.push(
+    new DatabaseTransport({
+      pool: centralLoggingPool,
+      tenantId: config.deployment.tenantId || 'unknown',
+      instanceId: config.deployment.instanceId || process.env.HOSTNAME || 'unknown',
+      batchSize: 100,
+      flushInterval: 5000,
+    })
+  );
+}
+
 const logger = winston.createLogger({
   level: config.logging.level || 'info',
   format: jsonFormat,
@@ -177,57 +408,10 @@ const logger = winston.createLogger({
     service: 'recruitiq-api',
     environment: config.env,
     hostname: process.env.HOSTNAME || 'localhost',
+    tenantId: config.deployment?.tenantId,
+    instanceId: config.deployment?.instanceId,
   },
-  transports: [
-    // Console output (human-readable in development)
-    new winston.transports.Console({
-      format: config.env === 'development' 
-        ? combine(colorize(), timestamp({ format: 'HH:mm:ss' }), redactFormat, consoleFormat)
-        : jsonFormat,
-    }),
-    
-    // Error logs
-    new winston.transports.File({
-      filename: path.join(logsDir, 'error.log'),
-      level: 'error',
-      maxsize: 10485760, // 10MB
-      maxFiles: 10,
-      tailable: true,
-    }),
-    
-    // Warning logs
-    new winston.transports.File({
-      filename: path.join(logsDir, 'warn.log'),
-      level: 'warn',
-      maxsize: 10485760, // 10MB
-      maxFiles: 5,
-      tailable: true,
-    }),
-    
-    // All logs
-    new winston.transports.File({
-      filename: path.join(logsDir, 'combined.log'),
-      maxsize: 10485760, // 10MB
-      maxFiles: 15,
-      tailable: true,
-    }),
-    
-    // Security audit logs (separate file for compliance)
-    new winston.transports.File({
-      filename: path.join(logsDir, 'security.log'),
-      level: 'info',
-      maxsize: 10485760, // 10MB
-      maxFiles: 30, // Keep longer for security audits
-      tailable: true,
-      format: combine(
-        winston.format((info) => {
-          // Only log security-related events
-          return info.securityEvent ? info : false;
-        })(),
-        jsonFormat
-      ),
-    }),
-  ],
+  transports,
   exceptionHandlers: [
     new winston.transports.File({ 
       filename: path.join(logsDir, 'exceptions.log'),
