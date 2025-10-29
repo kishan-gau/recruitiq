@@ -162,7 +162,6 @@ class SecurityMonitor extends EventEmitter {
    */
   setupEventListeners() {
     this.on('security-event', this.handleSecurityEvent.bind(this));
-    this.on('alert', this.handleAlert.bind(this));
   }
   
   /**
