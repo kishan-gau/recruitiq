@@ -132,6 +132,23 @@ const config = {
     cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE, 10) || 86400000, // 24 hours
   },
   
+  // Encryption
+  encryption: {
+    masterKey: process.env.ENCRYPTION_MASTER_KEY,
+    algorithm: 'aes-256-gcm',
+    keyLength: 32, // 256 bits
+  },
+  
+  // TLS/SSL
+  tls: {
+    enabled: process.env.TLS_ENABLED === 'true' || process.env.NODE_ENV === 'production',
+    certPath: process.env.TLS_CERT_PATH,
+    keyPath: process.env.TLS_KEY_PATH,
+    caPath: process.env.TLS_CA_PATH,
+    minVersion: process.env.TLS_MIN_VERSION || 'TLSv1.3',
+    maxVersion: process.env.TLS_MAX_VERSION || 'TLSv1.3',
+  },
+  
   // Redis (for rate limiting and caching)
   redis: {
     enabled: process.env.REDIS_ENABLED === 'true',
