@@ -163,6 +163,29 @@ const config = {
     filePath: process.env.LOG_FILE_PATH || 'logs/app.log',
   },
   
+  // Security Monitoring
+  monitoring: {
+    enabled: process.env.SECURITY_MONITORING_ENABLED !== 'false',
+    alertChannels: (process.env.ALERT_CHANNELS || 'log').split(','),
+    webhookUrl: process.env.ALERT_WEBHOOK_URL,
+    
+    // CloudWatch
+    cloudwatch: {
+      enabled: process.env.CLOUDWATCH_ENABLED === 'true',
+      namespace: process.env.CLOUDWATCH_NAMESPACE || 'RecruitIQ/Security',
+      region: process.env.CLOUDWATCH_REGION || process.env.AWS_REGION || 'us-east-1',
+    },
+    
+    // Datadog
+    datadog: {
+      enabled: process.env.DATADOG_ENABLED === 'true',
+      apiKey: process.env.DATADOG_API_KEY,
+      appKey: process.env.DATADOG_APP_KEY,
+      site: process.env.DATADOG_SITE || 'datadoghq.com',
+      service: process.env.DATADOG_SERVICE || 'recruitiq',
+    },
+  },
+  
   // Feature Flags
   features: {
     websockets: process.env.ENABLE_WEBSOCKETS === 'true',
