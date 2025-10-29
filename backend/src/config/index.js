@@ -43,9 +43,43 @@ const config = {
   
   // Redis
   redis: {
+    enabled: process.env.REDIS_ENABLED === 'true',
     url: process.env.REDIS_URL || 'redis://localhost:6379',
     password: process.env.REDIS_PASSWORD || undefined,
     db: parseInt(process.env.REDIS_DB, 10) || 0,
+  },
+  
+  // Secrets Management
+  secrets: {
+    provider: process.env.SECRETS_PROVIDER || 'environment', // 'aws', 'azure', 'vault', 'barbican', 'environment'
+    cacheTTL: parseInt(process.env.SECRETS_CACHE_TTL, 10) || 300, // 5 minutes in seconds
+    
+    // AWS Secrets Manager
+    aws: {
+      region: process.env.AWS_SECRETS_REGION || process.env.AWS_REGION || 'us-east-1',
+    },
+    
+    // Azure Key Vault
+    azure: {
+      vaultUrl: process.env.AZURE_KEY_VAULT_URL,
+    },
+    
+    // HashiCorp Vault
+    vault: {
+      endpoint: process.env.VAULT_ADDR || 'http://127.0.0.1:8200',
+      token: process.env.VAULT_TOKEN,
+      namespace: process.env.VAULT_NAMESPACE || 'secret',
+    },
+    
+    // TransIP/OpenStack Barbican
+    barbican: {
+      endpoint: process.env.BARBICAN_ENDPOINT,
+      token: process.env.BARBICAN_TOKEN,
+      projectId: process.env.BARBICAN_PROJECT_ID,
+      authUrl: process.env.OPENSTACK_AUTH_URL,
+      username: process.env.OPENSTACK_USERNAME,
+      password: process.env.OPENSTACK_PASSWORD,
+    },
   },
   
   // Email
