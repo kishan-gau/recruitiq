@@ -88,7 +88,7 @@ class User {
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN role_permissions rp ON r.id = rp.role_id
-      LEFT JOIN permissions p ON rp.permission_id = p.id
+      LEFT JOIN permissions p ON rp.permission_id = p.id OR p.id = ANY(u.additional_permissions)
       LEFT JOIN organizations o ON u.organization_id = o.id
       WHERE u.email = $1 AND u.deleted_at IS NULL
       GROUP BY u.id, u.organization_id, u.email, u.password_hash, u.email_verified,
@@ -101,13 +101,13 @@ class User {
     
     const result = await db.query(query, [email.toLowerCase()]);
     if (result.rows[0]) {
-      // Merge role permissions with additional user-specific permissions
       const user = result.rows[0];
-      const rolePermissions = user.permissions || [];
-      const additionalPermissions = user.additional_permissions || [];
-      user.permissions = [...new Set([...rolePermissions, ...additionalPermissions])];
-      // Set role to role_name for backward compatibility
-      user.role = user.role_name;
+      // Parse JSON array to regular array if needed
+      if (typeof user.permissions === 'string') {
+        user.permissions = JSON.parse(user.permissions);
+      }
+      // Set role to role_name or legacy_role for backward compatibility
+      user.role = user.role_name || user.legacy_role;
     }
     return result.rows[0];
   }
@@ -154,7 +154,7 @@ class User {
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN role_permissions rp ON r.id = rp.role_id
-      LEFT JOIN permissions p ON rp.permission_id = p.id
+      LEFT JOIN permissions p ON rp.permission_id = p.id OR p.id = ANY(u.additional_permissions)
       LEFT JOIN organizations o ON u.organization_id = o.id
       WHERE u.id = $1 AND u.deleted_at IS NULL
       GROUP BY u.id, u.organization_id, u.email, u.password_hash, u.email_verified,
@@ -167,13 +167,13 @@ class User {
     
     const result = await db.query(query, [id]);
     if (result.rows[0]) {
-      // Merge role permissions with additional user-specific permissions
       const user = result.rows[0];
-      const rolePermissions = user.permissions || [];
-      const additionalPermissions = user.additional_permissions || [];
-      user.permissions = [...new Set([...rolePermissions, ...additionalPermissions])];
-      // Set role to role_name for backward compatibility
-      user.role = user.role_name;
+      // Parse JSON array to regular array if needed
+      if (typeof user.permissions === 'string') {
+        user.permissions = JSON.parse(user.permissions);
+      }
+      // Set role to role_name or legacy_role for backward compatibility
+      user.role = user.role_name || user.legacy_role;
     }
     return result.rows[0];
   }

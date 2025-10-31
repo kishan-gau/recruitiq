@@ -29,6 +29,8 @@ import flowTemplateRoutes from './routes/flowTemplates.js';
 import publicRoutes from './routes/public.js';
 import communicationRoutes from './routes/communications.js';
 import portalRoutes from './routes/portal.js';
+import userManagementRoutes from './routes/userManagement.js';
+import rolesPermissionsRoutes from './routes/rolesPermissions.js';
 import securityRoutes from './routes/security.js';
 import provisioningRoutes from './routes/provisioning.js';
 
@@ -203,6 +205,8 @@ apiRouter.use('/communications', communicationRoutes);
 // Portal routes (platform admin only - auth handled in routes)
 apiRouter.use('/portal', portalRoutes);
 apiRouter.use('/portal', provisioningRoutes);  // Client & VPS provisioning
+apiRouter.use('/portal', userManagementRoutes);  // User management
+apiRouter.use('/portal', rolesPermissionsRoutes);  // Roles & permissions management
 apiRouter.use('/security', securityRoutes);
 
 // License Manager routes (uses separate auth middleware)

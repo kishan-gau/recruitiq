@@ -495,6 +495,7 @@ export async function me(req, res, next) {
         email: user.email,
         name: user.name,
         role: user.role,
+        user_type: user.user_type,
         permissions: user.permissions,
         phone: user.phone,
         avatarUrl: user.avatar_url,
