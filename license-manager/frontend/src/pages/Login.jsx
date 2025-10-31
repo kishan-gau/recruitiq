@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Shield, AlertCircle } from 'lucide-react'
@@ -10,6 +10,30 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
+
+  // Check if user is already authenticated (SSO via cookies)
+  useEffect(() => {
+    const checkExistingAuth = async () => {
+      try {
+        // Try to get current user using cookie-based auth
+        // Cookies are automatically sent with the request
+        await api.getMe()
+        
+        // If successful, user is already authenticated via SSO, redirect to dashboard
+        navigate('/dashboard', { replace: true })
+        return
+      } catch (err) {
+        // Not authenticated or token expired, show login form
+        // Clear any stale localStorage data
+        localStorage.removeItem('user')
+      }
+      
+      setChecking(false)
+    }
+    
+    checkExistingAuth()
+  }, [navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -27,6 +51,23 @@ export default function Login() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading while checking existing authentication
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl p-8">
+          <div className="flex items-center space-x-3">
+            <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-gray-700">Checking authentication...</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -96,7 +137,7 @@ export default function Login() {
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-xs text-gray-600 font-medium mb-2">Demo Credentials:</p>
           <p className="text-xs text-gray-500">Email: admin@recruitiq.com</p>
-          <p className="text-xs text-gray-500">Password: admin123</p>
+          <p className="text-xs text-gray-500">Password: Admin123!</p>
         </div>
 
         {/* Footer */}

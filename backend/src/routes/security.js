@@ -7,7 +7,7 @@
 import express from 'express';
 import securityMonitor from '../services/securityMonitor.js';
 import { getSecurityMetrics, getSecurityMonitoringHealth } from '../middleware/securityMonitoring.js';
-import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { authenticate, requireRole } from '../middleware/auth.js';
 import logger from '../utils/logger.js';
 import encryption from '../services/encryption.js';
 import tlsConfig from '../utils/tlsConfig.js';
@@ -15,7 +15,7 @@ import tlsConfig from '../utils/tlsConfig.js';
 const router = express.Router();
 
 // All dashboard routes require admin role
-router.use(authenticateToken);
+router.use(authenticate);
 router.use(requireRole(['admin', 'security_admin']));
 
 /**

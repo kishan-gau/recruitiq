@@ -32,8 +32,12 @@ function generateAccessToken(user) {
     {
       userId: user.id,
       email: user.email,
-      organizationId: user.organization_id,
-      role: user.role
+      organizationId: user.organization_id || null,
+      userType: user.user_type,
+      role: user.role || user.role_name,
+      roleId: user.role_id,
+      roleLevel: user.role_level,
+      permissions: user.permissions || []
     },
     config.jwt.accessSecret,
     { expiresIn: config.jwt.accessExpiresIn }
@@ -219,7 +223,7 @@ export async function login(req, res, next) {
     }
 
     // Update last login timestamp
-    await User.updateLastLogin(user.id, user.organization_id);
+    await User.updateLastLogin(user.id);
 
     // Track IP address and detect anomalies
     const ipAnalysis = await ipTracking.recordIP(user.id, ip, {
@@ -250,6 +254,27 @@ export async function login(req, res, next) {
 
     logger.info(`User logged in: ${user.email} (${user.id}) from ${ip}`);
 
+    // Set HTTP-only cookies for SSO across different ports
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // Set accessToken cookie (short-lived, 15 minutes)
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true, // Cannot be accessed via JavaScript (XSS protection)
+      secure: isProduction, // HTTPS only in production
+      sameSite: isProduction ? 'strict' : 'lax', // CSRF protection
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/',
+    });
+    
+    // Set refreshToken cookie (long-lived, 30 days)
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true, // Cannot be accessed via JavaScript (XSS protection)
+      secure: isProduction, // HTTPS only in production
+      sameSite: isProduction ? 'strict' : 'lax', // CSRF protection
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: '/',
+    });
+
     // Return user data and tokens (include security notice if suspicious)
     const response = {
       message: 'Login successful',
@@ -258,6 +283,7 @@ export async function login(req, res, next) {
         email: user.email,
         name: user.name,
         role: user.role,
+        user_type: user.user_type,
         permissions: user.permissions,
         organization: {
           id: user.organization_id,
@@ -290,17 +316,23 @@ export async function login(req, res, next) {
  */
 export async function logout(req, res, next) {
   try {
-    const { refreshToken } = req.body;
+    // Get refreshToken from body or cookie
+    const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
 
+    // If no refresh token, user might already be logged out - just clear cookies and return success
     if (!refreshToken) {
-      throw new ValidationError('Refresh token is required');
+      res.clearCookie('accessToken', { path: '/' });
+      res.clearCookie('refreshToken', { path: '/' });
+      return res.json({ message: 'Logout successful' });
     }
 
-    // Get access token from header
-    const authHeader = req.headers.authorization;
-    let accessToken = null;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      accessToken = authHeader.substring(7);
+    // Get access token from cookie, header, or body
+    let accessToken = req.cookies?.accessToken;
+    if (!accessToken) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        accessToken = authHeader.substring(7);
+      }
     }
 
     // Blacklist the access token if provided
@@ -339,6 +371,10 @@ export async function logout(req, res, next) {
 
     logger.info(`User logged out: ${req.user?.email || 'Unknown'}`);
 
+    // Clear HTTP-only cookies
+    res.clearCookie('accessToken', { path: '/' });
+    res.clearCookie('refreshToken', { path: '/' });
+
     res.json({ message: 'Logout successful' });
 
   } catch (error) {
@@ -351,7 +387,8 @@ export async function logout(req, res, next) {
  */
 export async function refresh(req, res, next) {
   try {
-    const { refreshToken } = req.body;
+    // Get refreshToken from body or cookie
+    const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
 
     if (!refreshToken) {
       throw new ValidationError('Refresh token is required');
@@ -410,6 +447,25 @@ export async function refresh(req, res, next) {
     await RefreshToken.create(user.id, newRefreshToken, expiresAt);
 
     logger.info(`Tokens refreshed for user: ${user.email} (${user.id})`);
+
+    // Set new HTTP-only cookies
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/',
+    });
+    
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: '/',
+    });
 
     res.json({
       accessToken: newAccessToken,

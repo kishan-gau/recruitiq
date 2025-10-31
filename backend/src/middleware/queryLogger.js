@@ -53,7 +53,7 @@ const queryStats = {
 /**
  * Analyze query for suspicious patterns
  */
-function analyzeQuery(query, params = []) {
+export function analyzeQuery(query, params = []) {
   const analysis = {
     isSuspicious: false,
     alerts: [],

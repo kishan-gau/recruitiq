@@ -1,18 +1,18 @@
 import { Link } from 'react-router-dom';
-import { Shield, FileText, Key, Activity, AlertTriangle, Users } from 'lucide-react';
+import { Shield, FileText, Server, Activity, AlertTriangle, Users, Plus } from 'lucide-react';
 
 export default function Dashboard() {
   const stats = [
     {
-      name: 'Total Cloud Instances',
-      value: '12',
-      icon: Activity,
+      name: 'Total VPS Instances',
+      value: '5',
+      icon: Server,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     {
-      name: 'Active Tenants',
-      value: '45',
+      name: 'Active Clients',
+      value: '12',
       icon: Users,
       color: 'text-green-600',
       bgColor: 'bg-green-100',
@@ -25,9 +25,9 @@ export default function Dashboard() {
       bgColor: 'bg-red-100',
     },
     {
-      name: 'Active Licenses',
-      value: '42',
-      icon: Key,
+      name: 'System Health',
+      value: '98%',
+      icon: Activity,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
     },
@@ -35,8 +35,22 @@ export default function Dashboard() {
 
   const quickLinks = [
     {
+      name: 'VPS Infrastructure',
+      description: 'Manage VPS pool and capacity',
+      icon: Server,
+      path: '/infrastructure',
+      color: 'bg-blue-500',
+    },
+    {
+      name: 'Provision Client',
+      description: 'Deploy new client instance',
+      icon: Plus,
+      path: '/infrastructure/provision',
+      color: 'bg-green-500',
+    },
+    {
       name: 'Security Monitor',
-      description: 'Real-time security events and alerts',
+      description: 'Real-time security events',
       icon: Shield,
       path: '/security',
       color: 'bg-red-500',
@@ -46,14 +60,7 @@ export default function Dashboard() {
       description: 'View logs from all instances',
       icon: FileText,
       path: '/logs',
-      color: 'bg-green-500',
-    },
-    {
-      name: 'License Manager',
-      description: 'Manage customer licenses',
-      icon: Key,
-      path: '/licenses',
-      color: 'bg-purple-500',
+      color: 'bg-yellow-500',
     },
   ];
 
@@ -89,7 +96,7 @@ export default function Dashboard() {
       {/* Quick Links */}
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Access</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {quickLinks.map((link) => {
             const Icon = link.icon;
             return (

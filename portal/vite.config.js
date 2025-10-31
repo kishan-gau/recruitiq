@@ -6,9 +6,12 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
+      // Proxy API requests to unified backend
+      // This allows using relative URLs (/api) in the frontend
       '/api': {
-        target: 'http://localhost:4000',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:4000',
         changeOrigin: true,
+        cookieDomainRewrite: 'localhost', // Rewrite cookie domain for SSO
       },
     },
   },

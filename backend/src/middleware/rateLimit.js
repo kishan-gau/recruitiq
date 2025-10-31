@@ -81,8 +81,21 @@ class RateLimitManager {
         sendCommand: (...args) => this.redisClient.sendCommand(args),
       });
     }
-    // Default to memory store if Redis is not available
-    return undefined; // express-rate-limit uses MemoryStore by default
+    
+    // If Redis is being initialized, use memory store temporarily
+    if (this.redisEnabled && this.redisClient && !this.isConnected) {
+      logger.warn('Redis connecting... using memory store temporarily');
+      return undefined; // express-rate-limit uses MemoryStore by default
+    }
+    
+    // If Redis is disabled or failed, use memory store
+    if (!this.redisEnabled) {
+      logger.warn('Redis disabled or unavailable, using memory store for rate limiting');
+      return undefined; // express-rate-limit uses MemoryStore by default
+    }
+    
+    // Fallback to memory store
+    return undefined;
   }
 
   /**
@@ -204,11 +217,11 @@ export const globalLimiter = rateLimitManager.createLimiter({
 
 /**
  * Strict rate limiter for authentication endpoints
- * 5 attempts per 15 minutes
+ * 100 attempts per 15 minutes (lenient for development/testing)
  */
 export const authLimiter = rateLimitManager.createLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 100, // Increased for development/testing convenience
   message: 'Too many authentication attempts, please try again later',
   skipSuccessfulRequests: true, // Don't count successful logins
   onLimitReached: (req) => {

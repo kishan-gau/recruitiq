@@ -26,6 +26,10 @@ DROP TABLE IF EXISTS security_alerts CASCADE;
 DROP TABLE IF EXISTS security_events CASCADE;
 DROP TABLE IF EXISTS system_logs CASCADE;
 
+-- Drop deployment tables
+DROP TABLE IF EXISTS instance_deployments CASCADE;
+DROP TABLE IF EXISTS vps_instances CASCADE;
+
 -- Drop views
 DROP VIEW IF EXISTS active_threats CASCADE;
 DROP VIEW IF EXISTS security_summary_by_tenant CASCADE;
@@ -52,6 +56,10 @@ CREATE TABLE organizations (
   max_jobs INTEGER,
   max_candidates INTEGER,
   
+  -- Deployment Configuration
+  deployment_model VARCHAR(50) NOT NULL DEFAULT 'shared' CHECK (deployment_model IN ('shared', 'dedicated')),
+  vps_id UUID,  -- References vps_instances(id), added later with FK
+  
   -- Settings
   settings JSONB DEFAULT '{}',
   branding JSONB DEFAULT '{}',
@@ -64,13 +72,82 @@ CREATE TABLE organizations (
 
 CREATE INDEX idx_organizations_slug ON organizations(slug);
 CREATE INDEX idx_organizations_tier ON organizations(tier);
+CREATE INDEX idx_organizations_deployment ON organizations(deployment_model);
+
+-- ============================================================================
+-- PERMISSIONS TABLE - Define all available system permissions
+-- ============================================================================
+CREATE TABLE permissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- Permission details
+  name VARCHAR(100) NOT NULL UNIQUE,
+  category VARCHAR(50) NOT NULL,
+  description TEXT,
+  
+  -- Metadata
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_permissions_category ON permissions(category);
+CREATE INDEX idx_permissions_name ON permissions(name);
+
+COMMENT ON TABLE permissions IS 'System-wide permissions for granular access control';
+COMMENT ON COLUMN permissions.name IS 'Unique permission identifier (e.g., "license.create", "vps.provision")';
+COMMENT ON COLUMN permissions.category IS 'Permission category (e.g., "license", "portal", "security", "vps")';
+
+-- ============================================================================
+-- ROLES TABLE - Define platform-level and tenant-level roles
+-- ============================================================================
+CREATE TABLE roles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- Role details
+  name VARCHAR(100) NOT NULL UNIQUE,
+  display_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  
+  -- Role type
+  role_type VARCHAR(20) NOT NULL CHECK (role_type IN ('platform', 'tenant')),
+  
+  -- Role level
+  level INTEGER NOT NULL DEFAULT 0,
+  
+  -- Metadata
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_roles_name ON roles(name);
+CREATE INDEX idx_roles_type ON roles(role_type);
+
+COMMENT ON TABLE roles IS 'System roles with hierarchical levels';
+COMMENT ON COLUMN roles.role_type IS 'Platform roles for admin panel/license manager, Tenant roles for RecruitIQ instances';
+COMMENT ON COLUMN roles.level IS 'Role hierarchy level - higher numbers have more privileges';
+
+-- ============================================================================
+-- ROLE_PERMISSIONS TABLE - Map permissions to roles
+-- ============================================================================
+CREATE TABLE role_permissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  
+  -- Metadata
+  created_at TIMESTAMP DEFAULT NOW(),
+  
+  UNIQUE(role_id, permission_id)
+);
+
+CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
+CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
 
 -- ============================================================================
 -- USERS TABLE
 -- ============================================================================
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
   
   -- Auth
   email VARCHAR(255) NOT NULL UNIQUE,
@@ -84,9 +161,17 @@ CREATE TABLE users (
   phone VARCHAR(50),
   timezone VARCHAR(100) DEFAULT 'UTC',
   
+  -- Platform vs Tenant User
+  user_type VARCHAR(20) NOT NULL DEFAULT 'tenant' CHECK (user_type IN ('platform', 'tenant')),
+  
   -- Role & Permissions
-  role VARCHAR(50) NOT NULL DEFAULT 'user' CHECK (role IN ('owner', 'admin', 'recruiter', 'member', 'applicant')),
-  permissions JSONB DEFAULT '[]',
+  role_id UUID REFERENCES roles(id),
+  
+  -- Legacy role field (for backward compatibility, will be deprecated)
+  legacy_role VARCHAR(50) CHECK (legacy_role IN ('owner', 'admin', 'recruiter', 'member', 'applicant', 'platform_admin', 'security_admin')),
+  
+  -- Additional permissions beyond role (if needed)
+  additional_permissions UUID[] DEFAULT '{}',
   
   -- Security
   last_login_at TIMESTAMP,
@@ -101,12 +186,27 @@ CREATE TABLE users (
   -- Metadata
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
+  deleted_at TIMESTAMP,
+  
+  -- Constraints
+  CONSTRAINT check_tenant_user_has_org CHECK (
+    (user_type = 'tenant' AND organization_id IS NOT NULL) OR 
+    (user_type = 'platform' AND organization_id IS NULL)
+  )
 );
 
 CREATE INDEX idx_users_organization_id ON users(organization_id);
 CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_role_id ON users(role_id);
+CREATE INDEX idx_users_user_type ON users(user_type);
+CREATE INDEX idx_users_legacy_role ON users(legacy_role);
+
+COMMENT ON TABLE users IS 'Unified users table for both platform admins and tenant users';
+COMMENT ON COLUMN users.user_type IS 'Platform users access admin panel/license manager, Tenant users access RecruitIQ instances';
+COMMENT ON COLUMN users.organization_id IS 'NULL for platform users, set for tenant users';
+COMMENT ON COLUMN users.role_id IS 'References roles table for RBAC';
+COMMENT ON COLUMN users.legacy_role IS 'Deprecated - for backward compatibility only';
+COMMENT ON COLUMN users.additional_permissions IS 'Array of permission IDs for user-specific permissions beyond their role';
 
 -- ============================================================================
 -- REFRESH TOKENS TABLE
@@ -636,6 +736,101 @@ LEFT JOIN security_events e ON a.security_event_id = e.id
 WHERE a.resolved = FALSE
 AND a.severity IN ('critical', 'error')
 ORDER BY a.timestamp DESC;
+
+-- ============================================================================
+-- VPS INSTANCES TABLE
+-- ============================================================================
+CREATE TABLE vps_instances (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- VPS identification
+  vps_name VARCHAR(255) NOT NULL UNIQUE,
+  vps_ip VARCHAR(50) NOT NULL,
+  hostname VARCHAR(255),
+  
+  -- VPS type
+  deployment_type VARCHAR(20) NOT NULL CHECK (deployment_type IN ('shared', 'dedicated')),
+  
+  -- Dedicated VPS links to one organization
+  organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+  
+  -- Location & Provider
+  location VARCHAR(100),
+  provider VARCHAR(50) DEFAULT 'transip',
+  
+  -- Specs
+  cpu_cores INTEGER,
+  memory_mb INTEGER,
+  disk_gb INTEGER,
+  
+  -- Status
+  status VARCHAR(50) NOT NULL DEFAULT 'active' 
+    CHECK (status IN ('provisioning', 'active', 'maintenance', 'offline', 'decommissioned')),
+  
+  -- Capacity management (for shared VPS)
+  max_tenants INTEGER DEFAULT 20,
+  current_tenants INTEGER DEFAULT 0,
+  
+  -- Resource usage metrics (updated periodically)
+  cpu_usage_percent DECIMAL(5,2),
+  memory_usage_percent DECIMAL(5,2),
+  disk_usage_percent DECIMAL(5,2),
+  last_health_check TIMESTAMP,
+  
+  -- Metadata
+  notes TEXT,
+  metadata JSONB DEFAULT '{}',
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_vps_deployment_type ON vps_instances(deployment_type);
+CREATE INDEX idx_vps_status ON vps_instances(status);
+CREATE INDEX idx_vps_organization ON vps_instances(organization_id);
+
+-- Add foreign key to organizations table
+ALTER TABLE organizations 
+  ADD CONSTRAINT fk_organizations_vps 
+  FOREIGN KEY (vps_id) REFERENCES vps_instances(id) ON DELETE SET NULL;
+
+CREATE INDEX idx_organizations_vps ON organizations(vps_id);
+
+-- ============================================================================
+-- INSTANCE DEPLOYMENTS TABLE
+-- ============================================================================
+CREATE TABLE instance_deployments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Deployment configuration
+  deployment_model VARCHAR(20) NOT NULL CHECK (deployment_model IN ('shared', 'dedicated')),
+  
+  -- Status tracking
+  status VARCHAR(50) NOT NULL DEFAULT 'provisioning',
+  -- Statuses: provisioning, creating_vps, configuring, active, failed, paused, deleted
+  
+  -- Instance details
+  subdomain VARCHAR(100) NOT NULL,
+  tier VARCHAR(50) NOT NULL,
+  
+  -- VPS reference
+  vps_id UUID REFERENCES vps_instances(id) ON DELETE SET NULL,
+  
+  -- Timestamps
+  created_at TIMESTAMP DEFAULT NOW(),
+  completed_at TIMESTAMP,
+  
+  -- Error handling
+  error_message TEXT,
+  
+  -- Metadata
+  metadata JSONB DEFAULT '{}'
+);
+
+CREATE INDEX idx_deployments_org ON instance_deployments(organization_id);
+CREATE INDEX idx_deployments_status ON instance_deployments(status);
+CREATE INDEX idx_deployments_vps ON instance_deployments(vps_id);
 
 -- ============================================================================
 -- GRANT PERMISSIONS

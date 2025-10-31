@@ -1,19 +1,27 @@
 import { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Grid3x3, Shield, FileText, Key, Menu, Bell } from 'lucide-react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Grid3x3, Shield, FileText, Server, Menu, Bell, LogOut } from 'lucide-react';
 import AppSwitcher from './AppSwitcher';
+import { useAuth } from '../contexts/AuthContext';
 
 const navigation = [
   { name: 'Dashboard', path: '/dashboard', icon: Grid3x3 },
+  { name: 'Infrastructure', path: '/infrastructure', icon: Server },
   { name: 'Security', path: '/security', icon: Shield },
   { name: 'Logs', path: '/logs', icon: FileText },
-  { name: 'Licenses', path: '/licenses', icon: Key },
 ];
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [showAppSwitcher, setShowAppSwitcher] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const isActive = (path) => {
     return location.pathname.startsWith(path);
@@ -58,8 +66,20 @@ export default function Layout() {
             </button>
 
             <div className="ml-2 flex items-center gap-2">
-              <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-              <span className="text-sm font-medium hidden sm:block">Admin</span>
+              <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-semibold text-sm">
+                {user?.name?.charAt(0) || 'A'}
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-sm font-medium text-gray-900">{user?.name || 'Admin'}</p>
+                <p className="text-xs text-gray-500">{user?.role?.replace('_', ' ')}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                title="Logout"
+              >
+                <LogOut size={18} />
+              </button>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import config from './config/index.js';
 import logger from './utils/logger.js';
 import { healthCheck as dbHealthCheck, closePool } from './config/database.js';
@@ -29,6 +30,13 @@ import publicRoutes from './routes/public.js';
 import communicationRoutes from './routes/communications.js';
 import portalRoutes from './routes/portal.js';
 import securityRoutes from './routes/security.js';
+import provisioningRoutes from './routes/provisioning.js';
+
+// Import License Manager module routes
+import licenseAdminRoutes from './modules/license/routes/admin.js';
+import licenseValidationRoutes from './modules/license/routes/validation.js';
+import licenseTelemetryRoutes from './modules/license/routes/telemetry.js';
+import licenseTierRoutes from './modules/license/routes/tiers.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -85,11 +93,12 @@ app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
 
 // ============================================================================
-// BODY PARSING
+// BODY PARSING & COOKIES
 // ============================================================================
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser()); // Parse cookies for SSO support
 
 // ============================================================================
 // REQUEST TRACKING & LOGGING
@@ -193,7 +202,14 @@ apiRouter.use('/communications', communicationRoutes);
 
 // Portal routes (platform admin only - auth handled in routes)
 apiRouter.use('/portal', portalRoutes);
+apiRouter.use('/portal', provisioningRoutes);  // Client & VPS provisioning
 apiRouter.use('/security', securityRoutes);
+
+// License Manager routes (uses separate auth middleware)
+apiRouter.use('/admin', licenseAdminRoutes);  // License Manager admin panel
+apiRouter.use('/validate', licenseValidationRoutes);  // License validation
+apiRouter.use('/telemetry', licenseTelemetryRoutes);  // Usage telemetry
+apiRouter.use('/tiers', licenseTierRoutes);  // Tier management
 
 app.use('/api', apiRouter);
 

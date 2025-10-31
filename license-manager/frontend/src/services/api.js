@@ -1,47 +1,52 @@
 // Real API service for License Manager backend
 import axios from 'axios'
 
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// API Configuration - uses relative URL with Vite proxy
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // Enable sending cookies for SSO
 })
 
-// Auth token management
-let authToken = null
-
-export const setAuthToken = (token) => {
-  authToken = token
-  if (token) {
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    localStorage.setItem('auth_token', token)
-  } else {
-    delete api.defaults.headers.common['Authorization']
-    localStorage.removeItem('auth_token')
-  }
-}
-
-// Load token from localStorage on init
-const savedToken = localStorage.getItem('auth_token')
-if (savedToken) {
-  setAuthToken(savedToken)
-}
+// No token management needed - tokens are in HTTP-only cookies
+// Cookies are automatically sent with every request
 
 // Response interceptor for error handling
 api.interceptors.response.use(
   response => response,
-  error => {
-    if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
-      setAuthToken(null)
-      window.location.href = '/login'
+  async error => {
+    const originalRequest = error.config;
+
+    // Don't retry for login, refresh, or logout endpoints
+    const skipRefreshUrls = ['/auth/login', '/auth/refresh', '/auth/logout'];
+    const shouldSkipRefresh = skipRefreshUrls.some(url => originalRequest.url?.includes(url));
+
+    // If 401 and not already retrying, try to refresh token via cookies
+    if (error.response?.status === 401 && !originalRequest._retry && !shouldSkipRefresh) {
+      originalRequest._retry = true;
+
+      try {
+        // Refresh token is sent automatically via cookies
+        await api.post('/auth/refresh', {});
+        
+        // Retry original request (new token is now in cookies)
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed, redirect to login only if not already on login page
+        localStorage.removeItem('user');
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
+      }
     }
-    return Promise.reject(error)
+
+    return Promise.reject(error);
   }
 )
 
@@ -49,17 +54,33 @@ api.interceptors.response.use(
 class APIService {
   // Authentication
   async login(email, password) {
-    const response = await api.post('/admin/login', { email, password })
-    setAuthToken(response.data.token)
+    const response = await api.post('/auth/login', { email, password })
+    // Tokens are automatically set as HTTP-only cookies by the backend
+    const { user } = response.data
+    
+    // Store user data in localStorage for convenience (non-sensitive)
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user))
+    }
     return response.data
   }
 
   async logout() {
-    setAuthToken(null)
+    // Call backend logout endpoint
+    // Tokens are automatically sent via cookies and cleared by backend
+    try {
+      await api.post('/auth/logout', {})
+    } catch (err) {
+      console.error('Logout error:', err)
+      // Continue with local logout even if backend call fails
+    }
+    
+    // Clear user data from localStorage (cookies are cleared by backend)
+    localStorage.removeItem('user')
   }
 
   async getMe() {
-    const response = await api.get('/admin/me')
+    const response = await api.get('/auth/me')
     return response.data.user
   }
 

@@ -6,17 +6,22 @@ import tokenBlacklist from '../services/tokenBlacklist.js';
 
 export const authenticate = async (req, res, next) => {
   try {
-    // Get token from header
-    const authHeader = req.headers.authorization;
+    // Get token from cookie first (for SSO), then fall back to Authorization header
+    let token = req.cookies?.accessToken;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'No token provided',
-      });
+    // If no cookie, check Authorization header
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'No token provided',
+        });
+      }
+      
+      token = authHeader.substring(7); // Remove 'Bearer ' prefix
     }
-    
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     
     // Check if token is blacklisted
     const isBlacklisted = await tokenBlacklist.isBlacklisted(token);
@@ -56,15 +61,26 @@ export const authenticate = async (req, res, next) => {
       });
     }
     
-    // Get user from database
+    // Get user from database with role and permissions
     const userResult = await pool.query(
       `SELECT 
-        u.id, u.organization_id, u.email, u.name, u.role, 
-        u.avatar_url, u.permissions, u.email_verified, u.phone, u.mfa_enabled,
-        o.name as organization_name, o.tier as organization_tier, o.subscription_status
+        u.id, u.organization_id, u.email, u.name, u.user_type,
+        u.avatar_url, u.email_verified, u.phone, u.mfa_enabled,
+        u.role_id, u.legacy_role, u.additional_permissions,
+        r.name as role_name, r.display_name as role_display_name, 
+        r.role_type, r.level as role_level,
+        o.name as organization_name, o.tier as organization_tier, o.subscription_status,
+        COALESCE(
+          ARRAY_AGG(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL),
+          ARRAY[]::VARCHAR[]
+        ) as permissions
       FROM users u
-      JOIN organizations o ON u.organization_id = o.id
-      WHERE u.id = $1 AND u.deleted_at IS NULL`,
+      LEFT JOIN organizations o ON u.organization_id = o.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN role_permissions rp ON r.id = rp.role_id
+      LEFT JOIN permissions p ON rp.permission_id = p.id OR p.id = ANY(u.additional_permissions)
+      WHERE u.id = $1 AND u.deleted_at IS NULL
+      GROUP BY u.id, r.id, o.id`,
       [decoded.userId]
     );
     
@@ -77,12 +93,14 @@ export const authenticate = async (req, res, next) => {
     
     const user = userResult.rows[0];
     
-    // Check if organization subscription is active
-    if (user.subscription_status === 'canceled' || user.subscription_status === 'suspended') {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Organization subscription is not active',
-      });
+    // Check if tenant user's organization subscription is active
+    if (user.user_type === 'tenant' && user.organization_id) {
+      if (user.subscription_status === 'canceled' || user.subscription_status === 'suspended') {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Organization subscription is not active',
+        });
+      }
     }
     
     // Attach user and organization to request
@@ -90,7 +108,11 @@ export const authenticate = async (req, res, next) => {
       id: user.id,
       email: user.email,
       name: user.name,
-      role: user.role,
+      user_type: user.user_type,
+      role: user.role_name || user.legacy_role, // Use role name from roles table, fallback to legacy
+      role_id: user.role_id,
+      role_level: user.role_level,
+      role_display_name: user.role_display_name,
       avatarUrl: user.avatar_url,
       phone: user.phone,
       mfa_enabled: user.mfa_enabled,
@@ -103,19 +125,21 @@ export const authenticate = async (req, res, next) => {
       subscription_status: user.subscription_status
     };
     
-    // Set organization context for RLS
-    // NOTE: SQL injection safe - UUID format is validated before interpolation
-    // PostgreSQL SET LOCAL doesn't support parameterized queries, so we validate the format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(user.organization_id)) {
-      logger.error('Invalid organization_id format', { userId: user.id });
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Invalid organization context',
-      });
+    // Set organization context for RLS (only for tenant users)
+    if (user.user_type === 'tenant' && user.organization_id) {
+      // NOTE: SQL injection safe - UUID format is validated before interpolation
+      // PostgreSQL SET LOCAL doesn't support parameterized queries, so we validate the format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(user.organization_id)) {
+        logger.error('Invalid organization_id format', { userId: user.id });
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Invalid organization context',
+        });
+      }
+      // sql-injection-safe: UUID validated above
+      await pool.query(`SET LOCAL app.current_organization_id = '${user.organization_id}'`);
     }
-    // sql-injection-safe: UUID validated above
-    await pool.query(`SET LOCAL app.current_organization_id = '${user.organization_id}'`);
     
     // Update last login (async, don't wait)
     pool.query(
@@ -154,7 +178,7 @@ export const requireRole = (...roles) => {
   };
 };
 
-// Middleware to check permissions
+// Middleware to check permissions (OR logic - user needs at least one)
 export const requirePermission = (...permissions) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -165,17 +189,106 @@ export const requirePermission = (...permissions) => {
     }
     
     const userPermissions = req.user.permissions || [];
+    
+    // Check if user has at least one of the required permissions
     const hasPermission = permissions.some(p => userPermissions.includes(p));
     
     if (!hasPermission) {
+      logger.warn('Permission denied', {
+        userId: req.user.id,
+        userEmail: req.user.email,
+        userPermissions,
+        requiredPermissions: permissions,
+        endpoint: req.originalUrl
+      });
+      
       return res.status(403).json({
         error: 'Forbidden',
-        message: `Access denied. Required permissions: ${permissions.join(', ')}`,
+        message: `Access denied. Required permissions: ${permissions.join(' OR ')}`,
       });
     }
     
     next();
   };
+};
+
+// Middleware to check permissions (AND logic - user needs all)
+export const requireAllPermissions = (...permissions) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required',
+      });
+    }
+    
+    const userPermissions = req.user.permissions || [];
+    
+    // Check if user has all required permissions
+    const hasAllPermissions = permissions.every(p => userPermissions.includes(p));
+    
+    if (!hasAllPermissions) {
+      const missingPermissions = permissions.filter(p => !userPermissions.includes(p));
+      
+      logger.warn('Permissions denied', {
+        userId: req.user.id,
+        userEmail: req.user.email,
+        missingPermissions,
+        endpoint: req.originalUrl
+      });
+      
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: `Access denied. Missing permissions: ${missingPermissions.join(', ')}`,
+      });
+    }
+    
+    next();
+  };
+};
+
+// Middleware to check if user is platform admin
+export const requirePlatformUser = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Authentication required',
+    });
+  }
+  
+  if (req.user.user_type !== 'platform') {
+    logger.warn('Platform access denied to tenant user', {
+      userId: req.user.id,
+      userEmail: req.user.email,
+      endpoint: req.originalUrl
+    });
+    
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'Access denied. Platform admin access required.',
+    });
+  }
+  
+  next();
+};
+
+// Middleware to check if user is tenant user
+export const requireTenantUser = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Authentication required',
+    });
+  }
+  
+  if (req.user.user_type !== 'tenant') {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'Access denied. Tenant user access required.',
+    });
+  }
+  
+  next();
 };
 
 // Optional authentication (doesn't fail if no token)
@@ -193,12 +306,34 @@ export const optionalAuth = async (req, res, next) => {
       const decoded = jwt.verify(token, config.jwt.secret);
       
       const userResult = await pool.query(
-        'SELECT id, organization_id, email, name, role FROM users WHERE id = $1 AND deleted_at IS NULL',
+        `SELECT 
+          u.id, u.organization_id, u.email, u.name, u.user_type,
+          r.name as role_name, r.level as role_level,
+          COALESCE(
+            ARRAY_AGG(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL),
+            ARRAY[]::VARCHAR[]
+          ) as permissions
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.id
+        LEFT JOIN role_permissions rp ON r.id = rp.role_id
+        LEFT JOIN permissions p ON rp.permission_id = p.id OR p.id = ANY(u.additional_permissions)
+        WHERE u.id = $1 AND u.deleted_at IS NULL
+        GROUP BY u.id, r.id`,
         [decoded.userId]
       );
       
       if (userResult.rows.length > 0) {
-        req.user = userResult.rows[0];
+        const user = userResult.rows[0];
+        req.user = {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          user_type: user.user_type,
+          role: user.role_name,
+          role_level: user.role_level,
+          organization_id: user.organization_id,
+          permissions: user.permissions || []
+        };
       }
     } catch (error) {
       // Invalid token, but continue without user
