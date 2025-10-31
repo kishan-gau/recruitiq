@@ -125,6 +125,41 @@ Write-Host "    Then they should receive new access and refresh tokens" -Foregro
 Write-Host "    Result: SKIP (requires real refresh token from login)" -ForegroundColor Yellow
 Write-Host ""
 
+# MFA Tests
+$mfaStatusResult = Test-Scenario `
+    -Feature "Multi-Factor Authentication" `
+    -Scenario "User checks MFA status" `
+    -Given "an authenticated user" `
+    -When "they request GET /auth/mfa/status" `
+    -Then "they should receive their MFA enablement status and backup codes count" `
+    -Method "GET" `
+    -Endpoint "/auth/mfa/status" `
+    -Validator { param($r) $r.success -and ($r.data.enabled -ne $null) }
+
+$mfaSetupResult = Test-Scenario `
+    -Feature "Multi-Factor Authentication" `
+    -Scenario "User initiates MFA setup" `
+    -Given "an authenticated user without MFA enabled" `
+    -When "they request POST /auth/mfa/setup" `
+    -Then "they should receive a QR code and manual entry key for their authenticator app" `
+    -Method "POST" `
+    -Endpoint "/auth/mfa/setup" `
+    -Validator { param($r) $r.success -and $r.data.qrCodeUrl -and $r.data.manualEntryKey }
+
+if ($mfaSetupResult) { 
+    $testData.mfaSecret = $mfaSetupResult.tempSecret 
+    Write-Host "  Note: MFA secret stored for verification step" -ForegroundColor Cyan
+    Write-Host ""
+}
+
+# Note: MFA verification requires real TOTP token from authenticator app
+Write-Host "  Scenario: User verifies and enables MFA" -ForegroundColor Cyan
+Write-Host "    Given a user who has scanned the QR code in their authenticator app" -ForegroundColor DarkGray
+Write-Host "    When they request POST /auth/mfa/verify-setup with 6-digit TOTP code" -ForegroundColor DarkGray
+Write-Host "    Then MFA should be enabled and backup codes should be provided" -ForegroundColor DarkGray
+Write-Host "    Result: SKIP (requires real TOTP token from authenticator app)" -ForegroundColor Yellow
+Write-Host ""
+
 # ============================================================================
 Write-Host "FEATURE GROUP 2: Organization Management" -ForegroundColor Yellow -BackgroundColor DarkBlue
 Write-Host ""
