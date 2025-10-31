@@ -241,6 +241,12 @@ if (!config.jwt.refreshSecret || config.jwt.refreshSecret.length < 32) {
   process.exit(1);
 }
 
+// Ensure JWT secrets are different for better security
+if (config.jwt.secret === config.jwt.refreshSecret) {
+  console.error('❌ JWT_SECRET and JWT_REFRESH_SECRET must be different');
+  process.exit(1);
+}
+
 if (!config.database.url && !config.database.host) {
   console.error('❌ Database configuration is missing');
   process.exit(1);

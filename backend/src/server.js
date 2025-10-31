@@ -190,6 +190,10 @@ const apiRouter = express.Router();
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/public', publicRoutes);
 
+// MFA routes (partially public - some endpoints use temporary MFA token)
+const mfaRoutes = require('./routes/mfa.routes');
+apiRouter.use('/auth/mfa', mfaRoutes);
+
 // Protected routes (require authentication)
 // Note: Some routes handle their own public endpoints internally (jobs, applications)
 apiRouter.use('/organizations', authenticate, organizationRoutes);

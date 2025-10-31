@@ -243,6 +243,34 @@ export async function login(req, res, next) {
       // TODO: Send security alert email to user
     }
 
+    // Check if MFA is enabled for this user
+    const mfaService = require('../services/mfaService');
+    const { mfaEnabled } = await mfaService.checkMFARequired(user.id);
+    
+    if (mfaEnabled) {
+      // Generate temporary MFA token (short-lived, 5 minutes)
+      const jwt = require('jsonwebtoken');
+      const config = require('../config');
+      
+      const mfaToken = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          type: 'mfa_pending'
+        },
+        config.jwt.accessSecret,
+        { expiresIn: '5m' }
+      );
+      
+      logger.info(`MFA required for login: ${user.email} (${user.id})`);
+      
+      return res.json({
+        message: 'MFA verification required',
+        mfaRequired: true,
+        mfaToken, // Temporary token for MFA verification step
+      });
+    }
+
     // Generate tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
@@ -508,6 +536,137 @@ export async function me(req, res, next) {
       }
     });
 
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Request password reset
+ * POST /api/auth/forgot-password
+ */
+export async function requestPasswordReset(req, res, next) {
+  try {
+    const passwordResetService = require('../services/passwordResetService');
+    
+    // Validate input
+    const schema = Joi.object({
+      email: Joi.string().email().required(),
+    });
+
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+      throw new ValidationError(error.details[0].message);
+    }
+
+    const { email } = value;
+
+    // Check rate limiting
+    const rateCheck = await passwordResetService.canRequestReset(email);
+    if (!rateCheck.canRequest) {
+      return res.status(429).json({
+        success: false,
+        message: rateCheck.message,
+      });
+    }
+
+    // Request reset (always return success to prevent email enumeration)
+    const result = await passwordResetService.requestPasswordReset(email);
+
+    if (result.emailFound) {
+      // TODO: Send email with reset link
+      // For now, log the token (in production, send via email)
+      logger.info(`Password reset token for ${email}: ${result.token}`);
+      
+      // In production, you would send an email here:
+      // await emailService.sendPasswordResetEmail({
+      //   to: result.userEmail,
+      //   name: result.userName,
+      //   resetUrl: `${config.frontend.url}/reset-password?token=${result.token}`,
+      // });
+    }
+
+    // Always return success to prevent email enumeration
+    res.json({
+      success: true,
+      message: 'If an account exists with that email, a password reset link has been sent.',
+    });
+
+    logger.info(`Password reset requested for: ${email}`);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Verify password reset token
+ * GET /api/auth/reset-password/:token
+ */
+export async function verifyPasswordResetToken(req, res, next) {
+  try {
+    const passwordResetService = require('../services/passwordResetService');
+    const { token } = req.params;
+
+    if (!token) {
+      throw new ValidationError('Reset token is required');
+    }
+
+    const verification = await passwordResetService.verifyResetToken(token);
+
+    if (!verification.valid) {
+      return res.status(400).json({
+        success: false,
+        message: verification.error,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Token is valid',
+      email: verification.email,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Reset password with token
+ * POST /api/auth/reset-password
+ */
+export async function resetPassword(req, res, next) {
+  try {
+    const passwordResetService = require('../services/passwordResetService');
+    
+    // Validate input
+    const schema = Joi.object({
+      token: Joi.string().required(),
+      password: Joi.string().min(8).required(),
+    });
+
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+      throw new ValidationError(error.details[0].message);
+    }
+
+    const { token, password } = value;
+
+    // Reset password
+    const result = await passwordResetService.resetPassword(token, password);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. All sessions have been invalidated. Please log in with your new password.',
+    });
+
+    logger.info(`Password reset completed for user: ${result.userId}`);
   } catch (error) {
     next(error);
   }

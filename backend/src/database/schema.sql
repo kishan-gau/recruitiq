@@ -180,8 +180,13 @@ CREATE TABLE users (
   locked_until TIMESTAMP,
   password_reset_token VARCHAR(255),
   password_reset_expires_at TIMESTAMP,
+  
+  -- MFA (Multi-Factor Authentication)
   mfa_enabled BOOLEAN DEFAULT FALSE,
   mfa_secret VARCHAR(255),
+  mfa_backup_codes TEXT[],
+  mfa_backup_codes_used INTEGER DEFAULT 0,
+  mfa_enabled_at TIMESTAMP,
   
   -- Metadata
   created_at TIMESTAMP DEFAULT NOW(),
