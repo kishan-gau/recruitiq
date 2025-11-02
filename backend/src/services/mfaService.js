@@ -9,12 +9,12 @@
  * - Rate limiting integration
  */
 
-const speakeasy = require('speakeasy');
-const QRCode = require('qrcode');
-const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
-const pool = require('../config/database');
-const logger = require('../utils/logger');
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import pool from '../config/database.js';
+import logger from '../utils/logger.js';
 
 class MFAService {
   /**
@@ -96,12 +96,13 @@ class MFAService {
 
         // Hash the code for secure storage
         const hashedCode = await bcrypt.hash(code, 10);
-        hashedCodes.push(hashedCode);
+        // Store as JSONB object with code and used status
+        hashedCodes.push({ code: hashedCode, used: false });
       }
 
       return {
         codes, // Plain codes to show user once
-        hashedCodes, // Hashed codes to store in database
+        hashedCodes, // JSONB array of {code, used} objects to store in database
       };
     } catch (error) {
       logger.error('Error generating backup codes:', error);
@@ -112,7 +113,7 @@ class MFAService {
   /**
    * Verify a backup code against stored hashed codes
    * @param {string} code - Backup code provided by user
-   * @param {string[]} hashedCodes - Array of hashed backup codes from database
+   * @param {Array} hashedCodes - Array of backup code objects from database: [{code: string, used: boolean}, ...]
    * @returns {Promise<number>} Index of matched code, or -1 if not found
    */
   async verifyBackupCode(code, hashedCodes) {
@@ -121,7 +122,16 @@ class MFAService {
 
       // Check against each hashed code
       for (let i = 0; i < hashedCodes.length; i++) {
-        const isMatch = await bcrypt.compare(cleanCode, hashedCodes[i]);
+        const codeObj = hashedCodes[i];
+        
+        // Skip if code is already used
+        if (codeObj.used) {
+          continue;
+        }
+        
+        // Extract the hashed code string from the object
+        const hashedCode = typeof codeObj === 'string' ? codeObj : codeObj.code;
+        const isMatch = await bcrypt.compare(cleanCode, hashedCode);
         if (isMatch) {
           return i; // Return index of matched code
         }
@@ -218,14 +228,18 @@ class MFAService {
     try {
       await client.query('BEGIN');
 
-      // Remove the used backup code from the array
+      // Mark the backup code as used in JSONB array
       await client.query(
         `UPDATE users 
-         SET mfa_backup_codes = array_remove(mfa_backup_codes, mfa_backup_codes[$1]),
-             mfa_backup_codes_used = mfa_backup_codes_used + 1,
-             updated_at = NOW()
+         SET mfa_backup_codes = jsonb_set(
+           mfa_backup_codes,
+           ARRAY[$1::text, 'used'],
+           'true'::jsonb
+         ),
+         mfa_backup_codes_used = mfa_backup_codes_used + 1,
+         updated_at = NOW()
          WHERE id = $2`,
-        [codeIndex + 1, userId] // PostgreSQL arrays are 1-indexed
+        [codeIndex.toString(), userId]
       );
 
       await client.query('COMMIT');
@@ -257,11 +271,11 @@ class MFAService {
       // Update user with new backup codes
       await client.query(
         `UPDATE users 
-         SET mfa_backup_codes = $1,
+         SET mfa_backup_codes = $1::jsonb,
              mfa_backup_codes_used = 0,
              updated_at = NOW()
          WHERE id = $2`,
-        [hashedCodes, userId]
+        [JSON.stringify(hashedCodes), userId]
       );
 
       await client.query('COMMIT');
@@ -345,4 +359,4 @@ class MFAService {
   }
 }
 
-module.exports = new MFAService();
+export default new MFAService();

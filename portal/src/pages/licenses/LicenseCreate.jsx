@@ -8,6 +8,7 @@ import CustomerInfoStep from '../../components/licenses/steps/CustomerInfoStep';
 import DeploymentStep from '../../components/licenses/steps/DeploymentStep';
 import TierStep from '../../components/licenses/steps/TierStep';
 import LimitsStep from '../../components/licenses/steps/LimitsStep';
+import SessionPolicyStep from '../../components/licenses/steps/SessionPolicyStep';
 import ReviewStep from '../../components/licenses/steps/ReviewStep';
 import apiService from '../../services/api';
 import { FORM_STEPS, INITIAL_FORM_DATA } from '../../constants/licenseConstants';
@@ -68,7 +69,11 @@ export default function LicenseCreate() {
         maxJobs: formData.maxJobs,
         maxCandidates: formData.maxCandidates,
         features: formData.features,
-        contractMonths: formData.durationMonths
+        contractMonths: formData.durationMonths,
+        sessionPolicy: formData.sessionPolicy,
+        maxSessionsPerUser: formData.maxSessionsPerUser,
+        concurrentLoginDetection: formData.concurrentLoginDetection,
+        mfaRequired: formData.mfaRequired || formData.deploymentType === 'cloud-shared'
       });
       
       toast.success('Customer created successfully!', { id: loadingToast });
@@ -99,6 +104,8 @@ export default function LicenseCreate() {
       case 4:
         return <LimitsStep {...stepProps} />;
       case 5:
+        return <SessionPolicyStep {...stepProps} />;
+      case 6:
         return <ReviewStep formData={formData} />;
       default:
         return null;

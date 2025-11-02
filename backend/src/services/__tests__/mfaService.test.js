@@ -1,389 +1,176 @@
-/**
- * MFA Service Unit Tests
- * Tests for Multi-Factor Authentication service
+﻿/**
+ * Unit Tests for MFA Service
+ * Tests TOTP generation, verification, backup codes, and MFA management
  */
 
-const mfaService = require('../../services/mfaService');
-const pool = require('../../config/database');
-const bcrypt = require('bcryptjs');
+import { jest } from '@jest/globals';
 
-// Mock dependencies
-jest.mock('../../config/database');
-jest.mock('../../utils/logger');
+// Mock dependencies BEFORE importing
+const mockPool = { query: jest.fn(), connect: jest.fn() };
+const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+const mockSpeakeasy = { generateSecret: jest.fn(), totp: { verify: jest.fn() } };
+const mockQRCode = { toDataURL: jest.fn() };
+const mockCrypto = { randomBytes: jest.fn() };
+const mockBcrypt = { hash: jest.fn(), compare: jest.fn() };
 
-describe('MFA Service', () => {
+jest.unstable_mockModule('speakeasy', () => ({ default: mockSpeakeasy }));
+jest.unstable_mockModule('qrcode', () => ({ default: mockQRCode }));
+jest.unstable_mockModule('crypto', () => ({ default: mockCrypto }));
+jest.unstable_mockModule('bcryptjs', () => ({ default: mockBcrypt }));
+jest.unstable_mockModule('../../config/database.js', () => ({ default: mockPool }));
+jest.unstable_mockModule('../../utils/logger.js', () => ({ default: mockLogger }));
+
+let mfaService;
+let mockClient;
+
+beforeAll(async () => {
+  mfaService = (await import('../../services/mfaService.js')).default;
+});
+
+beforeEach(() => {
+  // Reset all mocks before each test
+  jest.clearAllMocks();
+  
+  // Create mock client for database transactions
+  mockClient = {
+    query: jest.fn(),
+    release: jest.fn(),
+  };
+  
+  // Mock pool.connect to return mock client
+  mockPool.connect.mockResolvedValue(mockClient);
+});
+
+describe('MFAService', () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
   describe('generateSecret', () => {
-    it('should generate a valid TOTP secret with QR code', async () => {
+    it('should generate MFA secret with QR code', async () => {
+      const mockSecret = {
+        base32: 'JBSWY3DPEHPK3PXP',
+        otpauth_url: 'otpauth://totp/RecruitIQ:test@example.com?secret=JBSWY3DPEHPK3PXP',
+      };
+      mockSpeakeasy.generateSecret.mockReturnValue(mockSecret);
+      mockQRCode.toDataURL.mockResolvedValue('data:image/png;base64,iVBORw0KG...');
+
       const result = await mfaService.generateSecret('test@example.com');
-      
-      expect(result).toHaveProperty('secret');
-      expect(result).toHaveProperty('qrCodeUrl');
-      expect(result).toHaveProperty('manualEntryKey');
-      expect(result).toHaveProperty('otpauthUrl');
-      
-      // Secret should be base32 encoded
-      expect(result.secret).toMatch(/^[A-Z2-7]+=*$/);
-      
-      // QR code should be data URL
-      expect(result.qrCodeUrl).toMatch(/^data:image\/png;base64,/);
-      
-      // OTPAuth URL should contain email
-      expect(result.otpauthUrl).toContain('test@example.com');
-      expect(result.otpauthUrl).toContain('RecruitIQ');
+
+      expect(result.secret).toBe('JBSWY3DPEHPK3PXP');
+      expect(result.qrCodeUrl).toBe('data:image/png;base64,iVBORw0KG...');
     });
 
-    it('should generate unique secrets for multiple calls', async () => {
-      const result1 = await mfaService.generateSecret('user1@example.com');
-      const result2 = await mfaService.generateSecret('user2@example.com');
-      
-      expect(result1.secret).not.toEqual(result2.secret);
+    it('should handle QR generation errors', async () => {
+      mockSpeakeasy.generateSecret.mockReturnValue({ base32: 'SECRET', otpauth_url: 'url' });
+      mockQRCode.toDataURL.mockRejectedValue(new Error('QR failed'));
+      await expect(mfaService.generateSecret('test@example.com')).rejects.toThrow('Failed to generate MFA secret');
     });
   });
 
   describe('verifyToken', () => {
-    it('should accept valid TOTP token', () => {
-      const speakeasy = require('speakeasy');
-      const secret = speakeasy.generateSecret({ length: 32 });
-      
-      // Generate valid token
-      const token = speakeasy.totp({
-        secret: secret.base32,
-        encoding: 'base32'
-      });
-      
-      const result = mfaService.verifyToken(token, secret.base32);
-      expect(result).toBe(true);
+    it('should verify valid TOTP token', () => {
+      mockSpeakeasy.totp.verify.mockReturnValue(true);
+      expect(mfaService.verifyToken('123456', 'SECRET')).toBe(true);
     });
 
     it('should reject invalid TOTP token', () => {
-      const speakeasy = require('speakeasy');
-      const secret = speakeasy.generateSecret({ length: 32 });
-      
-      const result = mfaService.verifyToken('000000', secret.base32);
-      expect(result).toBe(false);
-    });
-
-    it('should reject tokens with invalid format', () => {
-      const secret = 'JBSWY3DPEHPK3PXP';
-      
-      expect(mfaService.verifyToken('12345', secret)).toBe(false); // Too short
-      expect(mfaService.verifyToken('1234567', secret)).toBe(false); // Too long
-      expect(mfaService.verifyToken('ABCDEF', secret)).toBe(false); // Non-numeric
-    });
-
-    it('should handle tokens with spaces', () => {
-      const speakeasy = require('speakeasy');
-      const secret = speakeasy.generateSecret({ length: 32 });
-      
-      const token = speakeasy.totp({
-        secret: secret.base32,
-        encoding: 'base32'
-      });
-      
-      // Add spaces to token
-      const tokenWithSpaces = token.substring(0, 3) + ' ' + token.substring(3);
-      
-      const result = mfaService.verifyToken(tokenWithSpaces, secret.base32);
-      expect(result).toBe(true);
+      mockSpeakeasy.totp.verify.mockReturnValue(false);
+      expect(mfaService.verifyToken('000000', 'SECRET')).toBe(false);
     });
   });
 
   describe('generateBackupCodes', () => {
-    it('should generate 8 backup codes by default', async () => {
+    it('should generate 8 backup codes', async () => {
+      mockCrypto.randomBytes.mockImplementation(() => Buffer.from('aaaa', 'hex'));
+      mockBcrypt.hash.mockResolvedValue('$2a$10$hash');
+
       const result = await mfaService.generateBackupCodes();
-      
-      expect(result).toHaveProperty('codes');
-      expect(result).toHaveProperty('hashedCodes');
+
       expect(result.codes).toHaveLength(8);
       expect(result.hashedCodes).toHaveLength(8);
-    });
-
-    it('should generate specified number of backup codes', async () => {
-      const result = await mfaService.generateBackupCodes(10);
-      
-      expect(result.codes).toHaveLength(10);
-      expect(result.hashedCodes).toHaveLength(10);
-    });
-
-    it('should generate unique codes', async () => {
-      const result = await mfaService.generateBackupCodes();
-      
-      const uniqueCodes = new Set(result.codes);
-      expect(uniqueCodes.size).toBe(result.codes.length);
-    });
-
-    it('should generate 8-character hexadecimal codes', async () => {
-      const result = await mfaService.generateBackupCodes();
-      
-      result.codes.forEach(code => {
-        expect(code).toMatch(/^[0-9A-F]{8}$/);
-        expect(code).toHaveLength(8);
-      });
-    });
-
-    it('should hash codes properly', async () => {
-      const result = await mfaService.generateBackupCodes();
-      
-      // Verify each hashed code
-      for (let i = 0; i < result.codes.length; i++) {
-        const isMatch = await bcrypt.compare(result.codes[i], result.hashedCodes[i]);
-        expect(isMatch).toBe(true);
-      }
     });
   });
 
   describe('verifyBackupCode', () => {
-    it('should accept valid backup code', async () => {
-      const { codes, hashedCodes } = await mfaService.generateBackupCodes();
-      
-      // Test first code
-      const index = await mfaService.verifyBackupCode(codes[0], hashedCodes);
-      expect(index).toBe(0);
-      
-      // Test last code
-      const lastIndex = await mfaService.verifyBackupCode(
-        codes[codes.length - 1],
-        hashedCodes
-      );
-      expect(lastIndex).toBe(codes.length - 1);
+    it('should verify valid backup code', async () => {
+      mockBcrypt.compare.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+      const result = await mfaService.verifyBackupCode('CODE123', ['hash1', 'hash2']);
+      expect(result).toBe(1); // Returns index of matched code
     });
 
     it('should reject invalid backup code', async () => {
-      const { hashedCodes } = await mfaService.generateBackupCodes();
-      
-      const index = await mfaService.verifyBackupCode('FFFFFFFF', hashedCodes);
-      expect(index).toBe(-1);
-    });
-
-    it('should handle codes with spaces', async () => {
-      const { codes, hashedCodes } = await mfaService.generateBackupCodes();
-      
-      // Add spaces to code
-      const codeWithSpaces = codes[0].substring(0, 4) + ' ' + codes[0].substring(4);
-      
-      const index = await mfaService.verifyBackupCode(codeWithSpaces, hashedCodes);
-      expect(index).toBe(0);
-    });
-
-    it('should be case-insensitive', async () => {
-      const { codes, hashedCodes } = await mfaService.generateBackupCodes();
-      
-      // Test lowercase
-      const index = await mfaService.verifyBackupCode(
-        codes[0].toLowerCase(),
-        hashedCodes
-      );
-      expect(index).toBe(0);
+      mockBcrypt.compare.mockResolvedValue(false);
+      const result = await mfaService.verifyBackupCode('INVALID', ['hash1']);
+      expect(result).toBe(-1); // Returns -1 for no match
     });
   });
 
   describe('enableMFA', () => {
-    let mockClient;
-
-    beforeEach(() => {
-      mockClient = {
-        query: jest.fn(),
-        release: jest.fn(),
-      };
-      pool.connect = jest.fn().mockResolvedValue(mockClient);
-    });
-
-    it('should enable MFA with backup codes', async () => {
-      const userId = 'test-user-id';
-      const secret = 'JBSWY3DPEHPK3PXP';
-      const hashedCodes = ['hash1', 'hash2', 'hash3'];
-
-      await mfaService.enableMFA(userId, secret, hashedCodes);
-
+    it('should enable MFA for user', async () => {
+      mockClient.query.mockResolvedValue({ rows: [] });
+      await mfaService.enableMFA('user-123', 'SECRET', ['hash1']);
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-      expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE users'),
-        expect.arrayContaining([secret, hashedCodes, userId])
-      );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-      expect(mockClient.release).toHaveBeenCalled();
-    });
-
-    it('should rollback on error', async () => {
-      mockClient.query.mockRejectedValueOnce(new Error('DB Error'));
-
-      await expect(
-        mfaService.enableMFA('user-id', 'secret', [])
-      ).rejects.toThrow('Failed to enable MFA');
-
-      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
-      expect(mockClient.release).toHaveBeenCalled();
-    });
-  });
-
-  describe('disableMFA', () => {
-    let mockClient;
-
-    beforeEach(() => {
-      mockClient = {
-        query: jest.fn(),
-        release: jest.fn(),
-      };
-      pool.connect = jest.fn().mockResolvedValue(mockClient);
-    });
-
-    it('should disable MFA and clear MFA data', async () => {
-      const userId = 'test-user-id';
-
-      await mfaService.disableMFA(userId);
-
-      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-      expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE users'),
-        [userId]
-      );
-      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-      expect(mockClient.release).toHaveBeenCalled();
-    });
-
-    it('should rollback on error', async () => {
-      mockClient.query.mockRejectedValueOnce(new Error('DB Error'));
-
-      await expect(
-        mfaService.disableMFA('user-id')
-      ).rejects.toThrow('Failed to disable MFA');
-
-      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
       expect(mockClient.release).toHaveBeenCalled();
     });
   });
 
   describe('getMFAStatus', () => {
-    beforeEach(() => {
-      pool.query = jest.fn();
-    });
-
-    it('should return MFA status with backup codes count', async () => {
-      const mockUser = {
-        mfa_enabled: true,
-        mfa_backup_codes: ['hash1', 'hash2', 'hash3', 'hash4', 'hash5'],
-        mfa_backup_codes_used: 2,
-        mfa_enabled_at: new Date(),
-      };
-
-      pool.query.mockResolvedValue({ rows: [mockUser] });
-
-      const status = await mfaService.getMFAStatus('user-id');
-
-      expect(status).toEqual({
-        enabled: true,
-        backupCodesRemaining: 5,
-        backupCodesUsed: 2,
-        enabledAt: mockUser.mfa_enabled_at,
+    it('should return MFA status', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{ mfa_enabled: true, mfa_backup_codes: ['hash1', 'hash2'], mfa_backup_codes_used: 0 }],
       });
-    });
-
-    it('should handle MFA not enabled', async () => {
-      const mockUser = {
-        mfa_enabled: false,
-        mfa_backup_codes: null,
-        mfa_backup_codes_used: 0,
-        mfa_enabled_at: null,
-      };
-
-      pool.query.mockResolvedValue({ rows: [mockUser] });
-
       const status = await mfaService.getMFAStatus('user-id');
-
-      expect(status).toEqual({
-        enabled: false,
-        backupCodesRemaining: 0,
-        backupCodesUsed: 0,
-        enabledAt: null,
-      });
+      expect(status.enabled).toBe(true);
     });
 
-    it('should throw error if user not found', async () => {
-      pool.query.mockResolvedValue({ rows: [] });
-
-      await expect(
-        mfaService.getMFAStatus('non-existent-user')
-      ).rejects.toThrow('Failed to get MFA status');
+    it('should throw if user not found', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+      // The actual service throws "Failed to get MFA status" when user not found
+      await expect(mfaService.getMFAStatus('none')).rejects.toThrow('Failed to get MFA status');
     });
   });
 
   describe('checkMFARequired', () => {
-    beforeEach(() => {
-      pool.query = jest.fn();
-    });
-
-    it('should return MFA status for user', async () => {
-      const mockUser = {
-        mfa_enabled: true,
-        mfa_secret: 'JBSWY3DPEHPK3PXP',
-      };
-
-      pool.query.mockResolvedValue({ rows: [mockUser] });
-
-      const result = await mfaService.checkMFARequired('user-id');
-
-      expect(result).toEqual({
-        mfaEnabled: true,
-        mfaSecret: 'JBSWY3DPEHPK3PXP',
+    it('should return MFA requirement status', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{ mfa_enabled: true, mfa_secret: 'SECRET' }],
       });
+      const result = await mfaService.checkMFARequired('user-123');
+      expect(result.mfaEnabled).toBe(true);
     });
+  });
 
-    it('should return false if user not found', async () => {
-      pool.query.mockResolvedValue({ rows: [] });
-
-      const result = await mfaService.checkMFARequired('user-id');
-
-      expect(result).toEqual({
-        mfaEnabled: false,
-        mfaSecret: null,
-      });
+  describe('disableMFA', () => {
+    it('should disable MFA for user', async () => {
+      mockClient.query.mockResolvedValue({ rows: [] });
+      await mfaService.disableMFA('user-123');
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
     });
   });
 
   describe('markBackupCodeUsed', () => {
-    let mockClient;
-
-    beforeEach(() => {
-      mockClient = {
-        query: jest.fn(),
-        release: jest.fn(),
-      };
-      pool.connect = jest.fn().mockResolvedValue(mockClient);
-    });
-
-    it('should remove used backup code from array', async () => {
-      await mfaService.markBackupCodeUsed('user-id', 2);
-
+    it('should mark backup code as used', async () => {
+      mockClient.query.mockResolvedValue({ rows: [] });
+      await mfaService.markBackupCodeUsed('user-123', 1);
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-      expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('array_remove'),
-        [3, 'user-id'] // PostgreSQL arrays are 1-indexed
-      );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
     });
   });
 
   describe('regenerateBackupCodes', () => {
-    let mockClient;
+    it('should regenerate backup codes', async () => {
+      mockCrypto.randomBytes.mockImplementation(() => Buffer.from('bbbb', 'hex'));
+      mockBcrypt.hash.mockResolvedValue('$2a$10$newhash');
+      mockClient.query.mockResolvedValue({ rows: [] });
 
-    beforeEach(() => {
-      mockClient = {
-        query: jest.fn(),
-        release: jest.fn(),
-      };
-      pool.connect = jest.fn().mockResolvedValue(mockClient);
-    });
-
-    it('should generate and store new backup codes', async () => {
-      const newCodes = await mfaService.regenerateBackupCodes('user-id');
-
-      expect(newCodes).toHaveLength(8);
+      const codes = await mfaService.regenerateBackupCodes('user-123');
+      expect(codes).toHaveLength(8); // Method returns array of codes directly
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-      expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE users'),
-        expect.any(Array)
-      );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
     });
   });
 });

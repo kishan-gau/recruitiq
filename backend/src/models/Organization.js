@@ -46,6 +46,7 @@ class Organization {
     const query = `
       SELECT id, name, slug, tier, license_key, subscription_status,
              max_users, max_workspaces, max_jobs, max_candidates,
+             mfa_required, mfa_enforcement_date,
              created_at, updated_at
       FROM organizations
       WHERE id = $1 AND deleted_at IS NULL

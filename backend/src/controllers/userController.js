@@ -117,6 +117,19 @@ export async function createUser(req, res, next) {
 
     const { email, name, role, permissions, phone, timezone } = value;
 
+    // Check license user limit
+    const { canAddUser, limit, current } = await User.checkUserLimit(organizationId);
+    if (!canAddUser) {
+      return res.status(403).json({
+        success: false,
+        message: `User limit reached. Your organization has reached the maximum of ${limit} enabled users.`,
+        current,
+        limit,
+        tier: req.user.tier || 'starter',
+        upgradeSuggestion: 'Please upgrade your plan to add more users.'
+      });
+    }
+
     // Check if email already exists
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
@@ -285,6 +298,69 @@ export async function deleteUser(req, res, next) {
     res.json({
       message: 'User deleted successfully'
     });
+
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Update user active status (enable/disable)
+ */
+export async function updateUserStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const organizationId = req.user.organization_id;
+    const { is_active } = req.body;
+
+    // Only owner and admin can update user status
+    if (!['owner', 'admin'].includes(req.user.role)) {
+      throw new ForbiddenError('Only owners and admins can update user status');
+    }
+
+    // Validate input
+    if (typeof is_active !== 'boolean') {
+      throw new ValidationError('is_active must be a boolean value');
+    }
+
+    const user = await User.findById(id);
+    if (!user || user.organization_id !== organizationId) {
+      throw new NotFoundError('User not found');
+    }
+
+    // Can't disable owner
+    if (user.role === 'owner') {
+      throw new ForbiddenError('Cannot disable organization owner');
+    }
+
+    try {
+      const updatedUser = await User.updateStatus(id, is_active, organizationId);
+
+      logger.info(`User ${is_active ? 'enabled' : 'disabled'}: ${updatedUser.email} by ${req.user.email}`);
+
+      res.json({
+        message: `User ${is_active ? 'enabled' : 'disabled'} successfully`,
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          is_active: updatedUser.is_active
+        }
+      });
+
+    } catch (limitError) {
+      if (limitError.message.includes('license') || limitError.message.includes('limit')) {
+        const { limit, current } = await User.checkUserLimit(organizationId);
+        return res.status(403).json({
+          success: false,
+          message: limitError.message,
+          current,
+          limit,
+          tier: req.user.tier || 'starter'
+        });
+      }
+      throw limitError;
+    }
 
   } catch (error) {
     next(error);

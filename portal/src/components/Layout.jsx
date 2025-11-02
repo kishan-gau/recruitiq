@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Grid3x3, Shield, FileText, Server, Menu, Bell, LogOut, FileKey, ChevronDown, ChevronRight, Users, Plus, BarChart3, Layers, Settings, Key } from 'lucide-react';
+import { Grid3x3, Shield, FileText, Server, Menu, Bell, LogOut, FileKey, ChevronDown, ChevronRight, Users, Plus, BarChart3, Layers, Settings, Key, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const navigation = [
@@ -36,7 +36,7 @@ const navigation = [
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, mfaWarning, dismissMfaWarning } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedMenus, setExpandedMenus] = useState({});
 
@@ -113,7 +113,36 @@ export default function Layout() {
         </div>
       </header>
 
-      <div className="flex pt-16">
+      {/* MFA Warning Banner */}
+      {mfaWarning && (
+        <div className="fixed top-16 left-0 right-0 bg-amber-500 text-white px-4 py-3 shadow-md z-20">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div className="flex-1">
+                <p className="font-semibold text-sm">
+                  {mfaWarning.message}
+                </p>
+                <Link 
+                  to="/settings" 
+                  className="text-xs text-amber-100 hover:text-white underline mt-1 inline-block"
+                >
+                  Enable MFA now in Settings →
+                </Link>
+              </div>
+            </div>
+            <button 
+              onClick={dismissMfaWarning}
+              className="text-amber-200 hover:text-white p-1 flex-shrink-0"
+              aria-label="Dismiss warning"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={`flex ${mfaWarning ? 'pt-28' : 'pt-16'}`}>
         {/* Sidebar */}
         <aside
           className={`

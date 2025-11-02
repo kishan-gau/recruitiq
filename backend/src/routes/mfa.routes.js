@@ -3,11 +3,13 @@
  * Multi-Factor Authentication endpoints
  */
 
-const express = require('express');
+import express from 'express';
+import * as mfaController from '../controllers/mfaController.js';
+import { authenticate } from '../middleware/auth.js';
+import { createEndpointLimiter } from '../middleware/rateLimit.js';
+import { checkFeature } from '../middleware/checkFeature.js';
+
 const router = express.Router();
-const mfaController = require('../controllers/mfaController');
-const { authenticate } = require('../middleware/auth');
-const { createEndpointLimiter } = require('../middleware/rateLimit');
 
 /**
  * MFA Verification Rate Limiter
@@ -48,16 +50,16 @@ const mfaManageLimiter = createEndpointLimiter({
 /**
  * @route   POST /api/auth/mfa/setup
  * @desc    Initialize MFA setup (generate QR code)
- * @access  Private (authenticated users)
+ * @access  Private (authenticated users + MFA feature required)
  */
-router.post('/setup', authenticate, mfaSetupLimiter, mfaController.setupMFA);
+router.post('/setup', authenticate, checkFeature('mfa'), mfaSetupLimiter, mfaController.setupMFA);
 
 /**
  * @route   POST /api/auth/mfa/verify-setup
  * @desc    Verify TOTP token and enable MFA
- * @access  Private (authenticated users)
+ * @access  Private (authenticated users + MFA feature required)
  */
-router.post('/verify-setup', authenticate, mfaVerifyLimiter, mfaController.verifySetup);
+router.post('/verify-setup', authenticate, checkFeature('mfa'), mfaVerifyLimiter, mfaController.verifySetup);
 
 /**
  * @route   POST /api/auth/mfa/verify
@@ -76,22 +78,22 @@ router.post('/use-backup-code', mfaVerifyLimiter, mfaController.useBackupCode);
 /**
  * @route   POST /api/auth/mfa/disable
  * @desc    Disable MFA for user
- * @access  Private (requires password + TOTP/backup code)
+ * @access  Private (requires password + TOTP/backup code + MFA feature)
  */
-router.post('/disable', authenticate, mfaManageLimiter, mfaController.disableMFA);
+router.post('/disable', authenticate, checkFeature('mfa'), mfaManageLimiter, mfaController.disableMFA);
 
 /**
  * @route   POST /api/auth/mfa/regenerate-backup-codes
  * @desc    Generate new backup codes (invalidates old ones)
- * @access  Private (requires password + TOTP)
+ * @access  Private (requires password + TOTP + MFA feature)
  */
-router.post('/regenerate-backup-codes', authenticate, mfaManageLimiter, mfaController.regenerateBackupCodes);
+router.post('/regenerate-backup-codes', authenticate, checkFeature('mfa'), mfaManageLimiter, mfaController.regenerateBackupCodes);
 
 /**
  * @route   GET /api/auth/mfa/status
  * @desc    Get MFA status for current user
- * @access  Private (authenticated users)
+ * @access  Private (authenticated users + MFA feature required)
  */
-router.get('/status', authenticate, mfaController.getMFAStatus);
+router.get('/status', authenticate, checkFeature('mfa'), mfaController.getMFAStatus);
 
-module.exports = router;
+export default router;

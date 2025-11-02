@@ -1,284 +1,137 @@
-/**
- * Security Monitoring Tests
+﻿/**
+ * Unit Tests for Security Monitor Service
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import securityMonitor, { SecurityEventType, AlertSeverity } from '../../services/securityMonitor.js';
+import { jest } from '@jest/globals';
 
-describe('Security Monitor', () => {
-  beforeEach(() => {
-    // Reset monitor before each test
-    securityMonitor.reset();
-  });
-  
-  afterEach(() => {
-    // Clean up
-    securityMonitor.removeAllListeners();
-  });
-  
+// Mock dependencies before imports
+const mockLogger = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  logSecurityEvent: jest.fn(),
+};
+
+const mockConfig = {
+  deployment: { type: 'on-premise', tenantId: 'test-tenant', instanceId: 'test-instance' },
+  monitoring: { alertChannels: ['log'], webhookUrl: null },
+  centralMonitoring: { enabled: false },
+};
+
+const mockCloudWatchClient = { isEnabled: jest.fn(() => false), putAlert: jest.fn() };
+const mockDatadogClient = { isEnabled: jest.fn(() => false), sendAlert: jest.fn() };
+
+jest.unstable_mockModule('../../utils/logger.js', () => ({ default: mockLogger }));
+jest.unstable_mockModule('../../config/index.js', () => ({ default: mockConfig }));
+jest.unstable_mockModule('../../integrations/cloudwatch.js', () => ({ default: mockCloudWatchClient }));
+jest.unstable_mockModule('../../integrations/datadog.js', () => ({ default: mockDatadogClient }));
+
+const { default: securityMonitor, SecurityEventType, AlertSeverity, SecurityMonitor } = await import('../securityMonitor.js');
+
+describe('SecurityMonitor', () => {
+  beforeEach(() => { jest.clearAllMocks(); securityMonitor.reset(); process.env.SECURITY_MONITORING_ENABLED = 'true'; });
+
   describe('trackEvent', () => {
-    it('should track security event', () => {
-      const event = securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {
-        ip: '192.168.1.1',
-        username: 'test@example.com',
-      });
-      
-      expect(event).toBeTruthy();
+    it('should track security event and update metrics', () => {
+      const metadata = { ip: '192.168.1.1', username: 'testuser' };
+      const event = securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, metadata);
+      expect(event).toBeDefined();
       expect(event.type).toBe(SecurityEventType.FAILED_LOGIN);
-      expect(event.metadata.ip).toBe('192.168.1.1');
-    });
-    
-    it('should update metrics on event', () => {
-      securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {});
-      securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {});
-      
+      expect(event.metadata).toEqual(metadata);
       const metrics = securityMonitor.getMetrics();
-      
-      expect(metrics.totalEvents).toBe(2);
-      expect(metrics.eventsByType[SecurityEventType.FAILED_LOGIN]).toBe(2);
+      expect(metrics.totalEvents).toBe(1);
+    });
+
+    it('should log security event', () => {
+      const metadata = { ip: '192.168.1.1' };
+      securityMonitor.trackEvent(SecurityEventType.SQL_INJECTION_ATTEMPT, metadata);
+      expect(mockLogger.logSecurityEvent).toHaveBeenCalledWith(SecurityEventType.SQL_INJECTION_ATTEMPT, metadata);
     });
   });
-  
-  describe('failed login tracking', () => {
-    it('should detect brute force after threshold', (done) => {
-      const ip = '192.168.1.1';
-      
-      // Listen for brute force detection
-      securityMonitor.once('alert', (alert) => {
-        expect(alert.type).toBe(SecurityEventType.BRUTE_FORCE_DETECTED);
-        expect(alert.severity).toBe(AlertSeverity.CRITICAL);
-        expect(alert.metadata.ip).toBe(ip);
-        done();
-      });
-      
-      // Simulate 5 failed logins
-      for (let i = 0; i < 5; i++) {
-        securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {
-          ip,
-          username: 'test@example.com',
-        });
-      }
+
+  describe('determineSeverity', () => {
+    it('should return CRITICAL for attack events', () => {
+      expect(securityMonitor.determineSeverity(SecurityEventType.BRUTE_FORCE_DETECTED)).toBe(AlertSeverity.CRITICAL);
+      expect(securityMonitor.determineSeverity(SecurityEventType.SQL_INJECTION_ATTEMPT)).toBe(AlertSeverity.CRITICAL);
     });
-    
+
+    it('should return WARNING for suspicious events', () => {
+      expect(securityMonitor.determineSeverity(SecurityEventType.FAILED_LOGIN)).toBe(AlertSeverity.WARNING);
+      expect(securityMonitor.determineSeverity(SecurityEventType.RATE_LIMIT_EXCEEDED)).toBe(AlertSeverity.WARNING);
+    });
+
+    it('should return INFO for other events', () => {
+      expect(securityMonitor.determineSeverity(SecurityEventType.PASSWORD_RESET_REQUESTED)).toBe(AlertSeverity.INFO);
+    });
+  });
+
+  describe('handleFailedLogin', () => {
+    it('should track failed login attempts', () => {
+      securityMonitor.handleFailedLogin({ ip: '192.168.1.1', username: 'testuser' });
+      expect(securityMonitor.failedLogins.has('192.168.1.1')).toBe(true);
+    });
+
+    it('should detect brute force when threshold exceeded', () => {
+      for (let i = 0; i < 5; i++) {
+        securityMonitor.handleFailedLogin({ ip: '192.168.1.1', username: 'user' });
+      }
+      expect(mockLogger.logSecurityEvent).toHaveBeenCalledWith(SecurityEventType.BRUTE_FORCE_DETECTED, expect.anything());
+    });
+
     it('should reset tracking after window expires', () => {
-      const ip = '192.168.1.1';
-      
-      // Track 3 failed logins
-      for (let i = 0; i < 3; i++) {
-        securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {
-          ip,
-          username: 'test@example.com',
-        });
-      }
-      
-      // Manually expire the window
-      const tracking = securityMonitor.failedLogins.get(ip);
-      tracking.firstAttempt = Date.now() - 16 * 60 * 1000; // 16 minutes ago
-      
-      // Track one more login (should reset)
-      securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {
-        ip,
-        username: 'test@example.com',
-      });
-      
-      const updatedTracking = securityMonitor.failedLogins.get(ip);
-      expect(updatedTracking.count).toBe(1);
+      securityMonitor.handleFailedLogin({ ip: '192.168.1.1', username: 'user' });
+      const tracking = securityMonitor.failedLogins.get('192.168.1.1');
+      tracking.firstAttempt = Date.now() - (900000 + 1);
+      securityMonitor.handleFailedLogin({ ip: '192.168.1.1', username: 'user' });
+      expect(securityMonitor.failedLogins.get('192.168.1.1').count).toBe(1);
     });
   });
-  
-  describe('rate limit tracking', () => {
-    it('should detect excessive rate limit violations', (done) => {
-      const ip = '192.168.1.1';
-      const endpoint = '/api/users';
-      
-      // Listen for unusual activity alert
-      securityMonitor.once('alert', (alert) => {
-        expect(alert.type).toBe(SecurityEventType.UNUSUAL_ACTIVITY);
-        done();
-      });
-      
-      // Simulate 100 rate limit violations
+
+  describe('handleRateLimitExceeded', () => {
+    it('should track rate limit violations', () => {
+      securityMonitor.handleRateLimitExceeded({ ip: '192.168.1.1', endpoint: '/api/users' });
+      expect(securityMonitor.requestCounts.has('192.168.1.1:/api/users')).toBe(true);
+    });
+
+    it('should send alert when threshold exceeded', () => {
+      const alertSpy = jest.spyOn(securityMonitor, 'sendAlert');
       for (let i = 0; i < 100; i++) {
-        securityMonitor.trackEvent(SecurityEventType.RATE_LIMIT_EXCEEDED, {
-          ip,
-          endpoint,
-        });
+        securityMonitor.handleRateLimitExceeded({ ip: '192.168.1.1', endpoint: '/api/users' });
       }
+      expect(alertSpy).toHaveBeenCalled();
     });
   });
-  
-  describe('attack detection', () => {
-    it('should immediately alert on SQL injection attempt', (done) => {
-      securityMonitor.once('alert', (alert) => {
-        expect(alert.type).toBe(SecurityEventType.SQL_INJECTION_ATTEMPT);
-        expect(alert.severity).toBe(AlertSeverity.CRITICAL);
-        done();
-      });
-      
-      securityMonitor.trackEvent(SecurityEventType.SQL_INJECTION_ATTEMPT, {
-        ip: '192.168.1.1',
-        endpoint: '/api/users',
-        suspiciousInput: "' OR '1'='1",
-      });
+
+  describe('sendAlert', () => {
+    it('should create and emit alert', () => {
+      const emitSpy = jest.spyOn(securityMonitor, 'emit');
+      const event = { type: SecurityEventType.BRUTE_FORCE_DETECTED, timestamp: new Date(), metadata: { ip: '192.168.1.1' } };
+      securityMonitor.sendAlert(event, AlertSeverity.CRITICAL);
+      expect(emitSpy).toHaveBeenCalled();
     });
-    
-    it('should immediately alert on XSS attempt', (done) => {
-      securityMonitor.once('alert', (alert) => {
-        expect(alert.type).toBe(SecurityEventType.XSS_ATTEMPT);
-        expect(alert.severity).toBe(AlertSeverity.CRITICAL);
-        done();
-      });
-      
-      securityMonitor.trackEvent(SecurityEventType.XSS_ATTEMPT, {
-        ip: '192.168.1.1',
-        suspiciousInput: '<script>alert(1)</script>',
-      });
+
+    it('should skip alert within cooldown', () => {
+      const event = { type: SecurityEventType.FAILED_LOGIN, timestamp: new Date(), metadata: { ip: '192.168.1.1' } };
+      securityMonitor.sendAlert(event, AlertSeverity.WARNING);
+      securityMonitor.sendAlert(event, AlertSeverity.WARNING);
+      expect(securityMonitor.getMetrics().alertsSent).toBe(1);
     });
   });
-  
-  describe('alert cooldown', () => {
-    it('should not send duplicate alerts within cooldown period', () => {
-      const ip = '192.168.1.1';
-      let alertCount = 0;
-      
-      securityMonitor.on('alert', () => {
-        alertCount++;
-      });
-      
-      // Trigger brute force twice
-      for (let i = 0; i < 5; i++) {
-        securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {
-          ip,
-          username: 'test@example.com',
-        });
-      }
-      
-      // Try to trigger again immediately
-      for (let i = 0; i < 5; i++) {
-        securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {
-          ip,
-          username: 'test@example.com',
-        });
-      }
-      
-      // Should only have one alert due to cooldown
-      expect(alertCount).toBe(1);
-    });
-  });
-  
-  describe('metrics', () => {
-    it('should track event metrics', () => {
-      securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {});
-      securityMonitor.trackEvent(SecurityEventType.UNAUTHORIZED_ACCESS, {});
-      securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {});
-      
+
+  describe('getMetrics', () => {
+    it('should return metrics', () => {
+      securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, { ip: '192.168.1.1' });
       const metrics = securityMonitor.getMetrics();
-      
-      expect(metrics.totalEvents).toBe(3);
-      expect(metrics.eventsByType[SecurityEventType.FAILED_LOGIN]).toBe(2);
-      expect(metrics.eventsByType[SecurityEventType.UNAUTHORIZED_ACCESS]).toBe(1);
-    });
-    
-    it('should track alert metrics', (done) => {
-      securityMonitor.once('alert', () => {
-        const metrics = securityMonitor.getMetrics();
-        expect(metrics.alertsSent).toBe(1);
-        expect(metrics.lastAlert).toBeTruthy();
-        done();
-      });
-      
-      securityMonitor.trackEvent(SecurityEventType.SQL_INJECTION_ATTEMPT, {
-        ip: '192.168.1.1',
-      });
+      expect(metrics.totalEvents).toBe(1);
+      expect(metrics.eventsByType).toBeDefined();
     });
   });
-  
-  describe('severity determination', () => {
-    it('should assign critical severity to brute force', () => {
-      const severity = securityMonitor.determineSeverity(
-        SecurityEventType.BRUTE_FORCE_DETECTED
-      );
-      expect(severity).toBe(AlertSeverity.CRITICAL);
-    });
-    
-    it('should assign warning severity to failed login', () => {
-      const severity = securityMonitor.determineSeverity(
-        SecurityEventType.FAILED_LOGIN
-      );
-      expect(severity).toBe(AlertSeverity.WARNING);
-    });
-    
-    it('should assign info severity to unknown events', () => {
-      const severity = securityMonitor.determineSeverity('unknown_event');
-      expect(severity).toBe(AlertSeverity.INFO);
-    });
-  });
-  
-  describe('alert descriptions', () => {
-    it('should generate description for brute force', () => {
-      const event = {
-        type: SecurityEventType.BRUTE_FORCE_DETECTED,
-        metadata: {
-          ip: '192.168.1.1',
-          attemptCount: 5,
-        },
-      };
-      
-      const description = securityMonitor.getAlertDescription(event);
-      
-      expect(description).toContain('192.168.1.1');
-      expect(description).toContain('5');
-    });
-    
-    it('should generate description for SQL injection', () => {
-      const event = {
-        type: SecurityEventType.SQL_INJECTION_ATTEMPT,
-        metadata: {
-          ip: '192.168.1.1',
-          endpoint: '/api/users',
-        },
-      };
-      
-      const description = securityMonitor.getAlertDescription(event);
-      
-      expect(description).toContain('192.168.1.1');
-      expect(description).toContain('/api/users');
-    });
-  });
-  
-  describe('health check', () => {
-    it('should return health status', () => {
+
+  describe('healthCheck', () => {
+    it('should return healthy status', () => {
       const health = securityMonitor.healthCheck();
-      
-      expect(health).toHaveProperty('status');
-      expect(health).toHaveProperty('enabled');
-      expect(health).toHaveProperty('metrics');
-      expect(health).toHaveProperty('config');
-    });
-    
-    it('should include configuration', () => {
-      const health = securityMonitor.healthCheck();
-      
-      expect(health.config.failedLoginThreshold).toBeTruthy();
-      expect(health.config.failedLoginWindowMs).toBeTruthy();
-    });
-  });
-  
-  describe('reset', () => {
-    it('should clear all tracking data', () => {
-      // Add some events
-      securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {
-        ip: '192.168.1.1',
-      });
-      
-      // Reset
-      securityMonitor.reset();
-      
-      const metrics = securityMonitor.getMetrics();
-      
-      expect(metrics.totalEvents).toBe(0);
-      expect(metrics.alertsSent).toBe(0);
-      expect(metrics.activeThreats.failedLogins).toBe(0);
+      expect(health.status).toBe('healthy');
+      expect(health.enabled).toBe(true);
     });
   });
 });

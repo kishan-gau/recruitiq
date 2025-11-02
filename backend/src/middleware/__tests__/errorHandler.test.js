@@ -1,4 +1,29 @@
-import {
+import { jest } from '@jest/globals';
+
+// Mock dependencies BEFORE importing module under test
+jest.unstable_mockModule('../../utils/logger.js', () => ({
+  default: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+  },
+  logSecurityEvent: jest.fn(),
+  SecurityEventType: {
+    TOKEN_INVALID: 'token_invalid',
+    UNAUTHORIZED_ACCESS: 'unauthorized_access',
+    FORBIDDEN_ACCESS: 'forbidden_access',
+    RATE_LIMIT_EXCEEDED: 'rate_limit_exceeded',
+  },
+}));
+
+jest.unstable_mockModule('../../config/index.js', () => ({
+  default: {
+    env: 'test',
+  },
+}));
+
+// Import AFTER mocking
+const {
   APIError,
   ValidationError,
   UnauthorizedError,
@@ -9,392 +34,585 @@ import {
   RateLimitError,
   InternalServerError,
   ServiceUnavailableError,
+  errorHandler,
   asyncHandler,
   asyncMiddleware,
   notFoundHandler,
   isCriticalError,
   sendError,
-} from '../errorHandler.js';
+} = await import('../errorHandler.js');
+
+const logger = (await import('../../utils/logger.js')).default;
+const { logSecurityEvent } = await import('../../utils/logger.js');
+const config = (await import('../../config/index.js')).default;
 
 describe('Error Handler Middleware', () => {
-  describe('Custom Error Classes', () => {
-    test('APIError should have correct properties', () => {
-      const error = new APIError('Test error', 400, 'TEST_CODE', { detail: 'test' });
+  let mockReq, mockRes, mockNext;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    mockReq = {
+      path: '/test',
+      method: 'GET',
+      id: 'req-123',
+      ip: '192.168.1.100',
+      get: jest.fn((header) => {
+        if (header === 'user-agent') return 'Mozilla/5.0';
+        return null;
+      }),
+      user: { id: 'user-123', email: 'test@example.com' },
+      query: {},
+      body: {},
+    };
+
+    mockRes = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+    };
+
+    mockNext = jest.fn();
+  });
+
+  // ============================================================================
+  // CUSTOM ERROR CLASSES
+  // ============================================================================
+
+  describe('APIError', () => {
+    it('should create error with default values', () => {
+      const error = new APIError('Test error');
       
-      expect(error).toBeInstanceOf(Error);
       expect(error.message).toBe('Test error');
-      expect(error.statusCode).toBe(400);
-      expect(error.code).toBe('TEST_CODE');
-      expect(error.details).toEqual({ detail: 'test' });
+      expect(error.statusCode).toBe(500);
+      expect(error.code).toBeNull();
+      expect(error.details).toBeNull();
       expect(error.isOperational).toBe(true);
       expect(error.name).toBe('APIError');
     });
 
-    test('APIError.toJSON should return correct structure', () => {
-      const error = new APIError('Test error', 400, 'TEST_CODE');
-      const json = error.toJSON();
+    it('should create error with custom values', () => {
+      const error = new APIError('Custom error', 400, 'CUSTOM_CODE', { field: 'value' });
       
-      expect(json).toHaveProperty('error');
-      expect(json.error).toMatchObject({
-        type: 'APIError',
-        message: 'Test error',
-        code: 'TEST_CODE',
-        statusCode: 400,
-      });
+      expect(error.statusCode).toBe(400);
+      expect(error.code).toBe('CUSTOM_CODE');
+      expect(error.details).toEqual({ field: 'value' });
     });
 
-    test('ValidationError should have 400 status', () => {
-      const error = new ValidationError('Validation failed', { fields: ['email'] });
+    it('should serialize to JSON without details in non-development', () => {
+      config.env = 'production';
+      const error = new APIError('Test', 400, 'TEST_CODE', { sensitive: 'data' });
+      const json = error.toJSON();
+      
+      expect(json.error.message).toBe('Test');
+      expect(json.error.statusCode).toBe(400);
+      expect(json.error.code).toBe('TEST_CODE');
+      expect(json.error.details).toBeUndefined();
+      
+      config.env = 'test';
+    });
+
+    it('should serialize to JSON with details in development', () => {
+      config.env = 'development';
+      const error = new APIError('Test', 400, 'TEST_CODE', { field: 'value' });
+      const json = error.toJSON();
+      
+      expect(json.error.details).toEqual({ field: 'value' });
+      
+      config.env = 'test';
+    });
+  });
+
+  describe('ValidationError', () => {
+    it('should create 400 error with default message', () => {
+      const error = new ValidationError();
       
       expect(error.statusCode).toBe(400);
       expect(error.code).toBe('VALIDATION_ERROR');
-      expect(error.details).toEqual({ fields: ['email'] });
+      expect(error.message).toBe('Validation failed');
     });
 
-    test('UnauthorizedError should have 401 status', () => {
-      const error = new UnauthorizedError('Not authenticated');
+    it('should create error with custom message and details', () => {
+      const error = new ValidationError('Invalid input', { field: 'email' });
+      
+      expect(error.message).toBe('Invalid input');
+      expect(error.details).toEqual({ field: 'email' });
+    });
+  });
+
+  describe('UnauthorizedError', () => {
+    it('should create 401 error', () => {
+      const error = new UnauthorizedError();
       
       expect(error.statusCode).toBe(401);
       expect(error.code).toBe('UNAUTHORIZED');
+      expect(error.message).toBe('Authentication required');
     });
 
-    test('ForbiddenError should have 403 status', () => {
-      const error = new ForbiddenError('Access denied');
+    it('should create error with custom message', () => {
+      const error = new UnauthorizedError('Invalid credentials');
+      
+      expect(error.message).toBe('Invalid credentials');
+    });
+  });
+
+  describe('ForbiddenError', () => {
+    it('should create 403 error', () => {
+      const error = new ForbiddenError();
       
       expect(error.statusCode).toBe(403);
       expect(error.code).toBe('FORBIDDEN');
+      expect(error.message).toBe('Insufficient permissions');
     });
+  });
 
-    test('NotFoundError should have 404 status', () => {
-      const error = new NotFoundError('User not found', 'User');
+  describe('NotFoundError', () => {
+    it('should create 404 error', () => {
+      const error = new NotFoundError();
       
       expect(error.statusCode).toBe(404);
       expect(error.code).toBe('NOT_FOUND');
-      expect(error.details).toEqual({ resourceType: 'User' });
+      expect(error.message).toBe('Resource not found');
     });
 
-    test('ConflictError should have 409 status', () => {
-      const error = new ConflictError('Email already exists');
+    it('should include resource type in details', () => {
+      const error = new NotFoundError('User not found', 'User');
+      
+      expect(error.details).toEqual({ resourceType: 'User' });
+    });
+  });
+
+  describe('ConflictError', () => {
+    it('should create 409 error', () => {
+      const error = new ConflictError();
       
       expect(error.statusCode).toBe(409);
       expect(error.code).toBe('CONFLICT');
+      expect(error.message).toBe('Resource conflict');
     });
+  });
 
-    test('BusinessLogicError should have 422 status', () => {
-      const error = new BusinessLogicError('Cannot process', { reason: 'test' });
+  describe('BusinessLogicError', () => {
+    it('should create 422 error', () => {
+      const error = new BusinessLogicError('Business rule violated');
       
       expect(error.statusCode).toBe(422);
       expect(error.code).toBe('BUSINESS_LOGIC_ERROR');
+      expect(error.message).toBe('Business rule violated');
     });
+  });
 
-    test('RateLimitError should have 429 status and retryAfter', () => {
-      const error = new RateLimitError('Rate limit exceeded', 60);
+  describe('RateLimitError', () => {
+    it('should create 429 error', () => {
+      const error = new RateLimitError();
       
       expect(error.statusCode).toBe(429);
       expect(error.code).toBe('RATE_LIMIT_EXCEEDED');
-      expect(error.retryAfter).toBe(60);
     });
 
-    test('InternalServerError should have 500 status', () => {
-      const error = new InternalServerError('Server error');
+    it('should include retryAfter', () => {
+      const error = new RateLimitError('Rate limited', 60);
+      
+      expect(error.retryAfter).toBe(60);
+      expect(error.details).toEqual({ retryAfter: 60 });
+    });
+  });
+
+  describe('InternalServerError', () => {
+    it('should create 500 error', () => {
+      const error = new InternalServerError();
       
       expect(error.statusCode).toBe(500);
       expect(error.code).toBe('INTERNAL_ERROR');
     });
+  });
 
-    test('ServiceUnavailableError should have 503 status', () => {
-      const error = new ServiceUnavailableError('Service down', 120);
+  describe('ServiceUnavailableError', () => {
+    it('should create 503 error', () => {
+      const error = new ServiceUnavailableError();
       
       expect(error.statusCode).toBe(503);
       expect(error.code).toBe('SERVICE_UNAVAILABLE');
     });
   });
 
-  describe('Error Handler Middleware', () => {
-    let req, res, next, errorHandler;
+  // ============================================================================
+  // ERROR HANDLER MIDDLEWARE
+  // ============================================================================
 
-    beforeEach(() => {
-      req = {
-        id: 'test-123',
-        path: '/test',
-        method: 'GET',
-        ip: '127.0.0.1',
-        get: jest.fn(() => 'test-agent'),
-        user: { id: 'user-123', email: 'test@test.com' },
-        query: {},
-        body: {},
-      };
-
-      res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn().mockReturnThis(),
-        set: jest.fn(),
-      };
-
-      next = jest.fn();
-
-      // Import errorHandler dynamically
-      errorHandler = require('../errorHandler.js').errorHandler;
-    });
-
-    test('should handle APIError correctly', () => {
-      const error = new ValidationError('Invalid input');
-      errorHandler(error, req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalled();
+  describe('errorHandler', () => {
+    it('should handle APIError instances', () => {
+      const error = new ValidationError('Invalid data');
       
-      const response = res.json.mock.calls[0][0];
-      expect(response.error.type).toBe('ValidationError');
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalled();
+      
+      const response = mockRes.json.mock.calls[0][0];
+      expect(response.error.message).toBe('Invalid data');
       expect(response.error.code).toBe('VALIDATION_ERROR');
-      expect(response.error.errorId).toMatch(/^ERR-/);
+      expect(response.error.errorId).toBeDefined();
     });
 
-    test('should handle database unique violation', () => {
-      const error = new Error('Duplicate key');
-      error.code = '23505';
-      error.constraint = 'users_email_key';
-
-      errorHandler(error, req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(409);
+    it('should handle generic errors with 500 status', () => {
+      const error = new Error('Unexpected error');
       
-      const response = res.json.mock.calls[0][0];
-      expect(response.error.message).toContain('already exists');
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it('should log security event for 401 errors', () => {
+      const error = new UnauthorizedError();
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(logSecurityEvent).toHaveBeenCalledWith(
+        'unauthorized_access',
+        expect.objectContaining({ severity: 'warn' }),
+        mockReq
+      );
+    });
+
+    it('should log security event for 403 errors', () => {
+      const error = new ForbiddenError();
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(logSecurityEvent).toHaveBeenCalledWith(
+        'forbidden_access',
+        expect.objectContaining({
+          severity: 'warn',
+          attemptedResource: '/test',
+        }),
+        mockReq
+      );
+    });
+
+    it('should handle PostgreSQL unique violation (23505)', () => {
+      const error = new Error('Unique constraint violation');
+      error.code = '23505';
+      error.constraint = 'users_email_unique';
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(409);
+      const response = mockRes.json.mock.calls[0][0];
       expect(response.error.code).toBe('DUPLICATE_RESOURCE');
     });
 
-    test('should handle database foreign key violation', () => {
+    it('should handle PostgreSQL foreign key violation (23503)', () => {
       const error = new Error('Foreign key violation');
       error.code = '23503';
-
-      errorHandler(error, req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(400);
       
-      const response = res.json.mock.calls[0][0];
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      const response = mockRes.json.mock.calls[0][0];
       expect(response.error.code).toBe('INVALID_REFERENCE');
     });
 
-    test('should handle JWT errors', () => {
-      const error = new Error('Invalid token');
-      error.name = 'JsonWebTokenError';
-
-      errorHandler(error, req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(401);
+    it('should handle PostgreSQL not null violation (23502)', () => {
+      const error = new Error('Not null violation');
+      error.code = '23502';
+      error.column = 'email';
       
-      const response = res.json.mock.calls[0][0];
-      expect(response.error.code).toBe('INVALID_TOKEN');
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      const response = mockRes.json.mock.calls[0][0];
+      expect(response.error.code).toBe('MISSING_REQUIRED_FIELD');
     });
 
-    test('should handle expired JWT', () => {
+    it('should handle JWT errors', () => {
+      const error = new Error('Invalid token');
+      error.name = 'JsonWebTokenError';
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(logSecurityEvent).toHaveBeenCalledWith(
+        'token_invalid',
+        expect.objectContaining({ severity: 'warn' }),
+        mockReq
+      );
+    });
+
+    it('should handle expired JWT', () => {
       const error = new Error('Token expired');
       error.name = 'TokenExpiredError';
       error.expiredAt = new Date();
-
-      errorHandler(error, req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(401);
       
-      const response = res.json.mock.calls[0][0];
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      const response = mockRes.json.mock.calls[0][0];
       expect(response.error.code).toBe('TOKEN_EXPIRED');
     });
 
-    test('should handle Joi validation errors', () => {
+    it('should handle Joi validation errors', () => {
       const error = new Error('Validation failed');
+      error.name = 'ValidationError';
       error.isJoi = true;
       error.details = [
         {
           path: ['email'],
-          message: 'Invalid email',
+          message: '"email" must be a valid email',
           type: 'string.email',
         },
       ];
-
-      errorHandler(error, req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(400);
       
-      const response = res.json.mock.calls[0][0];
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      const response = mockRes.json.mock.calls[0][0];
       expect(response.error.code).toBe('VALIDATION_ERROR');
-      expect(response.error.details.errors).toHaveLength(1);
-      expect(response.error.details.errors[0].field).toBe('email');
     });
 
-    test('should handle Multer file upload errors', () => {
+    it('should handle Multer file size error', () => {
       const error = new Error('File too large');
       error.name = 'MulterError';
       error.code = 'LIMIT_FILE_SIZE';
       error.limit = 5242880;
-
-      errorHandler(error, req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(400);
       
-      const response = res.json.mock.calls[0][0];
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      const response = mockRes.json.mock.calls[0][0];
       expect(response.error.code).toBe('FILE_UPLOAD_ERROR');
-      expect(response.error.details).toHaveProperty('maxSize');
     });
 
-    test('should add Retry-After header for rate limit errors', () => {
+    it('should handle rate limit errors', () => {
       const error = new RateLimitError('Too many requests', 60);
-      errorHandler(error, req, res, next);
-
-      expect(res.set).toHaveBeenCalledWith('Retry-After', 60);
-      expect(res.status).toHaveBeenCalledWith(429);
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(429);
+      expect(mockRes.set).toHaveBeenCalledWith('Retry-After', 60);
+      expect(logSecurityEvent).toHaveBeenCalledWith(
+        'rate_limit_exceeded',
+        expect.objectContaining({ severity: 'warn' }),
+        mockReq
+      );
     });
 
-    test('should include error ID for tracking', () => {
-      const error = new Error('Test error');
-      errorHandler(error, req, res, next);
-
-      const response = res.json.mock.calls[0][0];
-      expect(response.error.errorId).toMatch(/^ERR-\d+-[a-z0-9]+$/);
-    });
-
-    test('should include timestamp in response', () => {
-      const error = new ValidationError('Test');
-      errorHandler(error, req, res, next);
-
-      const response = res.json.mock.calls[0][0];
-      expect(response.error.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    });
-
-    test('should default to 500 for unknown errors', () => {
-      const error = new Error('Unknown error');
-      errorHandler(error, req, res, next);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    test('should sanitize error message in production for non-operational errors', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
-
-      const error = new Error('Internal database details');
+    it('should sanitize error message in production for non-operational errors', () => {
+      config.env = 'production';
+      const error = new Error('Sensitive internal error');
       error.statusCode = 500;
-
-      errorHandler(error, req, res, next);
-
-      const response = res.json.mock.calls[0][0];
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      const response = mockRes.json.mock.calls[0][0];
       expect(response.error.message).toBe('An unexpected error occurred');
-      expect(response.error.details).toBeUndefined();
-
-      process.env.NODE_ENV = originalEnv;
+      
+      config.env = 'test';
     });
 
-    test('should not sanitize operational errors in production', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+    it('should include stack trace in development', () => {
+      config.env = 'development';
+      const error = new Error('Test error');
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      const response = mockRes.json.mock.calls[0][0];
+      expect(response.error.stack).toBeDefined();
+      expect(response.error.raw).toBeDefined();
+      
+      config.env = 'test';
+    });
 
-      const error = new ValidationError('Email is required');
+    it('should redact query and body in logs', () => {
+      mockReq.query = { sensitive: 'data' };
+      mockReq.body = { password: 'secret' };
+      const error = new Error('Test');
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(logger.error).toHaveBeenCalledWith(
+        'Server error',
+        expect.objectContaining({
+          query: '[REDACTED]',
+          body: '[REDACTED]',
+        })
+      );
+    });
 
-      errorHandler(error, req, res, next);
-
-      const response = res.json.mock.calls[0][0];
-      expect(response.error.message).toBe('Email is required');
-
-      process.env.NODE_ENV = originalEnv;
+    it('should log client errors as warnings', () => {
+      const error = new ValidationError('Bad input');
+      
+      errorHandler(error, mockReq, mockRes, mockNext);
+      
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Client error',
+        expect.any(Object)
+      );
     });
   });
 
+  // ============================================================================
+  // ASYNC HANDLERS
+  // ============================================================================
+
   describe('asyncHandler', () => {
-    test('should catch async errors and pass to next', async () => {
+    it('should handle successful async operations', async () => {
+      const handler = asyncHandler(async (req, res) => {
+        res.json({ success: true });
+      });
+      
+      await handler(mockReq, mockRes, mockNext);
+      
+      expect(mockRes.json).toHaveBeenCalledWith({ success: true });
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it('should catch errors from async operations', async () => {
       const error = new Error('Async error');
       const handler = asyncHandler(async () => {
         throw error;
       });
-
-      const next = jest.fn();
-      await handler({}, {}, next);
-
-      expect(next).toHaveBeenCalledWith(error);
+      
+      await handler(mockReq, mockRes, mockNext);
+      
+      expect(mockNext).toHaveBeenCalledWith(error);
     });
 
-    test('should not call next if no error', async () => {
-      const handler = asyncHandler(async (req, res) => {
-        res.json({ success: true });
-      });
-
-      const res = { json: jest.fn() };
-      const next = jest.fn();
+    it('should handle database query errors', async () => {
+      const dbError = new Error('Database connection failed');
+      dbError.code = '08006';
       
-      await handler({}, res, next);
-
-      expect(res.json).toHaveBeenCalledWith({ success: true });
-      expect(next).not.toHaveBeenCalled();
+      const handler = asyncHandler(async () => {
+        throw dbError;
+      });
+      
+      await handler(mockReq, mockRes, mockNext);
+      
+      expect(mockNext).toHaveBeenCalledWith(dbError);
     });
   });
 
   describe('asyncMiddleware', () => {
-    test('should catch async middleware errors', async () => {
+    it('should handle successful async middleware', async () => {
+      const middleware = asyncMiddleware(async (req, res, next) => {
+        req.processed = true;
+        next();
+      });
+      
+      await middleware(mockReq, mockRes, mockNext);
+      
+      expect(mockReq.processed).toBe(true);
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('should catch errors from async middleware', async () => {
       const error = new Error('Middleware error');
       const middleware = asyncMiddleware(async () => {
         throw error;
       });
-
-      const next = jest.fn();
-      await middleware({}, {}, next);
-
-      expect(next).toHaveBeenCalledWith(error);
+      
+      await middleware(mockReq, mockRes, mockNext);
+      
+      expect(mockNext).toHaveBeenCalledWith(error);
     });
   });
+
+  // ============================================================================
+  // NOT FOUND HANDLER
+  // ============================================================================
 
   describe('notFoundHandler', () => {
-    test('should create NotFoundError with correct message', () => {
-      const req = { method: 'GET', path: '/api/nonexistent' };
-      const next = jest.fn();
-
-      notFoundHandler(req, {}, next);
-
-      expect(next).toHaveBeenCalled();
-      const error = next.mock.calls[0][0];
+    it('should create 404 error for undefined routes', () => {
+      notFoundHandler(mockReq, mockRes, mockNext);
+      
+      expect(mockNext).toHaveBeenCalled();
+      const error = mockNext.mock.calls[0][0];
       expect(error).toBeInstanceOf(NotFoundError);
-      expect(error.message).toContain('GET');
-      expect(error.message).toContain('/api/nonexistent');
+      expect(error.message).toBe('Cannot GET /test');
+    });
+
+    it('should log route not found', () => {
+      notFoundHandler(mockReq, mockRes, mockNext);
+      
+      expect(logger.warn).toHaveBeenCalledWith(
+        'Route not found',
+        expect.objectContaining({
+          method: 'GET',
+          path: '/test',
+          ip: '192.168.1.100',
+        })
+      );
     });
   });
 
-  describe('Helper Functions', () => {
-    test('isCriticalError should identify non-operational 500 errors', () => {
-      const criticalError = new Error('Critical');
-      criticalError.statusCode = 500;
-      criticalError.isOperational = false;
+  // ============================================================================
+  // HELPER FUNCTIONS
+  // ============================================================================
 
-      expect(isCriticalError(criticalError)).toBe(true);
-    });
-
-    test('isCriticalError should not flag operational errors', () => {
-      const operationalError = new InternalServerError('Handled error');
+  describe('isCriticalError', () => {
+    it('should return true for non-operational 500 errors', () => {
+      const error = new Error('Critical error');
+      error.statusCode = 500;
+      error.isOperational = false;
       
-      expect(isCriticalError(operationalError)).toBe(false);
+      expect(isCriticalError(error)).toBe(true);
     });
 
-    test('sendError should send APIError correctly', () => {
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
-
-      const error = new ValidationError('Test error');
-      sendError(res, error);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalled();
+    it('should return false for operational errors', () => {
+      const error = new InternalServerError();
+      
+      expect(isCriticalError(error)).toBe(false);
     });
 
-    test('sendError should handle generic errors', () => {
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
+    it('should return false for 4xx errors', () => {
+      const error = new ValidationError();
+      error.statusCode = 400;
+      
+      expect(isCriticalError(error)).toBe(false);
+    });
+  });
 
-      const error = new Error('Generic error');
-      sendError(res, error);
+  describe('sendError', () => {
+    it('should send APIError response', () => {
+      const error = new ValidationError('Invalid input');
+      
+      sendError(mockRes, error);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'Invalid input',
+            code: 'VALIDATION_ERROR',
+          }),
+        })
+      );
+    });
 
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalled();
+    it('should send generic error response in production', () => {
+      config.env = 'production';
+      const error = new Error('Internal error');
+      
+      sendError(mockRes, error);
+      
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      const response = mockRes.json.mock.calls[0][0];
+      expect(response.error.message).toBe('An unexpected error occurred');
+      
+      config.env = 'test';
+    });
+
+    it('should send error message in development', () => {
+      config.env = 'development';
+      const error = new Error('Debug error');
+      
+      sendError(mockRes, error);
+      
+      const response = mockRes.json.mock.calls[0][0];
+      expect(response.error.message).toBe('Debug error');
+      
+      config.env = 'test';
     });
   });
 });

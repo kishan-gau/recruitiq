@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import MFAVerification from '../components/MFAVerification';
+import api from '../services/api';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -10,7 +12,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const navigate = useNavigate();
-  const { login: authLogin, isAuthenticated } = useAuth();
+  const { login: authLogin, isAuthenticated, setUser } = useAuth();
+  
+  // MFA state
+  const [showMFA, setShowMFA] = useState(false);
+  const [mfaToken, setMfaToken] = useState('');
 
   // Check if user is already authenticated (SSO via cookies)
   useEffect(() => {
@@ -55,7 +61,15 @@ export default function Login() {
 
     try {
       // Use AuthContext login method which handles state management
-      await authLogin(email, password);
+      const result = await authLogin(email, password);
+      
+      // Check if MFA is required
+      if (result && result.mfaRequired) {
+        setMfaToken(result.mfaToken);
+        setShowMFA(true);
+        setLoading(false);
+        return;
+      }
       
       // Navigation will happen via the useEffect above when isAuthenticated becomes true
       navigate('/dashboard', { replace: true });
@@ -70,6 +84,43 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  const handleMFASuccess = async (code, isBackupCode) => {
+    try {
+      // Call appropriate API based on code type
+      const response = isBackupCode 
+        ? await api.useBackupCode(mfaToken, code)
+        : await api.verifyMFA(mfaToken, code);
+      
+      // Store user data
+      const userData = response.data.user;
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      
+      // Navigate to dashboard
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      // Error will be caught by MFAVerification component
+      throw err;
+    }
+  };
+
+  const handleMFACancel = () => {
+    setShowMFA(false);
+    setMfaToken('');
+    setPassword('');
+  };
+
+  // Show MFA verification if required
+  if (showMFA) {
+    return (
+      <MFAVerification 
+        mfaToken={mfaToken}
+        onSuccess={handleMFASuccess}
+        onCancel={handleMFACancel}
+      />
+    );
+  }
 
   // Show loading while checking existing authentication
   if (checking) {

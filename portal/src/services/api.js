@@ -85,6 +85,83 @@ class APIService {
   }
 
   // ============================================================================
+  // Multi-Factor Authentication (MFA) API Methods
+  // ============================================================================
+
+  /**
+   * Get MFA status for current user
+   * @returns {Promise<Object>} MFA status including enabled, required, grace period info
+   */
+  async getMFAStatus() {
+    const response = await api.get('/auth/mfa/status')
+    return response.data.data
+  }
+
+  /**
+   * Initiate MFA setup - generates QR code and secret
+   * @returns {Promise<Object>} QR code URL and manual entry key
+   */
+  async setupMFA() {
+    const response = await api.post('/auth/mfa/setup')
+    return response.data
+  }
+
+  /**
+   * Verify MFA setup with TOTP token and enable MFA
+   * @param {string} token - 6-digit TOTP code from authenticator app
+   * @param {string} secret - Temporary secret from setup
+   * @returns {Promise<Object>} Success message and backup codes
+   */
+  async verifyMFASetup(token, secret) {
+    const response = await api.post('/auth/mfa/verify-setup', { token, secret })
+    return response.data
+  }
+
+  /**
+   * Verify MFA during login (after initial credentials)
+   * @param {string} mfaToken - Temporary MFA token from login response
+   * @param {string} token - 6-digit TOTP code from authenticator app
+   * @returns {Promise<Object>} User data and auth tokens
+   */
+  async verifyMFA(mfaToken, token) {
+    const response = await api.post('/auth/mfa/verify', { mfaToken, token })
+    return response.data
+  }
+
+  /**
+   * Use backup code during login (alternative to TOTP)
+   * @param {string} mfaToken - Temporary MFA token from login response
+   * @param {string} backupCode - One-time backup code
+   * @returns {Promise<Object>} User data and auth tokens
+   */
+  async useBackupCode(mfaToken, backupCode) {
+    const response = await api.post('/auth/mfa/use-backup-code', { mfaToken, backupCode })
+    return response.data
+  }
+
+  /**
+   * Disable MFA for current user
+   * @param {string} password - User's current password
+   * @param {string} token - Current TOTP code or backup code
+   * @returns {Promise<Object>} Success message
+   */
+  async disableMFA(password, token) {
+    const response = await api.post('/auth/mfa/disable', { password, token })
+    return response.data
+  }
+
+  /**
+   * Regenerate backup codes (invalidates old ones)
+   * @param {string} password - User's current password
+   * @param {string} token - Current TOTP code
+   * @returns {Promise<Object>} New backup codes
+   */
+  async regenerateBackupCodes(password, token) {
+    const response = await api.post('/auth/mfa/regenerate-backup-codes', { password, token })
+    return response.data
+  }
+
+  // ============================================================================
   // Security Monitoring API Methods
   // ============================================================================
 
@@ -315,7 +392,11 @@ class APIService {
       maxCandidates: data.maxCandidates,
       features: data.features || [],
       instanceUrl: data.instanceUrl,
-      contractMonths: data.contractMonths || 12
+      contractMonths: data.contractMonths || 12,
+      sessionPolicy: data.sessionPolicy || 'multiple',
+      maxSessionsPerUser: data.maxSessionsPerUser || 5,
+      concurrentLoginDetection: data.concurrentLoginDetection !== undefined ? data.concurrentLoginDetection : true,
+      mfaRequired: data.mfaRequired !== undefined ? data.mfaRequired : (data.deploymentType === 'cloud-shared')
     }
   }
 
@@ -685,6 +766,61 @@ class APIService {
   async searchLogs(query, filters = {}) {
     const params = new URLSearchParams({ ...filters, q: query })
     const response = await api.get(`/logs/search?${params.toString()}`)
+    return response.data
+  }
+
+  // ============================================================================
+  // Session Management API Methods
+  // ============================================================================
+
+  /**
+   * Get organization's session policy
+   * @returns {Promise} Session policy settings
+   */
+  async getSessionPolicy() {
+    const response = await api.get('/organizations/session-policy')
+    return response.data
+  }
+
+  /**
+   * Update organization's session policy
+   * @param {Object} policyData - Session policy configuration
+   * @param {boolean} enforceImmediately - Whether to revoke existing sessions
+   * @returns {Promise} Updated session policy
+   */
+  async updateSessionPolicy(policyData, enforceImmediately = false) {
+    const response = await api.put('/organizations/session-policy', {
+      ...policyData,
+      enforceImmediately
+    })
+    return response.data
+  }
+
+  /**
+   * Get active sessions for current user
+   * @returns {Promise} List of active sessions
+   */
+  async getActiveSessions() {
+    const response = await api.get('/auth/sessions')
+    return response.data
+  }
+
+  /**
+   * Revoke a specific session
+   * @param {string} sessionId - Session ID to revoke
+   * @returns {Promise} Revocation result
+   */
+  async revokeSession(sessionId) {
+    const response = await api.delete(`/auth/sessions/${sessionId}`)
+    return response.data
+  }
+
+  /**
+   * Revoke all other sessions (logout from all other devices)
+   * @returns {Promise} Revocation result
+   */
+  async revokeAllSessions() {
+    const response = await api.delete('/auth/sessions')
     return response.data
   }
 }

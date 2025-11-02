@@ -1,9 +1,19 @@
 /**
  * Test script for security headers and CORS
- * Verifies all security headers are properly set
+ * Verifies all security headers are properly set in actual HTTP responses
+ * 
+ * This is an integration test that requires a running server.
+ * If the server is not running, this script will start it automatically.
  */
 
-const API_URL = 'http://localhost:4000';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const API_URL = process.env.API_URL || 'http://localhost:4000';
 
 const colors = {
   reset: '\x1b[0m',
@@ -11,11 +21,15 @@ const colors = {
   red: '\x1b[31m',
   yellow: '\x1b[33m',
   blue: '\x1b[36m',
+  cyan: '\x1b[36m',
 };
 
 function log(color, message) {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
+
+let serverProcess = null;
+let serverStartedByScript = false;
 
 /**
  * Test security headers
@@ -194,18 +208,149 @@ async function testPreflightRequest() {
 }
 
 /**
+ * Check if server is already running
+ */
+async function isServerRunning() {
+  try {
+    const response = await fetch(`${API_URL}/health`, { 
+      signal: AbortSignal.timeout(3000) 
+    });
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Start the server
+ */
+async function startServer() {
+  log('yellow', '\n⚙️  Server not running. Starting server...\n');
+  
+  return new Promise((resolve, reject) => {
+    const backendDir = join(__dirname, '..');
+    
+    // Start server process
+    serverProcess = spawn('node', ['src/server.js'], {
+      cwd: backendDir,
+      env: { ...process.env, NODE_ENV: 'test', PORT: '4000' },
+      stdio: 'pipe'
+    });
+    
+    let output = '';
+    
+    serverProcess.stdout.on('data', (data) => {
+      output += data.toString();
+      if (output.includes('Server running on port') || output.includes('started')) {
+        log('green', '✓ Server started successfully\n');
+        serverStartedByScript = true;
+        resolve();
+      }
+    });
+    
+    serverProcess.stderr.on('data', (data) => {
+      const error = data.toString();
+      // Ignore common warnings
+      if (!error.includes('ExperimentalWarning') && !error.includes('punycode')) {
+        console.error(error);
+      }
+    });
+    
+    serverProcess.on('error', (error) => {
+      log('red', `Failed to start server: ${error.message}`);
+      reject(error);
+    });
+    
+    // Wait up to 30 seconds for server to start
+    setTimeout(async () => {
+      const running = await isServerRunning();
+      if (running) {
+        log('green', '✓ Server is ready\n');
+        serverStartedByScript = true;
+        resolve();
+      } else {
+        reject(new Error('Server failed to start within 30 seconds'));
+      }
+    }, 30000);
+    
+    // Check every second if server is ready
+    const checkInterval = setInterval(async () => {
+      const running = await isServerRunning();
+      if (running) {
+        clearInterval(checkInterval);
+        log('green', '✓ Server is ready\n');
+        serverStartedByScript = true;
+        resolve();
+      }
+    }, 1000);
+  });
+}
+
+/**
+ * Stop the server if we started it
+ */
+function stopServer() {
+  if (serverStartedByScript && serverProcess) {
+    log('yellow', '\n🛑 Stopping server...');
+    serverProcess.kill('SIGTERM');
+    
+    // Force kill after 5 seconds if not stopped
+    setTimeout(() => {
+      if (serverProcess && !serverProcess.killed) {
+        serverProcess.kill('SIGKILL');
+      }
+    }, 5000);
+    
+    log('green', '✓ Server stopped\n');
+  }
+}
+
+/**
  * Run all security tests
  */
 async function runAllTests() {
   log('blue', '\n╔══════════════════════════════════════════════════════════╗');
-  log('blue', '║  Security Headers & CORS Test Suite                     ║');
+  log('blue', '║  Security Headers & CORS Integration Test Suite         ║');
   log('blue', '╚══════════════════════════════════════════════════════════╝\n');
   
+  // Ensure server is running
+  let serverWasRunning = await isServerRunning();
+  
+  if (!serverWasRunning) {
+    log('cyan', '📋 Prerequisites Check:\n');
+    log('yellow', '  • Server not detected at ' + API_URL);
+    log('yellow', '  • Starting server automatically...\n');
+    
+    try {
+      await startServer();
+      log('green', '✓ Server startup complete\n');
+      
+      // Wait 2 more seconds for middleware to initialize
+      log('cyan', '⏳ Waiting for middleware initialization...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      log('green', '✓ Ready to test\n');
+    } catch (error) {
+      log('red', `\n❌ Failed to start server: ${error.message}`);
+      log('yellow', '\n💡 Manual start required:');
+      log('yellow', '   npm start');
+      log('yellow', '   -- or --');
+      log('yellow', '   npm run dev\n');
+      process.exit(1);
+    }
+  } else {
+    log('green', '✓ Server is already running at ' + API_URL + '\n');
+  }
+  
+  // Run tests
   const headerResults = await testSecurityHeaders();
   const corsAllowed = await testCorsAllowed();
   const corsBlocked = await testCorsBlocked();
   const preflight = await testPreflightRequest();
   
+  // Stop server if we started it
+  stopServer();
+  
+  // Results summary
   log('blue', '╔══════════════════════════════════════════════════════════╗');
   log('blue', '║  Test Summary                                            ║');
   log('blue', '╚══════════════════════════════════════════════════════════╝\n');
@@ -218,7 +363,7 @@ async function runAllTests() {
   const allPassed = headerResults.failed === 0 && corsAllowed && corsBlocked && preflight;
   
   if (allPassed) {
-    log('green', '\n🎉 All security tests passed!\n');
+    log('green', '\n🎉 All security headers integration tests passed!\n');
     process.exit(0);
   } else {
     log('red', '\n❌ Some tests failed. Review the output above.\n');
@@ -226,8 +371,25 @@ async function runAllTests() {
   }
 }
 
+// Cleanup on exit
+process.on('SIGINT', () => {
+  log('yellow', '\n\n⚠️  Test interrupted');
+  stopServer();
+  process.exit(130);
+});
+
+process.on('SIGTERM', () => {
+  stopServer();
+  process.exit(143);
+});
+
+process.on('exit', () => {
+  stopServer();
+});
+
 // Run tests
 runAllTests().catch(error => {
   log('red', `Fatal error: ${error.message}`);
+  stopServer();
   process.exit(1);
 });

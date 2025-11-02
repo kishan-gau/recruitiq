@@ -3,20 +3,23 @@
  * Handles Multi-Factor Authentication endpoints
  */
 
-const mfaService = require('../services/mfaService');
-const tokenBlacklist = require('../services/tokenBlacklist');
-const logger = require('../utils/logger');
-const jwt = require('jsonwebtoken');
-const config = require('../config');
-const bcrypt = require('bcryptjs');
-const pool = require('../config/database');
+import mfaService from '../services/mfaService.js';
+import tokenBlacklist from '../services/tokenBlacklist.js';
+import logger from '../utils/logger.js';
+import jwt from 'jsonwebtoken';
+import config from '../config/index.js';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import pool from '../config/database.js';
+import RefreshToken from '../models/RefreshToken.js';
+import Organization from '../models/Organization.js';
 
 /**
  * POST /api/auth/mfa/setup
  * Generate MFA secret and QR code for user to set up authenticator app
  * Requires authentication
  */
-exports.setupMFA = async (req, res) => {
+export const setupMFA = async (req, res) => {
   try {
     const userId = req.user.id;
     const userEmail = req.user.email;
@@ -37,11 +40,9 @@ exports.setupMFA = async (req, res) => {
     // DON'T enable MFA yet - wait for verification
     res.json({
       success: true,
-      data: {
-        qrCodeUrl, // QR code for scanning with authenticator app
-        manualEntryKey, // Secret for manual entry
-        message: 'Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.)',
-      },
+      qrCode: qrCodeUrl, // QR code for scanning with authenticator app
+      manualEntryKey, // Secret for manual entry
+      message: 'Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.)',
       // Include secret in response for verification step
       tempSecret: secret,
     });
@@ -61,7 +62,7 @@ exports.setupMFA = async (req, res) => {
  * Verify TOTP token and enable MFA
  * Body: { token: string, secret: string }
  */
-exports.verifySetup = async (req, res) => {
+export const verifySetup = async (req, res) => {
   try {
     const { token, secret } = req.body;
     const userId = req.user.id;
@@ -112,14 +113,15 @@ exports.verifySetup = async (req, res) => {
  * Verify MFA token during login (after initial credentials check)
  * Body: { mfaToken: string, token: string }
  */
-exports.verifyMFA = async (req, res) => {
+export const verifyMFA = async (req, res) => {
   try {
-    const { mfaToken, token } = req.body;
+    const { mfaToken, code, token } = req.body;
+    const verificationCode = code || token; // Accept both 'code' and 'token' for backwards compatibility
 
-    if (!mfaToken || !token) {
+    if (!mfaToken || !verificationCode) {
       return res.status(400).json({
         success: false,
-        message: 'MFA token and temporary token are required',
+        message: 'MFA token and verification code are required',
       });
     }
 
@@ -154,12 +156,12 @@ exports.verifyMFA = async (req, res) => {
     }
 
     // Verify TOTP token
-    const isValid = mfaService.verifyToken(token, mfaSecret);
+    const isValid = mfaService.verifyToken(verificationCode, mfaSecret);
     if (!isValid) {
       logger.warn(`Failed MFA verification attempt for user: ${userId}`);
       return res.status(401).json({
         success: false,
-        message: 'Invalid verification code',
+        message: 'Invalid MFA code',
       });
     }
 
@@ -181,6 +183,28 @@ exports.verifyMFA = async (req, res) => {
 
     const user = result.rows[0];
 
+    // Get organization session policy
+    let sessionPolicy = 'multiple';
+    let maxSessionsPerUser = 5;
+
+    if (user.organization_id) {
+      const org = await Organization.findById(user.organization_id);
+      if (org) {
+        sessionPolicy = org.session_policy || 'multiple';
+        maxSessionsPerUser = org.max_sessions_per_user || 5;
+      }
+    }
+
+    // Handle session policy
+    if (sessionPolicy === 'single') {
+      // Single session mode: Revoke all existing sessions
+      const existingSessions = await RefreshToken.getActiveSessions(user.id);
+      if (existingSessions.length > 0) {
+        await RefreshToken.revokeAllForUser(user.id);
+        logger.info(`Single session policy (MFA): Revoked ${existingSessions.length} existing session(s) for ${user.email}`);
+      }
+    }
+
     // Generate real access and refresh tokens
     const accessToken = jwt.sign(
       {
@@ -192,21 +216,43 @@ exports.verifyMFA = async (req, res) => {
         roleLevel: user.role_level,
       },
       config.jwt.accessSecret,
-      { expiresIn: config.jwt.accessExpiry }
+      { expiresIn: config.jwt.accessExpiresIn }
     );
 
     const refreshToken = jwt.sign(
-      { userId: user.id, email: user.email },
+      { 
+        userId: user.id, 
+        email: user.email,
+        jti: crypto.randomBytes(16).toString('hex') // Add unique JWT ID
+      },
       config.jwt.refreshSecret,
-      { expiresIn: config.jwt.refreshExpiry }
+      { expiresIn: config.jwt.refreshExpiresIn }
     );
 
-    // Store refresh token
-    await pool.query(
-      `INSERT INTO refresh_tokens (user_id, token, expires_at)
-       VALUES ($1, $2, NOW() + INTERVAL '${config.jwt.refreshExpiry}')`,
-      [user.id, refreshToken]
-    );
+    // Store refresh token with device metadata
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    
+    const userAgent = req.get('user-agent') || '';
+    const ipAddress = req.ip || req.connection.remoteAddress || '';
+    const deviceMetadata = {
+      userAgent,
+      ipAddress,
+      deviceFingerprint: RefreshToken.generateDeviceFingerprint(userAgent, ipAddress),
+      deviceName: RefreshToken.parseDeviceName(userAgent)
+    };
+    
+    await RefreshToken.create(user.id, refreshToken, expiresAt, deviceMetadata);
+
+    // Enforce session limit for multiple session mode
+    if (sessionPolicy === 'multiple') {
+      const revokedCount = await RefreshToken.enforceSessionLimit(user.id, maxSessionsPerUser);
+      if (revokedCount > 0) {
+        logger.info(`Session limit enforced after MFA for ${user.email}: ${revokedCount} old sessions revoked (max: ${maxSessionsPerUser})`);
+      }
+    }
+
+    logger.info(`MFA verified successfully for ${user.email} from device: ${deviceMetadata.deviceName} [Policy: ${sessionPolicy}]`);
 
     // Set cookies
     res.cookie('accessToken', accessToken, {
@@ -224,19 +270,17 @@ exports.verifyMFA = async (req, res) => {
     });
 
     res.json({
-      success: true,
       message: 'MFA verification successful',
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          userType: user.user_type,
-          role: user.role_name,
-        },
-        accessToken,
-        refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        userType: user.user_type,
+        role: user.role_name,
       },
+      token: accessToken,
+      accessToken,
+      refreshToken,
     });
 
     logger.info(`MFA verification successful for user: ${userId}`);
@@ -254,7 +298,7 @@ exports.verifyMFA = async (req, res) => {
  * Use a backup code for authentication when TOTP is unavailable
  * Body: { mfaToken: string, backupCode: string }
  */
-exports.useBackupCode = async (req, res) => {
+export const useBackupCode = async (req, res) => {
   try {
     const { mfaToken, backupCode } = req.body;
 
@@ -348,19 +392,19 @@ exports.useBackupCode = async (req, res) => {
         roleLevel: fullUser.role_level,
       },
       config.jwt.accessSecret,
-      { expiresIn: config.jwt.accessExpiry }
+      { expiresIn: config.jwt.accessExpiresIn }
     );
 
     const refreshToken = jwt.sign(
       { userId: fullUser.id, email: fullUser.email },
       config.jwt.refreshSecret,
-      { expiresIn: config.jwt.refreshExpiry }
+      { expiresIn: config.jwt.refreshExpiresIn }
     );
 
     // Store refresh token
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
-       VALUES ($1, $2, NOW() + INTERVAL '${config.jwt.refreshExpiry}')`,
+       VALUES ($1, $2, NOW() + INTERVAL '${config.jwt.refreshExpiresIn}')`,
       [fullUser.id, refreshToken]
     );
 
@@ -380,22 +424,21 @@ exports.useBackupCode = async (req, res) => {
     });
 
     res.json({
-      success: true,
       message: 'Backup code accepted',
-      data: {
-        user: {
-          id: fullUser.id,
-          email: fullUser.email,
-          name: fullUser.name,
-          userType: fullUser.user_type,
-          role: fullUser.role_name,
-        },
-        accessToken,
-        refreshToken,
-        warning: remainingCodes <= 2 
-          ? `Only ${remainingCodes} backup codes remaining. Consider regenerating them.`
-          : `${remainingCodes} backup codes remaining`,
+      user: {
+        id: fullUser.id,
+        email: fullUser.email,
+        name: fullUser.name,
+        userType: fullUser.user_type,
+        role: fullUser.role_name,
       },
+      token: accessToken,
+      accessToken,
+      refreshToken,
+      codesRemaining: remainingCodes,
+      warning: remainingCodes <= 2 
+        ? `Only ${remainingCodes} backup codes remaining. Consider regenerating them.`
+        : `${remainingCodes} backup codes remaining`,
     });
 
     logger.info(`Backup code used successfully for user: ${userId} (${remainingCodes} codes remaining)`);
@@ -414,23 +457,26 @@ exports.useBackupCode = async (req, res) => {
  * Body: { password: string, token: string }
  * Requires current password and TOTP token or backup code
  */
-exports.disableMFA = async (req, res) => {
+export const disableMFA = async (req, res) => {
   try {
-    const { password, token } = req.body;
+    const { password, token, code } = req.body;
     const userId = req.user.id;
+    const verificationCode = token || code;
 
-    if (!password || !token) {
+    if (!password || !verificationCode) {
       return res.status(400).json({
         success: false,
         message: 'Password and verification code are required',
       });
     }
 
-    // Get user details
+    // Get user details and organization MFA policy
     const result = await pool.query(
-      `SELECT password_hash, mfa_enabled, mfa_secret, mfa_backup_codes
-       FROM users 
-       WHERE id = $1`,
+      `SELECT u.password_hash, u.mfa_enabled, u.mfa_secret, u.mfa_backup_codes, 
+              u.organization_id, o.mfa_required, o.mfa_enforcement_date
+       FROM users u
+       LEFT JOIN organizations o ON u.organization_id = o.id
+       WHERE u.id = $1`,
       [userId]
     );
 
@@ -450,6 +496,17 @@ exports.disableMFA = async (req, res) => {
       });
     }
 
+    // Check if MFA is mandatory for this organization
+    if (user.mfa_required) {
+      logger.warn(`Attempted to disable mandatory MFA for user ${userId} in organization ${user.organization_id}`);
+      return res.status(403).json({
+        success: false,
+        message: 'MFA cannot be disabled',
+        reason: 'mandatory_policy',
+        enforced: true,
+      });
+    }
+
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
@@ -463,13 +520,13 @@ exports.disableMFA = async (req, res) => {
     let isTokenValid = false;
 
     // Try as TOTP token first
-    if (/^\d{6}$/.test(token.replace(/\s/g, ''))) {
-      isTokenValid = mfaService.verifyToken(token, user.mfa_secret);
+    if (/^\d{6}$/.test(verificationCode.replace(/\s/g, ''))) {
+      isTokenValid = mfaService.verifyToken(verificationCode, user.mfa_secret);
     }
 
     // If not valid as TOTP, try as backup code
     if (!isTokenValid && user.mfa_backup_codes) {
-      const codeIndex = await mfaService.verifyBackupCode(token, user.mfa_backup_codes);
+      const codeIndex = await mfaService.verifyBackupCode(verificationCode, user.mfa_backup_codes);
       isTokenValid = codeIndex !== -1;
     }
 
@@ -484,11 +541,11 @@ exports.disableMFA = async (req, res) => {
     await mfaService.disableMFA(userId);
 
     // Invalidate all user sessions for security
-    await tokenBlacklist.blacklistAllUserTokens(userId);
+    await tokenBlacklist.blacklistUserTokens(userId);
 
     res.json({
       success: true,
-      message: 'MFA has been disabled. All sessions have been invalidated for security.',
+      message: 'MFA disabled successfully',
     });
 
     logger.info(`MFA disabled for user: ${userId}`);
@@ -506,12 +563,13 @@ exports.disableMFA = async (req, res) => {
  * Generate new backup codes (invalidates old ones)
  * Body: { password: string, token: string }
  */
-exports.regenerateBackupCodes = async (req, res) => {
+export const regenerateBackupCodes = async (req, res) => {
   try {
-    const { password, token } = req.body;
+    const { password, token, code } = req.body;
     const userId = req.user.id;
+    const verificationCode = token || code;
 
-    if (!password || !token) {
+    if (!password || !verificationCode) {
       return res.status(400).json({
         success: false,
         message: 'Password and verification code are required',
@@ -552,7 +610,7 @@ exports.regenerateBackupCodes = async (req, res) => {
     }
 
     // Verify TOTP token
-    const isTokenValid = mfaService.verifyToken(token, user.mfa_secret);
+    const isTokenValid = mfaService.verifyToken(verificationCode, user.mfa_secret);
     if (!isTokenValid) {
       return res.status(401).json({
         success: false,
@@ -566,10 +624,8 @@ exports.regenerateBackupCodes = async (req, res) => {
     res.json({
       success: true,
       message: 'New backup codes generated',
-      data: {
-        backupCodes: newCodes,
-        warning: 'Save these backup codes in a secure location. Old backup codes are no longer valid.',
-      },
+      backupCodes: newCodes,
+      warning: 'Save these backup codes in a secure location. Old backup codes are no longer valid.',
     });
 
     logger.info(`Backup codes regenerated for user: ${userId}`);
@@ -586,16 +642,48 @@ exports.regenerateBackupCodes = async (req, res) => {
  * GET /api/auth/mfa/status
  * Get MFA status for current user
  */
-exports.getMFAStatus = async (req, res) => {
+export const getMFAStatus = async (req, res) => {
   try {
     const userId = req.user.id;
+    const organizationId = req.user.organization_id;
 
     const status = await mfaService.getMFAStatus(userId);
 
-    res.json({
-      success: true,
-      data: status,
-    });
+    // Get organization MFA policy
+    let mfaRequired = false;
+    let mfaEnforcementDate = null;
+
+    if (organizationId) {
+      const org = await Organization.findById(organizationId);
+      if (org) {
+        mfaRequired = org.mfa_required || false;
+        mfaEnforcementDate = org.mfa_enforcement_date;
+      }
+    }
+
+    // Calculate grace period info
+    let gracePeriodDaysRemaining = null;
+    if (mfaRequired && !status.enabled && mfaEnforcementDate) {
+      const now = new Date();
+      const enforcementDate = new Date(mfaEnforcementDate);
+      if (enforcementDate > now) {
+        gracePeriodDaysRemaining = Math.ceil((enforcementDate - now) / (1000 * 60 * 60 * 24));
+      }
+    }
+
+    const response = {
+      ...status,
+      required: mfaRequired, // Organization policy
+      enforcementDate: mfaEnforcementDate,
+      canDisable: !mfaRequired, // Can only disable if not required by org
+    };
+    
+    // Only include gracePeriodDaysRemaining if it has a value
+    if (gracePeriodDaysRemaining !== null) {
+      response.gracePeriodDaysRemaining = gracePeriodDaysRemaining;
+    }
+
+    res.json(response);
   } catch (error) {
     logger.error('Error in getMFAStatus:', error);
     res.status(500).json({

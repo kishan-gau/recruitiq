@@ -8,6 +8,7 @@ import {
   deleteCandidate
 } from '../controllers/candidateController.js';
 import { authenticate } from '../middleware/auth.js';
+import { protectMassAssignment } from '../middleware/massAssignmentProtection.js';
 
 const router = express.Router();
 
@@ -27,7 +28,18 @@ router.get('/:id', getCandidate);
 router.get('/:id/applications', getCandidateApplications);
 
 // PUT /api/candidates/:id - Update candidate
-router.put('/:id', updateCandidate);
+router.put('/:id', 
+  protectMassAssignment({
+    allowedFields: [
+      'firstName', 'lastName', 'email', 'phone', 'location',
+      'currentJobTitle', 'currentCompany', 'linkedinUrl', 'portfolioUrl',
+      'resumeUrl', 'skills', 'experience', 'education', 'source',
+      'sourceDetails', 'notes', 'tags'
+    ],
+    strict: false, // Log but don't reject (Joi schema will handle validation)
+  }),
+  updateCandidate
+);
 
 // DELETE /api/candidates/:id - Delete candidate
 router.delete('/:id', deleteCandidate);

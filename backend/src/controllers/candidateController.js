@@ -4,6 +4,53 @@ import db from '../config/database.js';
 import { NotFoundError, ValidationError, ForbiddenError } from '../middleware/errorHandler.js';
 import logger from '../utils/logger.js';
 
+/**
+ * Check if organization can create more candidates (license limit check)
+ */
+async function checkCandidateLimit(organizationId) {
+  const query = `
+    SELECT 
+      o.max_candidates,
+      o.tier,
+      COUNT(c.id) FILTER (WHERE c.deleted_at IS NULL) as candidate_count
+    FROM organizations o
+    LEFT JOIN candidates c ON c.organization_id = o.id
+    WHERE o.id = $1
+    GROUP BY o.id, o.max_candidates, o.tier
+  `;
+
+  const result = await db.query(query, [organizationId]);
+  
+  if (result.rows.length === 0) {
+    return { canCreate: false, limit: 0, current: 0, tier: 'unknown' };
+  }
+
+  const { max_candidates, candidate_count, tier } = result.rows[0];
+  const current = parseInt(candidate_count) || 0;
+
+  // null or -1 means unlimited
+  if (max_candidates === null || max_candidates === -1) {
+    return { 
+      canCreate: true, 
+      limit: null, 
+      current,
+      tier,
+      unlimited: true 
+    };
+  }
+
+  const limit = parseInt(max_candidates);
+  const canCreate = current < limit;
+
+  return { 
+    canCreate, 
+    limit, 
+    current,
+    tier,
+    unlimited: false 
+  };
+}
+
 // Validation schemas
 const createCandidateSchema = Joi.object({
   firstName: Joi.string().min(1).max(100).required(),
@@ -289,6 +336,19 @@ export async function createCandidate(req, res, next) {
     const { error, value } = createCandidateSchema.validate(req.body);
     if (error) {
       throw new ValidationError(error.details[0].message);
+    }
+
+    // Check license candidate limit
+    const limitCheck = await checkCandidateLimit(organization_id);
+    if (!limitCheck.canCreate) {
+      return res.status(403).json({
+        success: false,
+        message: `Candidate limit reached. Your organization has reached the maximum of ${limitCheck.limit} candidates.`,
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+        tier: req.user.tier || 'starter',
+        upgradeSuggestion: 'Please upgrade your plan to add more candidates.'
+      });
     }
 
     // Check if candidate with same email already exists in organization

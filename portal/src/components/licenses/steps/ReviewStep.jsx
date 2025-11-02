@@ -86,6 +86,38 @@ export default function ReviewStep({ formData }) {
           </div>
         </div>
 
+        {/* Security & Session Policy */}
+        <div className="p-4 bg-gray-50 rounded-lg">
+          <p className="text-sm font-medium text-gray-700 mb-2">Security Settings</p>
+          <div className="space-y-2 text-sm">
+            <p className="text-gray-600">
+              Session Policy: <span className="font-medium text-gray-900 capitalize">
+                {formData.sessionPolicy === 'single' ? '🔐 Single Session (License Enforcement)' : '📱 Multiple Sessions'}
+              </span>
+            </p>
+            {formData.sessionPolicy === 'multiple' && (
+              <p className="text-gray-600">
+                Max Sessions Per User: <span className="font-medium text-gray-900">{formData.maxSessionsPerUser}</span>
+              </p>
+            )}
+            <p className="text-gray-600">
+              Concurrent Login Detection: <span className="font-medium text-gray-900">
+                {formData.concurrentLoginDetection ? '✅ Enabled' : '❌ Disabled'}
+              </span>
+            </p>
+            <p className="text-gray-600">
+              MFA Requirement: <span className="font-medium text-gray-900">
+                {formData.mfaRequired || formData.deploymentType === 'cloud-shared' ? '🔐 Mandatory' : '⚙️ Optional'}
+              </span>
+              {formData.deploymentType === 'cloud-shared' && (
+                <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
+                  Required for Shared VPS
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+
         {/* Features */}
         {formData.features && formData.features.length > 0 && (
           <div className="p-4 bg-gray-50 rounded-lg">

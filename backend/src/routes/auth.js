@@ -7,7 +7,10 @@ import {
   me,
   requestPasswordReset,
   verifyPasswordResetToken,
-  resetPassword
+  resetPassword,
+  getActiveSessions,
+  revokeSession,
+  revokeAllSessions
 } from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validation.js';
@@ -47,6 +50,16 @@ router.get('/reset-password/:token', verifyPasswordResetToken);
 
 // POST /api/auth/reset-password - Reset password with token
 router.post('/reset-password', passwordResetLimiter, resetPassword);
+
+// Session Management
+// GET /api/auth/sessions - Get all active sessions
+router.get('/sessions', authenticate, getActiveSessions);
+
+// DELETE /api/auth/sessions/:sessionId - Revoke specific session
+router.delete('/sessions/:sessionId', authenticate, revokeSession);
+
+// DELETE /api/auth/sessions - Revoke all other sessions
+router.delete('/sessions', authenticate, revokeAllSessions);
 
 export default router;
 

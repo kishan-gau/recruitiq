@@ -2,6 +2,9 @@ export default {
   // Use node environment for testing
   testEnvironment: 'node',
 
+  // Enable ES modules support
+  transform: {},
+
   // Coverage configuration
   collectCoverageFrom: [
     'src/**/*.js',

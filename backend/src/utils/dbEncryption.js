@@ -68,6 +68,48 @@ export const ENCRYPTED_FIELDS = {
 };
 
 /**
+ * Allowed tables for encryption operations (SQL injection prevention)
+ * Only these table names are permitted in dynamic queries
+ */
+const ALLOWED_TABLES = [
+  'users',
+  'candidates',
+  'interviews',
+  'documents',
+  'payments',
+];
+
+/**
+ * Validate table name against whitelist
+ * Prevents SQL injection via table name parameter
+ * 
+ * @param {string} table - Table name to validate
+ * @returns {string} Validated table name
+ * @throws {Error} If table name is not in whitelist
+ */
+function validateTableName(table) {
+  if (!table || typeof table !== 'string') {
+    throw new Error('Invalid table name: must be a non-empty string');
+  }
+  
+  // Strict whitelist validation
+  if (!ALLOWED_TABLES.includes(table)) {
+    logger.error('Attempted access to non-whitelisted table', { 
+      table,
+      allowedTables: ALLOWED_TABLES 
+    });
+    throw new Error(`Invalid table name: ${table}. Table not in whitelist.`);
+  }
+  
+  // Additional validation: alphanumeric and underscore only
+  if (!/^[a-z_]+$/.test(table)) {
+    throw new Error('Invalid table name format: only lowercase letters and underscores allowed');
+  }
+  
+  return table;
+}
+
+/**
  * Fields that should also have a searchable hash
  * These fields will have a corresponding _hash column for searching
  */
@@ -337,33 +379,59 @@ export function rotateRowEncryption(table, data, oldKey, newKey) {
  */
 export async function rotateTableEncryption(db, table, oldKey, newKey) {
   try {
-    logger.info(`Starting encryption rotation for table: ${table}`);
+    // SQL Injection Prevention: Validate table name against whitelist
+    const validatedTable = validateTableName(table);
+    
+    logger.info(`Starting encryption rotation for table: ${validatedTable}`);
     
     // Get all rows (this should be done in batches for large tables)
-    const rows = await db.query(`SELECT * FROM ${table}`);
+    // Using validated table name in parameterized context
+    const rows = await db.query(`SELECT * FROM ${validatedTable}`);
     
     let rotatedCount = 0;
     
     // Rotate encryption for each row
     for (const row of rows) {
-      const rotated = rotateRowEncryption(table, row, oldKey, newKey);
+      const rotated = rotateRowEncryption(validatedTable, row, oldKey, newKey);
       
-      // Update the row
-      const updateFields = Object.keys(rotated)
-        .map((key, i) => `${key} = $${i + 2}`)
-        .join(', ');
+      // Get encrypted field names for this table
+      const fields = ENCRYPTED_FIELDS[validatedTable] || [];
+      const searchableFields = SEARCHABLE_FIELDS[validatedTable] || [];
       
-      const updateValues = Object.values(rotated);
+      // Build parameterized UPDATE query with only encrypted fields
+      const updateFields = [];
+      const updateValues = [];
+      let paramIndex = 2;
       
-      await db.query(
-        `UPDATE ${table} SET ${updateFields} WHERE id = $1`,
-        [row.id, ...updateValues]
-      );
+      for (const field of fields) {
+        if (rotated[field] !== undefined) {
+          updateFields.push(`${field} = $${paramIndex}`);
+          updateValues.push(rotated[field]);
+          paramIndex++;
+          
+          // Add hash field if searchable
+          if (searchableFields.includes(field)) {
+            const hashField = `${field}_hash`;
+            if (rotated[hashField]) {
+              updateFields.push(`${hashField} = $${paramIndex}`);
+              updateValues.push(rotated[hashField]);
+              paramIndex++;
+            }
+          }
+        }
+      }
+      
+      if (updateFields.length > 0) {
+        await db.query(
+          `UPDATE ${validatedTable} SET ${updateFields.join(', ')} WHERE id = $1`,
+          [row.id, ...updateValues]
+        );
+      }
       
       rotatedCount++;
     }
     
-    logger.info(`Completed encryption rotation for table: ${table}`, {
+    logger.info(`Completed encryption rotation for table: ${validatedTable}`, {
       rowsRotated: rotatedCount,
     });
     
@@ -390,30 +458,38 @@ export async function rotateTableEncryption(db, table, oldKey, newKey) {
  */
 export async function migrateToEncryption(db, table, batchSize = 100) {
   try {
-    logger.info(`Starting encryption migration for table: ${table}`);
+    // SQL Injection Prevention: Validate table name against whitelist
+    const validatedTable = validateTableName(table);
     
-    const fields = ENCRYPTED_FIELDS[table] || [];
-    const searchableFields = SEARCHABLE_FIELDS[table] || [];
+    logger.info(`Starting encryption migration for table: ${validatedTable}`);
+    
+    const fields = ENCRYPTED_FIELDS[validatedTable] || [];
+    const searchableFields = SEARCHABLE_FIELDS[validatedTable] || [];
     
     if (fields.length === 0) {
-      logger.warn(`No encrypted fields configured for table: ${table}`);
+      logger.warn(`No encrypted fields configured for table: ${validatedTable}`);
       return 0;
     }
     
-    // Get total count
-    const countResult = await db.query(`SELECT COUNT(*) FROM ${table}`);
-    const totalRows = parseInt(countResult[0].count, 10);
+    // Validate batch size to prevent DoS
+    const validatedBatchSize = Math.min(Math.max(1, parseInt(batchSize, 10)), 1000);
+    
+    // Get total count using parameterized query
+    const countResult = await db.query(`SELECT COUNT(*) as count FROM ${validatedTable}`);
+    const totalRows = parseInt(countResult.rows[0].count, 10);
     
     let migratedCount = 0;
     let offset = 0;
     
     // Process in batches
     while (offset < totalRows) {
+      // Using parameterized query for LIMIT and OFFSET
       const rows = await db.query(
-        `SELECT * FROM ${table} LIMIT ${batchSize} OFFSET ${offset}`
+        `SELECT * FROM ${validatedTable} ORDER BY id LIMIT $1 OFFSET $2`,
+        [validatedBatchSize, offset]
       );
       
-      for (const row of rows) {
+      for (const row of rows.rows) {
         const encrypted = { ...row };
         let needsUpdate = false;
         
@@ -459,7 +535,7 @@ export async function migrateToEncryption(db, table, batchSize = 100) {
           }
           
           await db.query(
-            `UPDATE ${table} SET ${updateFields.join(', ')} WHERE id = $1`,
+            `UPDATE ${validatedTable} SET ${updateFields.join(', ')} WHERE id = $1`,
             [row.id, ...updateValues]
           );
           
@@ -467,12 +543,12 @@ export async function migrateToEncryption(db, table, batchSize = 100) {
         }
       }
       
-      offset += batchSize;
+      offset += validatedBatchSize;
       
       logger.info(`Migration progress: ${offset}/${totalRows} rows processed`);
     }
     
-    logger.info(`Completed encryption migration for table: ${table}`, {
+    logger.info(`Completed encryption migration for table: ${validatedTable}`, {
       rowsMigrated: migratedCount,
       totalRows,
     });
@@ -495,26 +571,36 @@ export async function migrateToEncryption(db, table, batchSize = 100) {
  */
 export async function addHashColumns(db, table) {
   try {
-    const searchableFields = SEARCHABLE_FIELDS[table] || [];
+    // SQL Injection Prevention: Validate table name against whitelist
+    const validatedTable = validateTableName(table);
+    
+    const searchableFields = SEARCHABLE_FIELDS[validatedTable] || [];
     const addedColumns = [];
     
     for (const field of searchableFields) {
+      // Validate field name (only alphanumeric and underscore)
+      if (!/^[a-z_][a-z0-9_]*$/i.test(field)) {
+        logger.warn(`Invalid field name skipped: ${field}`);
+        continue;
+      }
+      
       const hashField = `${field}_hash`;
       
       try {
+        // Using validated identifiers in DDL statements
         await db.query(
-          `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${hashField} VARCHAR(64)`
+          `ALTER TABLE ${validatedTable} ADD COLUMN IF NOT EXISTS ${hashField} VARCHAR(64)`
         );
         
         await db.query(
-          `CREATE INDEX IF NOT EXISTS idx_${table}_${hashField} ON ${table}(${hashField})`
+          `CREATE INDEX IF NOT EXISTS idx_${validatedTable}_${hashField} ON ${validatedTable}(${hashField})`
         );
         
         addedColumns.push(hashField);
         
-        logger.info(`Added hash column: ${table}.${hashField}`);
+        logger.info(`Added hash column: ${validatedTable}.${hashField}`);
       } catch (error) {
-        logger.warn(`Failed to add hash column: ${table}.${hashField}`, {
+        logger.warn(`Failed to add hash column: ${validatedTable}.${hashField}`, {
           error: error.message,
         });
       }

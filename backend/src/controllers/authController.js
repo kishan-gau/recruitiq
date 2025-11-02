@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import Joi from 'joi';
 import config from '../config/index.js';
 import User from '../models/User.js';
@@ -9,12 +10,14 @@ import { ValidationError, UnauthorizedError, ConflictError } from '../middleware
 import tokenBlacklist from '../services/tokenBlacklist.js';
 import accountLockout from '../services/accountLockout.js';
 import ipTracking from '../services/ipTracking.js';
+import mfaService from '../services/mfaService.js';
+import { validatePassword } from '../utils/passwordSecurity.js';
 
 // Validation schemas
 const registerSchema = Joi.object({
   organizationName: Joi.string().min(2).max(100).required(),
   email: Joi.string().email().required(),
-  password: Joi.string().min(8).required(),
+  password: Joi.string().min(12).max(128).required(), // Updated to 12-char minimum per NIST guidelines
   firstName: Joi.string().min(1).max(50).required(),
   lastName: Joi.string().min(1).max(50).required()
 });
@@ -51,11 +54,27 @@ function generateRefreshToken(user) {
   return jwt.sign(
     {
       userId: user.id,
-      organizationId: user.organization_id
+      organizationId: user.organization_id,
+      jti: crypto.randomBytes(16).toString('hex') // Add unique token identifier
     },
     config.jwt.refreshSecret,
     { expiresIn: config.jwt.refreshExpiresIn }
   );
+}
+
+/**
+ * Extract device metadata from request
+ */
+function extractDeviceMetadata(req) {
+  const userAgent = req.get('user-agent') || '';
+  const ipAddress = req.ip || req.connection.remoteAddress || '';
+  
+  return {
+    userAgent,
+    ipAddress,
+    deviceFingerprint: RefreshToken.generateDeviceFingerprint(userAgent, ipAddress),
+    deviceName: RefreshToken.parseDeviceName(userAgent)
+  };
 }
 
 /**
@@ -70,6 +89,22 @@ export async function register(req, res, next) {
     }
 
     const { organizationName, email, password, firstName, lastName } = value;
+
+    // Validate password security (NIST SP 800-63B compliance)
+    const passwordValidation = await validatePassword(password, {
+      minLength: 12,
+      maxLength: 128,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireDigits: true,
+      requireSpecialChars: true,
+      checkBreached: true, // Check against Have I Been Pwned
+      checkCommon: true,   // Check against common password list
+    });
+
+    if (!passwordValidation.valid) {
+      throw new ValidationError(passwordValidation.errors.join('. '));
+    }
 
     // Check if email already exists
     const existingUser = await User.findByEmail(email);
@@ -108,10 +143,13 @@ export async function register(req, res, next) {
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // Store refresh token
+    // Store refresh token with device metadata
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
-    await RefreshToken.create(user.id, refreshToken, expiresAt);
+    const deviceMetadata = extractDeviceMetadata(req);
+    await RefreshToken.create(user.id, refreshToken, expiresAt, deviceMetadata);
+
+    logger.info(`Refresh token created for new user ${user.email} from device: ${deviceMetadata.deviceName}`);
 
     // Return user data and tokens
     res.status(201).json({
@@ -244,14 +282,49 @@ export async function login(req, res, next) {
     }
 
     // Check if MFA is enabled for this user
-    const mfaService = require('../services/mfaService');
     const { mfaEnabled } = await mfaService.checkMFARequired(user.id);
+    
+    // Check organization MFA policy
+    let mfaRequired = false;
+    let mfaEnforcementDate = null;
+    
+    if (user.organization_id) {
+      const org = await Organization.findById(user.organization_id);
+      if (org) {
+        mfaRequired = org.mfa_required || false;
+        mfaEnforcementDate = org.mfa_enforcement_date;
+      }
+    }
+
+    // Enforce mandatory MFA with grace period
+    if (mfaRequired && !mfaEnabled) {
+      const now = new Date();
+      const isGracePeriodActive = mfaEnforcementDate && new Date(mfaEnforcementDate) > now;
+      
+      if (isGracePeriodActive) {
+        // Grace period: Allow login but warn user
+        const daysRemaining = Math.ceil((new Date(mfaEnforcementDate) - now) / (1000 * 60 * 60 * 24));
+        logger.warn(`User ${user.email} logged in without MFA during grace period (${daysRemaining} days remaining)`);
+        
+        // Continue with normal login, but include warning in response
+        // (We'll handle this after the normal token generation)
+      } else {
+        // Grace period expired or no grace period: Block login
+        logger.warn(`Login blocked for ${user.email}: MFA required but not enabled (enforcement: ${mfaEnforcementDate || 'immediate'})`);
+        
+        return res.status(403).json({
+          success: false,
+          message: 'Multi-factor authentication is required',
+          code: 'MFA_SETUP_REQUIRED',
+          mfaRequired: true,
+          mfaEnforced: true,
+          setupRequired: true,
+        });
+      }
+    }
     
     if (mfaEnabled) {
       // Generate temporary MFA token (short-lived, 5 minutes)
-      const jwt = require('jsonwebtoken');
-      const config = require('../config');
-      
       const mfaToken = jwt.sign(
         {
           userId: user.id,
@@ -271,16 +344,66 @@ export async function login(req, res, next) {
       });
     }
 
+    // Get organization session policy
+    let sessionPolicy = 'multiple';
+    let maxSessionsPerUser = 5;
+    let concurrentLoginDetection = false;
+
+    if (user.organization_id) {
+      const org = await Organization.findById(user.organization_id);
+      if (org) {
+        sessionPolicy = org.session_policy || 'multiple';
+        maxSessionsPerUser = org.max_sessions_per_user || 5;
+        concurrentLoginDetection = org.concurrent_login_detection || false;
+      }
+    }
+
+    // Handle session policy
+    if (sessionPolicy === 'single') {
+      // Single session mode: Revoke all existing sessions
+      const existingSessions = await RefreshToken.getActiveSessions(user.id);
+      if (existingSessions.length > 0) {
+        await RefreshToken.revokeAllForUser(user.id);
+        logger.info(`Single session policy: Revoked ${existingSessions.length} existing session(s) for ${user.email}`);
+      }
+    } else if (concurrentLoginDetection) {
+      // Check for concurrent logins from different IPs
+      const recentSessions = await RefreshToken.getActiveSessions(user.id);
+      const currentIp = req.ip || req.connection.remoteAddress;
+      
+      // Check if there's an active session from a different IP in the last 5 minutes
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const concurrentSession = recentSessions.find(session => {
+        const lastUsed = new Date(session.last_used_at || session.created_at);
+        return session.ip_address !== currentIp && lastUsed > fiveMinutesAgo;
+      });
+
+      if (concurrentSession) {
+        logger.warn(`Concurrent login detected for ${user.email}: Current IP ${currentIp}, Active IP ${concurrentSession.ip_address}`);
+        // TODO: Send alert to org admin or block login
+        // For now, just log the warning
+      }
+    }
+
     // Generate tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // Store refresh token
+    // Store refresh token with device metadata
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
-    await RefreshToken.create(user.id, refreshToken, expiresAt);
+    const deviceMetadata = extractDeviceMetadata(req);
+    await RefreshToken.create(user.id, refreshToken, expiresAt, deviceMetadata);
 
-    logger.info(`User logged in: ${user.email} (${user.id}) from ${ip}`);
+    // Enforce session limit for multiple session mode
+    if (sessionPolicy === 'multiple') {
+      const revokedCount = await RefreshToken.enforceSessionLimit(user.id, maxSessionsPerUser);
+      if (revokedCount > 0) {
+        logger.info(`Session limit enforced for ${user.email}: ${revokedCount} old sessions revoked (max: ${maxSessionsPerUser})`);
+      }
+    }
+
+    logger.info(`User logged in: ${user.email} (${user.id}) from ${ip} on device: ${deviceMetadata.deviceName} [Policy: ${sessionPolicy}]`);
 
     // Set HTTP-only cookies for SSO across different ports
     const isProduction = process.env.NODE_ENV === 'production';
@@ -319,9 +442,25 @@ export async function login(req, res, next) {
           tier: user.organization_tier
         }
       },
+      token: accessToken, // For backward compatibility
       accessToken,
       refreshToken
     };
+
+    // Add MFA grace period warning if applicable
+    if (mfaRequired && !mfaEnabled && mfaEnforcementDate) {
+      const now = new Date();
+      const daysRemaining = Math.ceil((new Date(mfaEnforcementDate) - now) / (1000 * 60 * 60 * 24));
+      
+      if (daysRemaining > 0) {
+        response.mfaWarning = {
+          message: `MFA setup required. Multi-Factor Authentication is required for your organization. Please enable MFA within ${daysRemaining} days to continue accessing your account.`,
+          daysRemaining,
+          enforcementDate: mfaEnforcementDate,
+          setupRequired: true,
+        };
+      }
+    }
 
     // Add security notice if this is a new/suspicious IP
     if (ipAnalysis.isSuspicious) {
@@ -462,19 +601,27 @@ export async function refresh(req, res, next) {
       // Continue even if blacklisting fails
     }
 
-    // Revoke old refresh token from database
-    await RefreshToken.revoke(refreshToken);
-
     // Generate new tokens (token rotation)
     const newAccessToken = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
 
-    // Store new refresh token
+    // Rotate refresh token with device metadata
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
-    await RefreshToken.create(user.id, newRefreshToken, expiresAt);
+    const deviceMetadata = extractDeviceMetadata(req);
+    
+    await RefreshToken.rotate(
+      refreshToken, 
+      user.id, 
+      newRefreshToken, 
+      expiresAt, 
+      deviceMetadata
+    );
 
-    logger.info(`Tokens refreshed for user: ${user.email} (${user.id})`);
+    // Update last used timestamp
+    await RefreshToken.updateLastUsed(newRefreshToken);
+
+    logger.info(`Tokens refreshed for user: ${user.email} (${user.id}) from device: ${deviceMetadata.deviceName}`);
 
     // Set new HTTP-only cookies
     const isProduction = process.env.NODE_ENV === 'production';
@@ -641,7 +788,7 @@ export async function resetPassword(req, res, next) {
     // Validate input
     const schema = Joi.object({
       token: Joi.string().required(),
-      password: Joi.string().min(8).required(),
+      password: Joi.string().min(12).max(128).required(), // Updated to 12-char minimum
     });
 
     const { error, value } = schema.validate(req.body);
@@ -650,6 +797,22 @@ export async function resetPassword(req, res, next) {
     }
 
     const { token, password } = value;
+
+    // Validate password security (NIST SP 800-63B compliance)
+    const passwordValidation = await validatePassword(password, {
+      minLength: 12,
+      maxLength: 128,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireDigits: true,
+      requireSpecialChars: true,
+      checkBreached: true, // Check against Have I Been Pwned
+      checkCommon: true,   // Check against common password list
+    });
+
+    if (!passwordValidation.valid) {
+      throw new ValidationError(passwordValidation.errors.join('. '));
+    }
 
     // Reset password
     const result = await passwordResetService.resetPassword(token, password);
@@ -667,6 +830,119 @@ export async function resetPassword(req, res, next) {
     });
 
     logger.info(`Password reset completed for user: ${result.userId}`);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * GET /api/auth/sessions
+ * Get all active sessions for the authenticated user
+ */
+export async function getActiveSessions(req, res, next) {
+  try {
+    const userId = req.user.id;
+
+    const sessions = await RefreshToken.getActiveSessions(userId);
+
+    // Determine which session is the current one based on the request's refresh token
+    const currentRefreshToken = req.cookies?.refreshToken;
+    const currentDeviceFingerprint = currentRefreshToken 
+      ? RefreshToken.generateDeviceFingerprint(
+          req.get('user-agent') || '',
+          req.ip || req.connection.remoteAddress || ''
+        )
+      : null;
+
+    // Format sessions for response
+    const formattedSessions = sessions.map(session => ({
+      id: session.id,
+      deviceName: session.device_name || 'Unknown Device',
+      ipAddress: session.ip_address,
+      location: null, // TODO: Add IP geolocation lookup
+      createdAt: session.created_at,
+      lastUsedAt: session.last_used_at || session.created_at,
+      isCurrent: session.device_fingerprint === currentDeviceFingerprint,
+      userAgent: session.user_agent
+    }));
+
+    res.json({
+      success: true,
+      sessions: formattedSessions,
+      totalSessions: formattedSessions.length
+    });
+
+    logger.info(`Sessions list requested for user: ${req.user.email} (${userId})`);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * DELETE /api/auth/sessions/:sessionId
+ * Revoke a specific session
+ */
+export async function revokeSession(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+
+    const result = await RefreshToken.revokeSession(userId, sessionId);
+
+    if (!result) {
+      throw new ValidationError('Session not found or already revoked');
+    }
+
+    res.json({
+      success: true,
+      message: 'Session revoked successfully'
+    });
+
+    logger.info(`Session ${sessionId} revoked for user: ${req.user.email} (${userId})`);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * DELETE /api/auth/sessions
+ * Revoke all sessions except the current one
+ */
+export async function revokeAllSessions(req, res, next) {
+  try {
+    const userId = req.user.id;
+    
+    // Get current refresh token to exclude it
+    const currentRefreshToken = req.cookies?.refreshToken;
+    if (!currentRefreshToken) {
+      throw new ValidationError('Current session not found');
+    }
+
+    // Get current token record
+    const currentToken = await RefreshToken.findByToken(currentRefreshToken);
+    if (!currentToken) {
+      throw new UnauthorizedError('Invalid current session');
+    }
+
+    // Get all active sessions
+    const allSessions = await RefreshToken.getActiveSessions(userId);
+    
+    // Revoke all sessions except current one
+    let revokedCount = 0;
+    for (const session of allSessions) {
+      if (session.id !== currentToken.id) {
+        await RefreshToken.revokeSession(userId, session.id);
+        revokedCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${revokedCount} session(s) revoked successfully`,
+      revokedCount
+    });
+
+    logger.info(`All sessions revoked for user: ${req.user.email} (${userId}), count: ${revokedCount}`);
   } catch (error) {
     next(error);
   }

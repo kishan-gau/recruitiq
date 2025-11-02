@@ -328,6 +328,76 @@ class User {
     const result = await db.query(query, [role, JSON.stringify(permissions), id]);
     return result.rows[0];
   }
+
+  /**
+   * Check if organization can add more users (license limit check)
+   */
+  static async checkUserLimit(organizationId) {
+    const query = `
+      SELECT 
+        o.max_users,
+        o.tier,
+        COUNT(u.id) FILTER (WHERE u.is_active = true AND u.deleted_at IS NULL) as active_user_count
+      FROM organizations o
+      LEFT JOIN users u ON u.organization_id = o.id
+      WHERE o.id = $1
+      GROUP BY o.id, o.max_users, o.tier
+    `;
+
+    const result = await db.query(query, [organizationId]);
+    
+    if (result.rows.length === 0) {
+      return { canAddUser: false, limit: 0, current: 0, tier: 'unknown' };
+    }
+
+    const { max_users, active_user_count, tier } = result.rows[0];
+    const current = parseInt(active_user_count) || 0;
+
+    // null or -1 means unlimited
+    if (max_users === null || max_users === -1) {
+      return { 
+        canAddUser: true, 
+        limit: null, 
+        current,
+        tier,
+        unlimited: true 
+      };
+    }
+
+    const limit = parseInt(max_users);
+    const canAddUser = current < limit;
+
+    return { 
+      canAddUser, 
+      limit, 
+      current,
+      tier,
+      unlimited: false 
+    };
+  }
+
+  /**
+   * Update user active status (enable/disable)
+   */
+  static async updateStatus(id, isActive, organizationId) {
+    // If enabling user, check license limit
+    if (isActive) {
+      const { canAddUser, limit, current } = await this.checkUserLimit(organizationId);
+      if (!canAddUser) {
+        throw new Error(`Cannot enable user. Organization has reached the maximum of ${limit} enabled users (currently ${current} enabled).`);
+      }
+    }
+
+    const query = `
+      UPDATE users 
+      SET is_active = $1, updated_at = NOW()
+      WHERE id = $2 AND deleted_at IS NULL
+      RETURNING id, email, name, is_active
+    `;
+
+    const result = await db.query(query, [isActive, id]);
+    return result.rows[0];
+  }
 }
 
 export default User;

@@ -3,11 +3,11 @@
  * Handles secure password reset functionality
  */
 
-const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
-const pool = require('../config/database');
-const logger = require('../utils/logger');
-const tokenBlacklist = require('./tokenBlacklist');
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import pool from '../config/database.js';
+import logger from '../utils/logger.js';
+import tokenBlacklist from './tokenBlacklist.js';
 
 class PasswordResetService {
   /**
@@ -308,4 +308,4 @@ class PasswordResetService {
   }
 }
 
-module.exports = new PasswordResetService();
+export default new PasswordResetService();

@@ -18,6 +18,53 @@ const updateWorkspaceSchema = Joi.object({
 });
 
 /**
+ * Check if organization can create more workspaces (license limit check)
+ */
+async function checkWorkspaceLimit(organizationId) {
+  const query = `
+    SELECT 
+      o.max_workspaces,
+      o.tier,
+      COUNT(w.id) FILTER (WHERE w.deleted_at IS NULL) as workspace_count
+    FROM organizations o
+    LEFT JOIN workspaces w ON w.organization_id = o.id
+    WHERE o.id = $1
+    GROUP BY o.id, o.max_workspaces, o.tier
+  `;
+
+  const result = await db.query(query, [organizationId]);
+  
+  if (result.rows.length === 0) {
+    return { canCreate: false, limit: 0, current: 0, tier: 'unknown' };
+  }
+
+  const { max_workspaces, workspace_count, tier } = result.rows[0];
+  const current = parseInt(workspace_count) || 0;
+
+  // null or -1 means unlimited
+  if (max_workspaces === null || max_workspaces === -1) {
+    return { 
+      canCreate: true, 
+      limit: null, 
+      current,
+      tier,
+      unlimited: true 
+    };
+  }
+
+  const limit = parseInt(max_workspaces);
+  const canCreate = current < limit;
+
+  return { 
+    canCreate, 
+    limit, 
+    current,
+    tier,
+    unlimited: false 
+  };
+}
+
+/**
  * List all workspaces
  */
 export async function listWorkspaces(req, res, next) {
@@ -115,6 +162,19 @@ export async function createWorkspace(req, res, next) {
     const { error, value } = createWorkspaceSchema.validate(req.body);
     if (error) {
       throw new ValidationError(error.details[0].message);
+    }
+
+    // Check license workspace limit
+    const limitCheck = await checkWorkspaceLimit(organizationId);
+    if (!limitCheck.canCreate) {
+      return res.status(403).json({
+        success: false,
+        message: `Workspace limit reached. Your organization has reached the maximum of ${limitCheck.limit} workspaces.`,
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+        tier: req.user.tier || 'starter',
+        upgradeSuggestion: 'Please upgrade your plan to create more workspaces.'
+      });
     }
 
     const { name, description, settings } = value;

@@ -8,7 +8,7 @@
  *   import { loadSecret, loadSecrets } from './utils/secrets.js';
  *   
  *   const dbPassword = await loadSecret('DATABASE_PASSWORD');
- *   const { JWT_SECRET, STRIPE_KEY } = await loadSecrets(['JWT_SECRET', 'STRIPE_KEY']);
+ *   const { JWT_SECRET } = await loadSecrets(['JWT_SECRET']);
  */
 
 import secretsManager from '../services/secretsManager.js';
@@ -164,25 +164,6 @@ export async function loadAWSSecrets() {
 }
 
 /**
- * Load Stripe secrets
- * 
- * @returns {Promise<Object>} Stripe secrets
- */
-export async function loadStripeSecrets() {
-  try {
-    const secrets = await loadSecrets(
-      ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
-      true
-    );
-    
-    return secrets;
-  } catch (error) {
-    logger.warn('Failed to load Stripe secrets');
-    return null;
-  }
-}
-
-/**
  * Load email/SMTP secrets
  * 
  * @returns {Promise<Object>} Email secrets
@@ -312,7 +293,6 @@ export default {
   loadJWTSecrets,
   loadDatabaseSecrets,
   loadAWSSecrets,
-  loadStripeSecrets,
   loadEmailSecrets,
   rotateSecret,
   generateRandomSecret,

@@ -19,7 +19,8 @@ import CustomerDetail from './pages/licenses/CustomerDetail';
 import LicenseCreate from './pages/licenses/LicenseCreate';
 import Analytics from './pages/licenses/Analytics';
 import Tiers from './pages/licenses/Tiers';
-import Settings from './pages/licenses/Settings';
+import LicenseSettings from './pages/licenses/Settings';
+import Settings from './pages/Settings';
 
 // User Management Pages
 import UserManagement from './pages/users/UserManagement';
@@ -91,8 +92,11 @@ function App() {
           <Route path="create" element={<LicenseCreate />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="tiers" element={<Tiers />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="settings" element={<LicenseSettings />} />
         </Route>
+        
+        {/* Settings */}
+        <Route path="settings" element={<Settings />} />
         
         {/* User Management Section */}
         <Route path="users">

@@ -2,16 +2,155 @@
 # Testing all 47 endpoints with Given/When/Then structure
 
 $ErrorActionPreference = "Continue"
+
+# ============================================================================
+# PREREQUISITE CHECKS AND AUTO-START
+# ============================================================================
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "  BDD Test Suite - Prerequisite Validation & Auto-Start" -ForegroundColor Cyan
+Write-Host "================================================================`n" -ForegroundColor Cyan
+
+$baseUrl = 'http://localhost:4000/api'
+$allPrerequisitesMet = $true
+$serverJob = $null
+$autoStartedServer = $false
+
+# Check 1: Server availability
+Write-Host "Checking server availability..." -ForegroundColor Yellow
+try {
+    $healthCheck = Invoke-WebRequest -Uri "$baseUrl/health" -TimeoutSec 5 -ErrorAction Stop
+    Write-Host "✓ Server is already running on http://localhost:4000" -ForegroundColor Green
+}
+catch {
+    Write-Host "✗ Server is NOT running - attempting to start it..." -ForegroundColor Yellow
+    
+    try {
+        # Get the backend directory (parent of tests folder)
+        $backendDir = Split-Path -Parent $PSScriptRoot
+        
+        # Start server in background
+        $serverJob = Start-Job -ScriptBlock {
+            param($path)
+            Set-Location $path
+            npm run dev
+        } -ArgumentList $backendDir
+        
+        Write-Host "Waiting for server to start (up to 30 seconds)..." -ForegroundColor Yellow
+        
+        # Wait for server to be ready
+        $maxAttempts = 30
+        $attempt = 0
+        $serverStarted = $false
+        
+        while ($attempt -lt $maxAttempts -and -not $serverStarted) {
+            Start-Sleep -Seconds 1
+            $attempt++
+            try {
+                $null = Invoke-WebRequest -Uri "$baseUrl/health" -TimeoutSec 2 -ErrorAction Stop
+                $serverStarted = $true
+                $autoStartedServer = $true
+                Write-Host "✓ Server started successfully on http://localhost:4000" -ForegroundColor Green
+            }
+            catch {
+                # Still waiting...
+            }
+        }
+        
+        if (-not $serverStarted) {
+            Write-Host "✗ Server failed to start within 30 seconds" -ForegroundColor Red
+            Write-Host "  Manual action required: npm run dev" -ForegroundColor Yellow
+            $allPrerequisitesMet = $false
+            if ($serverJob) {
+                Stop-Job -Job $serverJob
+                Remove-Job -Job $serverJob
+                $serverJob = $null
+            }
+        }
+    }
+    catch {
+        Write-Host "✗ Error starting server: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "  Manual action required: npm run dev" -ForegroundColor Yellow
+        $allPrerequisitesMet = $false
+    }
+}
+
+# Check 2: Database connectivity
+Write-Host "Checking database connectivity..." -ForegroundColor Yellow
+try {
+    $healthResponse = Invoke-RestMethod -Uri "$baseUrl/health" -TimeoutSec 5 -ErrorAction Stop
+    if ($healthResponse.database -eq "connected" -or $healthResponse.db -eq "healthy" -or $healthResponse.status -eq "ok") {
+        Write-Host "✓ Database is connected and available" -ForegroundColor Green
+    } else {
+        Write-Host "✗ Database connection issue detected" -ForegroundColor Red
+        Write-Host "  Manual action: Ensure PostgreSQL is running and connection settings are correct" -ForegroundColor Yellow
+        $allPrerequisitesMet = $false
+    }
+}
+catch {
+    Write-Host "✗ Unable to verify database connectivity" -ForegroundColor Red
+    Write-Host "  Manual action: Ensure PostgreSQL is running" -ForegroundColor Yellow
+    $allPrerequisitesMet = $false
+}
+
+# Check 3: Redis availability (optional)
+Write-Host "Checking Redis availability (optional)..." -ForegroundColor Yellow
+try {
+    $healthResponse = Invoke-RestMethod -Uri "$baseUrl/health" -TimeoutSec 5 -ErrorAction Stop
+    if ($healthResponse.redis -eq "connected" -or $healthResponse.cache -eq "healthy") {
+        Write-Host "✓ Redis is connected and available" -ForegroundColor Green
+    } else {
+        Write-Host "⚠ Redis is not available (tests will run without caching)" -ForegroundColor Yellow
+    }
+}
+catch {
+    Write-Host "⚠ Redis status unknown (optional - tests will continue)" -ForegroundColor Yellow
+}
+
+Write-Host ""
+
+# Exit if critical prerequisites are not met
+if (-not $allPrerequisitesMet) {
+    Write-Host "================================================================" -ForegroundColor Red
+    Write-Host "  CRITICAL: Prerequisites not met. Cannot run BDD tests." -ForegroundColor Red
+    Write-Host "================================================================`n" -ForegroundColor Red
+    
+    # Clean up auto-started server if prerequisites failed
+    if ($serverJob) {
+        Write-Host "Cleaning up auto-started server..." -ForegroundColor Yellow
+        Stop-Job -Job $serverJob -ErrorAction SilentlyContinue
+        Remove-Job -Job $serverJob -ErrorAction SilentlyContinue
+    }
+    
+    exit 1
+}
+
+Write-Host "================================================================" -ForegroundColor Green
+Write-Host "  All prerequisites met. Starting BDD test suite..." -ForegroundColor Green
+if ($autoStartedServer) {
+    Write-Host "  Note: Server was auto-started and will be stopped after tests" -ForegroundColor Cyan
+}
+Write-Host "================================================================`n" -ForegroundColor Green
+
+# ============================================================================
+# AUTHENTICATION
+# ============================================================================
 $token = $global:token
 
 if (-not $token) {
     Write-Host "`nAuthenticating..." -ForegroundColor Yellow
-    $loginResp = Invoke-RestMethod -Uri "http://localhost:4000/api/auth/login" -Method Post `
-        -Headers @{"Content-Type"="application/json"} `
-        -Body '{"email":"founder@techstartup.com","password":"SecurePass123!"}'
-    $global:token = $loginResp.accessToken
-    $token = $global:token
-    Write-Host "Authenticated successfully!`n" -ForegroundColor Green
+    try {
+        $loginResp = Invoke-RestMethod -Uri "$baseUrl/auth/login" -Method Post `
+            -Headers @{"Content-Type"="application/json"} `
+            -Body '{"email":"founder@techstartup.com","password":"SecurePass123!"}'
+        $global:token = $loginResp.accessToken
+        $token = $global:token
+        Write-Host "Authenticated successfully!`n" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "✗ Authentication failed. Cannot proceed with tests." -ForegroundColor Red
+        Write-Host "  Error: $($_.Exception.Message)" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 $headers = @{
@@ -19,7 +158,6 @@ $headers = @{
     'Content-Type' = 'application/json'
 }
 
-$baseUrl = 'http://localhost:4000/api'
 $passed = 0
 $failed = 0
 $testData = @{
@@ -123,6 +261,39 @@ Write-Host "    Given a user with expired access token but valid refresh token" 
 Write-Host "    When they request POST /auth/refresh with refresh token" -ForegroundColor DarkGray
 Write-Host "    Then they should receive new access and refresh tokens" -ForegroundColor DarkGray
 Write-Host "    Result: SKIP (requires real refresh token from login)" -ForegroundColor Yellow
+Write-Host ""
+
+# Password Reset Tests
+$forgotPasswordBody = @{ 
+    email = "founder@techstartup.com"
+} | ConvertTo-Json
+
+$forgotResult = Test-Scenario `
+    -Feature "Password Reset" `
+    -Scenario "User requests password reset" `
+    -Given "a registered user who forgot their password" `
+    -When "they request POST /auth/forgot-password with email" `
+    -Then "a password reset email should be sent with reset token" `
+    -Method "POST" `
+    -Endpoint "/auth/forgot-password" `
+    -Body $forgotPasswordBody `
+    -NoAuth $true `
+    -Validator { param($r) $r.success -eq $true }
+
+# Note: In production, we'd extract the token from email
+# For testing, we'll use a dummy token to test the validation endpoint
+Write-Host "  Scenario: User verifies password reset token" -ForegroundColor Cyan
+Write-Host "    Given a user received password reset email with token" -ForegroundColor DarkGray
+Write-Host "    When they request GET /auth/reset-password/:token to verify token" -ForegroundColor DarkGray
+Write-Host "    Then the token validity should be confirmed" -ForegroundColor DarkGray
+Write-Host "    Result: SKIP (requires real token from email/database)" -ForegroundColor Yellow
+Write-Host ""
+
+Write-Host "  Scenario: User resets password with valid token" -ForegroundColor Cyan
+Write-Host "    Given a user with valid password reset token" -ForegroundColor DarkGray
+Write-Host "    When they request POST /auth/reset-password with new password" -ForegroundColor DarkGray
+Write-Host "    Then their password should be updated successfully" -ForegroundColor DarkGray
+Write-Host "    Result: SKIP (requires real token from email/database)" -ForegroundColor Yellow
 Write-Host ""
 
 # MFA Tests
@@ -838,14 +1009,14 @@ $rate = if ($total -gt 0) { [math]::Round(($passed / $total) * 100, 1) } else { 
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "  COMPREHENSIVE TEST SUMMARY - BDD FORMAT" -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "  Total Scenarios Tested: $total / 47 expected" -ForegroundColor White
+Write-Host "  Total Scenarios Tested: $total / 50 expected" -ForegroundColor White
 Write-Host "  Passed: $passed" -ForegroundColor Green
 Write-Host "  Failed: $failed" -ForegroundColor $(if ($failed -gt 0) { "Red" } else { "Green" })
 Write-Host "  Success Rate: $rate%" -ForegroundColor $(if ($rate -eq 100) { "Green" } elseif ($rate -ge 90) { "Yellow" } else { "Red" })
 Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Test Coverage by Feature Group:" -ForegroundColor White
-Write-Host "  1. Authentication and Authorization: 3 scenarios" -ForegroundColor Gray
+Write-Host "  1. Authentication and Authorization: 4 scenarios (1 password reset active, 2 skip)" -ForegroundColor Gray
 Write-Host "  2. Organization Management: 3 scenarios" -ForegroundColor Gray
 Write-Host "  3. User Management: 6 scenarios" -ForegroundColor Gray
 Write-Host "  4. Workspace Management: 8 scenarios" -ForegroundColor Gray
@@ -864,3 +1035,16 @@ if ($rate -eq 100) {
     Write-Host "  ❌ ATTENTION NEEDED! Multiple test failures detected." -ForegroundColor Red
 }
 Write-Host ""
+
+# ============================================================================
+# CLEANUP: Stop auto-started server
+# ============================================================================
+if ($serverJob) {
+    Write-Host ""
+    Write-Host "================================================================" -ForegroundColor Cyan
+    Write-Host "Stopping auto-started server..." -ForegroundColor Yellow
+    Stop-Job -Job $serverJob -ErrorAction SilentlyContinue
+    Remove-Job -Job $serverJob -ErrorAction SilentlyContinue
+    Write-Host "✓ Server stopped successfully" -ForegroundColor Green
+    Write-Host "================================================================" -ForegroundColor Cyan
+}

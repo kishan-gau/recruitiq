@@ -64,17 +64,21 @@ async function seedTestData() {
     // 1. Create test organization
     console.log('🏢 Creating test organization...');
     await client.query(`
-      INSERT INTO organizations (id, name, slug, tier, max_users, max_workspaces, created_at, updated_at)
-      VALUES ($1, 'Test Organization', 'test-org', 'professional', 50, 10, NOW(), NOW())
+      INSERT INTO organizations (
+        id, name, slug, tier, max_users, max_workspaces, 
+        deployment_model, mfa_required, mfa_enforcement_date,
+        created_at, updated_at
+      )
+      VALUES ($1, 'Test Organization', 'test-org', 'professional', 50, 10, 'shared', true, NOW() + INTERVAL '7 days', NOW(), NOW())
     `, [TEST_ORG_ID]);
-    console.log(`✓ Organization created: ${TEST_ORG_ID}\n`);
+    console.log(`✓ Organization created: ${TEST_ORG_ID} (MFA required with 7-day grace period)\n`);
     
     // 2. Create test user with hashed password
     console.log('👤 Creating test user...');
     const hashedPassword = await bcrypt.hash(TEST_PASSWORD, 10);
     await client.query(`
-      INSERT INTO users (id, organization_id, email, password_hash, name, role, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, 'Test User', 'admin', NOW(), NOW())
+      INSERT INTO users (id, organization_id, email, password_hash, name, user_type, legacy_role, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, 'Test User', 'tenant', 'admin', NOW(), NOW())
     `, [TEST_USER_ID, TEST_ORG_ID, TEST_EMAIL, hashedPassword]);
     console.log(`✓ User created: ${TEST_EMAIL}`);
     console.log(`  Password: ${TEST_PASSWORD}\n`);
