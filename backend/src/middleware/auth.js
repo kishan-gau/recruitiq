@@ -127,8 +127,8 @@ export const authenticate = async (req, res, next) => {
     
     // Set organization context for RLS (only for tenant users)
     if (user.user_type === 'tenant' && user.organization_id) {
-      // NOTE: SQL injection safe - UUID format is validated before interpolation
-      // PostgreSQL SET LOCAL doesn't support parameterized queries, so we validate the format
+      // Set RLS context using parameterized query (SQL injection safe)
+      // Using set_config() instead of SET LOCAL for proper parameterization
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(user.organization_id)) {
         logger.error('Invalid organization_id format', { userId: user.id });
@@ -137,8 +137,11 @@ export const authenticate = async (req, res, next) => {
           message: 'Invalid organization context',
         });
       }
-      // sql-injection-safe: UUID validated above
-      await pool.query(`SET LOCAL app.current_organization_id = '${user.organization_id}'`);
+      // Use set_config() with parameterized query - fully SQL injection safe
+      await pool.query(
+        "SELECT set_config('app.current_organization_id', $1, true)",
+        [user.organization_id]
+      );
     }
     
     // Update last login (async, don't wait)

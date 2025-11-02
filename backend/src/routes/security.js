@@ -16,7 +16,7 @@ const router = express.Router();
 
 // All dashboard routes require admin role
 router.use(authenticate);
-router.use(requireRole(['admin', 'security_admin']));
+router.use(requireRole(['admin', 'security_admin', 'platform_admin']));
 
 /**
  * GET /api/security/dashboard

@@ -2,36 +2,60 @@
 
 Complete testing suite for the RecruitIQ Backend API using BDD/Gherkin format.
 
+## ⚡ STANDARD TESTING COMMAND
+
+**Use this to run ALL tests (Jest + BDD):**
+
+```bash
+npm run test:all
+```
+
+This is the **standard testing approach** for RecruitIQ Backend. See [Testing Strategy](../docs/TESTING_STRATEGY.md) for complete documentation.
+
 ## 🎯 Test Suite Overview
 
-- **Total Endpoints**: 47
-- **Test Format**: BDD/Gherkin (Given/When/Then)
-- **Current Pass Rate**: 86.5% (32/37 executed)
+- **Total Endpoints**: 47+ (BDD) + 38+ (Jest)
+- **Test Formats**: 
+  - Jest (Unit/Integration/Security - Automated)
+  - BDD/Gherkin (E2E - Manual)
 - **Test Files**: 
-  - `test-quick.ps1` - Quick test (10 core endpoints)
-  - `test-all-bdd.ps1` - Complete test (47 endpoints)
-- **Documentation**: `TEST_DOCUMENTATION.md`
-- **Postman Collection**: `RecruitIQ-Backend-API.postman_collection.json`
+  - `test-all-bdd.ps1` - Complete BDD E2E test (47+ endpoints)
+  - `scripts/run-all-tests.ps1` - **Unified test runner (USE THIS)**
+  - `src/**/__tests__/*.test.js` - Jest unit tests
+  - `tests/integration/*.test.js` - Jest integration tests
+- **Documentation**: 
+  - `docs/TESTING_STRATEGY.md` - Complete testing strategy
+  - `docs/TESTING_QUICK_REFERENCE.md` - Quick reference card
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Backend server running on `http://localhost:4000`
-- PostgreSQL database configured
-- Valid test credentials
+- **For Jest Tests**: No prerequisites (uses mocks)
+- **For BDD Tests**: 
+  - Backend server running on `http://localhost:3000`
+  - PostgreSQL database configured
+  - Valid test credentials
 
 ### Run Tests
 
-**Quick Test (10 endpoints - 2 minutes)**
-```powershell
-cd C:\RecruitIQ\backend
-powershell -ExecutionPolicy Bypass -File .\test-quick.ps1
+**🌟 Recommended: Run All Tests (Jest + BDD)**
+```bash
+npm run test:all           # Run everything
+npm run test:all:jest      # Run only Jest tests
+npm run test:all:bdd       # Run only BDD tests
 ```
 
-**Complete Test (47 endpoints - 5 minutes)**
+**Jest Tests Only (Fast - ~8 seconds)**
+```bash
+npm test                   # Run all Jest tests with coverage
+npm run test:watch         # Run in watch mode
+npm run test:integration   # Run integration tests only
+```
+
+**BDD E2E Tests Only (Complete - ~5 minutes)**
 ```powershell
 cd C:\RecruitIQ\backend
-powershell -ExecutionPolicy Bypass -File .\test-all-bdd.ps1
+.\tests\test-all-bdd.ps1
 ```
 
 ## 📊 Test Results (Latest Run)

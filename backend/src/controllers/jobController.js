@@ -12,6 +12,53 @@ function arrayToString(value) {
   return value || '';
 }
 
+/**
+ * Check if organization can create more jobs (license limit check)
+ */
+async function checkJobLimit(organizationId) {
+  const query = `
+    SELECT 
+      o.max_jobs,
+      o.tier,
+      COUNT(j.id) FILTER (WHERE j.deleted_at IS NULL) as job_count
+    FROM organizations o
+    LEFT JOIN jobs j ON j.organization_id = o.id
+    WHERE o.id = $1
+    GROUP BY o.id, o.max_jobs, o.tier
+  `;
+
+  const result = await db.query(query, [organizationId]);
+  
+  if (result.rows.length === 0) {
+    return { canCreate: false, limit: 0, current: 0, tier: 'unknown' };
+  }
+
+  const { max_jobs, job_count, tier } = result.rows[0];
+  const current = parseInt(job_count) || 0;
+
+  // null or -1 means unlimited
+  if (max_jobs === null || max_jobs === -1) {
+    return { 
+      canCreate: true, 
+      limit: null, 
+      current,
+      tier,
+      unlimited: true 
+    };
+  }
+
+  const limit = parseInt(max_jobs);
+  const canCreate = current < limit;
+
+  return { 
+    canCreate, 
+    limit, 
+    current,
+    tier,
+    unlimited: false 
+  };
+}
+
 // Validation schemas
 const createJobSchema = Joi.object({
   workspaceId: Joi.string().uuid().required(),
@@ -329,6 +376,19 @@ export async function createJob(req, res, next) {
     const { error, value } = createJobSchema.validate(req.body);
     if (error) {
       throw new ValidationError(error.details[0].message);
+    }
+
+    // Check license job limit
+    const limitCheck = await checkJobLimit(organizationId);
+    if (!limitCheck.canCreate) {
+      return res.status(403).json({
+        success: false,
+        message: `Job limit reached. Your organization has reached the maximum of ${limitCheck.limit} jobs.`,
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+        tier: req.user.tier || 'starter',
+        upgradeSuggestion: 'Please upgrade your plan to create more job postings.'
+      });
     }
 
     // Verify workspace belongs to organization

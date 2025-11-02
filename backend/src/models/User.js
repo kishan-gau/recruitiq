@@ -88,7 +88,7 @@ class User {
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN role_permissions rp ON r.id = rp.role_id
-      LEFT JOIN permissions p ON rp.permission_id = p.id
+      LEFT JOIN permissions p ON rp.permission_id = p.id OR p.id = ANY(u.additional_permissions)
       LEFT JOIN organizations o ON u.organization_id = o.id
       WHERE u.email = $1 AND u.deleted_at IS NULL
       GROUP BY u.id, u.organization_id, u.email, u.password_hash, u.email_verified,
@@ -101,13 +101,13 @@ class User {
     
     const result = await db.query(query, [email.toLowerCase()]);
     if (result.rows[0]) {
-      // Merge role permissions with additional user-specific permissions
       const user = result.rows[0];
-      const rolePermissions = user.permissions || [];
-      const additionalPermissions = user.additional_permissions || [];
-      user.permissions = [...new Set([...rolePermissions, ...additionalPermissions])];
-      // Set role to role_name for backward compatibility
-      user.role = user.role_name;
+      // Parse JSON array to regular array if needed
+      if (typeof user.permissions === 'string') {
+        user.permissions = JSON.parse(user.permissions);
+      }
+      // Set role to role_name or legacy_role for backward compatibility
+      user.role = user.role_name || user.legacy_role;
     }
     return result.rows[0];
   }
@@ -154,7 +154,7 @@ class User {
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN role_permissions rp ON r.id = rp.role_id
-      LEFT JOIN permissions p ON rp.permission_id = p.id
+      LEFT JOIN permissions p ON rp.permission_id = p.id OR p.id = ANY(u.additional_permissions)
       LEFT JOIN organizations o ON u.organization_id = o.id
       WHERE u.id = $1 AND u.deleted_at IS NULL
       GROUP BY u.id, u.organization_id, u.email, u.password_hash, u.email_verified,
@@ -167,13 +167,13 @@ class User {
     
     const result = await db.query(query, [id]);
     if (result.rows[0]) {
-      // Merge role permissions with additional user-specific permissions
       const user = result.rows[0];
-      const rolePermissions = user.permissions || [];
-      const additionalPermissions = user.additional_permissions || [];
-      user.permissions = [...new Set([...rolePermissions, ...additionalPermissions])];
-      // Set role to role_name for backward compatibility
-      user.role = user.role_name;
+      // Parse JSON array to regular array if needed
+      if (typeof user.permissions === 'string') {
+        user.permissions = JSON.parse(user.permissions);
+      }
+      // Set role to role_name or legacy_role for backward compatibility
+      user.role = user.role_name || user.legacy_role;
     }
     return result.rows[0];
   }
@@ -326,6 +326,76 @@ class User {
     `;
 
     const result = await db.query(query, [role, JSON.stringify(permissions), id]);
+    return result.rows[0];
+  }
+
+  /**
+   * Check if organization can add more users (license limit check)
+   */
+  static async checkUserLimit(organizationId) {
+    const query = `
+      SELECT 
+        o.max_users,
+        o.tier,
+        COUNT(u.id) FILTER (WHERE u.is_active = true AND u.deleted_at IS NULL) as active_user_count
+      FROM organizations o
+      LEFT JOIN users u ON u.organization_id = o.id
+      WHERE o.id = $1
+      GROUP BY o.id, o.max_users, o.tier
+    `;
+
+    const result = await db.query(query, [organizationId]);
+    
+    if (result.rows.length === 0) {
+      return { canAddUser: false, limit: 0, current: 0, tier: 'unknown' };
+    }
+
+    const { max_users, active_user_count, tier } = result.rows[0];
+    const current = parseInt(active_user_count) || 0;
+
+    // null or -1 means unlimited
+    if (max_users === null || max_users === -1) {
+      return { 
+        canAddUser: true, 
+        limit: null, 
+        current,
+        tier,
+        unlimited: true 
+      };
+    }
+
+    const limit = parseInt(max_users);
+    const canAddUser = current < limit;
+
+    return { 
+      canAddUser, 
+      limit, 
+      current,
+      tier,
+      unlimited: false 
+    };
+  }
+
+  /**
+   * Update user active status (enable/disable)
+   */
+  static async updateStatus(id, isActive, organizationId) {
+    // If enabling user, check license limit
+    if (isActive) {
+      const { canAddUser, limit, current } = await this.checkUserLimit(organizationId);
+      if (!canAddUser) {
+        throw new Error(`Cannot enable user. Organization has reached the maximum of ${limit} enabled users (currently ${current} enabled).`);
+      }
+    }
+
+    const query = `
+      UPDATE users 
+      SET is_active = $1, updated_at = NOW()
+      WHERE id = $2 AND deleted_at IS NULL
+      RETURNING id, email, name, is_active
+    `;
+
+    const result = await db.query(query, [isActive, id]);
     return result.rows[0];
   }
 }

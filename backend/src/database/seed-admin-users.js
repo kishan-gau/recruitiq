@@ -80,6 +80,74 @@ async function ensureDefaultOrganization() {
 }
 
 /**
+ * Seed permissions
+ */
+async function seedPermissions() {
+  const client = await pool.connect();
+  try {
+    console.log('Seeding permissions...');
+    
+    const permissions = [
+      // Portal permissions
+      { name: 'portal.view', category: 'portal', description: 'View portal dashboard' },
+      { name: 'portal.manage', category: 'portal', description: 'Manage portal settings' },
+      
+      // License permissions
+      { name: 'license.view', category: 'license', description: 'View licenses' },
+      { name: 'license.create', category: 'license', description: 'Create licenses' },
+      { name: 'license.edit', category: 'license', description: 'Edit licenses' },
+      { name: 'license.delete', category: 'license', description: 'Delete licenses' },
+      { name: 'license.renew', category: 'license', description: 'Renew licenses' },
+      { name: 'license.suspend', category: 'license', description: 'Suspend/reactivate licenses' },
+      { name: 'license.download', category: 'license', description: 'Download license files' },
+      { name: 'license.analytics', category: 'license', description: 'View license analytics' },
+      { name: 'license.tiers.manage', category: 'license', description: 'Manage tier presets' },
+      
+      // Security permissions
+      { name: 'security.view', category: 'security', description: 'View security dashboard' },
+      { name: 'security.manage', category: 'security', description: 'Manage security settings' },
+      { name: 'security.audit', category: 'security', description: 'View audit logs' },
+      
+      // VPS permissions
+      { name: 'vps.view', category: 'vps', description: 'View VPS instances' },
+      { name: 'vps.provision', category: 'vps', description: 'Provision VPS instances' },
+      { name: 'vps.manage', category: 'vps', description: 'Manage VPS instances' },
+      { name: 'vps.delete', category: 'vps', description: 'Delete VPS instances' },
+      
+      // Customer permissions
+      { name: 'customer.view', category: 'customer', description: 'View customers' },
+      { name: 'customer.create', category: 'customer', description: 'Create customers' },
+      { name: 'customer.edit', category: 'customer', description: 'Edit customers' },
+      { name: 'customer.delete', category: 'customer', description: 'Delete customers' },
+      
+      // Tenant permissions
+      { name: 'tenant.view', category: 'tenant', description: 'View tenant information' },
+      { name: 'tenant.manage', category: 'tenant', description: 'Manage tenant settings' },
+    ];
+    
+    const permissionIds = {};
+    
+    for (const perm of permissions) {
+      const result = await client.query(`
+        INSERT INTO permissions (name, category, description)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (name) DO UPDATE SET
+          category = EXCLUDED.category,
+          description = EXCLUDED.description
+        RETURNING id
+      `, [perm.name, perm.category, perm.description]);
+      
+      permissionIds[perm.name] = result.rows[0].id;
+    }
+    
+    console.log(`✓ Seeded ${permissions.length} permissions\n`);
+    return permissionIds;
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Seed platform admin users
  */
 async function seedAdminUsers() {
@@ -87,6 +155,9 @@ async function seedAdminUsers() {
   
   try {
     console.log('Starting admin user seeding...\n');
+
+    // Seed permissions first
+    const permissionIds = await seedPermissions();
 
     // Get or create organization
     const organizationId = await ensureDefaultOrganization();
@@ -97,40 +168,81 @@ async function seedAdminUsers() {
       try {
         // Check if user already exists
         const existingUser = await client.query(
-          'SELECT id, email, role FROM users WHERE email = $1',
+          'SELECT id, email, legacy_role FROM users WHERE email = $1',
           [user.email]
         );
 
         if (existingUser.rows.length > 0) {
-          console.log(`⚠ User ${user.email} already exists (${existingUser.rows[0].role})`);
+          console.log(`⚠ User ${user.email} already exists (${existingUser.rows[0].legacy_role}), updating permissions...`);
+          
+          // Update permissions for existing user
+          const userPermissions = [];
+          if (user.role === 'platform_admin') {
+            userPermissions.push(...Object.values(permissionIds));
+          } else if (user.role === 'security_admin') {
+            userPermissions.push(
+              permissionIds['security.view'],
+              permissionIds['security.manage'],
+              permissionIds['security.audit'],
+              permissionIds['portal.view']
+            );
+          }
+          
+          await client.query(
+            `UPDATE users 
+             SET additional_permissions = $1,
+                 user_type = 'platform',
+                 legacy_role = $2
+             WHERE email = $3`,
+            [userPermissions, user.role, user.email]
+          );
+          
+          console.log(`  ✓ Updated with ${userPermissions.length} permissions`);
           continue;
         }
 
         // Hash password
         const passwordHash = await bcrypt.hash(user.password, SALT_ROUNDS);
 
+        // Get permissions for user role
+        const userPermissions = [];
+        if (user.role === 'platform_admin') {
+          // Platform admins get all permissions
+          userPermissions.push(...Object.values(permissionIds));
+        } else if (user.role === 'security_admin') {
+          // Security admins get security + portal view
+          userPermissions.push(
+            permissionIds['security.view'],
+            permissionIds['security.manage'],
+            permissionIds['security.audit'],
+            permissionIds['portal.view']
+          );
+        }
+
         // Insert user
         const result = await client.query(
           `INSERT INTO users (
-            organization_id,
             email,
             password_hash,
             name,
-            role,
+            user_type,
+            legacy_role,
+            additional_permissions,
             email_verified
-          ) VALUES ($1, $2, $3, $4, $5, $6)
-          RETURNING id, email, role`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING id, email, legacy_role`,
           [
-            organizationId,
             user.email,
             passwordHash,
             user.name,
+            'platform',
             user.role,
+            userPermissions,
             true // Email verified for test users
           ]
         );
 
-        console.log(`✓ Created ${user.role}: ${user.email}`);
+        console.log(`✓ Created ${user.role}: ${user.email} (${userPermissions.length} permissions)`);
       } catch (error) {
         console.error(`✗ Failed to create ${user.email}:`, error.message);
       }

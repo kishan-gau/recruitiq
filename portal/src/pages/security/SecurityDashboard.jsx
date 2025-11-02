@@ -1,16 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Shield, AlertTriangle, Activity, TrendingUp } from 'lucide-react';
-import axios from 'axios';
-
-async function fetchSecurityDashboard() {
-  const { data } = await axios.get('/api/security/dashboard');
-  return data;
-}
+import apiService from '../../services/api';
 
 export default function SecurityDashboard() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['security-dashboard'],
-    queryFn: fetchSecurityDashboard,
+    queryFn: () => apiService.getSecurityDashboard(),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 

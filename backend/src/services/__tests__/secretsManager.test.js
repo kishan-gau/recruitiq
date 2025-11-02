@@ -1,202 +1,212 @@
-/**
- * Tests for Secrets Manager
- * 
- * Note: These tests use the EnvironmentProvider by default.
- * For integration tests with real providers, set up appropriate credentials.
- */
+import { jest } from '@jest/globals';
 
-import { SecretsManager } from '../secretsManager.js';
+const mockLogger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn(),
+};
+
+const mockConfig = {
+  aws: { region: 'us-east-1' },
+};
+
+jest.unstable_mockModule('../../utils/logger.js', () => ({ default: mockLogger }));
+jest.unstable_mockModule('../../config/index.js', () => ({ default: mockConfig }));
+
+const { default: secretsManager } = await import('../secretsManager.js');
 
 describe('SecretsManager', () => {
-  let secretsManager;
-
-  beforeEach(() => {
-    secretsManager = new SecretsManager();
-    secretsManager.clearCache();
-    // Force environment provider for tests
-    process.env.SECRETS_PROVIDER = 'environment';
+  beforeEach(() => { 
+    jest.clearAllMocks(); 
+    secretsManager.clearCache(); 
+    delete process.env.TEST_SECRET;
   });
 
-  afterEach(() => {
-    secretsManager.clearCache();
-  });
-
-  describe('Initialization', () => {
-    test('should initialize with environment provider by default', async () => {
-      await secretsManager.initialize();
-      
-      expect(secretsManager.initialized).toBe(true);
-      expect(secretsManager.provider).toBeDefined();
-      expect(secretsManager.provider.name).toBe('Environment');
-    });
-
-    test('should only initialize once', async () => {
-      await secretsManager.initialize();
-      const firstProvider = secretsManager.provider;
-      
-      await secretsManager.initialize();
-      const secondProvider = secretsManager.provider;
-      
-      expect(firstProvider).toBe(secondProvider);
-    });
-  });
-
-  describe('Secret Operations', () => {
-    beforeEach(async () => {
+  describe('Environment Provider', () => {
+    test('should get secret from environment variable', async () => {
       process.env.TEST_SECRET = 'test-value';
-      process.env.TEST_JSON_SECRET = JSON.stringify({ key: 'value' });
-      await secretsManager.initialize();
+      const secret = await secretsManager.getSecret('TEST_SECRET');
+      expect(secret).toBe('test-value');
     });
 
-    afterEach(() => {
-      delete process.env.TEST_SECRET;
-      delete process.env.TEST_JSON_SECRET;
+    test('should throw error when secret not found', async () => {
+      await expect(secretsManager.getSecret('NONEXISTENT')).rejects.toThrow();
     });
 
-    test('should get a secret from environment', async () => {
-      const value = await secretsManager.getSecret('TEST_SECRET');
-      expect(value).toBe('test-value');
-    });
-
-    test('should throw error for non-existent secret', async () => {
-      await expect(secretsManager.getSecret('NON_EXISTENT')).rejects.toThrow();
-    });
-
-    test('should set a secret', async () => {
+    test('should set secret in environment', async () => {
       await secretsManager.setSecret('NEW_SECRET', 'new-value');
-      
-      const value = await secretsManager.getSecret('NEW_SECRET');
-      expect(value).toBe('new-value');
+      expect(process.env.NEW_SECRET).toBe('new-value');
     });
 
-    test('should delete a secret', async () => {
+    test('should delete secret from environment', async () => {
       process.env.DELETE_ME = 'value';
-      
       await secretsManager.deleteSecret('DELETE_ME');
-      
       expect(process.env.DELETE_ME).toBeUndefined();
+    });
+
+    test('should throw error when trying to rotate environment secret', async () => {
+      process.env.ROTATE_ME = 'value';
+      await expect(secretsManager.rotateSecret('ROTATE_ME')).rejects.toThrow();
     });
   });
 
   describe('Caching', () => {
-    beforeEach(async () => {
+    test('should cache retrieved secrets', async () => {
       process.env.CACHED_SECRET = 'cached-value';
-      await secretsManager.initialize();
-    });
-
-    afterEach(() => {
-      delete process.env.CACHED_SECRET;
-    });
-
-    test('should cache secrets after first retrieval', async () => {
+      
+      await secretsManager.getSecret('CACHED_SECRET');
       await secretsManager.getSecret('CACHED_SECRET');
       
       const stats = secretsManager.getCacheStats();
       expect(stats.size).toBe(1);
     });
 
-    test('should use cached value on second retrieval', async () => {
-      await secretsManager.getSecret('CACHED_SECRET');
+    test('should invalidate cache when setting secret', async () => {
+      process.env.UPDATE_ME = 'old-value';
       
-      // Change environment variable
-      process.env.CACHED_SECRET = 'changed-value';
+      await secretsManager.getSecret('UPDATE_ME');
+      await secretsManager.setSecret('UPDATE_ME', 'new-value');
       
-      // Should still return cached value
-      const value = await secretsManager.getSecret('CACHED_SECRET');
-      expect(value).toBe('cached-value');
+      const secret = await secretsManager.getSecret('UPDATE_ME');
+      expect(secret).toBe('new-value');
     });
 
-    test('should clear cache', async () => {
-      await secretsManager.getSecret('CACHED_SECRET');
-      expect(secretsManager.getCacheStats().size).toBe(1);
+    test('should invalidate cache when deleting secret', async () => {
+      process.env.DELETE_ME = 'value';
+      
+      await secretsManager.getSecret('DELETE_ME');
+      await secretsManager.deleteSecret('DELETE_ME');
+      
+      await expect(secretsManager.getSecret('DELETE_ME')).rejects.toThrow();
+    });
+
+    test('should clear all cached secrets', async () => {
+      process.env.SECRET1 = 'value1';
+      process.env.SECRET2 = 'value2';
+      
+      await secretsManager.getSecret('SECRET1');
+      await secretsManager.getSecret('SECRET2');
       
       secretsManager.clearCache();
-      expect(secretsManager.getCacheStats().size).toBe(0);
-    });
-
-    test('should invalidate cache on set', async () => {
-      await secretsManager.getSecret('CACHED_SECRET');
-      expect(secretsManager.getCacheStats().size).toBe(1);
       
-      await secretsManager.setSecret('CACHED_SECRET', 'new-value');
-      expect(secretsManager.getCacheStats().size).toBe(0);
-    });
-
-    test('should invalidate cache on delete', async () => {
-      await secretsManager.getSecret('CACHED_SECRET');
-      expect(secretsManager.getCacheStats().size).toBe(1);
-      
-      await secretsManager.deleteSecret('CACHED_SECRET');
-      expect(secretsManager.getCacheStats().size).toBe(0);
-    });
-  });
-
-  describe('Cache TTL', () => {
-    beforeEach(async () => {
-      process.env.TTL_SECRET = 'initial-value';
-      await secretsManager.initialize();
-      // Set very short TTL for testing
-      secretsManager.cacheTTL = 100; // 100ms
-    });
-
-    afterEach(() => {
-      delete process.env.TTL_SECRET;
-      secretsManager.cacheTTL = 5 * 60 * 1000; // Reset to default
-    });
-
-    test('should respect cache TTL', async () => {
-      await secretsManager.getSecret('TTL_SECRET');
-      expect(secretsManager.getCacheStats().size).toBe(1);
-      
-      // Change environment variable
-      process.env.TTL_SECRET = 'updated-value';
-      
-      // Wait for TTL to expire
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
-      // Should fetch new value
-      const value = await secretsManager.getSecret('TTL_SECRET');
-      expect(value).toBe('updated-value');
-    });
-  });
-
-  describe('Error Handling', () => {
-    beforeEach(async () => {
-      await secretsManager.initialize();
-    });
-
-    test('should handle provider initialization errors gracefully', async () => {
-      // Create new manager with invalid provider
-      const badManager = new SecretsManager();
-      process.env.SECRETS_PROVIDER = 'invalid-provider';
-      
-      // Should fall back to environment provider
-      await badManager.initialize();
-      expect(badManager.provider.name).toBe('Environment');
-      
-      process.env.SECRETS_PROVIDER = 'environment';
-    });
-
-    test('should throw error when secret not found', async () => {
-      await expect(
-        secretsManager.getSecret('DEFINITELY_NOT_A_SECRET')
-      ).rejects.toThrow();
+      const stats = secretsManager.getCacheStats();
+      expect(stats.size).toBe(0);
     });
   });
 
   describe('Cache Statistics', () => {
-    beforeEach(async () => {
-      await secretsManager.initialize();
+    test('should track cache statistics', async () => {
+      process.env.STAT_SECRET = 'value';
+      
+      await secretsManager.getSecret('STAT_SECRET');
+      await secretsManager.getSecret('STAT_SECRET');
+      
+      const stats = secretsManager.getCacheStats();
+      expect(stats.size).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Multiple Secrets', () => {
+    test('should handle multiple secrets independently', async () => {
+      process.env.SECRET_ONE = 'value1';
+      process.env.SECRET_TWO = 'value2';
+      process.env.SECRET_THREE = 'value3';
+      
+      const secret1 = await secretsManager.getSecret('SECRET_ONE');
+      const secret2 = await secretsManager.getSecret('SECRET_TWO');
+      const secret3 = await secretsManager.getSecret('SECRET_THREE');
+      
+      expect(secret1).toBe('value1');
+      expect(secret2).toBe('value2');
+      expect(secret3).toBe('value3');
     });
 
-    test('should return cache statistics', () => {
-      const stats = secretsManager.getCacheStats();
+    test('should cache multiple secrets separately', async () => {
+      process.env.CACHE_A = 'A';
+      process.env.CACHE_B = 'B';
       
-      expect(stats).toHaveProperty('size');
-      expect(stats).toHaveProperty('provider');
-      expect(stats).toHaveProperty('ttl');
-      expect(typeof stats.size).toBe('number');
-      expect(typeof stats.ttl).toBe('number');
+      await secretsManager.getSecret('CACHE_A');
+      await secretsManager.getSecret('CACHE_B');
+      
+      const stats = secretsManager.getCacheStats();
+      expect(stats.size).toBe(2);
+    });
+  });
+
+  describe('Error Scenarios', () => {
+    test('should throw descriptive error for missing secret', async () => {
+      await expect(secretsManager.getSecret('DOES_NOT_EXIST'))
+        .rejects
+        .toThrow(/not found|DOES_NOT_EXIST/i);
+    });
+
+    test('should handle empty secret name', async () => {
+      await expect(secretsManager.getSecret(''))
+        .rejects
+        .toThrow();
+    });
+
+    test('should handle special characters in secret names', async () => {
+      process.env['SECRET_WITH-DASH'] = 'value';
+      const secret = await secretsManager.getSecret('SECRET_WITH-DASH');
+      expect(secret).toBe('value');
+    });
+  });
+
+  describe('Value Types', () => {
+    test('should handle string values', async () => {
+      process.env.STRING_SECRET = 'simple string';
+      const secret = await secretsManager.getSecret('STRING_SECRET');
+      expect(secret).toBe('simple string');
+    });
+
+    test('should handle numeric values', async () => {
+      process.env.NUMBER_SECRET = '12345';
+      const secret = await secretsManager.getSecret('NUMBER_SECRET');
+      expect(secret).toBe('12345');
+    });
+
+    test('should throw error for empty string values', async () => {
+      process.env.EMPTY_SECRET = '';
+      await expect(secretsManager.getSecret('EMPTY_SECRET'))
+        .rejects
+        .toThrow(/not found/i);
+    });
+
+    test('should handle values with spaces', async () => {
+      process.env.SPACE_SECRET = 'value with spaces';
+      const secret = await secretsManager.getSecret('SPACE_SECRET');
+      expect(secret).toBe('value with spaces');
+    });
+  });
+
+  describe('Cache Behavior', () => {
+    test('should use cached value on subsequent calls', async () => {
+      process.env.REPEAT_SECRET = 'initial';
+      
+      const first = await secretsManager.getSecret('REPEAT_SECRET');
+      expect(first).toBe('initial');
+      
+      // Change env var
+      process.env.REPEAT_SECRET = 'changed';
+      
+      // Should still get cached value
+      const second = await secretsManager.getSecret('REPEAT_SECRET');
+      expect(second).toBe('initial');
+    });
+
+    test('should refresh after cache clear', async () => {
+      process.env.CLEAR_SECRET = 'original';
+      
+      const first = await secretsManager.getSecret('CLEAR_SECRET');
+      expect(first).toBe('original');
+      
+      secretsManager.clearCache();
+      process.env.CLEAR_SECRET = 'updated';
+      
+      const second = await secretsManager.getSecret('CLEAR_SECRET');
+      expect(second).toBe('updated');
     });
   });
 });

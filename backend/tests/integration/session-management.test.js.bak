@@ -1,0 +1,488 @@
+/**
+ * Session Management Tests
+ * 
+ * Tests for:
+ * - Token expiration and timeout
+ * - Token generation and validation
+ * - Token blacklisting
+ * - Token security (separate secrets, claims)
+ * 
+ * Note: Database-dependent tests (concurrent sessions, revocation) 
+ * should be tested via BDD integration tests with real user accounts.
+ */
+
+import { describe, test, expect } from '@jest/globals';
+import jwt from 'jsonwebtoken';
+import tokenBlacklist from '../../src/services/tokenBlacklist.js';
+import config from '../../src/config/index.js';
+
+describe('Session Management Tests', () => {
+  const testUserId = '550e8400-e29b-41d4-a716-446655440000';
+  const testOrgId = '550e8400-e29b-41d4-a716-446655440001';
+  
+  // Helper function to generate test tokens
+  function generateTestAccessToken(userId, expiresIn = '15m') {
+    return jwt.sign(
+      {
+        userId,
+        organizationId: testOrgId,
+        type: 'access'
+      },
+      config.jwt.secret,
+      { expiresIn }
+    );
+  }
+
+  function generateTestRefreshToken(userId, expiresIn = '30d') {
+    return jwt.sign(
+      {
+        userId,
+        organizationId: testOrgId,
+        type: 'refresh'
+      },
+      config.jwt.refreshSecret,
+      { expiresIn }
+    );
+  }
+
+  beforeEach(async () => {
+    // No database setup needed - tests focus on token logic
+  });
+
+  describe('Token Expiration and Timeout', () => {
+    test('should create tokens with correct expiration times', () => {
+      const accessToken = generateTestAccessToken(testUserId);
+      const refreshToken = generateTestRefreshToken(testUserId);
+
+      const accessDecoded = jwt.decode(accessToken);
+      const refreshDecoded = jwt.decode(refreshToken);
+
+      // Access token should expire in ~15 minutes
+      const accessExpiry = accessDecoded.exp - accessDecoded.iat;
+      expect(accessExpiry).toBeGreaterThan(14 * 60); // At least 14 minutes
+      expect(accessExpiry).toBeLessThan(16 * 60); // Less than 16 minutes
+
+      // Refresh token should expire in ~30 days
+      const refreshExpiry = refreshDecoded.exp - refreshDecoded.iat;
+      expect(refreshExpiry).toBeGreaterThan(29 * 24 * 60 * 60); // At least 29 days
+      expect(refreshExpiry).toBeLessThan(31 * 24 * 60 * 60); // Less than 31 days
+    });
+
+    test('should reject expired access tokens', () => {
+      // Create an already-expired token
+      const expiredToken = jwt.sign(
+        { userId: testUserId, organizationId: testOrgId },
+        config.jwt.secret,
+        { expiresIn: '-1s' } // Expired 1 second ago
+      );
+
+      expect(() => {
+        jwt.verify(expiredToken, config.jwt.secret);
+      }).toThrow(/expired/i);
+    });
+
+    test('should reject expired refresh tokens', () => {
+      const expiredToken = jwt.sign(
+        { userId: testUserId, organizationId: testOrgId },
+        config.jwt.refreshSecret,
+        { expiresIn: '-1s' }
+      );
+
+      expect(() => {
+        jwt.verify(expiredToken, config.jwt.refreshSecret);
+      }).toThrow(/expired/i);
+    });
+
+    test('should validate token before expiration', () => {
+      const validToken = generateTestAccessToken(testUserId, '1h');
+      
+      const decoded = jwt.verify(validToken, config.jwt.secret);
+      
+      expect(decoded.userId).toBe(testUserId);
+      expect(decoded.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
+    });
+  });
+
+  describe('Concurrent Sessions', () => {
+    test('should allow generating multiple refresh tokens for same user', () => {
+      const token1 = generateTestRefreshToken(testUserId);
+      const token2 = generateTestRefreshToken(testUserId);
+      const token3 = generateTestRefreshToken(testUserId);
+
+      // All tokens should be unique
+      expect(token1).not.toBe(token2);
+      expect(token2).not.toBe(token3);
+      expect(token1).not.toBe(token3);
+
+      // All tokens should be valid JWTs
+      const decoded1 = jwt.decode(token1);
+      const decoded2 = jwt.decode(token2);
+      const decoded3 = jwt.decode(token3);
+
+      expect(decoded1.userId).toBe(testUserId);
+      expect(decoded2.userId).toBe(testUserId);
+      expect(decoded3.userId).toBe(testUserId);
+    });
+
+    test('should generate unique tokens for concurrent sessions', () => {
+      // Simulate login from 3 different devices
+      const device1Token = generateTestRefreshToken(testUserId);
+      const device2Token = generateTestRefreshToken(testUserId);
+      const device3Token = generateTestRefreshToken(testUserId);
+
+      // Verify all tokens are independent
+      expect(device1Token).not.toBe(device2Token);
+      expect(device2Token).not.toBe(device3Token);
+      expect(device1Token).not.toBe(device3Token);
+
+      // All should decode to same user
+      const decoded1 = jwt.decode(device1Token);
+      const decoded2 = jwt.decode(device2Token);
+      const decoded3 = jwt.decode(device3Token);
+
+      expect(decoded1.userId).toBe(testUserId);
+      expect(decoded2.userId).toBe(testUserId);
+      expect(decoded3.userId).toBe(testUserId);
+    });
+  });
+
+  describe('Session Invalidation on Password Change', () => {
+    test('should revoke all refresh tokens for user', async () => {
+      const token1 = generateTestRefreshToken(testUserId);
+      const token2 = generateTestRefreshToken(testUserId);
+      const token3 = generateTestRefreshToken(testUserId);
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await RefreshToken.create(testUserId, token1, expiresAt);
+      await RefreshToken.create(testUserId, token2, expiresAt);
+      await RefreshToken.create(testUserId, token3, expiresAt);
+
+      // Simulate password change - revoke all tokens
+      await RefreshToken.revokeAllForUser(testUserId);
+
+      // All tokens should be revoked
+      const session1 = await RefreshToken.findByToken(token1);
+      const session2 = await RefreshToken.findByToken(token2);
+      const session3 = await RefreshToken.findByToken(token3);
+
+      expect(session1).toBeUndefined();
+      expect(session2).toBeUndefined();
+      expect(session3).toBeUndefined();
+    });
+
+    test('should not affect other users when revoking tokens', async () => {
+      const user1Id = testUserId;
+      const user2Id = '550e8400-e29b-41d4-a716-446655440002';
+
+      const user1Token = generateTestRefreshToken(user1Id);
+      const user2Token = jwt.sign(
+        { userId: user2Id, organizationId: testOrgId },
+        config.jwt.refreshSecret,
+        { expiresIn: '30d' }
+      );
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await RefreshToken.create(user1Id, user1Token, expiresAt);
+      await RefreshToken.create(user2Id, user2Token, expiresAt);
+
+      // Revoke all tokens for user1
+      await RefreshToken.revokeAllForUser(user1Id);
+
+      // user1's token should be revoked
+      const user1Session = await RefreshToken.findByToken(user1Token);
+      expect(user1Session).toBeUndefined();
+
+      // user2's token should still be valid
+      const user2Session = await RefreshToken.findByToken(user2Token);
+      expect(user2Session).toBeDefined();
+      expect(user2Session.user_id).toBe(user2Id);
+
+      // Cleanup
+      await RefreshToken.revokeAllForUser(user2Id);
+    });
+
+    test('should require re-authentication after all sessions revoked', async () => {
+      const refreshToken = generateTestRefreshToken(testUserId);
+      
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await RefreshToken.create(testUserId, refreshToken, expiresAt);
+
+      // Verify token is valid
+      let session = await RefreshToken.findByToken(refreshToken);
+      expect(session).toBeDefined();
+
+      // Revoke all sessions (e.g., password change)
+      await RefreshToken.revokeAllForUser(testUserId);
+
+      // Token should no longer be retrievable
+      session = await RefreshToken.findByToken(refreshToken);
+      expect(session).toBeUndefined();
+    });
+  });
+
+  describe('Token Rotation on Refresh', () => {
+    test('should invalidate old refresh token after rotation', async () => {
+      const oldToken = generateTestRefreshToken(testUserId);
+      
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      // Create initial session
+      await RefreshToken.create(testUserId, oldToken, expiresAt);
+
+      // Verify old token exists
+      let session = await RefreshToken.findByToken(oldToken);
+      expect(session).toBeDefined();
+
+      // Simulate token rotation - revoke old token
+      await RefreshToken.revoke(oldToken);
+
+      // Old token should be invalid
+      session = await RefreshToken.findByToken(oldToken);
+      expect(session).toBeUndefined();
+    });
+
+    test('should create new token with extended expiration', async () => {
+      const oldToken = generateTestRefreshToken(testUserId);
+      const newToken = generateTestRefreshToken(testUserId);
+      
+      const oldExpiresAt = new Date();
+      oldExpiresAt.setDate(oldExpiresAt.getDate() + 1); // Expiring soon
+
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 30); // Fresh 30 days
+
+      await RefreshToken.create(testUserId, oldToken, oldExpiresAt);
+      await RefreshToken.revoke(oldToken);
+      await RefreshToken.create(testUserId, newToken, newExpiresAt);
+
+      const newSession = await RefreshToken.findByToken(newToken);
+      expect(newSession).toBeDefined();
+      expect(newSession.expires_at.getTime()).toBeGreaterThan(oldExpiresAt.getTime());
+    });
+
+    test('should prevent reuse of rotated refresh token', async () => {
+      const token = generateTestRefreshToken(testUserId);
+      
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await RefreshToken.create(testUserId, token, expiresAt);
+
+      // First use - should work
+      const firstUse = await RefreshToken.findByToken(token);
+      expect(firstUse).toBeDefined();
+
+      // Rotate token (revoke old one)
+      await RefreshToken.revoke(token);
+
+      // Second use - should fail
+      const secondUse = await RefreshToken.findByToken(token);
+      expect(secondUse).toBeUndefined();
+    });
+
+    test('should maintain user session continuity during rotation', async () => {
+      // Simulate the full rotation flow
+      const token1 = generateTestRefreshToken(testUserId);
+      const expiresAt1 = new Date();
+      expiresAt1.setDate(expiresAt1.getDate() + 30);
+
+      // Initial session
+      await RefreshToken.create(testUserId, token1, expiresAt1);
+      
+      // First rotation
+      await RefreshToken.revoke(token1);
+      const token2 = generateTestRefreshToken(testUserId);
+      const expiresAt2 = new Date();
+      expiresAt2.setDate(expiresAt2.getDate() + 30);
+      await RefreshToken.create(testUserId, token2, expiresAt2);
+
+      // Second rotation
+      await RefreshToken.revoke(token2);
+      const token3 = generateTestRefreshToken(testUserId);
+      const expiresAt3 = new Date();
+      expiresAt3.setDate(expiresAt3.getDate() + 30);
+      await RefreshToken.create(testUserId, token3, expiresAt3);
+
+      // Only the latest token should be valid
+      const session1 = await RefreshToken.findByToken(token1);
+      const session2 = await RefreshToken.findByToken(token2);
+      const session3 = await RefreshToken.findByToken(token3);
+
+      expect(session1).toBeUndefined();
+      expect(session2).toBeUndefined();
+      expect(session3).toBeDefined();
+      expect(session3.user_id).toBe(testUserId);
+    });
+  });
+
+  describe('Token Blacklisting', () => {
+    test('should blacklist access token on logout', async () => {
+      const accessToken = generateTestAccessToken(testUserId, '15m');
+      const decoded = jwt.decode(accessToken);
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+
+      // Blacklist the token
+      await tokenBlacklist.blacklistToken(accessToken, expiresIn);
+
+      // Token should be blacklisted
+      const isBlacklisted = await tokenBlacklist.isBlacklisted(accessToken);
+      expect(isBlacklisted).toBe(true);
+    });
+
+    test('should blacklist refresh token on logout', async () => {
+      const refreshToken = generateTestRefreshToken(testUserId);
+      const decoded = jwt.decode(refreshToken);
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+
+      // Blacklist the token
+      await tokenBlacklist.blacklistToken(refreshToken, expiresIn);
+
+      // Token should be blacklisted
+      const isBlacklisted = await tokenBlacklist.isBlacklisted(refreshToken);
+      expect(isBlacklisted).toBe(true);
+    });
+
+    test('should reject blacklisted tokens', async () => {
+      const accessToken = generateTestAccessToken(testUserId, '15m');
+      const decoded = jwt.decode(accessToken);
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+
+      await tokenBlacklist.blacklistToken(accessToken, expiresIn);
+
+      // Token is still valid JWT-wise
+      const verified = jwt.verify(accessToken, config.jwt.secret);
+      expect(verified).toBeDefined();
+
+      // But it should be blacklisted
+      const isBlacklisted = await tokenBlacklist.isBlacklisted(accessToken);
+      expect(isBlacklisted).toBe(true);
+    });
+
+    test('should not blacklist valid non-blacklisted tokens', async () => {
+      const validToken = generateTestAccessToken(testUserId);
+
+      const isBlacklisted = await tokenBlacklist.isBlacklisted(validToken);
+      expect(isBlacklisted).toBe(false);
+    });
+
+    test('should handle blacklist TTL correctly', async () => {
+      // Create a token that expires in 2 seconds
+      const shortLivedToken = jwt.sign(
+        { userId: testUserId, organizationId: testOrgId },
+        config.jwt.secret,
+        { expiresIn: '2s' }
+      );
+
+      const decoded = jwt.decode(shortLivedToken);
+      const expiresIn = decoded.exp - Math.floor(Date.now() / 1000);
+
+      // Blacklist with appropriate TTL
+      await tokenBlacklist.blacklistToken(shortLivedToken, expiresIn);
+
+      // Should be blacklisted immediately
+      let isBlacklisted = await tokenBlacklist.isBlacklisted(shortLivedToken);
+      expect(isBlacklisted).toBe(true);
+
+      // After token expires (plus buffer), blacklist entry should auto-expire
+      // Note: In practice, Redis/cache will auto-expire the entry
+      // This test just verifies the TTL is set correctly
+      expect(expiresIn).toBeGreaterThan(0);
+      expect(expiresIn).toBeLessThanOrEqual(2);
+    });
+  });
+
+  describe('Token Security', () => {
+    test('should use different secrets for access and refresh tokens', () => {
+      expect(config.jwt.secret).toBeDefined();
+      expect(config.jwt.refreshSecret).toBeDefined();
+      expect(config.jwt.secret).not.toBe(config.jwt.refreshSecret);
+    });
+
+    test('should not allow refresh token to be verified with access secret', () => {
+      const refreshToken = generateTestRefreshToken(testUserId);
+
+      expect(() => {
+        jwt.verify(refreshToken, config.jwt.secret); // Wrong secret
+      }).toThrow();
+    });
+
+    test('should not allow access token to be verified with refresh secret', () => {
+      const accessToken = generateTestAccessToken(testUserId);
+
+      expect(() => {
+        jwt.verify(accessToken, config.jwt.refreshSecret); // Wrong secret
+      }).toThrow();
+    });
+
+    test('should include required claims in tokens', () => {
+      const accessToken = generateTestAccessToken(testUserId);
+      const decoded = jwt.decode(accessToken);
+
+      expect(decoded.userId).toBeDefined();
+      expect(decoded.organizationId).toBeDefined();
+      expect(decoded.iat).toBeDefined(); // Issued at
+      expect(decoded.exp).toBeDefined(); // Expires at
+    });
+
+    test('should generate unique tokens for each session', () => {
+      const token1 = generateTestRefreshToken(testUserId);
+      const token2 = generateTestRefreshToken(testUserId);
+      const token3 = generateTestRefreshToken(testUserId);
+
+      // All tokens should be different
+      expect(token1).not.toBe(token2);
+      expect(token2).not.toBe(token3);
+      expect(token1).not.toBe(token3);
+    });
+  });
+
+  describe('Cleanup and Maintenance', () => {
+    test('should identify expired tokens', async () => {
+      // Create an already-expired token
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 1); // Yesterday
+
+      const expiredToken = generateTestRefreshToken(testUserId);
+      await RefreshToken.create(testUserId, expiredToken, pastDate);
+
+      // findByToken should not return expired tokens
+      const session = await RefreshToken.findByToken(expiredToken);
+      expect(session).toBeUndefined();
+    });
+
+    test('should support bulk token cleanup', async () => {
+      // This test verifies the cleanup method exists
+      expect(RefreshToken.deleteExpired).toBeDefined();
+      expect(typeof RefreshToken.deleteExpired).toBe('function');
+
+      // Execute cleanup (should not throw)
+      await expect(RefreshToken.deleteExpired()).resolves.not.toThrow();
+    });
+
+    test('should not return revoked tokens', async () => {
+      const token = generateTestRefreshToken(testUserId);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      await RefreshToken.create(testUserId, token, expiresAt);
+
+      // Verify token exists
+      let session = await RefreshToken.findByToken(token);
+      expect(session).toBeDefined();
+
+      // Revoke it
+      await RefreshToken.revoke(token);
+
+      // Should not be returned
+      session = await RefreshToken.findByToken(token);
+      expect(session).toBeUndefined();
+    });
+  });
+});

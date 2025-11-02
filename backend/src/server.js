@@ -15,9 +15,11 @@ import {
   addRateLimitHeaders,
   rateLimitManager 
 } from './middleware/rateLimit.js';
+import { csrfMiddleware, getCsrfToken, csrfErrorHandler } from './middleware/csrf.js';
 
 // Import routes
 import authRoutes from './routes/auth.js';
+import mfaRoutes from './routes/mfa.routes.js';
 import organizationRoutes from './routes/organizations.js';
 import userRoutes from './routes/users.js';
 import workspaceRoutes from './routes/workspaces.js';
@@ -29,6 +31,8 @@ import flowTemplateRoutes from './routes/flowTemplates.js';
 import publicRoutes from './routes/public.js';
 import communicationRoutes from './routes/communications.js';
 import portalRoutes from './routes/portal.js';
+import userManagementRoutes from './routes/userManagement.js';
+import rolesPermissionsRoutes from './routes/rolesPermissions.js';
 import securityRoutes from './routes/security.js';
 import provisioningRoutes from './routes/provisioning.js';
 
@@ -43,6 +47,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import requestIdMiddleware from './middleware/requestId.js';
 import { authenticate } from './middleware/auth.js';
+import { secureRequest, blockFilePathInjection } from './middleware/requestSecurity.js';
 
 const app = express();
 
@@ -96,9 +101,28 @@ app.use('/api/auth/reset-password', authLimiter);
 // BODY PARSING & COOKIES
 // ============================================================================
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser()); // Parse cookies for SSO support
+// Body parsing with security limits (reduced from 10mb to 1mb for security)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Parse cookies for SSO support and CSRF tokens
+// Use signed cookies for CSRF protection
+app.use(cookieParser(config.security.sessionSecret));
+
+// ============================================================================
+// INPUT VALIDATION & SANITIZATION
+// ============================================================================
+
+// Global input security: validate and sanitize all requests
+// Protects against XSS, SQL injection, NoSQL injection, command injection
+app.use('/api/', secureRequest({
+  maxDepth: 5,
+  stripXSS: true,
+  blockDangerousPatterns: true,
+}));
+
+// Additional protection against file path injection
+app.use('/api/', blockFilePathInjection());
 
 // ============================================================================
 // REQUEST TRACKING & LOGGING
@@ -184,9 +208,20 @@ app.get('/', (req, res) => {
 
 const apiRouter = express.Router();
 
+// CSRF token endpoint (must be before CSRF middleware)
+apiRouter.get('/csrf-token', getCsrfToken);
+
+// Apply CSRF protection to state-changing operations
+// This protects against cross-site request forgery attacks
+// Note: Bearer token authenticated requests skip CSRF (see csrf.js)
+app.use('/api', csrfMiddleware);
+
 // Public routes (no auth)
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/public', publicRoutes);
+
+// MFA routes (partially public - some endpoints use temporary MFA token)
+apiRouter.use('/auth/mfa', mfaRoutes);
 
 // Protected routes (require authentication)
 // Note: Some routes handle their own public endpoints internally (jobs, applications)
@@ -203,6 +238,8 @@ apiRouter.use('/communications', communicationRoutes);
 // Portal routes (platform admin only - auth handled in routes)
 apiRouter.use('/portal', portalRoutes);
 apiRouter.use('/portal', provisioningRoutes);  // Client & VPS provisioning
+apiRouter.use('/portal', userManagementRoutes);  // User management
+apiRouter.use('/portal', rolesPermissionsRoutes);  // Roles & permissions management
 apiRouter.use('/security', securityRoutes);
 
 // License Manager routes (uses separate auth middleware)
@@ -220,6 +257,9 @@ app.use('/api', apiRouter);
 // 404 handler for undefined routes
 app.use(notFoundHandler);
 
+// CSRF error handler (must be before global error handler)
+app.use(csrfErrorHandler);
+
 // Global error handler (must be last)
 app.use(errorHandler);
 
@@ -228,14 +268,19 @@ app.use(errorHandler);
 // ============================================================================
 
 const PORT = config.port;
+let server;
 
-const server = app.listen(PORT, () => {
-  logger.info(`🚀 RecruitIQ API Server started`);
-  logger.info(`📍 Environment: ${config.env}`);
-  logger.info(`🌐 Server running on: ${config.appUrl}`);
-  logger.info(`📊 Health check: ${config.appUrl}/health`);
-  logger.info(`🔐 CORS enabled for: ${config.frontend.allowedOrigins.join(', ')}`);
-});
+// Only start server if not in test mode
+// This allows tests to import the app without starting the server
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, () => {
+    logger.info(`🚀 RecruitIQ API Server started`);
+    logger.info(`📍 Environment: ${config.env}`);
+    logger.info(`🌐 Server running on: ${config.appUrl}`);
+    logger.info(`📊 Health check: ${config.appUrl}/health`);
+    logger.info(`🔐 CORS enabled for: ${config.frontend.allowedOrigins.join(', ')}`);
+  });
+}
 
 // ============================================================================
 // GRACEFUL SHUTDOWN
@@ -244,9 +289,24 @@ const server = app.listen(PORT, () => {
 const gracefulShutdown = async (signal) => {
   logger.info(`\n${signal} received, shutting down gracefully...`);
   
-  server.close(async () => {
-    logger.info('HTTP server closed');
-    
+  // Close HTTP server if it's running (not in test mode)
+  if (server) {
+    server.close(async () => {
+      logger.info('HTTP server closed');
+      
+      try {
+        await closePool();
+        logger.info('Database connections closed');
+        await closeCentralPool();
+        logger.info('Central database connections closed');
+        process.exit(0);
+      } catch (error) {
+        logger.error('Error during shutdown:', error);
+        process.exit(1);
+      }
+    });
+  } else {
+    // In test mode, just close database connections
     try {
       await closePool();
       logger.info('Database connections closed');
@@ -257,7 +317,7 @@ const gracefulShutdown = async (signal) => {
       logger.error('Error during shutdown:', error);
       process.exit(1);
     }
-  });
+  }
   
   // Force shutdown after 10 seconds
   setTimeout(() => {

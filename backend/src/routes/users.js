@@ -1,8 +1,9 @@
 import express from 'express';
-import { listUsers, getUser, createUser, updateUser, updateUserRole, deleteUser } from '../controllers/userController.js';
+import { listUsers, getUser, createUser, updateUser, updateUserRole, deleteUser, updateUserStatus } from '../controllers/userController.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { validate, validateMultiple } from '../middleware/validation.js';
 import { userSchemas, commonSchemas } from '../utils/validationSchemas.js';
+import { protectMassAssignment } from '../middleware/massAssignmentProtection.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -22,6 +23,10 @@ const listUsersQuerySchema = Joi.object({
   search: commonSchemas.searchQuery.optional(),
 });
 
+const updateStatusSchema = Joi.object({
+  is_active: Joi.boolean().required(),
+});
+
 // GET /api/users - List all users
 router.get('/', validate(listUsersQuerySchema, 'query'), listUsers);
 
@@ -32,10 +37,17 @@ router.post('/', requireRole('owner', 'admin'), validate(userSchemas.create, 'bo
 router.get('/:id', validate(userIdParamSchema, 'params'), getUser);
 
 // PUT /api/users/:id - Update user profile
-router.put('/:id', validateMultiple({
-  params: userIdParamSchema,
-  body: userSchemas.update,
-}), updateUser);
+router.put('/:id', 
+  protectMassAssignment({
+    allowedFields: ['name', 'phone', 'timezone', 'avatarUrl'],
+    strict: true, // Reject requests with unexpected fields
+  }),
+  validateMultiple({
+    params: userIdParamSchema,
+    body: userSchemas.update,
+  }), 
+  updateUser
+);
 
 // PATCH /api/users/:id/role - Update user role (admin/owner only)
 router.patch('/:id/role', requireRole('owner', 'admin'), validateMultiple({
@@ -44,6 +56,12 @@ router.patch('/:id/role', requireRole('owner', 'admin'), validateMultiple({
     role: Joi.string().valid('admin', 'recruiter', 'hiring_manager', 'interviewer').required(),
   }),
 }), updateUserRole);
+
+// PATCH /api/users/:id/status - Update user active status (admin/owner only)
+router.patch('/:id/status', requireRole('owner', 'admin'), validateMultiple({
+  params: userIdParamSchema,
+  body: updateStatusSchema,
+}), updateUserStatus);
 
 // DELETE /api/users/:id - Delete user (admin/owner only)
 router.delete('/:id', requireRole('owner', 'admin'), validate(userIdParamSchema, 'params'), deleteUser);

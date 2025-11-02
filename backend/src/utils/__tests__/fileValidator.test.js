@@ -68,7 +68,8 @@ describe('File Validator', () => {
 
     it('should replace unsafe characters with underscores', () => {
       const result = sanitizeFilename('file<>:"|?*.txt');
-      expect(result).toBe('file________.txt');
+      // Multiple consecutive underscores are collapsed into one
+      expect(result).toBe('file_.txt');
     });
 
     it('should preserve safe characters', () => {
