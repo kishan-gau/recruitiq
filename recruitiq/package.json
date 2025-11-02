@@ -1,0 +1,50 @@
+{
+  "name": "recruitiq",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:css": "postcss src/index.css -o src/tailwind.css",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:visual": "playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.5",
+    "axios": "^1.12.2",
+    "clsx": "^2.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.1.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitejs/plugin-react": "^5.0.1",
+    "autoprefixer": "^10.4.21",
+    "framer-motion": "^10.18.0",
+    "jsdom": "^26.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
+    "vite": "^7.1.12",
+    "vitest": "^3.2.4"
+  },
+  "vitest": {
+    "include": [
+      "src/**/*.{test,spec}.{js,jsx,ts,tsx}"
+    ],
+    "exclude": [
+      "playwright/**"
+    ],
+    "test": {
+      "environment": "jsdom"
+    }
+  }
+}

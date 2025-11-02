@@ -1,0 +1,11 @@
+# Deployment Service
+
+node_modules/
+.env
+*.log
+.DS_Store
+*.key
+*.pem
+coverage/
+.vscode/
+.idea/
