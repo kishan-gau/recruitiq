@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [mfaWarning, setMfaWarning] = useState(null); // Grace period warning
 
   // Security: Check for existing session on mount and validate with server
   useEffect(() => {
@@ -55,15 +56,38 @@ export const AuthProvider = ({ children }) => {
       const response = await api.login(email, password);
       console.log('AuthContext: Login response received:', response);
       
-      // Update user state
+      // Check if MFA is required
+      if (response.mfaRequired) {
+        console.log('AuthContext: MFA required, returning MFA token');
+        setIsLoading(false);
+        return {
+          mfaRequired: true,
+          mfaToken: response.mfaToken
+        };
+      }
+      
+      // Normal login (no MFA)
       setUser(response.user);
+      
+      // Store MFA warning if present (grace period)
+      if (response.mfaWarning) {
+        setMfaWarning(response.mfaWarning);
+      }
+      
       setIsLoading(false);
       
       console.log('AuthContext: Login successful, returning true');
       return true;
     } catch (err) {
       console.error('AuthContext: Login failed:', err);
-      setError(err.message || 'Login failed. Please try again.');
+      
+      // Check for MFA enforcement error
+      if (err.response?.data?.error === 'MFA_SETUP_REQUIRED') {
+        setError('Multi-Factor Authentication is required for your organization. Please contact your administrator.');
+      } else {
+        setError(err.message || 'Login failed. Please try again.');
+      }
+      
       setIsLoading(false);
       return false;
     }
@@ -129,19 +153,28 @@ export const AuthProvider = ({ children }) => {
       // Clear user state
       setUser(null);
       setError(null);
+      setMfaWarning(null);
     } catch (err) {
       console.error('Logout failed:', err);
       // Security: Clear local state even if server request fails
       setUser(null);
+      setMfaWarning(null);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const dismissMfaWarning = () => {
+    setMfaWarning(null);
+  };
+
   const value = {
     user,
+    setUser,
     isLoading,
     error,
+    mfaWarning,
+    dismissMfaWarning,
     login,
     loginApplicant,
     signupApplicant,

@@ -1,22 +1,40 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
+import MFAVerification from '../components/MFAVerification';
+import apiClient from '../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { login, setUser } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sessionMessage, setSessionMessage] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [touched, setTouched] = useState({ email: false, password: false });
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
+  
+  // MFA state
+  const [showMFA, setShowMFA] = useState(false);
+  const [mfaToken, setMfaToken] = useState('');
+
+  // Check for session expiration or forced logout
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'session_expired') {
+      setSessionMessage('Your session has expired or was ended from another device. Please login again.');
+      // Clear the URL parameter
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [searchParams]);
 
   const validateEmail = (value) => {
     if (!value.trim()) {
@@ -97,9 +115,20 @@ export default function Login() {
     
     try {
       console.log('Attempting login with:', email);
-      const success = await login(email, password);
-      console.log('Login result:', success);
-      if (success) {
+      const result = await login(email, password);
+      console.log('Login result:', result);
+      
+      // Check if MFA is required
+      if (result && result.mfaRequired) {
+        console.log('MFA required, showing verification step');
+        setMfaToken(result.mfaToken);
+        setShowMFA(true);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Normal login success (no MFA)
+      if (result) {
         console.log('Login successful, navigating to /');
         navigate('/');
       } else {
@@ -114,6 +143,32 @@ export default function Login() {
     }
   };
 
+  const handleMFASuccess = async (code, isBackupCode) => {
+    try {
+      // Call appropriate API based on code type
+      const response = isBackupCode 
+        ? await apiClient.useBackupCode(mfaToken, code)
+        : await apiClient.verifyMFA(mfaToken, code);
+      
+      // Store tokens and set user
+      localStorage.setItem('accessToken', response.data.accessToken);
+      localStorage.setItem('refreshToken', response.data.refreshToken);
+      setUser(response.data.user);
+      
+      // Navigate to app
+      navigate('/');
+    } catch (err) {
+      // Error will be caught by MFAVerification component
+      throw err;
+    }
+  };
+
+  const handleMFACancel = () => {
+    setShowMFA(false);
+    setMfaToken('');
+    setPassword('');
+  };
+
   const handleGoogleSignIn = () => {
     // Simulate Google sign-in
     setError('');
@@ -125,6 +180,17 @@ export default function Login() {
     setError('');
     login('demo@microsoft.com', 'demo').then(() => navigate('/'));
   };
+
+  // Show MFA verification if required
+  if (showMFA) {
+    return (
+      <MFAVerification 
+        mfaToken={mfaToken}
+        onSuccess={handleMFASuccess}
+        onCancel={handleMFACancel}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -205,6 +271,20 @@ export default function Login() {
               Your data is protected
             </p>
           </div>
+
+          {/* Session Expiration Warning */}
+          {sessionMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-400 text-sm flex items-start gap-2"
+            >
+              <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {sessionMessage}
+            </motion.div>
+          )}
 
           {/* Error Message */}
           {error && (

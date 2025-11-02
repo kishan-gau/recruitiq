@@ -1,15 +1,17 @@
 import React from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, Link } from 'react-router-dom'
 import { useState } from 'react'
 import { Icon } from './icons'
 import FAB from './FAB'
 import QuickSearch from './QuickSearch'
 import Sidebar from './Sidebar'
 import AvatarMenu from './AvatarMenu'
+import { useAuth } from '../context/AuthContext'
 
 export default function Layout({children}){
   const [open, setOpen] = useState(false)
   const [qsOpen, setQsOpen] = useState(false)
+  const { mfaWarning, dismissMfaWarning } = useAuth()
 
   React.useEffect(()=>{
     function onKey(e){
@@ -58,6 +60,35 @@ export default function Layout({children}){
           </div>
         </div>
       </header>
+
+      {/* MFA Warning Banner */}
+      {mfaWarning && (
+        <div className="bg-amber-500 text-white px-4 lg:px-6 py-3 shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div className="flex-1">
+                <p className="font-semibold text-sm">
+                  {mfaWarning.message}
+                </p>
+                <Link 
+                  to="/profile" 
+                  className="text-xs text-amber-100 hover:text-white underline mt-1 inline-block"
+                >
+                  Enable MFA now in your Profile →
+                </Link>
+              </div>
+            </div>
+            <button 
+              onClick={dismissMfaWarning}
+              className="text-amber-200 hover:text-white p-1 flex-shrink-0"
+              aria-label="Dismiss warning"
+            >
+              <Icon name="x" className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 lg:px-6 py-6 flex gap-6">
         <Sidebar onSearchClick={() => setQsOpen(true)} />

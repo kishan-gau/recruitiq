@@ -21,7 +21,7 @@ const REQUEST_TIMEOUT = 30000 // 30 seconds
 
 class APIClient {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+    this.baseURL = import.meta.env.VITE_API_URL || '/api'
     this.isRefreshing = false
     this.refreshSubscribers = []
   }
@@ -236,8 +236,17 @@ class APIClient {
       if (response.status === 401 && endpoint !== '/api/auth/login') {
         console.warn('Unauthorized request, clearing session')
         this.clearTokens()
-        window.location.href = '/login'
-        throw new Error('Session expired. Please login again.')
+        
+        // Show user-friendly message
+        // Check if sessionStorage has already shown the message to prevent duplicates
+        if (!sessionStorage.getItem('__session_expired_shown')) {
+          sessionStorage.setItem('__session_expired_shown', 'true')
+          // Clear the flag after redirect completes
+          setTimeout(() => sessionStorage.removeItem('__session_expired_shown'), 1000)
+        }
+        
+        window.location.href = '/login?reason=session_expired'
+        throw new Error('Your session has expired or was ended from another device. Please login again.')
       }
 
       // Security: Handle other error status codes
@@ -708,6 +717,130 @@ class APIClient {
   async cloneFlowTemplate(id) {
     return this.request(`/api/flow-templates/${id}/clone`, {
       method: 'POST',
+    })
+  }
+
+  // ============================================================================
+  // Session Management API Methods
+  // ============================================================================
+
+  /**
+   * Get active sessions for current user
+   * Returns list of devices/locations where user is currently logged in
+   */
+  async getActiveSessions() {
+    return this.request('/api/auth/sessions')
+  }
+
+  /**
+   * Revoke a specific session (logout from specific device)
+   * @param {string} sessionId - ID of the session to revoke
+   */
+  async revokeSession(sessionId) {
+    return this.request(`/api/auth/sessions/${sessionId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  /**
+   * Revoke all other sessions (logout from all other devices except current)
+   */
+  async revokeAllSessions() {
+    return this.request('/api/auth/sessions', {
+      method: 'DELETE',
+    })
+  }
+
+  // ============================================================================
+  // MFA (Multi-Factor Authentication) API Methods
+  // ============================================================================
+
+  /**
+   * Get MFA status for current user
+   * Returns whether MFA is enabled and if it's required by organization
+   */
+  async getMFAStatus() {
+    return this.request('/api/auth/mfa/status')
+  }
+
+  /**
+   * Setup MFA - Generate QR code and secret
+   * Step 1 of MFA setup flow
+   * @returns {Promise<{qrCodeUrl: string, manualEntryKey: string, tempSecret: string}>}
+   */
+  async setupMFA() {
+    return this.request('/api/auth/mfa/setup', {
+      method: 'POST',
+    })
+  }
+
+  /**
+   * Verify MFA setup - Confirm TOTP token and enable MFA
+   * Step 2 of MFA setup flow
+   * @param {string} token - 6-digit TOTP code from authenticator app
+   * @param {string} secret - Temporary secret from setupMFA()
+   * @returns {Promise<{backupCodes: string[]}>}
+   */
+  async verifyMFASetup(token, secret) {
+    return this.request('/api/auth/mfa/verify-setup', {
+      method: 'POST',
+      body: JSON.stringify({ token, secret }),
+    })
+  }
+
+  /**
+   * Verify MFA during login
+   * Called after initial login when mfaRequired=true
+   * @param {string} mfaToken - Temporary token from login response
+   * @param {string} token - 6-digit TOTP code from authenticator app
+   * @returns {Promise<{accessToken: string, refreshToken: string, user: object}>}
+   */
+  async verifyMFA(mfaToken, token) {
+    return this.request('/api/auth/mfa/verify', {
+      method: 'POST',
+      body: JSON.stringify({ mfaToken, token }),
+    })
+  }
+
+  /**
+   * Use backup code for login when TOTP unavailable
+   * @param {string} mfaToken - Temporary token from login response
+   * @param {string} backupCode - One-time backup code
+   * @returns {Promise<{accessToken: string, refreshToken: string, user: object}>}
+   */
+  async useBackupCode(mfaToken, backupCode) {
+    return this.request('/api/auth/mfa/use-backup-code', {
+      method: 'POST',
+      body: JSON.stringify({ mfaToken, backupCode }),
+    })
+  }
+
+  /**
+   * Disable MFA for user
+   * Requires password and current TOTP/backup code
+   * Note: Cannot disable if organization has mfa_required=true
+   * @param {string} password - User's password
+   * @param {string} token - Current TOTP code or backup code
+   * @returns {Promise<{message: string}>}
+   */
+  async disableMFA(password, token) {
+    return this.request('/api/auth/mfa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ password, token }),
+    })
+  }
+
+  /**
+   * Regenerate backup codes (invalidates old ones)
+   * Requires password and current TOTP code
+   * @param {string} password - User's password
+   * @param {string} token - Current TOTP code
+   * @returns {Promise<{backupCodes: string[]}>}
+   */
+  async regenerateBackupCodes(password, token) {
+    return this.request('/api/auth/mfa/regenerate-backup-codes', {
+      method: 'POST',
+      body: JSON.stringify({ password, token }),
     })
   }
 }

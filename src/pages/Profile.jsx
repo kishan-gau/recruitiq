@@ -1,6 +1,8 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import SessionManagement from '../components/SessionManagement'
+import MFASetup from '../components/MFASetup'
 
 export default function Profile(){
   const [theme, setTheme] = React.useState(()=>{
@@ -80,6 +82,12 @@ export default function Profile(){
           </button>
         </div>
       </div>
+
+      {/* Multi-Factor Authentication */}
+      <MFASetup />
+
+      {/* Active Sessions Management */}
+      <SessionManagement />
 
       <div className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm border dark:border-slate-700/50">
         <h2 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">About RecruitIQ</h2>
