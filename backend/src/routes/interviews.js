@@ -6,7 +6,7 @@ import {
   updateInterview,
   submitFeedback,
   cancelInterview
-} from '../controllers/interviewController.js';
+} from '../controllers/interviewController.refactored.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
