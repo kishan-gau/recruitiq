@@ -293,3 +293,55 @@ export async function checkJobLimit(req, res, next) {
     next(error);
   }
 }
+
+/**
+ * Get public job by slug (alias for getJobBySlug)
+ * GET /api/jobs/public/:id
+ */
+export async function getPublicJob(req, res, next) {
+  // Delegate to getJobBySlug - same functionality
+  return getJobBySlug(req, res, next);
+}
+
+/**
+ * List public jobs (alias for getPublishedJobs)
+ * GET /api/jobs/public
+ */
+export async function listPublicJobs(req, res, next) {
+  // Delegate to getPublishedJobs - same functionality
+  return getPublishedJobs(req, res, next);
+}
+
+/**
+ * Publish/unpublish job (alias for toggleJobPublish)
+ * PUT /api/jobs/:id/publish
+ */
+export async function publishJob(req, res, next) {
+  // Delegate to toggleJobPublish - same functionality
+  return toggleJobPublish(req, res, next);
+}
+
+/**
+ * Update portal settings for job
+ * PUT /api/jobs/:id/portal-settings
+ */
+export async function updatePortalSettings(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { portal_settings } = req.body;
+    
+    const job = await jobService.update(
+      id,
+      { portal_settings },
+      req.user
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: job,
+      message: 'Portal settings updated successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+}
