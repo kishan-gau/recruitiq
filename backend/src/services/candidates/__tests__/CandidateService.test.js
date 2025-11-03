@@ -18,15 +18,19 @@ describe('CandidateService', () => {
   let mockOrganization;
   let mockUser;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset mocks
     jest.clearAllMocks();
+
+    // Dynamic imports after mocks are set up
+    const Organization = (await import('../../../models/Organization.js')).default;
 
     // Create service instance
     candidateService = new CandidateService();
 
     // Mock repository methods
     mockCandidateRepository = candidateService.candidateRepository;
+    mockOrganization = Organization;
     
     // Mock user context
     mockUser = {
@@ -60,8 +64,7 @@ describe('CandidateService', () => {
       };
 
       // Mock Organization.findById
-      const { Organization } = await import('../../../models/Organization.js');
-      Organization.findById = jest.fn().mockResolvedValue(mockOrg);
+      mockOrganization.findById = jest.fn().mockResolvedValue(mockOrg);
 
       // Mock repository methods
       mockCandidateRepository.count = jest.fn().mockResolvedValue(50);
@@ -111,8 +114,7 @@ describe('CandidateService', () => {
         email: 'existing@example.com'
       };
 
-      const { Organization } = await import('../../../models/Organization.js');
-      Organization.findById = jest.fn().mockResolvedValue(mockOrg);
+      mockOrganization.findById = jest.fn().mockResolvedValue(mockOrg);
 
       mockCandidateRepository.count = jest.fn().mockResolvedValue(50);
       mockCandidateRepository.findByEmail = jest.fn().mockResolvedValue(existingCandidate);
@@ -134,8 +136,7 @@ describe('CandidateService', () => {
         max_candidates: 100
       };
 
-      const { Organization } = await import('../../../models/Organization.js');
-      Organization.findById = jest.fn().mockResolvedValue(mockOrg);
+      mockOrganization.findById = jest.fn().mockResolvedValue(mockOrg);
 
       mockCandidateRepository.count = jest.fn().mockResolvedValue(100); // At limit
 
@@ -308,12 +309,11 @@ describe('CandidateService', () => {
         max_candidates: 100
       };
 
-      const { Organization } = await import('../../../models/Organization.js');
-      Organization.findById = jest.fn().mockResolvedValue(mockOrg);
+      mockOrganization.findById = jest.fn().mockResolvedValue(mockOrg);
 
       mockCandidateRepository.count = jest.fn().mockResolvedValue(50);
 
-      const result = await candidateService.checkCandidateLimit('org-123');
+      const result = await candidateService.checkCandidateLimit(mockUser);
 
       expect(result.canCreate).toBe(true);
       expect(result.current).toBe(50);
@@ -327,12 +327,11 @@ describe('CandidateService', () => {
         max_candidates: 100
       };
 
-      const { Organization } = await import('../../../models/Organization.js');
-      Organization.findById = jest.fn().mockResolvedValue(mockOrg);
+      mockOrganization.findById = jest.fn().mockResolvedValue(mockOrg);
 
       mockCandidateRepository.count = jest.fn().mockResolvedValue(100);
 
-      await expect(candidateService.checkCandidateLimit('org-123'))
+      await expect(candidateService.checkCandidateLimit(mockUser))
         .rejects
         .toThrow(BusinessRuleError);
     });
@@ -350,8 +349,7 @@ describe('CandidateService', () => {
         max_candidates: 100
       };
 
-      const { Organization } = await import('../../../models/Organization.js');
-      Organization.findById = jest.fn().mockResolvedValue(mockOrg);
+      mockOrganization.findById = jest.fn().mockResolvedValue(mockOrg);
 
       mockCandidateRepository.count = jest.fn().mockResolvedValue(50);
       mockCandidateRepository.findByEmail = jest.fn().mockResolvedValue(null);
@@ -376,8 +374,7 @@ describe('CandidateService', () => {
         max_candidates: 100
       };
 
-      const { Organization } = await import('../../../models/Organization.js');
-      Organization.findById = jest.fn().mockResolvedValue(mockOrg);
+      mockOrganization.findById = jest.fn().mockResolvedValue(mockOrg);
 
       mockCandidateRepository.count = jest.fn().mockResolvedValue(50);
       mockCandidateRepository.findByEmail = jest.fn().mockResolvedValue(null);
