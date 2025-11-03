@@ -4,13 +4,155 @@
  */
 
 import { BaseRepository } from './BaseRepository.js';
-import pool from '../config/database.js';
+import pool, { query } from '../config/database.js';
 
-const db = pool;
+// Use the custom query function that supports organizationId filtering
+const db = { query };
 
 export class InterviewRepository extends BaseRepository {
   constructor() {
     super('interviews');
+  }
+
+  /**
+   * Override findById to handle organization filtering via applications
+   */
+  async findById(id, organizationId) {
+    try {
+      const query = `
+        SELECT i.*, a.organization_id
+        FROM interviews i
+        INNER JOIN applications a ON i.application_id = a.id
+        WHERE i.id = $1 
+          AND a.organization_id = $2
+          AND i.deleted_at IS NULL
+      `;
+      
+      const result = await db.query(query, [id, organizationId], organizationId, {
+        operation: 'findById',
+        table: this.tableName
+      });
+
+      return result.rows[0] || null;
+    } catch (error) {
+      this.logger.error('Error in findById', {
+        id,
+        organizationId,
+        table: this.tableName,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Override findAll to handle organization filtering via applications
+   */
+  async findAll(organizationId) {
+    try {
+      const query = `
+        SELECT i.*, a.organization_id
+        FROM interviews i
+        INNER JOIN applications a ON i.application_id = a.id
+        WHERE a.organization_id = $1
+          AND i.deleted_at IS NULL
+        ORDER BY i.created_at DESC
+      `;
+
+      const result = await db.query(query, [organizationId], organizationId, {
+        operation: 'findAll',
+        table: this.tableName
+      });
+
+      return result.rows;
+    } catch (error) {
+      this.logger.error('Error in findAll', {
+        organizationId,
+        table: this.tableName,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Override update to verify organization ownership via applications
+   */
+  async update(id, data, organizationId) {
+    try {
+      // First verify the interview belongs to the organization
+      const existing = await this.findById(id, organizationId);
+      if (!existing) {
+        return null;
+      }
+
+      // Now do the update
+      const keys = Object.keys(data);
+      const values = Object.values(data);
+      
+      const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+      
+      const query = `
+        UPDATE ${this.tableName}
+        SET ${setClause}, updated_at = NOW()
+        WHERE id = $${keys.length + 1}
+        AND deleted_at IS NULL
+        RETURNING *
+      `;
+
+      const result = await db.query(query, [...values, id], organizationId, {
+        operation: 'update',
+        table: this.tableName
+      });
+
+      return result.rows[0] || null;
+    } catch (error) {
+      this.logger.error('Error in update', {
+        id,
+        data,
+        organizationId,
+        table: this.tableName,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Override delete to verify organization ownership via applications
+   */
+  async delete(id, organizationId) {
+    try {
+      // First verify the interview belongs to the organization
+      const existing = await this.findById(id, organizationId);
+      if (!existing) {
+        return false;
+      }
+
+      // Now do the soft delete
+      const query = `
+        UPDATE ${this.tableName}
+        SET deleted_at = NOW()
+        WHERE id = $1
+        AND deleted_at IS NULL
+        RETURNING id
+      `;
+
+      const result = await db.query(query, [id], organizationId, {
+        operation: 'delete',
+        table: this.tableName
+      });
+
+      return result.rows.length > 0;
+    } catch (error) {
+      this.logger.error('Error in delete', {
+        id,
+        organizationId,
+        table: this.tableName,
+        error: error.message
+      });
+      throw error;
+    }
   }
 
   /**
@@ -174,16 +316,14 @@ export class InterviewRepository extends BaseRepository {
       let query = `
         SELECT 
           i.*,
-          a.id as application_id, a.status as application_status,
+          a.id as application_id, a.status as application_status, a.organization_id,
           c.first_name, c.last_name, c.email as candidate_email,
-          j.title as job_title, j.department,
-          u.first_name as interviewer_first_name, u.last_name as interviewer_last_name
+          j.title as job_title, j.department
         FROM interviews i
         INNER JOIN applications a ON i.application_id = a.id
         INNER JOIN candidates c ON a.candidate_id = c.id
         INNER JOIN jobs j ON a.job_id = j.id
-        LEFT JOIN users u ON i.interviewer_id = u.id
-        WHERE i.organization_id = $1 
+        WHERE a.organization_id = $1 
           AND i.deleted_at IS NULL
       `;
 
@@ -218,7 +358,10 @@ export class InterviewRepository extends BaseRepository {
       // Interviewer filter
       if (interviewerId) {
         paramCount++;
-        query += ` AND i.interviewer_id = $${paramCount}`;
+        query += ` AND EXISTS (
+          SELECT 1 FROM interview_interviewers ii 
+          WHERE ii.interview_id = i.id AND ii.user_id = $${paramCount}
+        )`;
         params.push(interviewerId);
       }
 

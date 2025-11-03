@@ -44,7 +44,7 @@ export async function getInterview(req, res, next) {
     
     res.status(200).json({
       success: true,
-      data: interview
+      interview: interview
     });
   } catch (error) {
     next(error);
@@ -127,7 +127,7 @@ export async function listInterviews(req, res, next) {
     
     res.status(200).json({
       success: true,
-      data: result.interviews,
+      interviews: result.interviews,
       pagination: {
         page: result.page,
         limit: result.limit,
@@ -141,7 +141,7 @@ export async function listInterviews(req, res, next) {
 }
 
 /**
- * Get interviews for a specific application
+ * Get specific interview
  * GET /api/applications/:applicationId/interviews
  */
 export async function getApplicationInterviews(req, res, next) {
@@ -312,4 +312,20 @@ export async function completeInterview(req, res, next) {
   } catch (error) {
     next(error);
   }
+}
+
+/**
+ * Schedule interview (alias for createInterview)
+ * POST /api/interviews
+ */
+export async function scheduleInterview(req, res, next) {
+  return createInterview(req, res, next);
+}
+
+/**
+ * Submit feedback (alias for submitInterviewFeedback)
+ * POST /api/interviews/:id/feedback
+ */
+export async function submitFeedback(req, res, next) {
+  return submitInterviewFeedback(req, res, next);
 }

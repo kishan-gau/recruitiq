@@ -44,7 +44,7 @@ export async function getApplication(req, res, next) {
     
     res.status(200).json({
       success: true,
-      data: application
+      application: application
     });
   } catch (error) {
     next(error);
@@ -127,7 +127,7 @@ export async function listApplications(req, res, next) {
     
     res.status(200).json({
       success: true,
-      data: result.applications,
+      applications: result.applications,
       pagination: {
         page: result.page,
         limit: result.limit,
@@ -269,6 +269,28 @@ export async function getRecentApplications(req, res, next) {
     res.status(200).json({
       success: true,
       data: applications
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Track application by tracking code (public endpoint)
+ * GET /api/applications/track/:trackingCode
+ */
+export async function trackApplication(req, res, next) {
+  try {
+    const { trackingCode } = req.params;
+    
+    // For now, return a simple response
+    // This would need to be implemented in ApplicationService
+    res.status(200).json({
+      success: true,
+      data: {
+        trackingCode,
+        message: 'Application tracking feature coming soon'
+      }
     });
   } catch (error) {
     next(error);

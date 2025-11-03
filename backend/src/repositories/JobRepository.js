@@ -4,9 +4,10 @@
  */
 
 import { BaseRepository } from './BaseRepository.js';
-import pool from '../config/database.js';
+import pool, { query } from '../config/database.js';
 
-const db = pool;
+// Use the custom query function that supports organizationId filtering
+const db = { query };
 
 export class JobRepository extends BaseRepository {
   constructor() {
@@ -29,15 +30,14 @@ export class JobRepository extends BaseRepository {
           COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'screening') as screening_count,
           COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'interviewing') as interviewing_count,
           u.email as hiring_manager_email,
-          u.first_name as hiring_manager_first_name,
-          u.last_name as hiring_manager_last_name
+          u.name as hiring_manager_name
         FROM jobs j
         LEFT JOIN applications a ON j.id = a.job_id AND a.deleted_at IS NULL
         LEFT JOIN users u ON j.hiring_manager_id = u.id
         WHERE j.id = $1 
         AND j.organization_id = $2
         AND j.deleted_at IS NULL
-        GROUP BY j.id, u.id, u.email, u.first_name, u.last_name
+        GROUP BY j.id, u.id, u.email, u.name
       `;
 
       const result = await db.query(query, [id, organizationId], organizationId, {
@@ -194,13 +194,12 @@ export class JobRepository extends BaseRepository {
           j.*,
           COUNT(DISTINCT a.id) as application_count,
           COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'applied') as new_applications,
-          u.first_name as hiring_manager_first_name,
-          u.last_name as hiring_manager_last_name
+          u.name as hiring_manager_name
         FROM jobs j
         LEFT JOIN applications a ON j.id = a.job_id AND a.deleted_at IS NULL
         LEFT JOIN users u ON j.hiring_manager_id = u.id
         WHERE ${whereClause}
-        GROUP BY j.id, u.first_name, u.last_name
+        GROUP BY j.id, u.name
         ORDER BY j.${sortBy} ${sortOrder}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;

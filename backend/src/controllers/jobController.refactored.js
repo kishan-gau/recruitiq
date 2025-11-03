@@ -44,7 +44,7 @@ export async function getJob(req, res, next) {
     
     res.status(200).json({
       success: true,
-      data: job
+      job: job
     });
   } catch (error) {
     next(error);
@@ -148,7 +148,7 @@ export async function listJobs(req, res, next) {
     
     res.status(200).json({
       success: true,
-      data: result.jobs,
+      jobs: result.jobs,
       pagination: {
         page: result.page,
         limit: result.limit,

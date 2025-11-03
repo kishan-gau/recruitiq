@@ -113,14 +113,14 @@ export function sanitizeQueryParams(params, options = {}) {
   for (const [key, value] of Object.entries(params)) {
     // Check for dangerous key names
     if (containsDangerousPattern(key)) {
-      logger.security('Dangerous pattern in query param key', { key });
+      logger.warn('Dangerous pattern in query param key', { key });
       continue; // Skip this parameter
     }
 
     // Handle arrays
     if (Array.isArray(value)) {
       if (!allowArrays) {
-        logger.security('Array in query params not allowed', { key });
+        logger.warn('Array in query params not allowed', { key });
         continue;
       }
       sanitized[key] = value.map(v => 
@@ -241,7 +241,7 @@ export function validateRequestBody(options = {}) {
       }
       next();
     } catch (error) {
-      logger.security('Request body validation failed', {
+      logger.warn('Request body validation failed', {
         error: error.message,
         userId: req.user?.id,
         ipAddress: req.ip,
@@ -264,11 +264,13 @@ export function validateQueryParams(options = {}) {
   return (req, res, next) => {
     try {
       if (req.query) {
-        req.query = sanitizeQueryParams(req.query, { allowArrays });
+        // Just validate without reassigning (req.query is read-only after body-parser)
+        // sanitizeQueryParams will throw if validation fails
+        sanitizeQueryParams(req.query, { allowArrays });
       }
       next();
     } catch (error) {
-      logger.security('Query params validation failed', {
+      logger.warn('Query params validation failed', {
         error: error.message,
         userId: req.user?.id,
         ipAddress: req.ip,
@@ -308,7 +310,7 @@ export function validateUrlParams() {
       }
       next();
     } catch (error) {
-      logger.security('URL params validation failed', {
+      logger.warn('URL params validation failed', {
         error: error.message,
         userId: req.user?.id,
         ipAddress: req.ip,
@@ -395,7 +397,7 @@ export function blockFilePathInjection() {
       if (req.query) checkObject(req.query);
       next();
     } catch (error) {
-      logger.security('File path injection attempt detected', {
+      logger.warn('File path injection attempt detected', {
         userId: req.user?.id,
         ipAddress: req.ip,
         route: req.route?.path,

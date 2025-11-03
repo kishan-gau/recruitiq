@@ -34,10 +34,12 @@ pool.on('error', (err) => {
 export const query = async (text, params, organizationId = null, metadata = {}) => {
   const start = Date.now();
   
+  // Declare these outside try block so they're accessible in catch
+  let modifiedText = text;
+  let modifiedParams = params || [];
+  
   try {
     // If organizationId is provided, add it to WHERE clause
-    let modifiedText = text;
-    let modifiedParams = params || [];
     
     if (organizationId && text.toLowerCase().includes('select')) {
       // Automatically enforce organization_id filtering for SELECT queries
