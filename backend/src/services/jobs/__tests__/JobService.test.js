@@ -2,47 +2,36 @@
  * Unit tests for JobService
  */
 
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { JobService } from '../JobService.js';
-import { JobRepository } from '../../../repositories/JobRepository.js';
-import Organization from '../../../models/Organization.js';
 import { ValidationError, NotFoundError, BusinessRuleError } from '../../../middleware/errorHandler.js';
 
-// Mock dependencies
-jest.mock('../../../config/database.js', () => ({
-  default: {
-    query: jest.fn(),
-    connect: jest.fn()
-  }
-}));
-jest.mock('../../../utils/logger.js', () => ({
-  default: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn()
-  }
-}));
+// Mock dependencies before imports
+jest.mock('../../../config/database.js');
+jest.mock('../../../utils/logger.js');
 jest.mock('../../../repositories/JobRepository.js');
-jest.mock('../../../models/Organization.js', () => ({
-  default: {
-    findByPk: jest.fn()
-  }
-}));
+jest.mock('../../../models/Organization.js');
 
 describe('JobService', () => {
   let jobService;
   let mockJobRepository;
+  let mockOrganization;
   let mockUser;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset all mocks
     jest.clearAllMocks();
+
+    // Dynamic imports after mocks are set up
+    const { JobRepository } = await import('../../../repositories/JobRepository.js');
+    const Organization = (await import('../../../models/Organization.js')).default;
 
     // Create service instance
     jobService = new JobService();
 
     // Get mock repository instance
-    mockJobRepository = JobRepository.mock.instances[0];
+    mockJobRepository = jobService.jobRepository;
+    mockOrganization = Organization;
 
     // Mock user
     mockUser = {
@@ -70,10 +59,10 @@ describe('JobService', () => {
         id: 'org-123',
         max_jobs: 10
       };
-      Organization.findByPk.mockResolvedValue(mockOrg);
+      mockOrganization.findByPk = jest.fn().mockResolvedValue(mockOrg);
 
       const mockActiveJobCount = 5;
-      mockJobRepository.count.mockResolvedValue(mockActiveJobCount);
+      mockJobRepository.count = jest.fn().mockResolvedValue(mockActiveJobCount);
 
       const mockCreatedJob = {
         id: 'job-123',
@@ -82,11 +71,11 @@ describe('JobService', () => {
         organization_id: 'org-123',
         created_by: 'user-123'
       };
-      mockJobRepository.create.mockResolvedValue(mockCreatedJob);
+      mockJobRepository.create = jest.fn().mockResolvedValue(mockCreatedJob);
 
       const result = await jobService.create(validJobData, mockUser);
 
-      expect(Organization.findByPk).toHaveBeenCalledWith('org-123');
+      expect(mockOrganization.findByPk).toHaveBeenCalledWith('org-123');
       expect(mockJobRepository.count).toHaveBeenCalledWith(
         { status: ['draft', 'open'] },
         'org-123'
@@ -125,10 +114,10 @@ describe('JobService', () => {
         id: 'org-123',
         max_jobs: 10
       };
-      Organization.findByPk.mockResolvedValue(mockOrg);
+      mockOrganization.findByPk = jest.fn().mockResolvedValue(mockOrg);
 
       const mockActiveJobCount = 10; // Already at limit
-      mockJobRepository.count.mockResolvedValue(mockActiveJobCount);
+      mockJobRepository.count = jest.fn().mockResolvedValue(mockActiveJobCount);
 
       await expect(jobService.create(validJobData, mockUser)).rejects.toThrow(BusinessRuleError);
       expect(mockJobRepository.create).not.toHaveBeenCalled();
@@ -139,15 +128,15 @@ describe('JobService', () => {
         id: 'org-123',
         max_jobs: 10
       };
-      Organization.findByPk.mockResolvedValue(mockOrg);
-      mockJobRepository.count.mockResolvedValue(0);
+      mockOrganization.findByPk = jest.fn().mockResolvedValue(mockOrg);
+      mockJobRepository.count = jest.fn().mockResolvedValue(0);
 
       const mockCreatedJob = {
         id: 'job-123',
         ...validJobData,
         slug: 'senior-software-engineer'
       };
-      mockJobRepository.create.mockResolvedValue(mockCreatedJob);
+      mockJobRepository.create = jest.fn().mockResolvedValue(mockCreatedJob);
 
       await jobService.create(validJobData, mockUser);
 
@@ -164,13 +153,13 @@ describe('JobService', () => {
         id: 'org-123',
         max_jobs: null // Unlimited
       };
-      Organization.findByPk.mockResolvedValue(mockOrg);
+      mockOrganization.findByPk = jest.fn().mockResolvedValue(mockOrg);
 
       const mockCreatedJob = {
         id: 'job-123',
         ...validJobData
       };
-      mockJobRepository.create.mockResolvedValue(mockCreatedJob);
+      mockJobRepository.create = jest.fn().mockResolvedValue(mockCreatedJob);
 
       await jobService.create(validJobData, mockUser);
 
@@ -681,8 +670,8 @@ describe('JobService', () => {
         id: 'org-123',
         max_jobs: 10
       };
-      Organization.findByPk.mockResolvedValue(mockOrg);
-      mockJobRepository.count.mockResolvedValue(5);
+      mockOrganization.findByPk = jest.fn().mockResolvedValue(mockOrg);
+      mockJobRepository.count = jest.fn().mockResolvedValue(5);
 
       const result = await jobService.checkJobLimit('org-123');
 
@@ -699,8 +688,8 @@ describe('JobService', () => {
         id: 'org-123',
         max_jobs: 10
       };
-      Organization.findByPk.mockResolvedValue(mockOrg);
-      mockJobRepository.count.mockResolvedValue(10);
+      mockOrganization.findByPk = jest.fn().mockResolvedValue(mockOrg);
+      mockJobRepository.count = jest.fn().mockResolvedValue(10);
 
       const result = await jobService.checkJobLimit('org-123');
 
@@ -717,7 +706,7 @@ describe('JobService', () => {
         id: 'org-123',
         max_jobs: null
       };
-      Organization.findByPk.mockResolvedValue(mockOrg);
+      mockOrganization.findByPk = jest.fn().mockResolvedValue(mockOrg);
 
       const result = await jobService.checkJobLimit('org-123');
 
@@ -731,7 +720,7 @@ describe('JobService', () => {
     });
 
     it('should throw NotFoundError when organization not found', async () => {
-      Organization.findByPk.mockResolvedValue(null);
+      mockOrganization.findByPk = jest.fn().mockResolvedValue(null);
 
       await expect(jobService.checkJobLimit('org-999')).rejects.toThrow(NotFoundError);
     });
