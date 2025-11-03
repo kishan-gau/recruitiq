@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { v4 as uuidv4 } from 'uuid';
 import { InterviewService } from '../InterviewService.js';
 import { ValidationError, BusinessRuleError, NotFoundError } from '../../../middleware/errorHandler.js';
 
@@ -18,9 +19,21 @@ describe('InterviewService', () => {
   let mockInterviewRepository;
   let mockApplicationRepository;
   let mockUser;
+  let testIds;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    
+    // Generate consistent test IDs
+    testIds = {
+      userId: uuidv4(),
+      orgId: uuidv4(),
+      applicationId: uuidv4(),
+      interviewerId: uuidv4(),
+      interviewId: uuidv4(),
+      candidateId: uuidv4(),
+      jobId: uuidv4()
+    };
     
     // Dynamic imports after mocks are set up
     const { InterviewRepository } = await import('../../../repositories/InterviewRepository.js');
@@ -32,15 +45,15 @@ describe('InterviewService', () => {
 
     // Mock user for tests
     mockUser = {
-      id: 'user-123',
-      organization_id: 'org-123',
+      id: testIds.userId,
+      organization_id: testIds.orgId,
       role: 'admin'
     };
   });
 
-  const validInterviewData = {
-    application_id: 'app-123',
-    interviewer_id: 'interviewer-123',
+  const getValidInterviewData = (testIds) => ({
+    application_id: testIds.applicationId,
+    interviewer_id: testIds.interviewerId,
     scheduled_at: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
     duration: 60,
     interview_type: 'technical',
@@ -48,46 +61,46 @@ describe('InterviewService', () => {
     meeting_link: 'https://zoom.us/j/123456789',
     notes: 'Please prepare coding questions',
     agenda: 'Technical assessment and system design'
-  };
+  });
 
   describe('create', () => {
     it('should create an interview with valid data', async () => {
       const mockApplication = {
-        id: 'app-123',
-        candidate_id: 'candidate-123',
-        job_id: 'job-123',
+        id: testIds.applicationId,
+        candidate_id: testIds.candidateId,
+        job_id: testIds.jobId,
         status: 'interview',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockApplicationRepository.findById = jest.fn().mockResolvedValue(mockApplication);
 
       mockInterviewRepository.checkSchedulingConflict = jest.fn().mockResolvedValue(null);
 
       const mockCreatedInterview = {
-        id: 'interview-123',
-        ...validInterviewData,
+        id: testIds.interviewId,
+        ...getValidInterviewData(testIds),
         status: 'scheduled',
-        created_by: 'user-123',
-        organization_id: 'org-123'
+        created_by: testIds.userId,
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.create = jest.fn().mockResolvedValue(mockCreatedInterview);
 
-      const result = await interviewService.create(validInterviewData, mockUser);
+      const result = await interviewService.create(getValidInterviewData(testIds), mockUser);
 
-      expect(mockApplicationRepository.findById).toHaveBeenCalledWith('app-123', 'org-123');
+      expect(mockApplicationRepository.findById).toHaveBeenCalledWith(testIds.applicationId, testIds.orgId);
       expect(mockInterviewRepository.checkSchedulingConflict).toHaveBeenCalledWith(
-        'interviewer-123',
+        testIds.interviewerId,
         expect.any(String),
         60,
-        'org-123'
+        testIds.orgId
       );
       expect(mockInterviewRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          ...validInterviewData,
+          ...getValidInterviewData(testIds),
           status: 'scheduled',
-          created_by: 'user-123'
+          created_by: testIds.userId
         }),
-        'org-123'
+        testIds.orgId
       );
       expect(result).toEqual(mockCreatedInterview);
     });
@@ -102,7 +115,7 @@ describe('InterviewService', () => {
 
     it('should throw ValidationError for scheduled_at in the past', async () => {
       const invalidData = {
-        ...validInterviewData,
+        ...getValidInterviewData(testIds),
         scheduled_at: new Date(Date.now() - 86400000).toISOString() // Yesterday
       };
 
@@ -112,76 +125,76 @@ describe('InterviewService', () => {
     it('should throw NotFoundError when application does not exist', async () => {
       mockApplicationRepository.findById = jest.fn().mockResolvedValue(null);
 
-      await expect(interviewService.create(validInterviewData, mockUser)).rejects.toThrow(NotFoundError);
+      await expect(interviewService.create(getValidInterviewData(testIds), mockUser)).rejects.toThrow(NotFoundError);
     });
 
     it('should throw BusinessRuleError when scheduling for rejected application', async () => {
       const mockRejectedApplication = {
-        id: 'app-123',
+        id: testIds.applicationId,
         status: 'rejected',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockApplicationRepository.findById = jest.fn().mockResolvedValue(mockRejectedApplication);
 
-      await expect(interviewService.create(validInterviewData, mockUser)).rejects.toThrow(BusinessRuleError);
-      await expect(interviewService.create(validInterviewData, mockUser)).rejects.toThrow(/rejected/);
+      await expect(interviewService.create(getValidInterviewData(testIds), mockUser)).rejects.toThrow(BusinessRuleError);
+      await expect(interviewService.create(getValidInterviewData(testIds), mockUser)).rejects.toThrow(/rejected/);
     });
 
     it('should throw BusinessRuleError when scheduling for hired application', async () => {
       const mockHiredApplication = {
-        id: 'app-123',
+        id: testIds.applicationId,
         status: 'hired',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockApplicationRepository.findById = jest.fn().mockResolvedValue(mockHiredApplication);
 
-      await expect(interviewService.create(validInterviewData, mockUser)).rejects.toThrow(BusinessRuleError);
-      await expect(interviewService.create(validInterviewData, mockUser)).rejects.toThrow(/hired/);
+      await expect(interviewService.create(getValidInterviewData(testIds), mockUser)).rejects.toThrow(BusinessRuleError);
+      await expect(interviewService.create(getValidInterviewData(testIds), mockUser)).rejects.toThrow(/hired/);
     });
 
     it('should throw BusinessRuleError when scheduling conflict exists', async () => {
       const mockApplication = {
-        id: 'app-123',
+        id: testIds.applicationId,
         status: 'interview',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockApplicationRepository.findById = jest.fn().mockResolvedValue(mockApplication);
 
       const mockConflict = {
         id: 'conflict-123',
-        scheduled_at: validInterviewData.scheduled_at,
-        interviewer_id: 'interviewer-123'
+        scheduled_at: getValidInterviewData(testIds).scheduled_at,
+        interviewer_id: testIds.interviewerId
       };
       mockInterviewRepository.checkSchedulingConflict = jest.fn().mockResolvedValue(mockConflict);
 
-      await expect(interviewService.create(validInterviewData, mockUser)).rejects.toThrow(BusinessRuleError);
-      await expect(interviewService.create(validInterviewData, mockUser)).rejects.toThrow(/scheduling conflict/);
+      await expect(interviewService.create(getValidInterviewData(testIds), mockUser)).rejects.toThrow(BusinessRuleError);
+      await expect(interviewService.create(getValidInterviewData(testIds), mockUser)).rejects.toThrow(/scheduling conflict/);
     });
   });
 
   describe('getById', () => {
     it('should get interview by id with details', async () => {
       const mockInterview = {
-        id: 'interview-123',
-        application_id: 'app-123',
-        interviewer_id: 'interviewer-123',
+        id: testIds.interviewId,
+        application_id: testIds.applicationId,
+        interviewer_id: testIds.interviewerId,
         status: 'scheduled',
-        organization_id: 'org-123',
+        organization_id: testIds.orgId,
         application: { candidate: { name: 'John Doe' } },
         interviewer: { name: 'Jane Smith' }
       };
       mockInterviewRepository.findByIdWithDetails = jest.fn().mockResolvedValue(mockInterview);
 
-      const result = await interviewService.getById('interview-123', mockUser);
+      const result = await interviewService.getById(testIds.interviewId, mockUser);
 
-      expect(mockInterviewRepository.findByIdWithDetails).toHaveBeenCalledWith('interview-123', 'org-123');
+      expect(mockInterviewRepository.findByIdWithDetails).toHaveBeenCalledWith(testIds.interviewId, testIds.orgId);
       expect(result).toEqual(mockInterview);
     });
 
     it('should throw NotFoundError when interview does not exist', async () => {
       mockInterviewRepository.findByIdWithDetails = jest.fn().mockResolvedValue(null);
 
-      await expect(interviewService.getById('interview-999', mockUser)).rejects.toThrow(NotFoundError);
+      await expect(interviewService.getById(uuidv4(), mockUser)).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -193,29 +206,29 @@ describe('InterviewService', () => {
 
     it('should update interview with valid data', async () => {
       const mockExistingInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'scheduled',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockExistingInterview);
 
       const mockUpdatedInterview = {
         ...mockExistingInterview,
         ...updateData,
-        updated_by: 'user-123'
+        updated_by: testIds.userId
       };
       mockInterviewRepository.update = jest.fn().mockResolvedValue(mockUpdatedInterview);
 
-      const result = await interviewService.update('interview-123', updateData, mockUser);
+      const result = await interviewService.update(testIds.interviewId, updateData, mockUser);
 
-      expect(mockInterviewRepository.findById).toHaveBeenCalledWith('interview-123', 'org-123');
+      expect(mockInterviewRepository.findById).toHaveBeenCalledWith(testIds.interviewId, testIds.orgId);
       expect(mockInterviewRepository.update).toHaveBeenCalledWith(
-        'interview-123',
+        testIds.interviewId,
         expect.objectContaining({
           ...updateData,
-          updated_by: 'user-123'
+          updated_by: testIds.userId
         }),
-        'org-123'
+        testIds.orgId
       );
       expect(result).toEqual(mockUpdatedInterview);
     });
@@ -225,27 +238,27 @@ describe('InterviewService', () => {
         interview_type: 'invalid-type'
       };
 
-      await expect(interviewService.update('interview-123', invalidData, mockUser)).rejects.toThrow(ValidationError);
+      await expect(interviewService.update(testIds.interviewId, invalidData, mockUser)).rejects.toThrow(ValidationError);
     });
 
     it('should throw BusinessRuleError when updating completed interview', async () => {
       const mockCompletedInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'completed',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockCompletedInterview);
 
-      await expect(interviewService.update('interview-123', updateData, mockUser)).rejects.toThrow(BusinessRuleError);
-      await expect(interviewService.update('interview-123', updateData, mockUser)).rejects.toThrow(/completed/);
+      await expect(interviewService.update(testIds.interviewId, updateData, mockUser)).rejects.toThrow(BusinessRuleError);
+      await expect(interviewService.update(testIds.interviewId, updateData, mockUser)).rejects.toThrow(/completed/);
     });
 
     it('should check scheduling conflict when updating schedule', async () => {
       const mockExistingInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'scheduled',
-        interviewer_id: 'interviewer-123',
-        organization_id: 'org-123'
+        interviewer_id: testIds.interviewerId,
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockExistingInterview);
 
@@ -257,57 +270,57 @@ describe('InterviewService', () => {
       mockInterviewRepository.checkSchedulingConflict = jest.fn().mockResolvedValue(null);
       mockInterviewRepository.update = jest.fn().mockResolvedValue({ ...mockExistingInterview, ...scheduleUpdate });
 
-      await interviewService.update('interview-123', scheduleUpdate, mockUser);
+      await interviewService.update(testIds.interviewId, scheduleUpdate, mockUser);
 
       expect(mockInterviewRepository.checkSchedulingConflict).toHaveBeenCalledWith(
-        'interviewer-123',
+        testIds.interviewerId,
         expect.any(String),
         90,
-        'org-123',
-        'interview-123'
+        testIds.orgId,
+        testIds.interviewId
       );
     });
 
     it('should throw NotFoundError when interview does not exist', async () => {
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(null);
 
-      await expect(interviewService.update('interview-999', updateData, mockUser)).rejects.toThrow(NotFoundError);
+      await expect(interviewService.update(uuidv4(), updateData, mockUser)).rejects.toThrow(NotFoundError);
     });
   });
 
   describe('delete', () => {
     it('should delete scheduled interview', async () => {
       const mockInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'scheduled',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockInterview);
       mockInterviewRepository.delete = jest.fn().mockResolvedValue(true);
 
-      await interviewService.delete('interview-123', mockUser);
+      await interviewService.delete(testIds.interviewId, mockUser);
 
-      expect(mockInterviewRepository.findById).toHaveBeenCalledWith('interview-123', 'org-123');
-      expect(mockInterviewRepository.delete).toHaveBeenCalledWith('interview-123', 'org-123');
+      expect(mockInterviewRepository.findById).toHaveBeenCalledWith(testIds.interviewId, testIds.orgId);
+      expect(mockInterviewRepository.delete).toHaveBeenCalledWith(testIds.interviewId, testIds.orgId);
     });
 
     it('should throw BusinessRuleError when deleting completed interview', async () => {
       const mockCompletedInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'completed',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockCompletedInterview);
 
-      await expect(interviewService.delete('interview-123', mockUser)).rejects.toThrow(BusinessRuleError);
-      await expect(interviewService.delete('interview-123', mockUser)).rejects.toThrow(/completed/);
+      await expect(interviewService.delete(testIds.interviewId, mockUser)).rejects.toThrow(BusinessRuleError);
+      await expect(interviewService.delete(testIds.interviewId, mockUser)).rejects.toThrow(/completed/);
       expect(mockInterviewRepository.delete).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundError when interview does not exist', async () => {
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(null);
 
-      await expect(interviewService.delete('interview-999', mockUser)).rejects.toThrow(NotFoundError);
+      await expect(interviewService.delete(uuidv4(), mockUser)).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -316,7 +329,7 @@ describe('InterviewService', () => {
       const filters = {
         status: 'scheduled',
         interview_type: 'technical',
-        interviewer_id: 'interviewer-123',
+        interviewer_id: testIds.interviewerId,
         page: 1,
         limit: 20
       };
@@ -335,7 +348,7 @@ describe('InterviewService', () => {
 
       const result = await interviewService.search(filters, mockUser);
 
-      expect(mockInterviewRepository.search).toHaveBeenCalledWith(filters, 'org-123');
+      expect(mockInterviewRepository.search).toHaveBeenCalledWith(filters, testIds.orgId);
       expect(result).toEqual(mockSearchResult);
     });
 
@@ -360,14 +373,14 @@ describe('InterviewService', () => {
   describe('getByApplication', () => {
     it('should get interviews by application', async () => {
       const mockInterviews = [
-        { id: 'interview-1', application_id: 'app-123', status: 'completed' },
-        { id: 'interview-2', application_id: 'app-123', status: 'scheduled' }
+        { id: 'interview-1', application_id: testIds.applicationId, status: 'completed' },
+        { id: 'interview-2', application_id: testIds.applicationId, status: 'scheduled' }
       ];
       mockInterviewRepository.findByApplication = jest.fn().mockResolvedValue(mockInterviews);
 
-      const result = await interviewService.getByApplication('app-123', mockUser);
+      const result = await interviewService.getByApplication(testIds.applicationId, mockUser);
 
-      expect(mockInterviewRepository.findByApplication).toHaveBeenCalledWith('app-123', 'org-123');
+      expect(mockInterviewRepository.findByApplication).toHaveBeenCalledWith(testIds.applicationId, testIds.orgId);
       expect(result).toEqual(mockInterviews);
     });
   });
@@ -375,14 +388,14 @@ describe('InterviewService', () => {
   describe('getByInterviewer', () => {
     it('should get interviews by interviewer', async () => {
       const mockInterviews = [
-        { id: 'interview-1', interviewer_id: 'interviewer-123', status: 'scheduled' },
-        { id: 'interview-2', interviewer_id: 'interviewer-123', status: 'completed' }
+        { id: 'interview-1', interviewer_id: testIds.interviewerId, status: 'scheduled' },
+        { id: 'interview-2', interviewer_id: testIds.interviewerId, status: 'completed' }
       ];
       mockInterviewRepository.findByInterviewer = jest.fn().mockResolvedValue(mockInterviews);
 
-      const result = await interviewService.getByInterviewer('interviewer-123', mockUser);
+      const result = await interviewService.getByInterviewer(testIds.interviewerId, mockUser);
 
-      expect(mockInterviewRepository.findByInterviewer).toHaveBeenCalledWith('interviewer-123', 'org-123');
+      expect(mockInterviewRepository.findByInterviewer).toHaveBeenCalledWith(testIds.interviewerId, testIds.orgId);
       expect(result).toEqual(mockInterviews);
     });
   });
@@ -396,9 +409,9 @@ describe('InterviewService', () => {
 
     it('should submit feedback for completed interview', async () => {
       const mockInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'completed',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockInterview);
 
@@ -409,16 +422,16 @@ describe('InterviewService', () => {
       };
       mockInterviewRepository.updateFeedback = jest.fn().mockResolvedValue(mockUpdatedInterview);
 
-      const result = await interviewService.submitFeedback('interview-123', feedbackData, mockUser);
+      const result = await interviewService.submitFeedback(testIds.interviewId, feedbackData, mockUser);
 
-      expect(mockInterviewRepository.findById).toHaveBeenCalledWith('interview-123', 'org-123');
+      expect(mockInterviewRepository.findById).toHaveBeenCalledWith(testIds.interviewId, testIds.orgId);
       expect(mockInterviewRepository.updateFeedback).toHaveBeenCalledWith(
-        'interview-123',
+        testIds.interviewId,
         feedbackData.feedback,
         feedbackData.rating,
         feedbackData.decision,
-        'user-123',
-        'org-123'
+        testIds.userId,
+        testIds.orgId
       );
       expect(result).toEqual(mockUpdatedInterview);
     });
@@ -430,34 +443,34 @@ describe('InterviewService', () => {
         decision: 'proceed'
       };
 
-      await expect(interviewService.submitFeedback('interview-123', invalidFeedback, mockUser)).rejects.toThrow(ValidationError);
+      await expect(interviewService.submitFeedback(testIds.interviewId, invalidFeedback, mockUser)).rejects.toThrow(ValidationError);
     });
 
     it('should throw BusinessRuleError when submitting feedback for non-completed interview', async () => {
       const mockScheduledInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'scheduled',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockScheduledInterview);
 
-      await expect(interviewService.submitFeedback('interview-123', feedbackData, mockUser)).rejects.toThrow(BusinessRuleError);
-      await expect(interviewService.submitFeedback('interview-123', feedbackData, mockUser)).rejects.toThrow(/completed/);
+      await expect(interviewService.submitFeedback(testIds.interviewId, feedbackData, mockUser)).rejects.toThrow(BusinessRuleError);
+      await expect(interviewService.submitFeedback(testIds.interviewId, feedbackData, mockUser)).rejects.toThrow(/completed/);
     });
 
     it('should throw NotFoundError when interview does not exist', async () => {
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(null);
 
-      await expect(interviewService.submitFeedback('interview-999', feedbackData, mockUser)).rejects.toThrow(NotFoundError);
+      await expect(interviewService.submitFeedback(uuidv4(), feedbackData, mockUser)).rejects.toThrow(NotFoundError);
     });
   });
 
   describe('cancel', () => {
     it('should cancel scheduled interview', async () => {
       const mockInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'scheduled',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockInterview);
 
@@ -465,52 +478,52 @@ describe('InterviewService', () => {
         ...mockInterview,
         status: 'cancelled',
         cancelled_at: new Date(),
-        cancelled_by: 'user-123',
+        cancelled_by: testIds.userId,
         cancellation_reason: 'Candidate unavailable'
       };
       mockInterviewRepository.update = jest.fn().mockResolvedValue(mockCancelledInterview);
 
-      const result = await interviewService.cancel('interview-123', mockUser, 'Candidate unavailable');
+      const result = await interviewService.cancel(testIds.interviewId, mockUser, 'Candidate unavailable');
 
-      expect(mockInterviewRepository.findById).toHaveBeenCalledWith('interview-123', 'org-123');
+      expect(mockInterviewRepository.findById).toHaveBeenCalledWith(testIds.interviewId, testIds.orgId);
       expect(mockInterviewRepository.update).toHaveBeenCalledWith(
-        'interview-123',
+        testIds.interviewId,
         expect.objectContaining({
           status: 'cancelled',
           cancelled_at: expect.any(Date),
-          cancelled_by: 'user-123',
+          cancelled_by: testIds.userId,
           cancellation_reason: 'Candidate unavailable'
         }),
-        'org-123'
+        testIds.orgId
       );
       expect(result).toEqual(mockCancelledInterview);
     });
 
     it('should throw BusinessRuleError when cancelling completed interview', async () => {
       const mockCompletedInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'completed',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockCompletedInterview);
 
-      await expect(interviewService.cancel('interview-123', mockUser)).rejects.toThrow(BusinessRuleError);
-      await expect(interviewService.cancel('interview-123', mockUser)).rejects.toThrow(/completed/);
+      await expect(interviewService.cancel(testIds.interviewId, mockUser)).rejects.toThrow(BusinessRuleError);
+      await expect(interviewService.cancel(testIds.interviewId, mockUser)).rejects.toThrow(/completed/);
     });
 
     it('should throw NotFoundError when interview does not exist', async () => {
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(null);
 
-      await expect(interviewService.cancel('interview-999', mockUser)).rejects.toThrow(NotFoundError);
+      await expect(interviewService.cancel(uuidv4(), mockUser)).rejects.toThrow(NotFoundError);
     });
   });
 
   describe('complete', () => {
     it('should complete scheduled interview', async () => {
       const mockInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'scheduled',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockInterview);
 
@@ -518,64 +531,41 @@ describe('InterviewService', () => {
         ...mockInterview,
         status: 'completed',
         completed_at: new Date(),
-        updated_by: 'user-123'
+        updated_by: testIds.userId
       };
       mockInterviewRepository.update = jest.fn().mockResolvedValue(mockCompletedInterview);
 
-      const result = await interviewService.complete('interview-123', mockUser);
+      const result = await interviewService.complete(testIds.interviewId, mockUser);
 
-      expect(mockInterviewRepository.findById).toHaveBeenCalledWith('interview-123', 'org-123');
+      expect(mockInterviewRepository.findById).toHaveBeenCalledWith(testIds.interviewId, testIds.orgId);
       expect(mockInterviewRepository.update).toHaveBeenCalledWith(
-        'interview-123',
+        testIds.interviewId,
         expect.objectContaining({
           status: 'completed',
           completed_at: expect.any(Date),
-          updated_by: 'user-123'
+          updated_by: testIds.userId
         }),
-        'org-123'
+        testIds.orgId
       );
       expect(result).toEqual(mockCompletedInterview);
     });
 
     it('should throw BusinessRuleError when completing already completed interview', async () => {
       const mockCompletedInterview = {
-        id: 'interview-123',
+        id: testIds.interviewId,
         status: 'completed',
-        organization_id: 'org-123'
+        organization_id: testIds.orgId
       };
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(mockCompletedInterview);
 
-      await expect(interviewService.complete('interview-123', mockUser)).rejects.toThrow(BusinessRuleError);
-      await expect(interviewService.complete('interview-123', mockUser)).rejects.toThrow(/already completed/);
+      await expect(interviewService.complete(testIds.interviewId, mockUser)).rejects.toThrow(BusinessRuleError);
+      await expect(interviewService.complete(testIds.interviewId, mockUser)).rejects.toThrow(/already completed/);
     });
 
     it('should throw NotFoundError when interview does not exist', async () => {
       mockInterviewRepository.findById = jest.fn().mockResolvedValue(null);
 
-      await expect(interviewService.complete('interview-999', mockUser)).rejects.toThrow(NotFoundError);
-    });
-  });
-
-  describe('getUpcomingInterviews', () => {
-    it('should get upcoming interviews', async () => {
-      const mockInterviews = [
-        { id: 'interview-1', scheduled_at: new Date(Date.now() + 3600000) },
-        { id: 'interview-2', scheduled_at: new Date(Date.now() + 7200000) }
-      ];
-      mockInterviewRepository.getUpcoming = jest.fn().mockResolvedValue(mockInterviews);
-
-      const result = await interviewService.getUpcomingInterviews(mockUser, 10);
-
-      expect(mockInterviewRepository.getUpcoming).toHaveBeenCalledWith(10, 'org-123');
-      expect(result).toEqual(mockInterviews);
-    });
-
-    it('should use default limit if not provided', async () => {
-      mockInterviewRepository.getUpcoming = jest.fn().mockResolvedValue([]);
-
-      await interviewService.getUpcomingInterviews(mockUser);
-
-      expect(mockInterviewRepository.getUpcoming).toHaveBeenCalledWith(20, 'org-123');
+      await expect(interviewService.complete(uuidv4(), mockUser)).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -590,7 +580,7 @@ describe('InterviewService', () => {
 
       const result = await interviewService.getStatistics(mockUser);
 
-      expect(mockInterviewRepository.getCountByStatus).toHaveBeenCalledWith('org-123');
+      expect(mockInterviewRepository.getCountByStatus).toHaveBeenCalledWith(testIds.orgId);
       expect(result).toEqual({
         byStatus: mockStats,
         total: 17

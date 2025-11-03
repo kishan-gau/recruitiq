@@ -349,7 +349,7 @@ export class ApplicationRepository extends BaseRepository {
         SET 
           status = $1,
           reviewed_by = $2,
-          reviewed_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP,
           notes = CASE WHEN $3 IS NOT NULL THEN $3 ELSE notes END,
           status_history = COALESCE(status_history, '[]'::jsonb) || 
             jsonb_build_object(
@@ -431,7 +431,7 @@ export class ApplicationRepository extends BaseRepository {
         SELECT 
           status,
           COUNT(*) as count,
-          AVG(EXTRACT(EPOCH FROM (COALESCE(reviewed_at, CURRENT_TIMESTAMP) - applied_at))/86400)::integer as avg_days_in_status
+          AVG(EXTRACT(EPOCH FROM (COALESCE(updated_at, CURRENT_TIMESTAMP) - applied_at))/86400)::integer as avg_days_in_status
         FROM ${this.tableName}
         WHERE organization_id = $1 
           AND deleted_at IS NULL

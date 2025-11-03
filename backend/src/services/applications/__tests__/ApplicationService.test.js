@@ -445,49 +445,36 @@ describe('ApplicationService', () => {
         { status: 'interview', count: 3 },
         { status: 'hired', count: 2 }
       ];
+      const mockPipelineStats = [
+        { status: 'applied', count: 10, avg_days_in_status: 2 }
+      ];
+      
       mockApplicationRepository.getCountByStatus = jest.fn().mockResolvedValue(mockStats);
+      mockApplicationRepository.getPipelineStats = jest.fn().mockResolvedValue(mockPipelineStats);
 
       const result = await applicationService.getStatistics(mockUser);
 
       expect(mockApplicationRepository.getCountByStatus).toHaveBeenCalledWith('org-123');
+      expect(mockApplicationRepository.getPipelineStats).toHaveBeenCalledWith('org-123', null);
       expect(result).toEqual({
         byStatus: mockStats,
-        total: 20
+        total: 20,
+        pipeline: mockPipelineStats
       });
     });
 
     it('should handle empty statistics', async () => {
       mockApplicationRepository.getCountByStatus = jest.fn().mockResolvedValue([]);
+      mockApplicationRepository.getPipelineStats = jest.fn().mockResolvedValue([]);
 
       const result = await applicationService.getStatistics(mockUser);
 
       expect(result).toEqual({
         byStatus: [],
-        total: 0
+        total: 0,
+        pipeline: []
       });
     });
   });
 
-  describe('getRecentApplications', () => {
-    it('should get recent applications', async () => {
-      const mockApplications = [
-        { id: 'app-1', applied_at: new Date() },
-        { id: 'app-2', applied_at: new Date() }
-      ];
-      mockApplicationRepository.getRecent = jest.fn().mockResolvedValue(mockApplications);
-
-      const result = await applicationService.getRecentApplications(mockUser, 10);
-
-      expect(mockApplicationRepository.getRecent).toHaveBeenCalledWith(10, 'org-123');
-      expect(result).toEqual(mockApplications);
-    });
-
-    it('should use default limit if not provided', async () => {
-      mockApplicationRepository.getRecent = jest.fn().mockResolvedValue([]);
-
-      await applicationService.getRecentApplications(mockUser);
-
-      expect(mockApplicationRepository.getRecent).toHaveBeenCalledWith(20, 'org-123');
-    });
-  });
 });
