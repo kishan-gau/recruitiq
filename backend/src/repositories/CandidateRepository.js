@@ -4,7 +4,9 @@
  */
 
 import { BaseRepository } from './BaseRepository.js';
-import { db } from '../config/database.js';
+import pool from '../config/database.js';
+
+const db = pool;
 
 export class CandidateRepository extends BaseRepository {
   constructor() {

@@ -3,10 +3,10 @@
  * Implements all business rules and orchestrates repository calls
  */
 
-import { CandidateRepository } from '../repositories/CandidateRepository.js';
-import { Organization } from '../models/Organization.js';
-import { logger } from '../utils/logger.js';
-import { ValidationError, BusinessRuleError, NotFoundError } from '../middleware/errorHandler.js';
+import { CandidateRepository } from '../../repositories/CandidateRepository.js';
+import Organization from '../../models/Organization.js';
+import logger from '../../utils/logger.js';
+import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.js';
 import Joi from 'joi';
 
 export class CandidateService {

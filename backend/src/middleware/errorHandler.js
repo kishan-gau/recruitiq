@@ -87,6 +87,11 @@ export class BusinessLogicError extends APIError {
 }
 
 /**
+ * Alias for BusinessLogicError - business rule violation
+ */
+export class BusinessRuleError extends BusinessLogicError {}
+
+/**
  * 429 Too Many Requests - Rate limit exceeded
  */
 export class RateLimitError extends APIError {
