@@ -6,7 +6,7 @@ import {
   createCandidate,
   updateCandidate,
   deleteCandidate
-} from '../controllers/candidateController.js';
+} from '../controllers/candidateController.refactored.js';
 import { authenticate } from '../middleware/auth.js';
 import { protectMassAssignment } from '../middleware/massAssignmentProtection.js';
 

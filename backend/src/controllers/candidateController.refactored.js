@@ -5,7 +5,7 @@
  */
 
 import { CandidateService } from '../services/candidates/CandidateService.js';
-import { logger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 
 const candidateService = new CandidateService();
 
@@ -44,7 +44,7 @@ export async function getCandidate(req, res, next) {
     
     res.status(200).json({
       success: true,
-      data: candidate
+      candidate: candidate
     });
   } catch (error) {
     next(error);
@@ -129,7 +129,7 @@ export async function listCandidates(req, res, next) {
     
     res.status(200).json({
       success: true,
-      data: result.candidates,
+      candidates: result.candidates,
       pagination: {
         page: result.page,
         limit: result.limit,
@@ -218,6 +218,38 @@ export async function bulkImportCandidates(req, res, next) {
       success: true,
       data: results,
       message: `Bulk import completed. Success: ${results.success.length}, Failed: ${results.failed.length}`
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Get candidate's applications
+ * GET /api/candidates/:id/applications
+ */
+export async function getCandidateApplications(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+    
+    // Use ApplicationService to get applications by candidate
+    const { ApplicationService } = await import('../services/applications/ApplicationService.js');
+    const applicationService = new ApplicationService();
+    
+    const result = await applicationService.getByCandidate(
+      id,
+      req.user,
+      {
+        page: parseInt(page),
+        limit: parseInt(limit)
+      }
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: result.applications,
+      pagination: result.pagination
     });
   } catch (error) {
     next(error);

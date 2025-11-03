@@ -4,7 +4,10 @@
  */
 
 import { BaseRepository } from './BaseRepository.js';
-import { db } from '../config/database.js';
+import pool, { query } from '../config/database.js';
+
+// Use the custom query function that supports organizationId filtering
+const db = { query };
 
 export class CandidateRepository extends BaseRepository {
   constructor() {

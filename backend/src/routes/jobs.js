@@ -9,7 +9,7 @@ import {
   deleteJob,
   publishJob,
   updatePortalSettings
-} from '../controllers/jobController.js';
+} from '../controllers/jobController.refactored.js';
 import { authenticate, optionalAuth } from '../middleware/auth.js';
 
 const router = express.Router();

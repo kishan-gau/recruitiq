@@ -31,6 +31,11 @@ describe('Tenant Data Isolation Tests', () => {
   let org1Candidate, org2Candidate;
 
   beforeAll(async () => {
+    // Clean up any existing test organizations first
+    await pool.query(
+      `DELETE FROM organizations WHERE slug IN ('org-1-test', 'org-2-test')`
+    );
+
     // Create two separate organizations
     const org1 = await pool.query(
       `INSERT INTO organizations (name, slug, tier, subscription_status)
@@ -294,7 +299,7 @@ describe('Tenant Data Isolation Tests', () => {
       const response = await request(app)
         .put(`/api/candidates/${org2Candidate}`)
         .set('Authorization', `Bearer ${org1Token}`)
-        .send({ first_name: 'Hacked' });
+        .send({ email: 'hacked@evil.com' });
 
       expect([404, 403]).toContain(response.status);
     });

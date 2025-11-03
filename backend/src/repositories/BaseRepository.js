@@ -4,9 +4,12 @@
  * @see https://martinfowler.com/eaaCatalog/repository.html
  */
 
-import { db } from '../config/database.js';
-import { logger } from '../utils/logger.js';
+import pool, { query } from '../config/database.js';
+import logger from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
+
+// Use the custom query function that supports organizationId filtering
+const db = { query };
 
 export class BaseRepository {
   /**
