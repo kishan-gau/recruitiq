@@ -11,6 +11,8 @@
     "lint": "eslint src --ext js,jsx"
   },
   "dependencies": {
+    "@recruitiq/api-client": "workspace:*",
+    "@recruitiq/ui": "workspace:*",
     "@tanstack/react-query": "^5.90.5",
     "axios": "^1.12.2",
     "date-fns": "^4.1.0",

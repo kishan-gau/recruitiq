@@ -15,6 +15,8 @@
     "test:visual": "playwright test --project=chromium"
   },
   "dependencies": {
+    "@recruitiq/api-client": "workspace:*",
+    "@recruitiq/ui": "workspace:*",
     "@tanstack/react-query": "^5.90.5",
     "axios": "^1.12.2",
     "clsx": "^2.1.1",

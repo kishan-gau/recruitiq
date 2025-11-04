@@ -1,0 +1,40 @@
+{
+  "name": "recruitiq-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RecruitIQ Multi-Product SaaS Platform - Monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm run --parallel --filter=./apps/* dev",
+    "dev:recruitiq": "pnpm run --filter=recruitiq dev",
+    "dev:paylinq": "pnpm run --filter=paylinq dev",
+    "dev:nexus": "pnpm run --filter=nexus dev",
+    "dev:portal": "pnpm run --filter=portal dev",
+    "build": "pnpm run --parallel --filter=./apps/* build",
+    "build:recruitiq": "pnpm run --filter=recruitiq build",
+    "build:paylinq": "pnpm run --filter=paylinq build",
+    "build:nexus": "pnpm run --filter=nexus build",
+    "build:portal": "pnpm run --filter=portal build",
+    "test": "pnpm run --parallel --filter=./apps/* test",
+    "test:ui": "pnpm run --filter=@recruitiq/ui test",
+    "lint": "pnpm run --parallel --filter=./apps/* lint",
+    "clean": "pnpm run --parallel --filter=./apps/* clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.1",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8.54.0",
+    "postcss": "^8.5.6",
+    "prettier": "^3.1.0",
+    "tailwindcss": "^3.4.18",
+    "vite": "^7.1.12"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
