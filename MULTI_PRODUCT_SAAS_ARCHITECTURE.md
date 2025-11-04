@@ -1,8 +1,8 @@
 # Multi-Product SaaS Architecture Guide
 
 **RecruitIQ Platform - Modular Product Architecture**  
-**Date:** October 31, 2025  
-**Version:** 1.0
+**Date:** November 3, 2025  
+**Version:** 2.0
 
 ---
 
@@ -11,14 +11,14 @@
 1. [Overview](#overview)
 2. [Architecture Philosophy](#architecture-philosophy)
 3. [Product Structure](#product-structure)
-4. [Implementation Guide](#implementation-guide)
-5. [Database Design](#database-design)
-6. [Product Configuration](#product-configuration)
-7. [Dynamic Loading System](#dynamic-loading-system)
-8. [Access Control](#access-control)
-9. [Cross-Product Integration](#cross-product-integration)
-10. [Frontend Architecture](#frontend-architecture)
-11. [Migration Strategy](#migration-strategy)
+4. [Frontend Architecture](#frontend-architecture)
+5. [Backend Architecture](#backend-architecture)
+6. [Database Design](#database-design)
+7. [Implementation Guide](#implementation-guide)
+8. [Product Configuration](#product-configuration)
+9. [Dynamic Loading System](#dynamic-loading-system)
+10. [Access Control](#access-control)
+11. [Cross-Product Integration](#cross-product-integration)
 12. [Use Cases](#use-cases)
 
 ---
@@ -28,19 +28,26 @@
 This document describes the architecture for transforming RecruitIQ into a **multi-product SaaS platform** where customers can subscribe to individual products independently:
 
 - **RecruitIQ** - Applicant Tracking System (ATS)
-- **PayrollPro** - Payroll Management System
-- **HRIS Suite** - Human Resources Information System
+- **Paylinq** - Payroll Management System
+- **Nexus** - Human Resources Information System (HRIS)
 
-Each product can operate **standalone** or be combined with others for enhanced cross-product functionality.
+Each product can operate **completely standalone** or be combined with others for enhanced cross-product functionality.
 
 ### Key Principles
 
-✅ **Product Independence** - Each product can be sold and used independently  
-✅ **Shared Infrastructure** - Common authentication, billing, and user management  
+✅ **Product Independence** - Each product is a separate application that can be sold and deployed independently  
+✅ **Shared Infrastructure** - Common authentication, billing, and user management via unified backend  
 ✅ **Data Isolation** - Separate database schemas per product  
 ✅ **Flexible Licensing** - Different tiers and features per product  
-✅ **Cross-Product Integration** - Optional integration when multiple products are active  
-✅ **Unified Experience** - Single sign-on and unified portal  
+✅ **Cross-Product Integration** - Optional integration when customer subscribes to multiple products  
+✅ **Consistent UX** - Shared component library ensures consistent experience across products
+
+### Critical Distinctions
+
+🔴 **Customer-Facing Applications** - Separate React apps for each product (recruitiq/, paylinq/, nexus/)  
+🔵 **Platform Admin Portal** - Separate admin application (portal/) for platform owner to manage licenses, security, and monitoring  
+🟢 **Unified Backend** - Single Node.js backend with modular product structure  
+🟡 **Shared UI Library** - Common component library (shared-ui/) used by all frontend applications  
 
 ---
 
@@ -49,56 +56,141 @@ Each product can operate **standalone** or be combined with others for enhanced 
 ### Current State
 ```
 RecruitIQ (Monolithic)
-└── Single product with all features
+├── recruitiq/ (frontend)
+└── backend/ (monolithic)
 ```
 
 ### Target State
 ```
-Platform (Multi-Product)
-├── Core (Shared Services)
-│   ├── Authentication
-│   ├── User Management
-│   ├── Organizations
-│   └── Billing
-├── RecruitIQ (Product)
-├── PayrollPro (Product)
-└── HRIS Suite (Product)
+RecruitIQ Platform (Multi-Product)
+├── Frontend Applications (Separate, Independent)
+│   ├── shared-ui/           # Shared component library
+│   ├── recruitiq/           # ATS frontend (standalone app)
+│   ├── paylinq/             # Payroll frontend (standalone app)
+│   ├── nexus/               # HRIS frontend (standalone app)
+│   └── portal/              # Admin portal (platform owner only)
+│
+└── Backend (Unified with Product Modules)
+    ├── Core Services         # Auth, Users, Organizations, Billing
+    ├── RecruitIQ Module      # ATS backend
+    ├── Paylinq Module        # Payroll backend
+    └── Nexus Module          # HRIS backend
 ```
+
+### Design Rationale
+
+**Separate Frontend Applications:**
+- Each product is an independent React application
+- Customers only receive the frontends they subscribe to
+- Smaller bundle sizes (no unused product code)
+- Independent deployments per product
+- Clear team ownership boundaries
+
+**Unified Backend:**
+- Single deployment reduces operational complexity
+- Shared infrastructure (auth, monitoring, logging)
+- Product isolation via modular structure
+- Dynamic product loading based on subscription
+- Follows industry standard (used by Shopify, Atlassian, HubSpot)
+- Can be split into microservices later if needed
+
+**Shared UI Library:**
+- Ensures consistent UX across all products
+- No code duplication
+- Reusable components, hooks, and utilities
+- Shared design system and theming
+- Used by all customer-facing apps AND admin portal
 
 ---
 
 ## Product Structure
 
-### Directory Layout
+### Complete Directory Layout
 
 ```
-backend/src/
-├── products/                          # Standalone products
-│   ├── core/                         # Shared foundation (required)
-│   │   ├── auth/
-│   │   │   ├── controllers/
-│   │   │   ├── services/
-│   │   │   └── routes/
-│   │   ├── users/
-│   │   ├── organizations/
-│   │   ├── billing/
-│   │   └── index.js
-│   │
-│   ├── recruitiq/                    # Product: ATS/Recruitment
-│   │   ├── config/
-│   │   │   └── product.config.js     # Product metadata
-│   │   ├── controllers/
-│   │   │   ├── jobController.js
-│   │   │   ├── candidateController.js
-│   │   │   ├── applicationController.js
-│   │   │   └── interviewController.js
-│   │   ├── models/
-│   │   │   ├── Job.js
-│   │   │   ├── Candidate.js
-│   │   │   ├── Application.js
-│   │   │   └── Interview.js
-│   │   ├── routes/
-│   │   │   ├── jobs.js
+RecruitIQ/
+├── shared-ui/                         # Shared component library
+│   ├── package.json                   # @recruitiq/shared-ui
+│   ├── src/
+│   │   ├── components/                # Reusable UI components
+│   │   │   ├── Button.jsx
+│   │   │   ├── Modal.jsx
+│   │   │   ├── DataTable.jsx
+│   │   │   ├── Form/
+│   │   │   └── Layout/
+│   │   ├── hooks/                     # Shared React hooks
+│   │   │   ├── useAuth.js
+│   │   │   ├── useApi.js
+│   │   │   └── usePermissions.js
+│   │   ├── utils/                     # Utility functions
+│   │   │   ├── api.js
+│   │   │   ├── validation.js
+│   │   │   └── formatters.js
+│   │   ├── contexts/                  # Shared contexts
+│   │   │   └── AuthContext.jsx
+│   │   └── styles/                    # Shared styles/theme
+│   │       └── tailwind-preset.js
+│   └── dist/                          # Built library
+│
+├── recruitiq/                         # RecruitIQ Frontend (Customer-Facing)
+│   ├── package.json                   # depends on: @recruitiq/shared-ui
+│   ├── src/
+│   │   ├── pages/                     # Recruitment-specific pages
+│   │   ├── components/                # Recruitment-specific components
+│   │   └── main.jsx
+│   └── vite.config.js
+│
+├── paylinq/                           # Paylinq Frontend (Customer-Facing)
+│   ├── package.json                   # depends on: @recruitiq/shared-ui
+│   ├── src/
+│   │   ├── pages/                     # Payroll-specific pages
+│   │   ├── components/                # Payroll-specific components
+│   │   └── main.jsx
+│   └── vite.config.js
+│
+├── nexus/                             # Nexus Frontend (Customer-Facing)
+│   ├── package.json                   # depends on: @recruitiq/shared-ui
+│   ├── src/
+│   │   ├── pages/                     # HRIS-specific pages
+│   │   ├── components/                # HRIS-specific components
+│   │   └── main.jsx
+│   └── vite.config.js
+│
+├── portal/                            # Platform Admin Portal (Owner Only)
+│   ├── package.json                   # depends on: @recruitiq/shared-ui
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx          # Platform overview
+│   │   │   ├── security/              # Security monitoring
+│   │   │   ├── logs/                  # Log viewer
+│   │   │   └── licenses/              # License management
+│   │   └── main.jsx
+│   └── README.md                      # "This is for platform owner only"
+│
+└── backend/                           # Unified Backend
+    ├── src/
+    │   ├── products/                  # Product modules
+    │   │   ├── core/                  # Shared foundation (required)
+    │   │   │   ├── auth/
+    │   │   │   │   ├── controllers/
+    │   │   │   │   ├── services/
+    │   │   │   │   └── routes/
+    │   │   │   ├── users/
+    │   │   │   ├── organizations/
+    │   │   │   ├── billing/
+    │   │   │   └── index.js
+    │   │   │
+    │   │   ├── recruitiq/             # Product: ATS/Recruitment
+    │   │   │   ├── config/
+    │   │   │   │   └── product.config.js
+    │   │   │   ├── controllers/
+    │   │   │   │   ├── jobController.js
+    │   │   │   │   ├── candidateController.js
+    │   │   │   │   ├── applicationController.js
+    │   │   │   │   └── interviewController.js
+    │   │   │   ├── models/
+    │   │   │   ├── routes/
+    │   │   │   │   ├── jobs.js
 │   │   │   ├── candidates.js
 │   │   │   ├── applications.js
 │   │   │   └── interviews.js
@@ -362,7 +454,7 @@ export default {
 export default {
   // Product Identity
   id: 'payroll',
-  name: 'PayrollPro',
+  name: 'Paylinq',
   version: '1.0.0',
   description: 'Complete payroll management solution',
   icon: 'dollar-sign',
@@ -491,7 +583,7 @@ export default {
 export default {
   // Product Identity
   id: 'hris',
-  name: 'HRIS Suite',
+  name: 'Nexus',
   version: '1.0.0',
   description: 'Human Resources Information System',
   icon: 'users-cog',
@@ -1394,199 +1486,516 @@ export async function setupIntegrations() {
 
 ## Frontend Architecture
 
-### Multi-Product Portal Structure
+### Overview
 
-```
-portal/src/
-├── apps/                              # Product-specific apps
-│   ├── payroll/
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── PayrollRuns.jsx
-│   │   │   ├── Timesheets.jsx
-│   │   │   └── Reports.jsx
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   └── PayrollApp.jsx
-│   │
-│   ├── hris/
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── Employees.jsx
-│   │   │   ├── Benefits.jsx
-│   │   │   └── Performance.jsx
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   └── HRISApp.jsx
-│   │
-│   └── recruitiq/
-│       ├── pages/
-│       │   ├── Dashboard.jsx
-│       │   ├── Jobs.jsx
-│       │   ├── Candidates.jsx
-│       │   └── Pipeline.jsx
-│       ├── components/
-│       ├── hooks/
-│       ├── services/
-│       └── RecruitIQApp.jsx
-│
-├── shared/
-│   ├── components/
-│   │   ├── Layout.jsx
-│   │   ├── ProductSwitcher.jsx      # Switch between products
-│   │   ├── Sidebar.jsx
-│   │   └── Header.jsx
-│   ├── contexts/
-│   │   ├── AuthContext.jsx
-│   │   ├── ProductContext.jsx       # Current product state
-│   │   └── SubscriptionContext.jsx   # Subscribed products
-│   ├── hooks/
-│   │   ├── useProducts.js
-│   │   ├── useProductAccess.js
-│   │   └── useFeatureAccess.js
-│   └── services/
-│       ├── api.js
-│       └── productApi.js
-│
-├── App.jsx                            # Main app router
-├── main.jsx
-└── routes.jsx
+The frontend consists of **four separate React applications** plus a **shared component library**:
+
+1. **shared-ui/** - Shared component library (npm package)
+2. **recruitiq/** - RecruitIQ ATS application (customer-facing)
+3. **paylinq/** - Paylinq Payroll application (customer-facing)
+4. **nexus/** - Nexus HRIS application (customer-facing)
+5. **portal/** - Platform admin portal (owner-only)
+
+### Key Characteristics
+
+✅ **Complete Independence** - Each product is a separate React application  
+✅ **Standalone Deployment** - Each app can be deployed independently  
+✅ **Selective Distribution** - Customers only receive apps they subscribe to  
+✅ **Smaller Bundles** - No unused product code shipped  
+✅ **Consistent UX** - Shared library ensures consistency  
+✅ **No Duplication** - Common code lives in shared-ui library
+
+### Application Purposes
+
+| Application | Purpose | Users | Deployment |
+|------------|---------|-------|-----------|
+| **recruitiq/** | ATS features | Customers with RecruitIQ subscription | recruit.customer.com |
+| **paylinq/** | Payroll features | Customers with Paylinq subscription | payroll.customer.com |
+| **nexus/** | HRIS features | Customers with Nexus subscription | hris.customer.com |
+| **portal/** | Platform administration | Platform owner only | portal.recruitiq.com |
+| **shared-ui/** | Component library | Used by all above apps | npm package |
+
+### Shared UI Library Structure
+
+**`shared-ui/package.json`:**
+
+```json
+{
+  "name": "@recruitiq/shared-ui",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./components": "./dist/components/index.js",
+    "./hooks": "./dist/hooks/index.js",
+    "./utils": "./dist/utils/index.js",
+    "./contexts": "./dist/contexts/index.js"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.12",
+    "tailwindcss": "^3.4.18",
+    "@vitejs/plugin-react": "^5.0.1"
+  }
+}
 ```
 
-### Product Context Provider
+**Usage in product applications:**
 
-**`shared/contexts/ProductContext.jsx`:**
+```javascript
+// In recruitiq/src/pages/Jobs.jsx
+import { Button, DataTable, Modal } from '@recruitiq/shared-ui/components';
+import { useAuth, useApi } from '@recruitiq/shared-ui/hooks';
+import { formatDate, validateEmail } from '@recruitiq/shared-ui/utils';
 
-```jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import api from '../services/api';
-
-const ProductContext = createContext();
-
-export function ProductProvider({ children }) {
+export default function Jobs() {
   const { user } = useAuth();
-  const [subscribedProducts, setSubscribedProducts] = useState([]);
-  const [currentProduct, setCurrentProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      loadSubscribedProducts();
-    }
-  }, [user]);
-
-  async function loadSubscribedProducts() {
-    try {
-      const response = await api.get('/api/products');
-      setSubscribedProducts(response.products);
-      
-      // Set default product if none selected
-      if (!currentProduct && response.products.length > 0) {
-        setCurrentProduct(response.products[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load subscribed products:', error);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function getProduct(productId) {
-    return subscribedProducts.find(p => p.id === productId);
-  }
-
-  function hasProduct(productId) {
-    return subscribedProducts.some(p => p.id === productId);
-  }
-
-  function hasFeature(productId, feature) {
-    const product = getProduct(productId);
-    if (!product) return false;
-    
-    return product.features === 'all' || 
-           (Array.isArray(product.features) && product.features.includes(feature));
-  }
-
-  const value = {
-    subscribedProducts,
-    currentProduct,
-    setCurrentProduct,
-    getProduct,
-    hasProduct,
-    hasFeature,
-    loading,
-  };
-
+  const { data, loading } = useApi('/api/recruit/jobs');
+  
   return (
-    <ProductContext.Provider value={value}>
-      {children}
-    </ProductContext.Provider>
-  );
-}
-
-export function useProduct() {
-  const context = useContext(ProductContext);
-  if (!context) {
-    throw new Error('useProduct must be used within ProductProvider');
-  }
-  return context;
-}
-```
-
-### Product Switcher Component
-
-**`shared/components/ProductSwitcher.jsx`:**
-
-```jsx
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useProduct } from '../contexts/ProductContext';
-
-export default function ProductSwitcher() {
-  const { subscribedProducts, currentProduct, setCurrentProduct } = useProduct();
-  const navigate = useNavigate();
-
-  const handleProductSwitch = (productId) => {
-    setCurrentProduct(productId);
-    
-    // Navigate to product dashboard
-    const routes = {
-      'recruitiq': '/recruit/dashboard',
-      'payroll': '/payroll/dashboard',
-      'hris': '/hris/dashboard',
-    };
-    
-    navigate(routes[productId] || '/');
-  };
-
-  if (subscribedProducts.length <= 1) {
-    return null; // Don't show switcher if only one product
-  }
-
-  return (
-    <div className="product-switcher">
-      <select
-        value={currentProduct}
-        onChange={(e) => handleProductSwitch(e.target.value)}
-        className="form-select"
-      >
-        {subscribedProducts.map((product) => (
-          <option key={product.id} value={product.id}>
-            {product.name}
-          </option>
-        ))}
-      </select>
+    <div>
+      <h1>Jobs</h1>
+      <DataTable data={data} loading={loading} />
+      <Button variant="primary">Add Job</Button>
     </div>
   );
 }
 ```
 
+### Product Application Structure
+
+Each product application follows the same structure:
+
+```
+{product}/
+├── package.json           # depends on @recruitiq/shared-ui
+├── vite.config.js
+├── tailwind.config.js     # extends shared-ui preset
+├── src/
+│   ├── main.jsx           # Entry point
+│   ├── App.jsx            # Routes
+│   ├── pages/             # Product-specific pages
+│   │   ├── Dashboard.jsx
+│   │   ├── {Feature}List.jsx
+│   │   └── {Feature}Details.jsx
+│   ├── components/        # Product-specific components
+│   │   └── {Feature}Card.jsx
+│   ├── services/          # API calls
+│   │   └── api.js
+│   └── utils/             # Product-specific utilities
+└── public/
+```
+
+### Customer Experience Examples
+
+**Example 1: Customer with only Paylinq**
+```
+Deployment:
+- payroll.acmecorp.com  ← paylinq/ app deployed
+
+Customer access:
+- ✅ Payroll features only
+- ✅ Fast, focused app
+- ✅ Small bundle size
+- ❌ No recruitment or HRIS features visible
+```
+
+**Example 2: Customer with RecruitIQ + Nexus**
+```
+Deployment:
+- recruit.acmecorp.com  ← recruitiq/ app deployed
+- hris.acmecorp.com     ← nexus/ app deployed
+
+Customer access:
+- ✅ Can use both apps
+- ✅ Single sign-on via shared auth
+- ✅ Cross-product links (convert candidate → employee)
+- ✅ Each app focused on its domain
+- ❌ No payroll features
+```
+
+**Example 3: Customer with all three products**
+```
+Deployment:
+- recruit.acmecorp.com  ← recruitiq/ app deployed
+- payroll.acmecorp.com  ← paylinq/ app deployed
+- hris.acmecorp.com     ← nexus/ app deployed
+
+Customer access:
+- ✅ All three apps available
+- ✅ Full integration: candidate → employee → payroll
+- ✅ Unified navigation/menu
+- ✅ Single sign-on across all apps
+```
+
+### Development Workflow
+
+#### Option A: NPM Workspaces (Recommended)
+
+**Root `package.json`:**
+
+```json
+{
+  "name": "recruitiq-platform",
+  "private": true,
+  "workspaces": [
+    "shared-ui",
+    "recruitiq",
+    "paylinq",
+    "nexus",
+    "portal"
+  ],
+  "scripts": {
+    "dev:shared": "cd shared-ui && npm run dev",
+    "dev:recruit": "cd recruitiq && npm run dev",
+    "dev:payroll": "cd paylinq && npm run dev",
+    "dev:hris": "cd nexus && npm run dev",
+    "dev:portal": "cd portal && npm run dev",
+    "build:all": "npm run build --workspaces",
+    "test:all": "npm run test --workspaces"
+  }
+}
+```
+
+**Benefits:**
+- Single `npm install` at root
+- Automatic linking of shared-ui
+- Changes to shared-ui immediately available
+- No need to publish during development
+
+#### Development Commands
+
+```bash
+# Install all dependencies
+npm install
+
+# Run specific product in dev mode
+npm run dev:recruit   # Starts recruitiq on localhost:5173
+npm run dev:payroll   # Starts paylinq on localhost:5174
+npm run dev:hris      # Starts nexus on localhost:5175
+npm run dev:portal    # Starts portal on localhost:5176
+
+# Build all products
+npm run build:all
+
+# Test all products
+npm run test:all
+```
+
+### Cross-Product Navigation
+
+```javascript
+// shared-ui/src/utils/navigation.js
+export function getProductUrl(productId) {
+  const domain = import.meta.env.VITE_CUSTOMER_DOMAIN;
+  
+  const urls = {
+    recruitiq: `https://recruit.${domain}`,
+    paylinq: `https://payroll.${domain}`,
+    nexus: `https://hris.${domain}`,
+  };
+  
+  return urls[productId] || '/';
+}
+
+export function createCrossProductLink(productId, path = '/') {
+  return `${getProductUrl(productId)}${path}`;
+}
+
+// Usage in any product app
+import { createCrossProductLink } from '@recruitiq/shared-ui/utils';
+
+function ConvertToEmployee({ candidateId }) {
+  const handleConvert = async () => {
+    const employee = await api.post('/api/integrations/convert-candidate', {
+      candidateId
+    });
+    
+    // Open HRIS app with new employee
+    const hrisUrl = createCrossProductLink('nexus', `/employees/${employee.id}`);
+    window.open(hrisUrl, '_blank');
+  };
+  
+  return <Button onClick={handleConvert}>Convert to Employee</Button>;
+}
+```
+
 ---
 
-## Migration Strategy
+## Backend Architecture
+
+### Overview: Unified Modular Monolith
+
+The backend uses a **unified modular monolith** architecture - a single Node.js/Express application with clear product boundaries. This is the industry-standard approach used by Shopify, Atlassian, HubSpot, and other successful multi-product SaaS platforms.
+
+### Key Characteristics
+
+✅ **Single Application** - One Express server, one deployment  
+✅ **Product Modules** - Clear separation via directory structure  
+✅ **Dynamic Loading** - Products loaded based on subscriptions  
+✅ **Shared Infrastructure** - Auth, database, monitoring shared  
+✅ **Independent Schemas** - Each product has its own database schema  
+✅ **Future-Proof** - Can split into microservices later if needed
+
+### Backend Structure
+
+```
+backend/
+├── src/
+│   ├── server.js                      # Main server with dynamic product loading
+│   │
+│   ├── products/                      # Product modules
+│   │   ├── core/                      # Core/shared (always loaded)
+│   │   │   ├── auth/
+│   │   │   ├── users/
+│   │   │   ├── organizations/
+│   │   │   ├── billing/
+│   │   │   └── subscriptions/
+│   │   │
+│   │   ├── recruitiq/                 # RecruitIQ product module
+│   │   │   ├── config/
+│   │   │   │   └── product.config.js
+│   │   │   ├── controllers/
+│   │   │   ├── services/
+│   │   │   ├── repositories/
+│   │   │   ├── routes/
+│   │   │   └── models/
+│   │   │
+│   │   ├── paylinq/                   # Paylinq product module
+│   │   │   ├── config/
+│   │   │   │   └── product.config.js
+│   │   │   ├── controllers/
+│   │   │   ├── services/
+│   │   │   ├── repositories/
+│   │   │   ├── routes/
+│   │   │   └── models/
+│   │   │
+│   │   └── nexus/                     # Nexus product module
+│   │       ├── config/
+│   │       │   └── product.config.js
+│   │       ├── controllers/
+│   │       ├── services/
+│   │       ├── repositories/
+│   │       ├── routes/
+│   │       └── models/
+│   │
+│   ├── shared/                        # Shared utilities
+│   │   ├── middleware/
+│   │   │   ├── auth.js
+│   │   │   ├── productAccess.js       # Check subscription
+│   │   │   ├── rateLimit.js
+│   │   │   └── errorHandler.js
+│   │   ├── database/
+│   │   │   ├── pool.js
+│   │   │   ├── query.js               # Enhanced query wrapper
+│   │   │   └── migrations/
+│   │   ├── utils/
+│   │   │   ├── logger.js
+│   │   │   ├── validator.js
+│   │   │   └── encryption.js
+│   │   └── productLoader.js           # Dynamic product loading
+│   │
+│   └── integrations/                  # Cross-product integrations
+│       ├── integrationBus.js
+│       └── handlers/
+│
+└── database/
+    ├── schemas/
+    │   ├── 001_core.sql               # Core schema
+    │   ├── 002_recruitment.sql        # RecruitIQ schema
+    │   ├── 003_payroll.sql            # Paylinq schema
+    │   ├── 004_hris.sql               # Nexus schema
+    │   └── 005_integrations.sql       # Cross-product tables
+    └── migrations/
+```
+
+### Dynamic Product Loading
+
+**`src/server.js`:**
+
+```javascript
+import express from 'express';
+import productLoader from './shared/productLoader.js';
+import { productAccessMiddleware } from './shared/middleware/productAccess.js';
+import logger from './shared/utils/logger.js';
+
+const app = express();
+
+// Standard middleware
+app.use(express.json());
+app.use(cors());
+
+// Load products dynamically
+const products = ['core', 'recruitiq', 'paylinq', 'nexus'];
+
+for (const productId of products) {
+  await productLoader.loadProduct(productId);
+}
+
+// Register routes with access control
+for (const [productId, product] of productLoader.getAllProducts()) {
+  if (product.routes) {
+    logger.info(`📍 Mounting ${productId} routes at ${product.routes.prefix}`);
+    
+    // Apply product access middleware (except for core)
+    if (productId !== 'core') {
+      app.use(product.routes.prefix, productAccessMiddleware(productId));
+    }
+    
+    app.use(product.routes.prefix, product.routes.router);
+  }
+}
+
+app.listen(4000, () => {
+  logger.info('🚀 Backend server running on port 4000');
+});
+```
+
+### Product Access Middleware
+
+**`src/shared/middleware/productAccess.js`:**
+
+```javascript
+import productLoader from '../productLoader.js';
+import logger from '../utils/logger.js';
+
+/**
+ * Middleware to check if organization has access to a product
+ */
+export function productAccessMiddleware(productId) {
+  return async (req, res, next) => {
+    try {
+      const organizationId = req.user?.organization_id;
+      
+      if (!organizationId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+      }
+
+      // Check if organization has active subscription
+      const hasAccess = await productLoader.hasProductAccess(
+        organizationId,
+        productId,
+        req.db
+      );
+
+      if (!hasAccess) {
+        logger.warn(`Access denied: org ${organizationId} to product ${productId}`);
+        
+        return res.status(403).json({
+          success: false,
+          error: `Access denied. Your organization does not have an active subscription to ${productId}.`,
+          code: 'PRODUCT_ACCESS_DENIED',
+          productId
+        });
+      }
+
+      // Attach product info to request
+      req.product = {
+        id: productId,
+        info: productLoader.getProduct(productId)
+      };
+
+      next();
+    } catch (error) {
+      logger.error('Product access check failed:', error);
+      next(error);
+    }
+  };
+}
+```
+
+### Database: Schema Isolation
+
+```sql
+-- Single PostgreSQL database with multiple schemas
+
+-- Core schema (always accessible)
+CREATE SCHEMA IF NOT EXISTS core;
+
+-- Product schemas (access controlled by subscriptions)
+CREATE SCHEMA IF NOT EXISTS recruitment;
+CREATE SCHEMA IF NOT EXISTS payroll;
+CREATE SCHEMA IF NOT EXISTS hris;
+
+-- Cross-product integration schema
+CREATE SCHEMA IF NOT EXISTS integrations;
+```
+
+**Benefits of this approach:**
+- ✅ Strong isolation between products
+- ✅ Can't accidentally query wrong product tables
+- ✅ Easy cross-product queries when needed (for integrations)
+- ✅ Single backup/restore
+- ✅ Can extract to separate databases later
+- ✅ Follows principle of least privilege
+
+### Request Flow Example
+
+```
+Customer Request:
+GET https://recruit.customer.com/api/recruit/jobs
+              ↓
+1. Frontend (recruitiq/) makes API call
+              ↓
+2. Backend receives request at /api/recruit/jobs
+              ↓
+3. Auth middleware verifies JWT token
+              ↓
+4. Product access middleware checks:
+   - Does org have 'recruitiq' subscription?
+   - Is subscription active?
+   - Is within usage limits?
+              ↓
+5. If authorized, route to recruitiq/routes/jobs.js
+              ↓
+6. Controller → Service → Repository
+              ↓
+7. Repository uses schema: recruitment.jobs
+              ↓
+8. Response sent back to frontend
+```
+
+### Why Modular Monolith vs Microservices?
+
+**Current Choice: Modular Monolith**
+
+✅ Simpler deployment and operations  
+✅ Lower infrastructure cost  
+✅ Easier debugging and testing  
+✅ No distributed systems complexity  
+✅ Can still achieve product isolation  
+✅ Used successfully by billion-dollar companies  
+
+**Future: Can Migrate to Microservices**
+
+```javascript
+// Current: All products in one server
+await productLoader.loadProduct('recruitiq');
+await productLoader.loadProduct('paylinq');
+await productLoader.loadProduct('nexus');
+
+// Future: Separate services
+// recruitiq-service: only loads 'recruitiq'
+// paylinq-service: only loads 'paylinq'
+// nexus-service: only loads 'nexus'
+// api-gateway: routes requests to services
+```
+
+The modular structure allows this transition when/if needed:
+- **Now:** Deploy as single application
+- **Growth:** Add more server instances (horizontal scaling)
+- **Massive Scale:** Split into microservices with API gateway
+
+---
+
+## Database Design
 
 ### Phase 1: Preparation (Week 1-2)
 
@@ -1799,29 +2208,71 @@ export default function ProductSwitcher() {
 ## Next Steps
 
 1. **Review and Approve** this architecture document
-2. **Create detailed technical specs** for each product
-3. **Set up development environment** with new structure
-4. **Begin Phase 1** of migration strategy
-5. **Establish testing protocols** for multi-product scenarios
-6. **Design UI/UX** for product switcher and unified portal
+2. **Set up shared-ui** component library with npm workspaces
+3. **Create Paylinq and Nexus** frontend applications (copy structure from recruitiq/)
+4. **Restructure backend** into products/ directory with modular structure
+5. **Implement product loader** and dynamic routing in backend
+6. **Create database schemas** for each product (core, recruitment, payroll, hris)
+7. **Begin Phase 1** of implementation plan (see MULTI_PRODUCT_IMPLEMENTATION_PLAN.md)
 
 ---
 
 ## Conclusion
 
-This multi-product SaaS architecture provides **maximum flexibility** for both the business and customers. Each product can operate independently while benefiting from shared infrastructure and optional cross-product integrations.
+This multi-product SaaS architecture provides **maximum flexibility** for both the business and customers. Each product operates as a **completely independent application** while benefiting from shared infrastructure and optional cross-product integrations.
 
-The modular approach ensures that:
-- Clients can subscribe to **any combination** of products
-- Products remain **maintainable** and **testable**
-- The platform can **scale** to add more products in the future
-- Data remains **isolated** and **secure** per product
-- The system is ready for **microservices migration** when needed
+### Architecture Summary
 
-This architecture positions RecruitIQ as a true **enterprise HR platform** rather than just an ATS.
+**Frontend:**
+- ✅ **4 separate React applications** (recruitiq, paylinq, nexus, portal)
+- ✅ **1 shared component library** (@recruitiq/shared-ui)
+- ✅ Customers receive **only the apps they subscribe to**
+- ✅ Each app can be deployed independently
+- ✅ Consistent UX via shared components
+
+**Backend:**
+- ✅ **Unified modular monolith** (single Express server)
+- ✅ **Product modules** with clear boundaries
+- ✅ **Dynamic product loading** based on subscriptions
+- ✅ **Schema isolation** per product
+- ✅ Can scale to microservices when needed
+
+**Database:**
+- ✅ **Single PostgreSQL database** with multiple schemas
+- ✅ **Schema-level isolation** (core, recruitment, payroll, hris)
+- ✅ Shared infrastructure, isolated data
+- ✅ Easy cross-product integration when needed
+
+### Key Benefits
+
+**For the Business:**
+- Sell products individually or as bundles
+- Target different market segments
+- Upsell additional products to existing customers
+- Flexible pricing models per product
+
+**For Customers:**
+- Buy only what they need
+- No paying for unused features
+- Easy to add more products as they grow
+- Seamless integration when using multiple products
+
+**For Development:**
+- Clear team ownership per product
+- Independent testing and deployment
+- Maintainable and scalable
+- Follows industry best practices
+
+This architecture positions RecruitIQ as a true **enterprise HR platform** offering flexible, standalone products that can work independently or as an integrated suite.
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** October 31, 2025  
-**Status:** Proposal - Awaiting Approval
+**Document Version:** 2.0  
+**Last Updated:** November 3, 2025  
+**Status:** Approved - Ready for Implementation
+
+**Key Clarifications in v2.0:**
+- Separated customer-facing apps (recruitiq, paylinq, nexus) from admin portal
+- Added shared-ui component library approach
+- Clarified unified modular monolith backend architecture
+- Emphasized product independence and standalone capabilities
