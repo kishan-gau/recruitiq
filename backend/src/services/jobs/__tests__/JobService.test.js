@@ -75,6 +75,8 @@ describe('JobService', () => {
 
   describe('create', () => {
     const validJobData = {
+      workspace_id: '550e8400-e29b-41d4-a716-446655440000', // Required workspace ID
+      flow_template_id: '650e8400-e29b-41d4-a716-446655440000', // Required flow template ID
       title: 'Senior Software Engineer',
       department: 'Engineering',
       location: 'Remote',

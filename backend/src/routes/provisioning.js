@@ -51,7 +51,7 @@ async function getTierLimits(tier) {
     );
 
     if (result.rows.length === 0) {
-      console.warn(`⚠️  No active tier preset found for tier: ${tier}, using default limits`);
+      logger.warn(`⚠️  No active tier preset found for tier: ${tier}, using default limits`);
       // Fallback to basic limits if database query fails
       return {
         maxUsers: tier === 'starter' ? 10 : tier === 'professional' ? 50 : null,
@@ -77,7 +77,7 @@ async function getTierLimits(tier) {
       }
     };
   } catch (error) {
-    console.error('❌ Error fetching tier limits from License Manager:', error);
+    logger.error('Error fetching tier limits from License Manager:', error);
     // Return fallback limits on error
     return {
       maxUsers: tier === 'starter' ? 10 : tier === 'professional' ? 50 : null,
@@ -170,10 +170,15 @@ router.post('/instances',
         const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
         const passwordHash = await bcrypt.hash(tempPassword, 10);
         
+        // Split admin name into first and last name
+        const nameParts = adminName.trim().split(/\s+/);
+        const firstName = nameParts[0] || 'Admin';
+        const lastName = nameParts.slice(1).join(' ') || 'User';
+        
         await client.query(
-          `INSERT INTO users (organization_id, email, password_hash, name, role, email_verified)
-           VALUES ($1, $2, $3, $4, 'owner', true)`,
-          [organizationId, adminEmail, passwordHash, adminName]
+          `INSERT INTO users (organization_id, email, password_hash, name, first_name, last_name, legacy_role, email_verified)
+           VALUES ($1, $2, $3, $4, $5, $6, 'owner', true)`,
+          [organizationId, adminEmail, passwordHash, adminName, firstName, lastName]
         );
 
         // Create deployment record
@@ -227,7 +232,7 @@ router.post('/instances',
         // Create dedicated VPS (async - takes 3-5 minutes)
         createDedicatedVPSAsync(deploymentId, organizationId, slug, tier, adminEmail, adminName)
           .catch(error => {
-            console.error('VPS creation failed:', error);
+            logger.error('VPS creation failed:', error);
             pool.query(
               `UPDATE instance_deployments 
                SET status = 'failed', error_message = $1 WHERE id = $2`,
@@ -248,7 +253,7 @@ router.post('/instances',
 
     } catch (error) {
       await client.query('ROLLBACK');
-      console.error('Provisioning error:', error);
+      logger.error('Provisioning error:', error);
       res.status(500).json({ 
         error: 'Provisioning failed', 
         message: error.message 
@@ -313,10 +318,15 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
     const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
     const passwordHash = await bcrypt.hash(tempPassword, 10);
     
+    // Split admin name into first and last name
+    const nameParts = adminName.trim().split(/\s+/);
+    const firstName = nameParts[0] || 'Admin';
+    const lastName = nameParts.slice(1).join(' ') || 'User';
+    
     await pool.query(
-      `INSERT INTO users (organization_id, email, password_hash, name, role, email_verified)
-       VALUES ($1, $2, $3, $4, 'owner', true)`,
-      [organizationId, adminEmail, passwordHash, adminName]
+      `INSERT INTO users (organization_id, email, password_hash, name, first_name, last_name, legacy_role, email_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, 'owner', true)`,
+      [organizationId, adminEmail, passwordHash, adminName, firstName, lastName]
     );
 
     // Mark as active
@@ -329,10 +339,10 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
 
     // TODO: Send welcome email with credentials
 
-    console.log(`✅ Dedicated VPS provisioned for ${slug}`);
+    logger.info(`✅ Dedicated VPS provisioned for ${slug}`);
 
   } catch (error) {
-    console.error('VPS provisioning failed:', error);
+    logger.error('VPS provisioning failed:', error);
     throw error;
   }
 }
@@ -370,7 +380,7 @@ router.get('/instances/:deploymentId/status',
       res.json(result.rows[0]);
 
     } catch (error) {
-      console.error('Status check error:', error);
+      logger.error('Status check error:', error);
       res.status(500).json({ error: 'Failed to get status' });
     }
   }
@@ -402,7 +412,7 @@ router.get('/clients',
       res.json(result.rows);
 
     } catch (error) {
-      console.error('Error fetching clients:', error);
+      logger.error('Error fetching clients:', error);
       res.status(500).json({ error: 'Failed to fetch clients' });
     }
   }
@@ -421,7 +431,7 @@ router.get('/vps/available',
       const availableVPS = await vpsManager.getAvailableSharedVPS();
       res.json(availableVPS);
     } catch (error) {
-      console.error('Error getting available VPS:', error);
+      logger.error('Error getting available VPS:', error);
       res.status(500).json({ error: 'Failed to get VPS list' });
     }
   }
@@ -440,7 +450,7 @@ router.get('/vps',
       const allVPS = await vpsManager.getAllVPS();
       res.json(allVPS);
     } catch (error) {
-      console.error('Error getting VPS:', error);
+      logger.error('Error getting VPS:', error);
       res.status(500).json({ error: 'Failed to get VPS list' });
     }
   }
@@ -459,7 +469,7 @@ router.get('/vps/stats',
       const stats = await vpsManager.getVPSStatistics();
       res.json(stats);
     } catch (error) {
-      console.error('Error getting VPS stats:', error);
+      logger.error('Error getting VPS stats:', error);
       res.status(500).json({ error: 'Failed to get VPS statistics' });
     }
   }
@@ -478,7 +488,7 @@ router.post('/vps',
       const vps = await vpsManager.registerVPS(req.body);
       res.json({ success: true, vps });
     } catch (error) {
-      console.error('Error registering VPS:', error);
+      logger.error('Error registering VPS:', error);
       res.status(500).json({ error: 'Failed to register VPS' });
     }
   }

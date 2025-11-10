@@ -5,7 +5,7 @@ import Profile from '../../pages/Profile'
 import { BrowserRouter } from 'react-router-dom'
 
 // Mock the AuthContext
-vi.mock('../../context/AuthContext', () => ({
+vi.mock('@recruitiq/auth', () => ({
   useAuth: () => ({
     user: { name: 'Test User', email: 'test@example.com' },
     logout: vi.fn(),

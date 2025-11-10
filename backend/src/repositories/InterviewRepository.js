@@ -15,6 +15,95 @@ export class InterviewRepository extends BaseRepository {
   }
 
   /**
+   * Override create to handle interviews without organization_id column
+   * Interviews get organization via JOIN through applications table
+   */
+  async create(data, organizationId) {
+    try {
+      // Verify the application exists and belongs to the organization
+      const appCheck = await pool.query(
+        'SELECT id FROM applications WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL',
+        [data.application_id, organizationId]
+      );
+
+      if (appCheck.rows.length === 0) {
+        throw new Error('Application not found or does not belong to organization');
+      }
+
+      // Generate ID if not provided
+      const { v4: uuidv4 } = await import('uuid');
+      const id = data.id || uuidv4();
+
+      // Build insert query WITHOUT organization_id
+      const keys = ['id', ...Object.keys(data).filter(k => k !== 'id')];
+      const values = [id, ...Object.keys(data).filter(k => k !== 'id').map(k => data[k])];
+      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+
+      const query = `
+        INSERT INTO ${this.tableName} (${keys.join(', ')}, created_at, updated_at)
+        VALUES (${placeholders}, NOW(), NOW())
+        RETURNING *
+      `;
+
+      const result = await db.query(query, values, organizationId, {
+        operation: 'create',
+        table: this.tableName
+      });
+
+      const dbRecord = result.rows[0];
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return mapDbToApi(dbRecord);
+    } catch (error) {
+      this.logger.error('Error in create', {
+        data,
+        organizationId,
+        table: this.tableName,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Override count to handle organization filtering via applications
+   */
+  async count(organizationId, filters = {}) {
+    try {
+      let query = `
+        SELECT COUNT(*) as count 
+        FROM ${this.tableName} i
+        INNER JOIN applications a ON i.application_id = a.id
+        WHERE a.organization_id = $1 
+        AND i.deleted_at IS NULL
+      `;
+      
+      const params = [organizationId];
+      let paramCount = 1;
+
+      // Add filters
+      Object.entries(filters).forEach(([key, value]) => {
+        paramCount++;
+        query += ` AND i.${key} = $${paramCount}`;
+        params.push(value);
+      });
+
+      const result = await db.query(query, params, organizationId, {
+        operation: 'count',
+        table: this.tableName
+      });
+
+      return parseInt(result.rows[0].count);
+    } catch (error) {
+      this.logger.error('Error in count', {
+        filters: organizationId,
+        table: this.tableName,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Override findById to handle organization filtering via applications
    */
   async findById(id, organizationId) {
@@ -33,7 +122,11 @@ export class InterviewRepository extends BaseRepository {
         table: this.tableName
       });
 
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      if (!dbRecord) return null;
+      
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return mapDbToApi(dbRecord);
     } catch (error) {
       this.logger.error('Error in findById', {
         id,
@@ -64,7 +157,8 @@ export class InterviewRepository extends BaseRepository {
         table: this.tableName
       });
 
-      return result.rows;
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error in findAll', {
         organizationId,
@@ -105,7 +199,11 @@ export class InterviewRepository extends BaseRepository {
         table: this.tableName
       });
 
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      if (!dbRecord) return null;
+      
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return mapDbToApi(dbRecord);
     } catch (error) {
       this.logger.error('Error in update', {
         id,
@@ -175,12 +273,16 @@ export class InterviewRepository extends BaseRepository {
         LEFT JOIN users u1 ON i.interviewer_id = u1.id
         LEFT JOIN users u2 ON i.created_by = u2.id
         WHERE i.id = $1 
-          AND i.organization_id = $2 
+          AND a.organization_id = $2 
           AND i.deleted_at IS NULL
       `;
 
       const result = await db.query(query, [id, organizationId]);
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      if (!dbRecord) return null;
+      
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return mapDbToApi(dbRecord);
     } catch (error) {
       this.logger.error('Error finding interview with details:', error);
       throw error;
@@ -199,15 +301,18 @@ export class InterviewRepository extends BaseRepository {
           u.last_name as interviewer_last_name,
           u.email as interviewer_email
         FROM interviews i
+        INNER JOIN applications a ON i.application_id = a.id
         LEFT JOIN users u ON i.interviewer_id = u.id
         WHERE i.application_id = $1 
-          AND i.organization_id = $2 
+          AND a.organization_id = $2 
           AND i.deleted_at IS NULL
         ORDER BY i.scheduled_at ASC
       `;
 
       const result = await db.query(query, [applicationId, organizationId]);
-      return result.rows;
+      
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding interviews by application:', error);
       throw error;
@@ -238,7 +343,7 @@ export class InterviewRepository extends BaseRepository {
         INNER JOIN candidates c ON a.candidate_id = c.id
         INNER JOIN jobs j ON a.job_id = j.id
         WHERE i.interviewer_id = $1 
-          AND i.organization_id = $2 
+          AND a.organization_id = $2 
           AND i.deleted_at IS NULL
       `;
 
@@ -282,8 +387,10 @@ export class InterviewRepository extends BaseRepository {
 
       const result = await db.query(query, params);
 
+      const { mapToListDto } = await import('../utils/dtoMapper.js');
+
       return {
-        interviews: result.rows,
+        interviews: mapToListDto(result.rows, 'interviews'),
         total,
         page,
         limit,
@@ -381,7 +488,7 @@ export class InterviewRepository extends BaseRepository {
       // Get total count
       const countQuery = query.replace(/SELECT .+ FROM/, 'SELECT COUNT(*) as total FROM');
       const countResult = await db.query(countQuery, params);
-      const total = parseInt(countResult.rows[0].total, 10);
+      const total = countResult?.rows?.[0]?.total ? parseInt(countResult.rows[0].total, 10) : 0;
 
       // Add sorting
       const allowedSortFields = ['scheduled_at', 'status', 'interview_type', 'first_name', 'job_title'];
@@ -408,8 +515,10 @@ export class InterviewRepository extends BaseRepository {
 
       const result = await db.query(query, params);
 
+      const { mapToListDto } = await import('../utils/dtoMapper.js');
+
       return {
-        interviews: result.rows,
+        interviews: mapToListDto(result.rows, 'interviews'),
         total,
         page,
         limit,
@@ -437,7 +546,7 @@ export class InterviewRepository extends BaseRepository {
         INNER JOIN candidates c ON a.candidate_id = c.id
         INNER JOIN jobs j ON a.job_id = j.id
         LEFT JOIN users u ON i.interviewer_id = u.id
-        WHERE i.organization_id = $1 
+        WHERE a.organization_id = $1 
           AND i.deleted_at IS NULL
           AND i.status = 'scheduled'
           AND i.scheduled_at > CURRENT_TIMESTAMP
@@ -456,7 +565,9 @@ export class InterviewRepository extends BaseRepository {
       }
 
       const result = await db.query(query, params);
-      return result.rows;
+      
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error getting upcoming interviews:', error);
       throw error;
@@ -469,11 +580,12 @@ export class InterviewRepository extends BaseRepository {
   async getCountByStatus(organizationId) {
     try {
       const query = `
-        SELECT status, COUNT(*) as count
-        FROM ${this.tableName}
-        WHERE organization_id = $1 AND deleted_at IS NULL
-        GROUP BY status
-        ORDER BY status
+        SELECT i.status, COUNT(*) as count
+        FROM ${this.tableName} i
+        INNER JOIN applications a ON i.application_id = a.id
+        WHERE a.organization_id = $1 AND i.deleted_at IS NULL
+        GROUP BY i.status
+        ORDER BY i.status
       `;
 
       const result = await db.query(query, [organizationId]);
@@ -519,16 +631,17 @@ export class InterviewRepository extends BaseRepository {
       const endTime = new Date(new Date(scheduledAt).getTime() + duration * 60000); // duration in minutes
 
       let query = `
-        SELECT id, scheduled_at, duration
-        FROM ${this.tableName}
-        WHERE interviewer_id = $1
-          AND organization_id = $2
-          AND deleted_at IS NULL
-          AND status IN ('scheduled', 'in_progress')
+        SELECT i.id, i.scheduled_at, i.duration
+        FROM ${this.tableName} i
+        INNER JOIN applications a ON i.application_id = a.id
+        WHERE i.interviewer_id = $1
+          AND a.organization_id = $2
+          AND i.deleted_at IS NULL
+          AND i.status IN ('scheduled', 'in_progress')
           AND (
-            (scheduled_at <= $3 AND scheduled_at + (duration * interval '1 minute') > $3)
-            OR (scheduled_at < $4 AND scheduled_at + (duration * interval '1 minute') >= $4)
-            OR (scheduled_at >= $3 AND scheduled_at < $4)
+            (i.scheduled_at <= $3 AND i.scheduled_at + (i.duration * interval '1 minute') > $3)
+            OR (i.scheduled_at < $4 AND i.scheduled_at + (i.duration * interval '1 minute') >= $4)
+            OR (i.scheduled_at >= $3 AND i.scheduled_at < $4)
           )
       `;
 

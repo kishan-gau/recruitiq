@@ -116,11 +116,12 @@ class RateLimitManager {
       onLimitReached = null, // Callback when limit is reached
     } = options;
 
-    // In test environment or load testing, use very high limits to avoid accidental rate limiting
+    // In test environment, load testing, or development, use very high limits to avoid accidental rate limiting
     // while still keeping the rate limiter functional for explicit rate limit tests
     const isTestEnv = process.env.NODE_ENV === 'test';
     const isLoadTest = process.env.LOAD_TEST === 'true';
-    const effectiveMax = (isTestEnv || isLoadTest) ? max * 1000 : max; // 1000x higher limit in tests
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const effectiveMax = (isTestEnv || isLoadTest || isDevelopment) ? max * 1000 : max; // 1000x higher limit in dev/test
 
     const limiterConfig = {
       windowMs,

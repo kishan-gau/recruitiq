@@ -38,15 +38,31 @@ export class AuthAPI {
    * Login with email and password
    */
   async login(credentials: LoginCredentials) {
-    const response = await this.client.post('/auth/login', credentials, {
-      headers: { 'skip-auth': 'true' },
+    // Fetch CSRF token before login (required for cookie-based auth)
+    let csrfToken: string | undefined;
+    try {
+      const csrfResponse = await this.client.get('/csrf-token', {
+        headers: { 'skip-auth': 'true' },
+      });
+      csrfToken = csrfResponse.csrfToken;
+      
+      // Store CSRF token for future requests
+      if (csrfToken) {
+        this.client.getTokenStorage().setCsrfToken(csrfToken);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch CSRF token, attempting login without it:', error);
+    }
+
+    const response = await this.client.post('/auth/tenant/login', credentials, {
+      headers: {
+        'skip-auth': 'true',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
     });
 
-    // Store tokens if provided
-    if (response.accessToken || response.token) {
-      const token = response.accessToken || response.token;
-      this.client.getTokenStorage().setToken(token, response.refreshToken, response.expiresIn);
-    }
+    // SECURITY: Tokens are now in httpOnly cookies set by backend
+    // No need to store them client-side (prevents XSS attacks)
 
     return response;
   }
@@ -55,15 +71,31 @@ export class AuthAPI {
    * Register new user
    */
   async register(data: RegisterData) {
-    const response = await this.client.post('/auth/register', data, {
-      headers: { 'skip-auth': 'true' },
+    // Fetch CSRF token before registration (required for cookie-based auth)
+    let csrfToken: string | undefined;
+    try {
+      const csrfResponse = await this.client.get('/csrf-token', {
+        headers: { 'skip-auth': 'true' },
+      });
+      csrfToken = csrfResponse.csrfToken;
+      
+      // Store CSRF token for future requests
+      if (csrfToken) {
+        this.client.getTokenStorage().setCsrfToken(csrfToken);
+      }
+    } catch (error) {
+      console.warn('Failed to fetch CSRF token, attempting registration without it:', error);
+    }
+
+    const response = await this.client.post('/auth/tenant/register', data, {
+      headers: {
+        'skip-auth': 'true',
+        ...(csrfToken && { 'X-CSRF-Token': csrfToken }),
+      },
     });
 
-    // Store tokens if auto-login is enabled
-    if (response.accessToken || response.token) {
-      const token = response.accessToken || response.token;
-      this.client.getTokenStorage().setToken(token, response.refreshToken, response.expiresIn);
-    }
+    // SECURITY: Tokens are now in httpOnly cookies set by backend
+    // No need to store them client-side
 
     return response;
   }
@@ -72,7 +104,7 @@ export class AuthAPI {
    * Get current user profile
    */
   async getMe() {
-    return this.client.get('/auth/me');
+    return this.client.get('/auth/tenant/me');
   }
 
   /**
@@ -80,13 +112,12 @@ export class AuthAPI {
    */
   async logout() {
     try {
-      const refreshToken = this.client.getTokenStorage().getRefreshToken();
-      if (refreshToken) {
-        await this.client.post('/auth/logout', { refreshToken });
-      }
+      // Call backend to revoke refresh token and clear cookies
+      await this.client.post('/auth/tenant/logout', {});
     } catch (error) {
       console.error('Logout request failed:', error);
     } finally {
+      // Clear any client-side state (though tokens are in httpOnly cookies)
       this.client.getTokenStorage().clearTokens();
     }
   }
@@ -152,20 +183,20 @@ export class AuthAPI {
    * Get active sessions
    */
   async getActiveSessions(): Promise<SessionInfo[]> {
-    return this.client.get('/auth/sessions');
+    return this.client.get('/auth/tenant/sessions');
   }
 
   /**
    * Revoke a specific session
    */
   async revokeSession(sessionId: string) {
-    return this.client.delete(`/auth/sessions/${sessionId}`);
+    return this.client.delete(`/auth/tenant/sessions/${sessionId}`);
   }
 
   /**
    * Revoke all other sessions
    */
   async revokeAllSessions() {
-    return this.client.delete('/auth/sessions');
+    return this.client.post('/auth/tenant/revoke-all-sessions', {});
   }
 }

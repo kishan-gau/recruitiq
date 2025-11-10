@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { useCandidates } from '../hooks/useCandidates'
+import { useApplications } from '../hooks/useApplications'
 import { useJobs } from '../hooks/useJobs'
 import { useToast } from '../context/ToastContext'
 import { useWorkspace } from '../context/WorkspaceContext'
@@ -61,9 +61,24 @@ const getStageColor = (stageType) => {
 
 export default function Pipeline(){
   const { jobs, isLoading: jobsLoading } = useJobs()
-  const { candidates, isLoading: candidatesLoading, error, refetch, moveCandidate } = useCandidates()
+  const { applications, isLoading: applicationsLoading, error, refetch, updateApplication } = useApplications()
   const { flowTemplates, isLoading: flowTemplatesLoading, ensureLoaded } = useFlow()
+  const { currentWorkspaceId } = useWorkspace()
   const toast = useToast()
+  
+  // Debug: Log all the data we're receiving
+  React.useEffect(() => {
+    console.log('[Pipeline] Component state:', {
+      currentWorkspaceId,
+      jobsCount: jobs?.length,
+      jobs,
+      flowTemplatesCount: flowTemplates?.length,
+      flowTemplates,
+      applicationsCount: applications?.length,
+      applications,
+      isLoading: { jobs: jobsLoading, applications: applicationsLoading, flowTemplates: flowTemplatesLoading }
+    })
+  }, [currentWorkspaceId, jobs, flowTemplates, applications, jobsLoading, applicationsLoading, flowTemplatesLoading])
   
   // Ensure flow templates are loaded when component mounts
   React.useEffect(() => {
@@ -72,11 +87,18 @@ export default function Pipeline(){
   
   const [dragging, setDragging] = React.useState(null)
   
-  const isLoading = jobsLoading || candidatesLoading || flowTemplatesLoading
+  const isLoading = jobsLoading || applicationsLoading || flowTemplatesLoading
   
   // Get stages dynamically from templates
   const stages = useMemo(() => {
+    console.log('[Pipeline] Computing stages from:', { 
+      jobsCount: jobs?.length, 
+      flowTemplatesCount: flowTemplates?.length,
+      jobs: jobs?.map(j => ({ id: j.id, title: j.title, flowTemplateId: j.flowTemplateId })),
+      flowTemplates: flowTemplates?.map(ft => ({ id: ft.id, name: ft.name, stagesCount: ft.stages?.length }))
+    })
     const stageData = getAllStagesFromTemplates(jobs, flowTemplates)
+    console.log('[Pipeline] Computed stage data:', stageData)
     return stageData.map(s => s.name)
   }, [jobs, flowTemplates])
   
@@ -85,15 +107,18 @@ export default function Pipeline(){
   }, [jobs, flowTemplates])
 
   function move(id, dir){
-    const candidate = candidates.find(c => c.id === id)
-    if (!candidate) return
+    const application = applications.find(a => a.id === id)
+    if (!application) return
     
-    const currentIndex = stages.indexOf(candidate.stage)
+    const currentIndex = stages.indexOf(application.currentStageName)
     const newIndex = Math.max(0, Math.min(stages.length - 1, currentIndex + dir))
     const newStage = stages[newIndex]
     
-    if (newStage && newStage !== candidate.stage) {
-      moveCandidate(id, newStage, { toast })
+    if (newStage && newStage !== application.currentStageName) {
+      // Update the application's stage
+      updateApplication(id, { currentStageName: newStage })
+        .then(() => toast.show(`Moved to ${newStage}`))
+        .catch(err => toast.show(`Failed to move: ${err.message}`, { type: 'error' }))
     }
   }
 
@@ -110,8 +135,13 @@ export default function Pipeline(){
 
   function handleDrop(e, stage){
     e.preventDefault()
-    const id = Number(e.dataTransfer.getData('text/plain'))
-    moveCandidate(id, stage, {toast, showUndo: true})
+    const id = e.dataTransfer.getData('text/plain')
+    const application = applications.find(a => a.id === id)
+    if (application && application.currentStageName !== stage) {
+      updateApplication(id, { currentStageName: stage })
+        .then(() => toast.show(`Moved to ${stage}`))
+        .catch(err => toast.show(`Failed to move: ${err.message}`, { type: 'error' }))
+    }
     setDragging(null)
   }
 
@@ -197,7 +227,7 @@ export default function Pipeline(){
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
             {stageData.map(stage => {
-              const stageCandidates = candidates.filter(c => c.stage === stage.name)
+              const stageApplications = applications.filter(a => a.currentStageName === stage.name)
               
               return (
                 <div 
@@ -209,53 +239,53 @@ export default function Pipeline(){
                   <div className="font-semibold mb-4 flex items-center justify-between text-slate-900 dark:text-slate-100 text-base">
                     <span>{stage.name}</span>
                     <span className="text-sm font-normal px-2.5 py-1 bg-white/50 dark:bg-slate-900/30 rounded-full">
-                      {stageCandidates.length}
+                      {stageApplications.length}
                     </span>
                   </div>
                   <div className="space-y-3 min-h-[120px]">
-                    {stageCandidates.map(c=> (
+                    {stageApplications.map(app=> (
                       <div 
-                        key={c.id}
+                        key={app.id}
                         draggable
-                        onDragStart={(e)=>handleDragStart(e, c.id)}
+                        onDragStart={(e)=>handleDragStart(e, app.id)}
                         className="group p-4 bg-white dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-emerald-500/10 cursor-grab active:cursor-grabbing transition-all duration-200"
                       >
                         <div className="flex items-center justify-between gap-3 mb-3">
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors text-base">{c.name}</div>
+                            <div className="font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors text-base">{app.candidateName || 'Unknown'}</div>
                             <div className="text-sm text-slate-500 dark:text-slate-400 truncate mt-1 flex items-center gap-2">
-                              <span>{c.title}</span>
-                              {c.application_source && (
+                              <span>{app.jobTitle || 'No job'}</span>
+                              {app.source && (
                                 <>
                                   <span className="text-slate-300 dark:text-slate-600">•</span>
-                                  <ApplicationSourceBadge source={c.application_source} size="xs" />
+                                  <ApplicationSourceBadge source={app.source} size="xs" />
                                 </>
                               )}
                             </div>
                           </div>
                           <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-500 dark:to-emerald-700 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-sm">
-                            {c.name.split(' ').map(n=>n[0]).slice(0,2).join('')}
+                            {(app.candidateName || 'U').split(' ').map(n=>n[0]).slice(0,2).join('')}
                           </div>
                         </div>
                         
                         {/* Flow Progress */}
-                        {c.jobId && (
+                        {app.jobId && (
                           <div className="mb-3 pb-3 border-b border-slate-100 dark:border-slate-700">
-                            <CandidateFlowProgress candidateId={c.id} jobId={c.jobId} compact={true} />
+                            <CandidateFlowProgress candidateId={app.candidateId} jobId={app.jobId} compact={true} />
                           </div>
                         )}
                         
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={()=>move(c.id, -1)} 
-                            disabled={stages.indexOf(c.stage) === 0}
+                            onClick={()=>move(app.id, -1)} 
+                            disabled={stages.indexOf(app.currentStageName) === 0}
                             className="flex-1 text-sm px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium"
                           >
                             ← Prev
                           </button>
                           <button 
-                            onClick={()=>move(c.id, 1)} 
-                            disabled={stages.indexOf(c.stage) === stages.length - 1}
+                            onClick={()=>move(app.id, 1)} 
+                            disabled={stages.indexOf(app.currentStageName) === stages.length - 1}
                             className="flex-1 text-sm px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium"
                           >
                             Next →
@@ -263,12 +293,12 @@ export default function Pipeline(){
                         </div>
                       </div>
                     ))}
-                    {stageCandidates.length === 0 && (
+                    {stageApplications.length === 0 && (
                       <div className="text-center py-12 text-sm text-slate-400 dark:text-slate-500">
-                        No candidates
+                        No applications
                       </div>
                     )}
-                    {dragging && !candidates.find(x=> x.id===dragging)?.stage && (
+                    {dragging && !applications.find(x=> x.id===dragging)?.currentStageName && (
                       <div className="p-3 bg-white/30 dark:bg-slate-900/30 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600">&nbsp;</div>
                     )}
                   </div>

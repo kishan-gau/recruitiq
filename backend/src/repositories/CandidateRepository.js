@@ -49,7 +49,12 @@ export class CandidateRepository extends BaseRepository {
         table: this.tableName
       });
 
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      if (!dbRecord) return null;
+      
+      // Import DTO mapper for specialized mapping
+      const { mapCandidateWithApplicationsDto } = await import('../utils/dtoMapper.js');
+      return mapCandidateWithApplicationsDto(dbRecord);
     } catch (error) {
       this.logger.error('Error in findByIdWithApplications', {
         id,
@@ -144,11 +149,25 @@ export class CandidateRepository extends BaseRepository {
 
       const total = parseInt(countResult.rows[0].total, 10);
 
-      // Get paginated results
+      // Get paginated results with most recent application data
       const dataQuery = `
         SELECT 
           c.*,
-          COUNT(a.id) as application_count
+          COUNT(a.id) as application_count,
+          (
+            SELECT json_build_object(
+              'stage', a2.stage,
+              'status', a2.status,
+              'applied_at', a2.created_at,
+              'job_title', j2.title
+            )
+            FROM applications a2
+            LEFT JOIN jobs j2 ON a2.job_id = j2.id AND j2.deleted_at IS NULL
+            WHERE a2.candidate_id = c.id 
+            AND a2.deleted_at IS NULL
+            ORDER BY a2.created_at DESC
+            LIMIT 1
+          ) as recent_application
         FROM candidates c
         LEFT JOIN applications a ON c.id = a.candidate_id AND a.deleted_at IS NULL
         WHERE ${whereClause}
@@ -164,8 +183,11 @@ export class CandidateRepository extends BaseRepository {
         table: this.tableName
       });
 
+      // Import DTO mapper for list results
+      const { mapToListDto } = await import('../utils/dtoMapper.js');
+
       return {
-        candidates: dataResult.rows,
+        candidates: mapToListDto(dataResult.rows, 'candidates'),
         total,
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),

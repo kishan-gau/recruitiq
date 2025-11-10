@@ -1,0 +1,1285 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { screen, within, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { QueryClient } from '@tanstack/react-query'
+import { renderWithProviders } from '../../utils/test-helpers'
+import PayComponentsList from '@/pages/pay-components/PayComponentsList'
+import { mockPayComponents, mockEarnings, mockDeductions } from '../../mocks/payComponents'
+
+describe('PayComponentsList', () => {
+  let queryClient: QueryClient
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    
+    // Create a fresh QueryClient for each test
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    })
+    
+    // Pre-populate cache with mock data (industry standard for React Query testing)
+    queryClient.setQueryData(['payComponents', undefined], mockPayComponents)
+  })
+
+  const renderComponent = () => {
+    return renderWithProviders(<PayComponentsList />, { queryClient })
+  }
+
+  describe('Page Structure', () => {
+    it('renders the page title', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: 'Pay Components', level: 1 })).toBeInTheDocument()
+      })
+    })
+
+    it('displays page description', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        expect(screen.getByText('Manage earnings and deduction components for payroll calculations')).toBeInTheDocument()
+      })
+    })
+
+    it('shows Add Component button in header', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        const addButton = screen.getByRole('button', { name: /add component/i })
+        expect(addButton).toBeInTheDocument()
+        expect(addButton).toHaveClass('bg-blue-600')
+      })
+    })
+
+    it('renders earnings section header', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /earnings/i, level: 2 })).toBeInTheDocument()
+        expect(screen.getByText('Components that add to gross pay')).toBeInTheDocument()
+      })
+    })
+
+    it('renders deductions section header', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /deductions/i, level: 2 })).toBeInTheDocument()
+        expect(screen.getByText('Components that reduce net pay')).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Earnings Components', () => {
+    it('displays all earning components', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        // Verify all earnings are displayed
+        expect(screen.getByText('Base Salary')).toBeInTheDocument()
+        expect(screen.getByText('Overtime Pay')).toBeInTheDocument()
+        expect(screen.getByText('Vacation Allowance')).toBeInTheDocument()
+        expect(screen.getByText('13th Month Bonus')).toBeInTheDocument()
+      })
+    })
+
+    it('shows earnings count in section header', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        const earningsHeader = screen.getByRole('heading', { name: /earnings \(4\)/i })
+        expect(earningsHeader).toBeInTheDocument()
+      })
+    })
+
+    it('displays earning component codes', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        expect(screen.getByText('Code: BASE')).toBeInTheDocument()
+        expect(screen.getByText('Code: OT')).toBeInTheDocument()
+        expect(screen.getByText('Code: VAC')).toBeInTheDocument()
+        expect(screen.getByText('Code: 13M')).toBeInTheDocument()
+      })
+    })
+
+    it('shows earning component descriptions', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        expect(screen.getByText('Monthly base salary as per employment contract')).toBeInTheDocument()
+        expect(screen.getByText('Overtime compensation at 1.5x hourly rate')).toBeInTheDocument()
+        expect(screen.getByText('8.33% of gross salary for vacation')).toBeInTheDocument()
+        expect(screen.getByText('Annual 13th month salary payment')).toBeInTheDocument()
+      })
+    })
+
+    it('displays earning component categories', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        expect(screen.getByText('Regular Pay')).toBeInTheDocument()
+        expect(screen.getByText('Additional Pay')).toBeInTheDocument()
+        expect(screen.getByText('Benefits')).toBeInTheDocument()
+        expect(screen.getByText('Bonus')).toBeInTheDocument()
+      })
+    })
+
+    it('shows calculation types for earnings', async () => {
+      renderComponent()
+      
+      await waitFor(() => {
+        // Base Salary - Fixed
+        const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+        expect(within(baseSalaryCard).getByText(/fixed/i)).toBeInTheDocument()
+        
+        // Overtime - Formula
+        const overtimeCard = screen.getByTestId('pay-component-OT')
+      expect(within(overtimeCard).getByText(/formula/i)).toBeInTheDocument()
+      
+      // Vacation - Percentage with value
+      const vacationCard = screen.getByTestId('pay-component-VAC')
+      expect(within(vacationCard).getByText(/percentage \(8.33%\)/i)).toBeInTheDocument()
+    })
+
+    it('indicates recurring status for earnings', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      const recurringSection = within(baseSalaryCard).getByText('Recurring:')
+      expect(recurringSection.parentElement).toHaveTextContent('Yes')
+      
+      const overtimeCard = screen.getByTestId('pay-component-OT')
+      const nonRecurringSection = within(overtimeCard).getByText('Recurring:')
+      expect(nonRecurringSection.parentElement).toHaveTextContent('No')
+    })
+
+    it('shows taxable status for earnings', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      const taxableSection = within(baseSalaryCard).getByText('Taxable:')
+      expect(taxableSection.parentElement).toHaveTextContent('Yes')
+    })
+
+    it('displays active status badges for earnings', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByText('Base Salary').closest('div')!
+      expect(within(baseSalaryCard).getByText('Active')).toBeInTheDocument()
+    })
+
+    it('applies correct styling for earning cards', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(baseSalaryCard).toHaveClass('border-green-200')
+    })
+
+    it('shows earning icon (DollarSign)', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const earningIcons = container.querySelectorAll('.bg-green-100')
+      expect(earningIcons.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Deduction Components', () => {
+    it('displays all deduction components', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(screen.getByText('Pension Contribution')).toBeInTheDocument()
+      expect(screen.getByText('Health Insurance')).toBeInTheDocument()
+      expect(screen.getByText('Advance Payment')).toBeInTheDocument()
+    })
+
+    it('shows deductions count in section header', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const deductionsHeader = screen.getByRole('heading', { name: /deductions \(3\)/i })
+      expect(deductionsHeader).toBeInTheDocument()
+    })
+
+    it('displays deduction component codes', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(screen.getByText('Code: AOV')).toBeInTheDocument()
+      expect(screen.getByText('Code: HEALTH')).toBeInTheDocument()
+      expect(screen.getByText('Code: ADV')).toBeInTheDocument()
+    })
+
+    it('shows deduction component descriptions', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(screen.getByText('Employee contribution to AOV pension fund')).toBeInTheDocument()
+      expect(screen.getByText('Monthly health insurance premium')).toBeInTheDocument()
+      expect(screen.getByText('Salary advance repayment')).toBeInTheDocument()
+    })
+
+    it('displays deduction component categories', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(screen.getByText('Social Security')).toBeInTheDocument()
+      expect(screen.getByText('Insurance')).toBeInTheDocument()
+      expect(screen.getByText('Other')).toBeInTheDocument()
+    })
+
+    it('shows calculation types for deductions', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Pension - Percentage
+      const pensionCard = screen.getByTestId('pay-component-AOV')
+      expect(within(pensionCard).getByText(/percentage \(4%\)/i)).toBeInTheDocument()
+      
+      // Health Insurance - Fixed
+      const healthCard = screen.getByTestId('pay-component-HEALTH')
+      expect(within(healthCard).getByText(/fixed \(150 SRD\)/i)).toBeInTheDocument()
+      
+      // Advance - Fixed
+      const advanceCard = screen.getByTestId('pay-component-ADV')
+      expect(within(advanceCard).getByText(/fixed/i)).toBeInTheDocument()
+    })
+
+    it('indicates recurring status for deductions', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const pensionCard = screen.getByTestId('pay-component-AOV')
+      const recurringSection = within(pensionCard).getByText('Recurring:')
+      expect(recurringSection.parentElement).toHaveTextContent('Yes')
+      
+      const advanceCard = screen.getByTestId('pay-component-ADV')
+      const nonRecurringSection = within(advanceCard).getByText('Recurring:')
+      expect(nonRecurringSection.parentElement).toHaveTextContent('No')
+    })
+
+    it('shows taxable status for deductions', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const pensionCard = screen.getByTestId('pay-component-AOV')
+      const taxableSection = within(pensionCard).getByText('Taxable:')
+      expect(taxableSection.parentElement).toHaveTextContent('No')
+    })
+
+    it('applies correct styling for deduction cards', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const pensionCard = screen.getByTestId('pay-component-AOV')
+      expect(pensionCard).toHaveClass('border-red-200')
+    })
+
+    it('shows deduction icon (Minus)', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const deductionIcons = container.querySelectorAll('.bg-red-100')
+      expect(deductionIcons.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Component Actions', () => {
+    it('displays edit button for each component', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // Should have edit buttons for all 7 components
+      const editButtons = container.querySelectorAll('button[title="Edit"]')
+      expect(editButtons.length).toBe(7)
+    })
+
+    it('displays delete button for each component', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // Should have delete buttons for all 7 components
+      const deleteButtons = container.querySelectorAll('button[title="Delete"]')
+      expect(deleteButtons.length).toBe(7)
+    })
+
+    it('edit buttons have correct styling', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const editButton = container.querySelector('button[title="Edit"]')!
+      expect(editButton).toHaveClass('hover:text-blue-600')
+    })
+
+    it('delete buttons have correct styling', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const deleteButton = container.querySelector('button[title="Delete"]')!
+      expect(deleteButton).toHaveClass('hover:text-red-600')
+    })
+
+    it('calls handleEdit when edit button is clicked', async () => {
+      const user = userEvent.setup()
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const editButton = container.querySelector('button[title="Edit"]')!
+      await user.click(editButton)
+      
+      // Handler is placeholder - just verify it's clickable
+      expect(editButton).toBeInTheDocument()
+    })
+
+    it('calls handleDelete when delete button is clicked', async () => {
+      const user = userEvent.setup()
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const deleteButton = container.querySelector('button[title="Delete"]')!
+      await user.click(deleteButton)
+      
+      // Handler is placeholder - just verify it's clickable
+      expect(deleteButton).toBeInTheDocument()
+    })
+
+    it('calls handleAdd when Add Component button is clicked', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PayComponentsList />)
+      
+      const addButton = screen.getByRole('button', { name: /add component/i })
+      await user.click(addButton)
+      
+      // Handler is placeholder - just verify it's clickable
+      expect(addButton).toBeInTheDocument()
+    })
+  })
+
+  describe('Grid Layout', () => {
+    it('displays earnings in grid layout', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const earningsGrid = container.querySelector('.grid.grid-cols-1.md\\:grid-cols-2.lg\\:grid-cols-3')
+      expect(earningsGrid).toBeInTheDocument()
+    })
+
+    it('displays all earnings cards in correct order', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const earnings = ['Base Salary', 'Overtime Pay', 'Vacation Allowance', '13th Month Bonus']
+      earnings.forEach(name => {
+        expect(screen.getByText(name)).toBeInTheDocument()
+      })
+    })
+
+    it('displays all deduction cards in correct order', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const deductions = ['Pension Contribution', 'Health Insurance', 'Advance Payment']
+      deductions.forEach(name => {
+        expect(screen.getByText(name)).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Responsive Design', () => {
+    it('applies responsive grid classes', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const grids = container.querySelectorAll('.md\\:grid-cols-2')
+      expect(grids.length).toBeGreaterThan(0)
+    })
+
+    it('applies mobile-friendly spacing', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const mainContainer = container.querySelector('.space-y-6')
+      expect(mainContainer).toBeInTheDocument()
+    })
+  })
+
+  describe('Dark Mode Support', () => {
+    it('includes dark mode classes for cards', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const cards = container.querySelectorAll('.dark\\:bg-gray-800')
+      expect(cards.length).toBeGreaterThan(0)
+    })
+
+    it('includes dark mode text classes', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const darkText = container.querySelectorAll('.dark\\:text-white')
+      expect(darkText.length).toBeGreaterThan(0)
+    })
+
+    it('includes dark mode border classes for earnings', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const darkBorders = container.querySelectorAll('.dark\\:border-green-800')
+      expect(darkBorders.length).toBe(4) // 4 earning components
+    })
+
+    it('includes dark mode border classes for deductions', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const darkBorders = container.querySelectorAll('.dark\\:border-red-800')
+      expect(darkBorders.length).toBe(3) // 3 deduction components
+    })
+  })
+
+  describe('Component Details Display', () => {
+    it('displays all required fields for each component', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      
+      // Name and status
+      expect(within(baseSalaryCard).getByText('Base Salary')).toBeInTheDocument()
+      expect(within(baseSalaryCard).getByText('Active')).toBeInTheDocument()
+      
+      // Code
+      expect(within(baseSalaryCard).getByText('Code: BASE')).toBeInTheDocument()
+      
+      // Description
+      expect(within(baseSalaryCard).getByText('Monthly base salary as per employment contract')).toBeInTheDocument()
+      
+      // Category
+      expect(within(baseSalaryCard).getByText('Category:')).toBeInTheDocument()
+      expect(within(baseSalaryCard).getByText('Regular Pay')).toBeInTheDocument()
+      
+      // Calculation
+      expect(within(baseSalaryCard).getByText('Calculation:')).toBeInTheDocument()
+      
+      // Recurring
+      expect(within(baseSalaryCard).getByText('Recurring:')).toBeInTheDocument()
+      
+      // Taxable
+      expect(within(baseSalaryCard).getByText('Taxable:')).toBeInTheDocument()
+    })
+
+    it('shows default values for percentage-based components', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Vacation Allowance has 8.33%
+      expect(screen.getByText(/percentage \(8.33%\)/i)).toBeInTheDocument()
+      
+      // Pension has 4%
+      expect(screen.getByText(/percentage \(4%\)/i)).toBeInTheDocument()
+    })
+
+    it('shows default values for fixed-amount components', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Health Insurance has 150 SRD
+      expect(screen.getByText(/fixed \(150 SRD\)/i)).toBeInTheDocument()
+    })
+
+    it('displays formula calculation type without default value', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const overtimeCard = screen.getByTestId('pay-component-OT')
+      const calculationText = within(overtimeCard).getByText('Calculation:').parentElement!
+      
+      // Should show "Formula" without a value
+      expect(calculationText).toHaveTextContent(/formula$/i)
+    })
+  })
+
+  describe('Hover Effects', () => {
+    it('applies hover shadow effect to cards', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const card = screen.getByTestId('pay-component-BASE')
+      expect(card).toHaveClass('hover:shadow-md')
+    })
+
+    it('applies transition effects', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const card = screen.getByTestId('pay-component-BASE')
+      expect(card).toHaveClass('transition-shadow')
+    })
+  })
+
+  describe('Accessibility', () => {
+    it('has proper heading hierarchy', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // h1 for main title
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pay Components')
+      
+      // h2 for section headers
+      const h2Headings = screen.getAllByRole('heading', { level: 2 })
+      expect(h2Headings).toHaveLength(2)
+      expect(h2Headings[0]).toHaveTextContent(/earnings/i)
+      expect(h2Headings[1]).toHaveTextContent(/deductions/i)
+    })
+
+    it('has proper heading hierarchy for component names', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // Component names should be in h3 elements
+      const componentNames = container.querySelectorAll('h3.font-semibold')
+      expect(componentNames.length).toBe(7) // 4 earnings + 3 deductions
+    })
+
+    it('provides descriptive button text for add action', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const addButton = screen.getByRole('button', { name: /add component/i })
+      expect(addButton).toHaveAccessibleName()
+    })
+
+    it('provides title attributes for action buttons', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const editButton = container.querySelector('button[title="Edit"]')
+      expect(editButton).toHaveAttribute('title', 'Edit')
+      
+      const deleteButton = container.querySelector('button[title="Delete"]')
+      expect(deleteButton).toHaveAttribute('title', 'Delete')
+    })
+
+    it('uses semantic HTML structure', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // Should use div elements for layout
+      expect(container.querySelector('.space-y-6')).toBeInTheDocument()
+      
+      // Should use button elements for actions
+      const buttons = container.querySelectorAll('button')
+      expect(buttons.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Component Filtering and Separation', () => {
+    it('separates earnings from deductions correctly', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Get both section headings
+      const earningsSection = screen.getByRole('heading', { name: /earnings \(4\)/i })
+      const deductionsSection = screen.getByRole('heading', { name: /deductions \(3\)/i })
+      
+      expect(earningsSection).toBeInTheDocument()
+      expect(deductionsSection).toBeInTheDocument()
+    })
+
+    it('displays correct count of each type', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // 4 earnings
+      expect(screen.getByRole('heading', { name: /earnings \(4\)/i })).toBeInTheDocument()
+      
+      // 3 deductions
+      expect(screen.getByRole('heading', { name: /deductions \(3\)/i })).toBeInTheDocument()
+    })
+  })
+
+  describe('Visual Distinction', () => {
+    it('uses different colors for earnings vs deductions', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // Earnings should have green colors
+      const greenBorders = container.querySelectorAll('.border-green-200')
+      expect(greenBorders.length).toBe(4)
+      
+      // Deductions should have red colors
+      const redBorders = container.querySelectorAll('.border-red-200')
+      expect(redBorders.length).toBe(3)
+    })
+
+    it('uses different icons for earnings vs deductions', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // Green backgrounds for earning icons
+      const greenIcons = container.querySelectorAll('.bg-green-100')
+      expect(greenIcons.length).toBeGreaterThanOrEqual(5) // Section header + 4 cards
+      
+      // Red backgrounds for deduction icons
+      const redIcons = container.querySelectorAll('.bg-red-100')
+      expect(redIcons.length).toBeGreaterThanOrEqual(4) // Section header + 3 cards
+    })
+  })
+
+  describe('Status Badge Integration', () => {
+    it('displays status badge for each component', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // All 7 components should have "Active" status
+      const statusBadges = screen.getAllByText('Active')
+      expect(statusBadges.length).toBe(7)
+    })
+
+    it('status badges are properly styled', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // StatusBadge should have inline-flex class
+      const badges = container.querySelectorAll('.inline-flex')
+      expect(badges.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Empty State Handling', () => {
+    it('renders without errors when no components exist', () => {
+      // This tests the component structure without data
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(screen.getByText('Pay Components')).toBeInTheDocument()
+    })
+  })
+
+  describe('Performance', () => {
+    it('renders all 7 components efficiently', () => {
+      const startTime = performance.now()
+      renderWithProviders(<PayComponentsList />)
+      const endTime = performance.now()
+      
+      // Should render in less than 100ms
+      expect(endTime - startTime).toBeLessThan(100)
+    })
+
+    it('renders without console errors', () => {
+      const consoleSpy = vi.spyOn(console, 'error')
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(consoleSpy).not.toHaveBeenCalled()
+      consoleSpy.mockRestore()
+    })
+  })
+
+  describe('Integration with UI Components', () => {
+    it('uses StatusBadge component correctly', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Verify StatusBadge renders with correct props
+      const statusBadges = screen.getAllByText('Active')
+      expect(statusBadges.length).toBe(7)
+      expect(statusBadges[0]).toBeInTheDocument()
+    })
+
+    it('integrates with icon library', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Verify icons are rendered (Plus icon in Add button, DollarSign, Minus, Edit, Trash icons)
+      expect(screen.getByRole('button', { name: /add component/i })).toBeInTheDocument()
+    })
+  })
+
+  describe('Snapshot Testing', () => {
+    it('matches snapshot for full page', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      expect(container).toMatchSnapshot()
+    })
+
+    it('matches snapshot for earnings section', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const earningsSection = container.querySelector('.space-y-4')
+      expect(earningsSection).toMatchSnapshot()
+    })
+
+    it('matches snapshot for single earning card', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(baseSalaryCard).toMatchSnapshot()
+    })
+
+    it('matches snapshot for single deduction card', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const pensionCard = screen.getByTestId('pay-component-AOV')
+      expect(pensionCard).toMatchSnapshot()
+    })
+  })
+
+  describe('Future Functionality Placeholders', () => {
+    it('has placeholder for add functionality', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PayComponentsList />)
+      
+      const addButton = screen.getByRole('button', { name: /add component/i })
+      
+      // Should not throw error when clicked
+      await expect(async () => {
+        await user.click(addButton)
+      }).not.toThrow()
+    })
+
+    it('has placeholder for edit functionality', async () => {
+      const user = userEvent.setup()
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const editButton = container.querySelector('button[title="Edit"]')!
+      
+      // Should not throw error when clicked
+      await expect(async () => {
+        await user.click(editButton)
+      }).not.toThrow()
+    })
+
+    it('has placeholder for delete functionality', async () => {
+      const user = userEvent.setup()
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const deleteButton = container.querySelector('button[title="Delete"]')!
+      
+      // Should not throw error when clicked
+      await expect(async () => {
+        await user.click(deleteButton)
+      }).not.toThrow()
+    })
+  })
+
+  describe('Calculation Type Display', () => {
+    it('correctly displays fixed calculation type', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      const calculationSection = within(baseSalaryCard).getByText('Calculation:')
+      expect(calculationSection.parentElement).toHaveTextContent(/fixed/i)
+    })
+
+    it('correctly displays percentage calculation with value', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const vacationCard = screen.getByTestId('pay-component-VAC')
+      const calculationSection = within(vacationCard).getByText('Calculation:')
+      expect(calculationSection.parentElement).toHaveTextContent(/percentage \(8.33%\)/i)
+    })
+
+    it('correctly displays formula calculation type', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const overtimeCard = screen.getByTestId('pay-component-OT')
+      const calculationSection = within(overtimeCard).getByText('Calculation:')
+      expect(calculationSection.parentElement).toHaveTextContent(/formula/i)
+    })
+
+    it('capitalizes calculation type display', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Check that calculation types are capitalized (via CSS capitalize class)
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      const calculationValue = within(baseSalaryCard).getByText('Calculation:').parentElement!.querySelector('p')
+      expect(calculationValue).toHaveClass('capitalize')
+    })
+  })
+
+  describe('Card Layout and Spacing', () => {
+    it('applies consistent padding to all cards', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const cards = container.querySelectorAll('.p-4')
+      expect(cards.length).toBe(7) // All 7 component cards
+    })
+
+    it('applies consistent border radius', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const roundedCards = container.querySelectorAll('.rounded-lg')
+      expect(roundedCards.length).toBeGreaterThan(0)
+    })
+
+    it('uses grid gap correctly', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const gridWithGap = container.querySelectorAll('.gap-4')
+      expect(gridWithGap.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Component Information Grid', () => {
+    it('displays information in 2-column grid', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const infoGrids = container.querySelectorAll('.grid.grid-cols-2')
+      expect(infoGrids.length).toBe(7) // One for each component
+    })
+
+    it('uses consistent text sizing for labels', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const labels = container.querySelectorAll('.text-xs')
+      expect(labels.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Icon Rendering', () => {
+    it('renders section header icons with correct colors', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // Earnings section icon - green
+      const earningsIcons = container.querySelectorAll('.bg-green-100')
+      expect(earningsIcons.length).toBeGreaterThan(0)
+      
+      // Deductions section icon - red
+      const deductionsIcons = container.querySelectorAll('.bg-red-100')
+      expect(deductionsIcons.length).toBeGreaterThan(0)
+    })
+
+    it('renders Edit2 and Trash2 icons in action buttons', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const editButtons = screen.getAllByTitle('Edit')
+      const deleteButtons = screen.getAllByTitle('Delete')
+      
+      expect(editButtons.length).toBe(7) // All 7 components
+      expect(deleteButtons.length).toBe(7)
+    })
+
+    it('renders Plus icon in Add Component button', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const addButton = screen.getByRole('button', { name: /add component/i })
+      expect(addButton.querySelector('svg')).toBeInTheDocument()
+    })
+
+    it('uses consistent icon sizing', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const smallIcons = container.querySelectorAll('.w-4.h-4')
+      const mediumIcons = container.querySelectorAll('.w-5.h-5')
+      
+      expect(smallIcons.length).toBeGreaterThan(0)
+      expect(mediumIcons.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Value Formatting', () => {
+    it('displays percentage values with % symbol', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const vacCard = screen.getByTestId('pay-component-VAC')
+      expect(within(vacCard).getByText(/percentage \(8\.33%\)/i)).toBeInTheDocument()
+    })
+
+    it('displays fixed values with SRD currency', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const healthCard = screen.getByTestId('pay-component-HEALTH')
+      expect(within(healthCard).getByText(/150 SRD/)).toBeInTheDocument()
+    })
+
+    it('displays calculation type without value when not provided', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      const calculationText = within(baseSalaryCard).getByText(/fixed/i)
+      expect(calculationText).toBeInTheDocument()
+      expect(calculationText.textContent).not.toMatch(/\d+/)
+    })
+
+    it('capitalizes calculation type labels', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(within(baseSalaryCard).getByText(/Fixed/i)).toBeInTheDocument()
+    })
+
+    it('formats formula calculation type correctly', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const overtimeCard = screen.getByTestId('pay-component-OT')
+      expect(within(overtimeCard).getByText(/Formula/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('Button Interaction Details', () => {
+    it('calls handleEdit when edit button is clicked', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      const editButton = within(baseSalaryCard).getByTitle('Edit')
+      
+      await user.click(editButton)
+      // Function is called (implementation would be tested with spy)
+    })
+
+    it('calls handleDelete when delete button is clicked', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      const deleteButton = within(baseSalaryCard).getByTitle('Delete')
+      
+      await user.click(deleteButton)
+      // Function is called (implementation would be tested with spy)
+    })
+
+    it('add button has correct styling classes', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const addButton = screen.getByRole('button', { name: /add component/i })
+      expect(addButton).toHaveClass('bg-blue-600', 'hover:bg-blue-700', 'text-white')
+    })
+
+    it('edit buttons have hover color transitions', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const editButtons = screen.getAllByTitle('Edit')
+      editButtons.forEach(button => {
+        expect(button).toHaveClass('hover:text-blue-600')
+      })
+    })
+
+    it('delete buttons have hover color transitions', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const deleteButtons = screen.getAllByTitle('Delete')
+      deleteButtons.forEach(button => {
+        expect(button).toHaveClass('hover:text-red-600')
+      })
+    })
+
+    it('action buttons use consistent sizing', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const editButtons = screen.getAllByTitle('Edit')
+      const deleteButtons = screen.getAllByTitle('Delete')
+      
+      editButtons.forEach(button => {
+        expect(button).toHaveClass('p-1.5')
+      })
+      
+      deleteButtons.forEach(button => {
+        expect(button).toHaveClass('p-1.5')
+      })
+    })
+  })
+
+  describe('Component Property Combinations', () => {
+    it('handles recurring + taxable earnings correctly', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(within(baseSalaryCard).getAllByText('Yes').length).toBe(2) // Both recurring and taxable
+    })
+
+    it('handles non-recurring + taxable earnings correctly', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const overtimeCard = screen.getByTestId('pay-component-OT')
+      expect(within(overtimeCard).getByText('No')).toBeInTheDocument() // Not recurring
+      expect(within(overtimeCard).getByText('Yes')).toBeInTheDocument() // But taxable
+    })
+
+    it('handles recurring + non-taxable deductions correctly', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const aovCard = screen.getByTestId('pay-component-AOV')
+      const yesTexts = within(aovCard).getAllByText('Yes')
+      const noTexts = within(aovCard).getAllByText('No')
+      
+      expect(yesTexts.length).toBe(1) // Recurring
+      expect(noTexts.length).toBe(1) // Not taxable
+    })
+
+    it('displays all unique calculation types', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Fixed
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(within(baseSalaryCard).getByText(/fixed/i)).toBeInTheDocument()
+      
+      // Percentage
+      const vacCard = screen.getByTestId('pay-component-VAC')
+      expect(within(vacCard).getByText(/percentage/i)).toBeInTheDocument()
+      
+      // Formula
+      const overtimeCard = screen.getByTestId('pay-component-OT')
+      expect(within(overtimeCard).getByText(/formula/i)).toBeInTheDocument()
+    })
+
+    it('displays all unique categories', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(screen.getByText('Regular Pay')).toBeInTheDocument()
+      expect(screen.getByText('Additional Pay')).toBeInTheDocument()
+      expect(screen.getByText('Benefits')).toBeInTheDocument()
+      expect(screen.getByText('Bonus')).toBeInTheDocument()
+      expect(screen.getByText('Social Security')).toBeInTheDocument()
+      expect(screen.getByText('Insurance')).toBeInTheDocument()
+      expect(screen.getByText('Other')).toBeInTheDocument()
+    })
+
+    it('verifies formula type without default value', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const overtimeCard = screen.getByTestId('pay-component-OT')
+      const calculationText = within(overtimeCard).getByText(/formula/i)
+      
+      // Should not have a value in parentheses
+      expect(calculationText.textContent).not.toMatch(/\(/)
+    })
+  })
+
+  describe('Button Titles and Accessibility Labels', () => {
+    it('provides descriptive title attributes for edit buttons', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const editButtons = screen.getAllByTitle('Edit')
+      expect(editButtons).toHaveLength(7)
+    })
+
+    it('provides descriptive title attributes for delete buttons', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const deleteButtons = screen.getAllByTitle('Delete')
+      expect(deleteButtons).toHaveLength(7)
+    })
+
+    it('add component button has descriptive text', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const addButton = screen.getByRole('button', { name: /add component/i })
+      expect(addButton.textContent).toContain('Add Component')
+    })
+
+    it('buttons have transition classes for smooth interactions', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const addButton = screen.getByRole('button', { name: /add component/i })
+      const editButtons = screen.getAllByTitle('Edit')
+      const deleteButtons = screen.getAllByTitle('Delete')
+      
+      expect(addButton).toHaveClass('transition-colors')
+      editButtons.forEach(btn => expect(btn).toHaveClass('transition-colors'))
+      deleteButtons.forEach(btn => expect(btn).toHaveClass('transition-colors'))
+    })
+  })
+
+  describe('Section Organization', () => {
+    it('separates earnings and deductions into distinct sections', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const earningsHeader = screen.getByRole('heading', { name: /earnings \(4\)/i })
+      const deductionsHeader = screen.getByRole('heading', { name: /deductions \(3\)/i })
+      
+      expect(earningsHeader).toBeInTheDocument()
+      expect(deductionsHeader).toBeInTheDocument()
+    })
+
+    it('displays earnings section before deductions section', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const headers = screen.getAllByRole('heading', { level: 2 })
+      const headingTexts = headers.map(h => h.textContent)
+      
+      const earningsIndex = headingTexts.findIndex(text => text?.includes('Earnings'))
+      const deductionsIndex = headingTexts.findIndex(text => text?.includes('Deductions'))
+      
+      expect(earningsIndex).toBeLessThan(deductionsIndex)
+    })
+
+    it('renders section descriptions below section headers', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(screen.getByText('Components that add to gross pay')).toBeInTheDocument()
+      expect(screen.getByText('Components that reduce net pay')).toBeInTheDocument()
+    })
+
+    it('uses consistent spacing between sections', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const sections = container.querySelectorAll('.space-y-4')
+      expect(sections.length).toBeGreaterThan(0)
+    })
+
+    it('section headers have icon badges', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      // Both sections should have icon containers
+      const iconContainers = container.querySelectorAll('.p-2.rounded-lg')
+      expect(iconContainers.length).toBeGreaterThanOrEqual(2)
+    })
+  })
+
+  describe('Text Content and Labels', () => {
+    it('displays all property labels consistently', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      
+      expect(within(baseSalaryCard).getByText('Category:')).toBeInTheDocument()
+      expect(within(baseSalaryCard).getByText('Calculation:')).toBeInTheDocument()
+      expect(within(baseSalaryCard).getByText('Recurring:')).toBeInTheDocument()
+      expect(within(baseSalaryCard).getByText('Taxable:')).toBeInTheDocument()
+      expect(within(baseSalaryCard).getByText('Code: BASE')).toBeInTheDocument()
+    })
+
+    it('displays boolean values as Yes/No text', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      
+      // Should have "Yes" for recurring and taxable
+      expect(within(baseSalaryCard).getAllByText('Yes')).toHaveLength(2)
+    })
+
+    it('shows component name as bold heading', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      const nameElement = within(baseSalaryCard).getByText('Base Salary')
+      
+      expect(nameElement).toHaveClass('font-semibold')
+    })
+
+    it('uses gray text for labels and descriptions', () => {
+      const { container } = renderWithProviders(<PayComponentsList />)
+      
+      const grayTexts = container.querySelectorAll('.text-gray-500, .text-gray-600')
+      expect(grayTexts.length).toBeGreaterThan(0)
+    })
+
+    it('displays code with consistent prefix', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      expect(screen.getByText('Code: BASE')).toBeInTheDocument()
+      expect(screen.getByText('Code: OT')).toBeInTheDocument()
+      expect(screen.getByText('Code: VAC')).toBeInTheDocument()
+      expect(screen.getByText('Code: 13M')).toBeInTheDocument()
+      expect(screen.getByText('Code: AOV')).toBeInTheDocument()
+      expect(screen.getByText('Code: HEALTH')).toBeInTheDocument()
+      expect(screen.getByText('Code: ADV')).toBeInTheDocument()
+    })
+  })
+
+  describe('All Components Rendering', () => {
+    it('renders exactly 7 pay components total', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const allCards = [
+        screen.getByTestId('pay-component-BASE'),
+        screen.getByTestId('pay-component-OT'),
+        screen.getByTestId('pay-component-VAC'),
+        screen.getByTestId('pay-component-13M'),
+        screen.getByTestId('pay-component-AOV'),
+        screen.getByTestId('pay-component-HEALTH'),
+        screen.getByTestId('pay-component-ADV'),
+      ]
+      
+      expect(allCards).toHaveLength(7)
+      allCards.forEach(card => expect(card).toBeInTheDocument())
+    })
+
+    it('renders exactly 4 earning components', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const earningCards = [
+        screen.getByTestId('pay-component-BASE'),
+        screen.getByTestId('pay-component-OT'),
+        screen.getByTestId('pay-component-VAC'),
+        screen.getByTestId('pay-component-13M'),
+      ]
+      
+      expect(earningCards).toHaveLength(4)
+      earningCards.forEach(card => {
+        expect(card).toBeInTheDocument()
+        expect(card).toHaveClass('border-green-200')
+      })
+    })
+
+    it('renders exactly 3 deduction components', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const deductionCards = [
+        screen.getByTestId('pay-component-AOV'),
+        screen.getByTestId('pay-component-HEALTH'),
+        screen.getByTestId('pay-component-ADV'),
+      ]
+      
+      expect(deductionCards).toHaveLength(3)
+      deductionCards.forEach(card => {
+        expect(card).toBeInTheDocument()
+        expect(card).toHaveClass('border-red-200')
+      })
+    })
+
+    it('each component has unique data-testid', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const testIds = ['BASE', 'OT', 'VAC', '13M', 'AOV', 'HEALTH', 'ADV']
+      
+      testIds.forEach(id => {
+        const element = screen.getByTestId(`pay-component-${id}`)
+        expect(element).toBeInTheDocument()
+      })
+    })
+
+    it('verifies all component descriptions are unique', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const descriptions = [
+        'Monthly base salary as per employment contract',
+        'Overtime compensation at 1.5x hourly rate',
+        '8.33% of gross salary for vacation',
+        'Annual 13th month salary payment',
+        'Employee contribution to AOV pension fund',
+        'Monthly health insurance premium',
+        'Salary advance repayment',
+      ]
+      
+      descriptions.forEach(desc => {
+        expect(screen.getByText(desc)).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Card Styling and Layout', () => {
+    it('applies hover shadow effect to cards', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(baseSalaryCard).toHaveClass('hover:shadow-md')
+    })
+
+    it('uses border radius on cards', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(baseSalaryCard).toHaveClass('rounded-lg')
+    })
+
+    it('applies padding to cards', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(baseSalaryCard).toHaveClass('p-4')
+    })
+
+    it('uses transition classes for smooth effects', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const baseSalaryCard = screen.getByTestId('pay-component-BASE')
+      expect(baseSalaryCard).toHaveClass('transition-shadow')
+    })
+  })
+
+  describe('Code Component Coverage', () => {
+    it('renders components with all possible code formats', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      // Short codes
+      expect(screen.getByText('Code: OT')).toBeInTheDocument()
+      
+      // Medium codes
+      expect(screen.getByText('Code: BASE')).toBeInTheDocument()
+      expect(screen.getByText('Code: HEALTH')).toBeInTheDocument()
+      
+      // Alphanumeric codes
+      expect(screen.getByText('Code: 13M')).toBeInTheDocument()
+      
+      // 3-letter codes
+      expect(screen.getByText('Code: VAC')).toBeInTheDocument()
+      expect(screen.getByText('Code: AOV')).toBeInTheDocument()
+      expect(screen.getByText('Code: ADV')).toBeInTheDocument()
+    })
+
+    it('verifies all codes are uppercase', () => {
+      renderWithProviders(<PayComponentsList />)
+      
+      const codes = ['BASE', 'OT', 'VAC', '13M', 'AOV', 'HEALTH', 'ADV']
+      
+      codes.forEach(code => {
+        const element = screen.getByText(`Code: ${code}`)
+        expect(element.textContent).toBe(`Code: ${code}`)
+        // Verify the code portion itself has no lowercase
+        expect(code).not.toMatch(/[a-z]/) // Codes are uppercase
+      })
+    })
+  })
+})

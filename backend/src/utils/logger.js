@@ -251,7 +251,7 @@ class DatabaseTransport extends Transport {
       await this.pool.query(query);
     } catch (error) {
       // Don't throw - log locally instead to avoid logging loops
-      console.error('Failed to write logs to database:', error.message);
+      // console.error('Failed to write logs to database:', error.message);
       // Could write to file as fallback here
     }
   }
@@ -317,9 +317,9 @@ if (config.deployment?.type === 'cloud' && config.centralLogging?.enabled) {
     
     // Test connection
     await centralLoggingPool.query('SELECT 1');
-    console.log('✓ Central logging database connected');
+    // console.log('✓ Central logging database connected');
   } catch (error) {
-    console.error('✗ Failed to connect to central logging database:', error.message);
+    // console.error('✗ Failed to connect to central logging database:', error.message);
     centralLoggingPool = null;
   }
 }

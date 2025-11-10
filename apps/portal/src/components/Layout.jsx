@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Grid3x3, Shield, FileText, Server, Menu, Bell, LogOut, FileKey, ChevronDown, ChevronRight, Users, Plus, BarChart3, Layers, Settings, Key, X } from 'lucide-react';
+import { Grid3x3, Shield, FileText, Server, Menu, Bell, LogOut, FileKey, ChevronDown, ChevronRight, Users, Plus, BarChart3, Layers, Settings, Key, X, Package, Boxes } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const navigation = [
@@ -19,6 +19,15 @@ const navigation = [
     ]
   },
   { name: 'Infrastructure', path: '/infrastructure', icon: Server },
+  { 
+    name: 'Products & Features',
+    path: '/products',
+    icon: Package,
+    children: [
+      { name: 'Products', path: '/products', icon: Package },
+      { name: 'Feature Catalog', path: '/features', icon: Boxes },
+    ]
+  },
   { 
     name: 'Access Control',
     path: '/users',

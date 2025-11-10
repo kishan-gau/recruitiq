@@ -5,7 +5,12 @@
  * @param amount - Amount in SRD
  * @param showSymbol - Whether to show SRD symbol
  */
-export function formatCurrency(amount: number, showSymbol: boolean = true): string {
+export function formatCurrency(amount: number | null | undefined, showSymbol: boolean = true): string {
+  // Handle null/undefined amounts
+  if (amount === null || amount === undefined || isNaN(amount)) {
+    return showSymbol ? 'SRD 0.00' : '0.00';
+  }
+  
   const formatted = amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -69,7 +74,7 @@ export function calculateHours(startTime: string, endTime: string, breakHours: n
 /**
  * Get status color classes
  */
-export function getStatusColor(status: string): string {
+export function getStatusColor(status: string | undefined | null): string {
   const statusColors: Record<string, string> = {
     active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
     inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
@@ -81,12 +86,22 @@ export function getStatusColor(status: string): string {
     rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     
     draft: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-    ready: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    calculating: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    calculated: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
     processing: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-    completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    processed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
     cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     failed: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    
+    // Legacy status mappings for backwards compatibility
+    ready: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   };
+  
+  // Handle undefined, null, or empty string
+  if (!status) {
+    return statusColors.inactive;
+  }
   
   return statusColors[status.toLowerCase()] || statusColors.inactive;
 }

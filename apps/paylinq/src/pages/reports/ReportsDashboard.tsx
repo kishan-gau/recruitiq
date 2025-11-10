@@ -11,9 +11,12 @@ import {
   BarChart3,
   PieChart,
 } from 'lucide-react';
-import { Tabs, Badge } from '@/components/ui';
-import type { Tab } from '@/components/ui';
+import Tabs from '@/components/ui/Tabs';
+import Badge from '@/components/ui/Badge';
+import type { Tab } from '@/components/ui/Tabs';
 import ReportConfigModal from '@/components/modals/ReportConfigModal';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useToast } from '@/contexts/ToastContext';
 
 interface ReportCard {
   id: string;
@@ -26,9 +29,12 @@ interface ReportCard {
 }
 
 export default function ReportsDashboard() {
+  const { paylinq } = usePaylinqAPI();
+  const { error: showError, success } = useToast();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedPeriod, setSelectedPeriod] = useState('current-month');
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const reports: ReportCard[] = [
     {
@@ -149,9 +155,55 @@ export default function ReportsDashboard() {
     }
   };
 
-  const handleGenerateReport = (reportId: string) => {
-    console.log('Generate report:', reportId);
-    // Implement report generation
+  const handleGenerateReport = async (reportId: string) => {
+    try {
+      setIsGenerating(true);
+      
+      // Get date range based on selected period
+      const now = new Date();
+      let startDate: string, endDate: string;
+      
+      switch (selectedPeriod) {
+        case 'current-month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+          break;
+        case 'last-month':
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+          break;
+        case 'current-quarter':
+          const quarter = Math.floor(now.getMonth() / 3);
+          startDate = new Date(now.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
+          endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0).toISOString().split('T')[0];
+          break;
+        case 'ytd':
+          startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+          endDate = now.toISOString().split('T')[0];
+          break;
+        default:
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      }
+
+      const response = await paylinq.exportReport(reportId, {
+        start_date: startDate,
+        end_date: endDate,
+        format: 'pdf',
+      });
+
+      if (response.success) {
+        success('Report generated successfully');
+        // In a real app, this would download the file
+        if (response.data?.download_url) {
+          window.open(response.data.download_url, '_blank');
+        }
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to generate report');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -178,7 +230,7 @@ export default function ReportsDashboard() {
           <select
             value={selectedPeriod}
             onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           >
             <option value="current-month">Current Month (November 2025)</option>
             <option value="last-month">Last Month (October 2025)</option>
@@ -226,9 +278,10 @@ export default function ReportsDashboard() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleGenerateReport(report.id)}
-                className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium"
+                disabled={isGenerating}
+                className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors font-medium"
               >
-                Generate
+                {isGenerating ? 'Generating...' : 'Generate'}
               </button>
               <button className="px-3 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 <Download className="w-4 h-4" />
@@ -279,3 +332,5 @@ export default function ReportsDashboard() {
     </div>
   );
 }
+
+

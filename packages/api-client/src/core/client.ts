@@ -12,6 +12,8 @@ export interface TokenStorage {
   clearTokens: () => void;
   getRefreshToken: () => string | null;
   isTokenExpired: () => boolean;
+  getCsrfToken: () => string | null;
+  setCsrfToken: (token: string) => void;
 }
 
 /**
@@ -43,76 +45,62 @@ export class APIClient {
   }
 
   /**
-   * Default token storage implementation using localStorage
+   * Default token storage implementation using httpOnly cookies (SECURE)
+   * 
+   * SECURITY: Tokens are stored in httpOnly cookies by the backend server.
+   * This prevents XSS attacks from stealing tokens via JavaScript.
+   * 
+   * The browser automatically sends cookies with each request.
+   * We can't read the cookies from JavaScript (that's the security benefit!).
    */
   private createDefaultTokenStorage(): TokenStorage {
-    const TOKEN_KEY = '__recruitiq_access_token';
-    const REFRESH_TOKEN_KEY = '__recruitiq_refresh_token';
-    const TOKEN_EXPIRY_KEY = '__recruitiq_token_expiry';
+    // Store CSRF token in memory (it's safe to store in JS, not secret like access tokens)
+    let csrfToken: string | null = null;
 
     return {
+      // With httpOnly cookies, we can't read tokens from JavaScript
+      // This is more secure as XSS attacks cannot steal the token
       getToken: () => {
-        try {
-          const token = localStorage.getItem(TOKEN_KEY);
-          const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
-
-          if (!token) return null;
-
-          if (expiry && Date.now() > parseInt(expiry)) {
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
-            localStorage.removeItem(TOKEN_EXPIRY_KEY);
-            return null;
-          }
-
-          return token;
-        } catch {
-          return null;
-        }
+        // Return a truthy value to indicate cookie-based auth is in use
+        // The actual token is in httpOnly cookie sent automatically by browser
+        return 'cookie-auth';
       },
 
-      setToken: (token: string, refreshToken?: string, expiresIn: number = 604800) => {
-        try {
-          const expiryTime = Date.now() + expiresIn * 1000;
-          localStorage.setItem(TOKEN_KEY, token);
-          localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-          if (refreshToken) {
-            localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-          }
-        } catch (error) {
-          console.error('Failed to store tokens:', error);
-        }
+      // SECURITY: Tokens are set in httpOnly cookies by the server via Set-Cookie header
+      // This method is called after login but does nothing (cookies are managed server-side)
+      setToken: (_token: string, _refreshToken?: string, _expiresIn: number = 604800) => {
+        // Tokens are now managed via httpOnly cookies by the server
+        // No client-side storage needed - this prevents XSS token theft
+        console.info('Authentication tokens are managed via secure httpOnly cookies');
       },
 
+      // SECURITY: Clear authentication by calling logout endpoint
+      // The server will clear the httpOnly cookies
       clearTokens: () => {
-        try {
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem(TOKEN_EXPIRY_KEY);
-        } catch (error) {
-          console.error('Failed to clear tokens:', error);
-        }
+        // Clear CSRF token from memory
+        csrfToken = null;
+        // Tokens are in httpOnly cookies - server will clear them via logout endpoint
+        console.info('Tokens will be cleared via logout endpoint');
       },
 
+      // With httpOnly cookies, refresh token is also in a cookie
       getRefreshToken: () => {
-        try {
-          return localStorage.getItem(REFRESH_TOKEN_KEY);
-        } catch {
-          return null;
-        }
+        // Refresh token is in httpOnly cookie, managed by server
+        return 'cookie-auth';
       },
 
+      // With httpOnly cookies, token expiry is managed server-side
+      // The server will return 401 if token is expired, triggering refresh
       isTokenExpired: () => {
-        try {
-          const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
-          if (!expiry) return true;
-          
-          // Consider expired if less than 5 minutes remaining
-          const fiveMinutes = 5 * 60 * 1000;
-          return Date.now() > parseInt(expiry) - fiveMinutes;
-        } catch {
-          return true;
-        }
+        // Server handles expiry check and returns 401 if expired
+        return false;
+      },
+
+      // CSRF token can be stored in memory (it's not sensitive like access tokens)
+      getCsrfToken: () => csrfToken,
+      
+      setCsrfToken: (token: string) => {
+        csrfToken = token;
       },
     };
   }
@@ -121,17 +109,24 @@ export class APIClient {
    * Setup request and response interceptors
    */
   private setupInterceptors(): void {
-    // Request interceptor - Add auth token
+    // SECURITY: Request interceptor - Add CSRF token to mutating requests
+    // Auth tokens are in httpOnly cookies, sent automatically by browser
     this.client.interceptors.request.use(
       (config) => {
-        const token = this.tokenStorage.getToken();
-        if (token && !config.headers['skip-auth']) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        
-        // Remove custom skip-auth header
+        // Remove any skip-auth flags
         delete config.headers['skip-auth'];
-        
+
+        // Add CSRF token to POST, PUT, PATCH, DELETE requests (if available)
+        const mutatingMethods = ['post', 'put', 'patch', 'delete'];
+        if (config.method && mutatingMethods.includes(config.method.toLowerCase())) {
+          const csrfToken = this.tokenStorage.getCsrfToken();
+          
+          // Add CSRF token to request headers if available
+          if (csrfToken && config.headers) {
+            config.headers['X-CSRF-Token'] = csrfToken;
+          }
+        }
+
         return config;
       },
       (error) => Promise.reject(error)
@@ -145,7 +140,19 @@ export class APIClient {
 
         // Handle 401 errors with token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
-          const skipRefreshUrls = ['/auth/login', '/auth/refresh', '/auth/logout'];
+          const skipRefreshUrls = [
+            '/auth/login', 
+            '/auth/refresh', 
+            '/auth/logout',
+            '/auth/tenant/login',
+            '/auth/tenant/me',
+            '/auth/tenant/refresh',
+            '/auth/tenant/logout',
+            '/auth/platform/login',
+            '/auth/platform/me',
+            '/auth/platform/refresh',
+            '/auth/platform/logout'
+          ];
           const shouldSkipRefresh = skipRefreshUrls.some((url) =>
             originalRequest.url?.includes(url)
           );
@@ -157,24 +164,38 @@ export class APIClient {
               this.isRefreshing = true;
 
               try {
-                const newToken = await this.refreshAccessToken();
+                await this.refreshAccessToken();
                 this.isRefreshing = false;
-                this.onTokenRefreshed(newToken);
+                this.onTokenRefreshed('cookie-auth');
                 this.refreshSubscribers = [];
                 
-                // Retry original request with new token
-                if (originalRequest.headers) {
-                  originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                }
+                // Retry original request (cookie will be sent automatically)
                 return this.client(originalRequest);
               } catch (refreshError) {
                 this.isRefreshing = false;
                 this.refreshSubscribers = [];
                 this.tokenStorage.clearTokens();
                 
-                // Redirect to login
-                if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-                  window.location.href = '/login?reason=session_expired';
+                // Don't redirect if this is the initial auth check (/auth/tenant/me)
+                // Let the AuthContext handle it gracefully
+                const isInitialAuthCheck = originalRequest.url?.includes('/auth/tenant/me');
+                
+                console.log('[APIClient] Refresh failed:', {
+                  url: originalRequest.url,
+                  isInitialAuthCheck,
+                  pathname: typeof window !== 'undefined' ? window.location.pathname : 'N/A'
+                });
+                
+                // Redirect to login ONLY if not already on login page and NOT initial auth check
+                if (!isInitialAuthCheck && typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+                  const currentPath = window.location.pathname;
+                  const reason = 'session_expired';
+                  if (currentPath !== '/login') {
+                    console.log('[APIClient] Redirecting to login');
+                    window.location.href = `/login?reason=${reason}`;
+                  }
+                } else {
+                  console.log('[APIClient] Skipping redirect - letting AuthContext handle it');
                 }
                 
                 return Promise.reject(refreshError);
@@ -200,21 +221,21 @@ export class APIClient {
 
   /**
    * Refresh the access token
+   * SECURITY: Token is in httpOnly cookie, backend will read it and set new one
    */
   private async refreshAccessToken(): Promise<string> {
-    const refreshToken = this.tokenStorage.getRefreshToken();
-    
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
     try {
-      const response = await this.client.post('/auth/refresh', { refreshToken });
-      const { token, refreshToken: newRefreshToken, expiresIn } = response.data;
-      
-      this.tokenStorage.setToken(token, newRefreshToken, expiresIn);
-      return token;
-    } catch (error) {
+      console.log('[APIClient] Attempting to refresh access token...');
+      // Backend reads refreshToken from httpOnly cookie and sets new accessToken cookie
+      await this.client.post('/auth/tenant/refresh', {});
+      console.log('[APIClient] Token refresh successful');
+      return 'cookie-auth'; // Placeholder since token is in cookie
+    } catch (error: any) {
+      console.error('[APIClient] Token refresh failed:', {
+        status: error.response?.status,
+        message: error.message,
+        url: error.config?.url
+      });
       this.tokenStorage.clearTokens();
       throw error;
     }

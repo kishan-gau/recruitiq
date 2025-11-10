@@ -194,16 +194,23 @@ router.post('/users', requirePermission('portal.manage'), async (req, res) => {
       permissionIds = permResult.rows.map(r => r.id);
     }
     
+    // Split name into first and last name
+    const nameParts = name.trim().split(/\s+/);
+    const firstName = nameParts[0] || 'User';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
     // Create user
     const result = await client.query(
       `INSERT INTO users (
-        email, name, password_hash, user_type, legacy_role, 
+        email, name, first_name, last_name, password_hash, user_type, legacy_role, 
         organization_id, additional_permissions, email_verified
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, email, name, user_type, legacy_role`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING id, email, name, first_name, last_name, user_type, legacy_role`,
       [
         email.toLowerCase(),
         name,
+        firstName,
+        lastName,
         passwordHash,
         user_type,
         legacy_role || null,

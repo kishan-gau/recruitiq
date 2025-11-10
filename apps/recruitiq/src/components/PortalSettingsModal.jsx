@@ -42,13 +42,13 @@ export default function PortalSettingsModal({ job, isOpen, onClose, onUpdate }) 
     try {
       setIsSaving(true)
 
-      const token = localStorage.getItem('token')
+      // SECURITY: Auth token is now in httpOnly cookie, sent automatically
       const response = await fetch(`${API_BASE}/jobs/${job.id}/portal-settings`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // CRITICAL: Send cookies with request
         body: JSON.stringify(settings)
       })
 

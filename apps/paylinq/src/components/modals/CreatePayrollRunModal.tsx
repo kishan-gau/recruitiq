@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog, FormField, Input, Select } from '@/components/ui';
 import { useToast } from '@/contexts/ToastContext';
 import { Calendar } from 'lucide-react';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface CreatePayrollRunModalProps {
   isOpen: boolean;
@@ -10,10 +11,12 @@ interface CreatePayrollRunModalProps {
 }
 
 export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: CreatePayrollRunModalProps) {
+  const { paylinq } = usePaylinqAPI();
   const { success, error } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
+    payrollName: `Payroll ${new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`,
     payPeriodStart: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     payPeriodEnd: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
     paymentDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5).toISOString().split('T')[0],
@@ -24,6 +27,7 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.payrollName?.trim()) newErrors.payrollName = 'Payroll name is required';
     if (!formData.payPeriodStart) newErrors.payPeriodStart = 'Start date is required';
     if (!formData.payPeriodEnd) newErrors.payPeriodEnd = 'End date is required';
     if (formData.payPeriodStart && formData.payPeriodEnd && formData.payPeriodStart >= formData.payPeriodEnd) {
@@ -47,17 +51,45 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // await api.payroll.createRun(formData);
+      const response = await paylinq.createPayrollRun({
+        payrollName: formData.payrollName,
+        periodStart: formData.payPeriodStart,
+        periodEnd: formData.payPeriodEnd,
+        paymentDate: formData.paymentDate,
+        // run_type: formData.type,  // Not in API schema
+        // description: formData.description,  // Not in API schema
+      });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      success('Payroll run created successfully');
-      onSuccess();
-      onClose();
-    } catch (err) {
-      error('Failed to create payroll run. Please try again.');
+      if (response.success) {
+        success('Payroll run created successfully');
+        onSuccess();
+        onClose();
+      }
+    } catch (err: any) {
+      // Handle validation errors from API
+      if (err.response?.status === 400 && err.response?.data?.details) {
+        const apiErrors = err.response.data.details;
+        const fieldErrors: Record<string, string> = {};
+        
+        // Map API field names to form field names
+        const fieldMap: Record<string, string> = {
+          'periodStart': 'payPeriodStart',
+          'periodEnd': 'payPeriodEnd',
+          'paymentDate': 'paymentDate',
+          'payrollName': 'payrollName',
+        };
+        
+        apiErrors.forEach((apiError: any) => {
+          const formField = fieldMap[apiError.field] || apiError.field;
+          fieldErrors[formField] = apiError.message;
+        });
+        
+        setErrors(fieldErrors);
+        error('Please fix the validation errors');
+      } else {
+        // Handle other errors
+        error(err.response?.data?.message || err.message || 'Failed to create payroll run. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -78,11 +110,13 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
       onClose={onClose}
       title="Create Payroll Run"
       size="md"
+      data-testid="create-payroll-modal"
       footer={
         <>
           <button
             onClick={onClose}
             disabled={isLoading}
+            data-testid="cancel-button"
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             Cancel
@@ -90,6 +124,7 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
           <button
             onClick={handleSubmit}
             disabled={isLoading}
+            data-testid="submit-button"
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             {isLoading ? 'Creating...' : 'Create Payroll Run'}
@@ -105,8 +140,21 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
           </p>
         </div>
 
+        <FormField label="Payroll Name" required error={errors.payrollName}>
+          <Input
+            name="payrollName"
+            data-testid="payroll-name-input"
+            value={formData.payrollName}
+            onChange={(e) => handleChange('payrollName', e.target.value)}
+            placeholder="e.g., November 2024 Payroll"
+            error={!!errors.payrollName}
+          />
+        </FormField>
+
         <FormField label="Payroll Type" required>
           <Select
+            name="type"
+            data-testid="payroll-type-select"
             value={formData.type}
             onChange={(e) => handleChange('type', e.target.value)}
             options={[
@@ -122,6 +170,8 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
           <FormField label="Period Start Date" required error={errors.payPeriodStart}>
             <Input
               type="date"
+              name="periodStart"
+              data-testid="period-start-input"
               value={formData.payPeriodStart}
               onChange={(e) => handleChange('payPeriodStart', e.target.value)}
               error={!!errors.payPeriodStart}
@@ -131,6 +181,8 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
           <FormField label="Period End Date" required error={errors.payPeriodEnd}>
             <Input
               type="date"
+              name="periodEnd"
+              data-testid="period-end-input"
               value={formData.payPeriodEnd}
               onChange={(e) => handleChange('payPeriodEnd', e.target.value)}
               error={!!errors.payPeriodEnd}
@@ -141,6 +193,8 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
         <FormField label="Payment Date" required error={errors.paymentDate}>
           <Input
             type="date"
+            name="paymentDate"
+            data-testid="payment-date-input"
             value={formData.paymentDate}
             onChange={(e) => handleChange('paymentDate', e.target.value)}
             error={!!errors.paymentDate}
@@ -149,6 +203,8 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
 
         <FormField label="Description">
           <Input
+            name="description"
+            data-testid="description-input"
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             placeholder="Optional description..."

@@ -2,7 +2,7 @@ import clsx from 'clsx';
 import { getStatusColor } from '@/utils/helpers';
 
 interface StatusBadgeProps {
-  status: string;
+  status?: string | null;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
@@ -14,6 +14,8 @@ export default function StatusBadge({ status, size = 'md', className }: StatusBa
     lg: 'px-3 py-1.5 text-sm',
   };
 
+  const displayStatus = status || 'inactive';
+
   return (
     <span
       className={clsx(
@@ -23,7 +25,7 @@ export default function StatusBadge({ status, size = 'md', className }: StatusBa
         className
       )}
     >
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
     </span>
   );
 }

@@ -6,12 +6,16 @@ A microservice for automating RecruitIQ instance deployments on TransIP OpenStac
 
 - 🚀 **One-Click Deployments** - Deploy RecruitIQ instances with a single API call
 - 🔐 **TransIP Integration** - Full integration with TransIP REST API v6
+- ✅ **Approval Workflow** - Multi-stage approval process for VPS provisioning
+- 👥 **Role-based Approvers** - Configurable approver permissions and cost limits
+- 📊 **VPS Inventory Tracking** - Centralized inventory of all managed VPS instances
 - ⚡ **Job Queue** - Asynchronous deployment processing with Bull/Redis
 - 🛡️ **Safety Guards** - Dry-run mode and billing guard to prevent accidental charges
 - 📊 **Progress Tracking** - Real-time deployment status and logs
 - 🔄 **Instance Management** - Start, stop, reboot, delete, and snapshot instances
 - ☁️ **Cloud-Init** - Automated OS and application installation
 - 🔒 **Secure** - JWT authentication and API key support
+- 📝 **Audit Logging** - Comprehensive audit trail for all operations
 
 ## Architecture
 
@@ -20,21 +24,41 @@ deployment-service/
 ├── src/
 │   ├── config/           # Configuration management
 │   ├── controllers/      # API controllers
+│   │   ├── deploymentController.js       # Deployment operations
+│   │   ├── vpsProvisionController.js     # Approval workflow
+│   │   ├── vpsApproverController.js      # Approver management
+│   │   └── vpsInventoryController.js     # VPS inventory
+│   ├── database/         # Database connection and schema
+│   │   ├── connection.js                 # PostgreSQL connection
+│   │   └── deployment-service-schema.sql # Database schema
 │   ├── middleware/       # Express middleware
+│   ├── models/           # Database models
+│   │   ├── VpsProvisionRequest.js        # Provision requests
+│   │   ├── VpsProvisionApprover.js       # Approvers
+│   │   └── TransipVpsInventory.js        # VPS inventory
 │   ├── queue/           # Bull queue for async jobs
 │   ├── routes/          # API routes
+│   │   ├── index.js                      # Main routes
+│   │   └── approvalRoutes.js             # Approval workflow routes
 │   ├── services/        # Business logic
-│   │   └── transip/     # TransIP API integration
+│   │   ├── transip/                      # TransIP API integration
+│   │   │   ├── auth.js                   # Authentication
+│   │   │   ├── vpsClient.js              # VPS operations
+│   │   │   ├── deploymentService.js      # Deployment logic
+│   │   │   └── cloudInit.js              # Cloud-init generation
+│   │   └── vpsProvisioningService.js     # Provisioning workflow
 │   └── server.js        # Express server
 ├── tests/               # Unit and integration tests
 ├── package.json
-└── README.md
+├── README.md
+└── APPROVAL_WORKFLOW.md # Approval workflow documentation
 ```
 
 ## Prerequisites
 
 - Node.js >= 18.0.0
 - Redis (for job queue)
+- PostgreSQL >= 13 (for approval workflow)
 - TransIP account with API access
 - TransIP private key
 
@@ -44,10 +68,15 @@ deployment-service/
 # Install dependencies
 npm install
 
+# Set up database (from backend directory)
+cd ../backend/src/database
+.\setup-database.ps1
+cd ../../../deployment-service
+
 # Copy environment template
 cp .env.example .env
 
-# Edit .env with your TransIP credentials
+# Edit .env with your TransIP credentials and database connection
 nano .env
 ```
 
@@ -64,6 +93,12 @@ nano .env
 | `DEPLOYMENT_DRY_RUN` | Simulate deployments without API calls | `true` |
 | `DEPLOYMENT_BILLING_GUARD` | Require approval for billing operations | `true` |
 | `REDIS_URL` | Redis connection URL | `redis://localhost:6379` |
+| `DATABASE_URL` | PostgreSQL connection URL | - |
+| `DB_HOST` | Database host | `localhost` |
+| `DB_PORT` | Database port | `5432` |
+| `DB_NAME` | Database name | `recruitiq_dev` |
+| `DB_USER` | Database user | `postgres` |
+| `DB_PASSWORD` | Database password | - |
 | `DEPLOYMENT_SERVICE_PORT` | Service port | `5001` |
 | `LICENSE_MANAGER_URL` | License Manager API URL | `http://localhost:5000` |
 | `LICENSE_MANAGER_API_KEY` | API key for service-to-service auth | - |
@@ -137,6 +172,34 @@ curl http://localhost:5001/health
 ```
 
 ## API Endpoints
+
+### VPS Provision Approval Workflow
+
+**See [APPROVAL_WORKFLOW.md](./APPROVAL_WORKFLOW.md) for complete documentation.**
+
+The approval workflow provides a multi-stage process for VPS provisioning:
+
+1. **Create Request** - User submits VPS provision request
+2. **Review** - Authorized approvers review and comment
+3. **Approve/Reject** - Decision made by authorized approver
+4. **Provision** - Automatic provisioning if approved
+5. **Track** - Monitor progress and view inventory
+
+Quick examples:
+
+```bash
+# Create provision request
+POST /api/vps-provision/requests
+
+# List pending requests (approvers)
+GET /api/vps-provision/requests/pending
+
+# Approve request
+POST /api/vps-provision/requests/:id/approve
+
+# View inventory
+GET /api/vps-inventory
+```
 
 ### Authentication
 

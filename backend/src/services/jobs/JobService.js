@@ -20,27 +20,39 @@ export class JobService {
    */
   static get createSchema() {
     return Joi.object({
+      workspace_id: Joi.string().uuid().required(),
       title: Joi.string().required().trim().min(3).max(200),
       description: Joi.string().required().min(50),
-      department: Joi.string().required().trim().max(100),
-      location: Joi.string().required().trim().max(200),
+      department: Joi.string().trim().max(100).optional().allow(''),
+      location: Joi.string().trim().max(200).optional().allow(''),
       employment_type: Joi.string().valid('full-time', 'part-time', 'contract', 'temporary', 'internship').required(),
-      experience_level: Joi.string().valid('entry', 'mid', 'senior', 'lead', 'executive').required(),
+      experience_level: Joi.string().valid('entry', 'mid', 'senior', 'lead', 'executive').optional().allow(''),
+      remote_policy: Joi.string().valid('onsite', 'hybrid', 'remote').optional().allow(null),
+      is_remote: Joi.boolean().default(false),
+      requirements: Joi.alternatives().try(
+        Joi.array().items(Joi.string()),
+        Joi.string()
+      ).optional().allow('', null),
+      responsibilities: Joi.alternatives().try(
+        Joi.array().items(Joi.string()),
+        Joi.string()
+      ).optional().allow('', null),
+      benefits: Joi.alternatives().try(
+        Joi.array().items(Joi.string()),
+        Joi.string()
+      ).optional().allow('', null),
       salary_min: Joi.number().integer().min(0).optional().allow(null),
       salary_max: Joi.number().integer().min(0).optional().allow(null),
-      salary_currency: Joi.string().length(3).uppercase().default('USD'),
-      requirements: Joi.array().items(Joi.string()).optional().default([]),
-      responsibilities: Joi.array().items(Joi.string()).optional().default([]),
-      benefits: Joi.array().items(Joi.string()).optional().default([]),
-      skills_required: Joi.array().items(Joi.string()).optional().default([]),
-      skills_preferred: Joi.array().items(Joi.string()).optional().default([]),
+      salary_currency: Joi.string().max(10).default('USD'),
+      status: Joi.string().valid('draft', 'open', 'paused', 'filled', 'closed', 'archived').default('draft'),
+      is_public: Joi.boolean().default(false),
+      public_slug: Joi.string().max(255).optional().allow(null),
+      public_portal_settings: Joi.object().optional().allow(null),
+      flow_template_id: Joi.string().uuid().optional().allow(null),
       hiring_manager_id: Joi.string().uuid().optional().allow(null),
-      status: Joi.string().valid('draft', 'open', 'on-hold', 'closed', 'cancelled').default('draft'),
-      is_published: Joi.boolean().default(false),
-      remote_ok: Joi.boolean().default(false),
-      visa_sponsorship: Joi.boolean().default(false),
-      application_deadline: Joi.date().iso().optional().allow(null),
-      positions_count: Joi.number().integer().min(1).default(1)
+      recruiter_id: Joi.string().uuid().optional().allow(null),
+      posted_at: Joi.date().iso().optional().allow(null),
+      closes_at: Joi.date().iso().optional().allow(null)
     }).custom((value, helpers) => {
       // Validate salary range
       if (value.salary_min && value.salary_max && value.salary_min > value.salary_max) {

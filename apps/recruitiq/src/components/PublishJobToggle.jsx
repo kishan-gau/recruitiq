@@ -25,13 +25,13 @@ export default function PublishJobToggle({ job, onUpdate }) {
     try {
       setIsPublishing(true)
 
-      const token = localStorage.getItem('token')
+      // SECURITY: Auth token is now in httpOnly cookie, sent automatically
       const response = await fetch(`${API_BASE}/jobs/${job.id}/publish`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
+        credentials: 'include', // CRITICAL: Send cookies with request
         body: JSON.stringify({
           isPublic: !isPublished
         })

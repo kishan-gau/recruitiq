@@ -17,6 +17,18 @@ DROP TABLE IF EXISTS licenses CASCADE;
 DROP TABLE IF EXISTS tier_presets CASCADE;
 DROP TABLE IF EXISTS customers CASCADE;
 
+-- Drop product management tables
+DROP MATERIALIZED VIEW IF EXISTS feature_usage_summary CASCADE;
+DROP VIEW IF EXISTS active_feature_grants CASCADE;
+DROP TABLE IF EXISTS feature_audit_log CASCADE;
+DROP TABLE IF EXISTS feature_usage_events CASCADE;
+DROP TABLE IF EXISTS organization_feature_grants CASCADE;
+DROP TABLE IF EXISTS features CASCADE;
+DROP TABLE IF EXISTS product_features CASCADE;
+DROP TABLE IF EXISTS product_configs CASCADE;
+DROP TABLE IF EXISTS product_permissions CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+
 -- Drop main application tables
 DROP TABLE IF EXISTS communications CASCADE;
 DROP TABLE IF EXISTS interview_interviewers CASCADE;
@@ -62,7 +74,7 @@ CREATE TABLE organizations (
   -- License & Subscription
   tier VARCHAR(50) NOT NULL DEFAULT 'starter' CHECK (tier IN ('starter', 'professional', 'enterprise')),
   license_key VARCHAR(500),
-  license_expires_at TIMESTAMP,
+  license_expires_at TIMESTAMPTZ,
   subscription_status VARCHAR(50) DEFAULT 'active' CHECK (subscription_status IN ('active', 'trialing', 'past_due', 'canceled', 'suspended')),
   subscription_id VARCHAR(255),
   
@@ -79,20 +91,23 @@ CREATE TABLE organizations (
   
   -- MFA Security Policy
   mfa_required BOOLEAN DEFAULT FALSE,
-  mfa_enforcement_date TIMESTAMP,
+  mfa_enforcement_date TIMESTAMPTZ,
   
   -- Deployment Configuration
   deployment_model VARCHAR(50) NOT NULL DEFAULT 'shared' CHECK (deployment_model IN ('shared', 'dedicated')),
   vps_id UUID,  -- References vps_instances(id), added later with FK
+  
+  -- Timezone Configuration
+  timezone VARCHAR(100) NOT NULL DEFAULT 'UTC',
   
   -- Settings
   settings JSONB DEFAULT '{}',
   branding JSONB DEFAULT '{}',
   
   -- Metadata
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_organizations_slug ON organizations(slug);
@@ -106,6 +121,661 @@ COMMENT ON COLUMN organizations.mfa_required IS 'Whether MFA is mandatory for al
 COMMENT ON COLUMN organizations.mfa_enforcement_date IS 'Date when MFA became mandatory. Users without MFA enabled after this date will be prompted to set it up.';
 
 -- ============================================================================
+-- PRODUCTS TABLE - Multi-Product Architecture Registry
+-- ============================================================================
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- Product Identification
+  name VARCHAR(100) NOT NULL UNIQUE,
+  display_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  slug VARCHAR(100) NOT NULL UNIQUE,
+  
+  -- Product Metadata
+  version VARCHAR(50) NOT NULL DEFAULT '1.0.0',
+  npm_package VARCHAR(255), -- NPM package name for dynamic loading
+  repository_url VARCHAR(500),
+  documentation_url VARCHAR(500),
+  
+  -- Product Configuration
+  status VARCHAR(50) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'beta', 'deprecated', 'disabled')),
+  is_core BOOLEAN DEFAULT FALSE, -- Core products (Nexus) vs add-on products
+  requires_license BOOLEAN DEFAULT TRUE,
+  
+  -- Technical Details
+  base_path VARCHAR(100), -- e.g., '/recruitiq', '/schedulehub', '/paylinq'
+  api_prefix VARCHAR(100), -- e.g., '/api/recruitiq', '/api/schedulehub'
+  default_port INTEGER,
+  
+  -- Resource Requirements
+  min_tier VARCHAR(50) DEFAULT 'starter', -- Minimum subscription tier required
+  resource_requirements JSONB DEFAULT '{}', -- CPU, memory, storage requirements
+  
+  -- Feature Flags
+  features JSONB DEFAULT '[]', -- List of available features for this product
+  default_features JSONB DEFAULT '[]', -- Features enabled by default
+  
+  -- UI Configuration
+  icon VARCHAR(100), -- Icon identifier
+  color VARCHAR(50), -- Brand color
+  ui_config JSONB DEFAULT '{}', -- Product-specific UI settings
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID, -- References users(id)
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_products_slug ON products(slug);
+CREATE INDEX idx_products_status ON products(status);
+CREATE INDEX idx_products_name ON products(name);
+CREATE INDEX idx_products_is_core ON products(is_core);
+
+COMMENT ON TABLE products IS 'Registry of all available products in the multi-product platform';
+COMMENT ON COLUMN products.npm_package IS 'NPM package name for dynamic product loading (e.g., "@recruitiq/schedulehub")';
+COMMENT ON COLUMN products.is_core IS 'Core products are always available, add-ons require explicit enablement';
+COMMENT ON COLUMN products.base_path IS 'URL base path for product routing';
+COMMENT ON COLUMN products.min_tier IS 'Minimum subscription tier required to access this product';
+
+-- ============================================================================
+-- PRODUCT_PERMISSIONS TABLE - Define which organizations can access products
+-- ============================================================================
+CREATE TABLE product_permissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- References
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  
+  -- Access Control
+  is_enabled BOOLEAN DEFAULT TRUE,
+  access_level VARCHAR(50) DEFAULT 'full' CHECK (access_level IN ('none', 'read', 'write', 'full', 'admin')),
+  
+  -- License & Limits
+  license_key VARCHAR(500), -- Product-specific license key
+  license_expires_at TIMESTAMPTZ,
+  max_users INTEGER, -- Max users for this product in this org
+  max_resources INTEGER, -- Product-specific resource limit
+  
+  -- Feature Overrides
+  enabled_features JSONB DEFAULT '[]', -- Features enabled for this org
+  disabled_features JSONB DEFAULT '[]', -- Features explicitly disabled
+  
+  -- Usage Tracking
+  users_count INTEGER DEFAULT 0,
+  resources_count INTEGER DEFAULT 0,
+  last_accessed_at TIMESTAMPTZ,
+  
+  -- Metadata
+  granted_at TIMESTAMPTZ DEFAULT NOW(),
+  granted_by UUID, -- References users(id)
+  revoked_at TIMESTAMPTZ,
+  revoked_by UUID, -- References users(id)
+  notes TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(organization_id, product_id)
+);
+
+CREATE INDEX idx_product_permissions_org ON product_permissions(organization_id);
+CREATE INDEX idx_product_permissions_product ON product_permissions(product_id);
+CREATE INDEX idx_product_permissions_enabled ON product_permissions(is_enabled);
+CREATE INDEX idx_product_permissions_expires ON product_permissions(license_expires_at);
+
+COMMENT ON TABLE product_permissions IS 'Defines which organizations have access to which products';
+COMMENT ON COLUMN product_permissions.access_level IS 'Granular access control: none, read (view only), write (use features), full (all features), admin (manage product settings)';
+COMMENT ON COLUMN product_permissions.enabled_features IS 'Product features enabled for this organization (overrides product defaults)';
+
+-- ============================================================================
+-- PRODUCT_CONFIGS TABLE - Organization-specific product configurations
+-- ============================================================================
+CREATE TABLE product_configs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- References
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  
+  -- Configuration
+  config_key VARCHAR(255) NOT NULL,
+  config_value JSONB NOT NULL,
+  config_type VARCHAR(50) DEFAULT 'custom' CHECK (config_type IN ('default', 'custom', 'override')),
+  
+  -- Validation
+  is_encrypted BOOLEAN DEFAULT FALSE,
+  is_sensitive BOOLEAN DEFAULT FALSE,
+  
+  -- Metadata
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_by UUID, -- References users(id)
+  
+  UNIQUE(organization_id, product_id, config_key)
+);
+
+CREATE INDEX idx_product_configs_org ON product_configs(organization_id);
+CREATE INDEX idx_product_configs_product ON product_configs(product_id);
+CREATE INDEX idx_product_configs_key ON product_configs(config_key);
+CREATE INDEX idx_product_configs_sensitive ON product_configs(is_sensitive);
+
+COMMENT ON TABLE product_configs IS 'Organization-specific configuration overrides for products';
+COMMENT ON COLUMN product_configs.config_type IS 'default (from product), custom (org-specific), override (admin override)';
+COMMENT ON COLUMN product_configs.is_encrypted IS 'Whether the config_value is encrypted at rest';
+COMMENT ON COLUMN product_configs.is_sensitive IS 'Whether this config contains sensitive data (API keys, credentials)';
+
+-- ============================================================================
+-- PRODUCT_FEATURES TABLE - Feature flag management per product
+-- ============================================================================
+CREATE TABLE product_features (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- References
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  
+  -- Feature Details
+  feature_key VARCHAR(255) NOT NULL,
+  feature_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  
+  -- Feature Status
+  status VARCHAR(50) DEFAULT 'beta' CHECK (status IN ('alpha', 'beta', 'stable', 'deprecated', 'disabled')),
+  is_default BOOLEAN DEFAULT FALSE,
+  
+  -- Requirements
+  min_tier VARCHAR(50), -- Minimum tier required for this feature
+  requires_features JSONB DEFAULT '[]', -- List of feature_keys this depends on
+  
+  -- Configuration
+  config_schema JSONB DEFAULT '{}', -- JSON schema for feature configuration
+  default_config JSONB DEFAULT '{}', -- Default configuration values
+  
+  -- Rollout Control
+  rollout_percentage INTEGER DEFAULT 100 CHECK (rollout_percentage >= 0 AND rollout_percentage <= 100),
+  target_organizations JSONB DEFAULT '[]', -- Specific orgs for targeted rollout
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID, -- References users(id)
+  
+  UNIQUE(product_id, feature_key)
+);
+
+CREATE INDEX idx_product_features_product ON product_features(product_id);
+CREATE INDEX idx_product_features_key ON product_features(feature_key);
+CREATE INDEX idx_product_features_status ON product_features(status);
+CREATE INDEX idx_product_features_default ON product_features(is_default);
+
+COMMENT ON TABLE product_features IS 'Feature flags and toggles for gradual rollout and A/B testing';
+COMMENT ON COLUMN product_features.rollout_percentage IS 'Percentage of organizations that should have this feature enabled (0-100)';
+COMMENT ON COLUMN product_features.requires_features IS 'List of feature_keys that must be enabled before this feature';
+COMMENT ON COLUMN product_features.config_schema IS 'JSON Schema defining valid configuration for this feature';
+
+-- ============================================================================
+-- FEATURES TABLE - Central feature registry (replaces/extends product_features)
+-- ============================================================================
+CREATE TABLE features (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- References
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  
+  -- Feature Identity
+  feature_key VARCHAR(255) NOT NULL,
+  feature_name VARCHAR(255) NOT NULL,
+  description TEXT,
+  category VARCHAR(100),
+  
+  -- Feature Status & Lifecycle
+  status VARCHAR(50) DEFAULT 'beta' CHECK (status IN ('alpha', 'beta', 'stable', 'deprecated', 'disabled')),
+  deprecated_at TIMESTAMPTZ,
+  deprecation_message TEXT,
+  
+  -- Tier & Pricing
+  min_tier VARCHAR(50), -- Minimum tier required (starter, professional, enterprise)
+  is_add_on BOOLEAN DEFAULT FALSE, -- Whether this is a paid add-on
+  pricing JSONB DEFAULT '{}', -- { "monthly": 50, "annual": 500, "currency": "USD" }
+  
+  -- Feature Dependencies
+  required_features JSONB DEFAULT '[]', -- Array of feature_keys that must be active
+  conflicting_features JSONB DEFAULT '[]', -- Array of feature_keys that cannot be active simultaneously
+  
+  -- Configuration
+  config_schema JSONB DEFAULT '{}', -- JSON schema for feature configuration
+  default_config JSONB DEFAULT '{}', -- Default configuration values
+  
+  -- Usage Limits
+  has_usage_limit BOOLEAN DEFAULT FALSE,
+  default_usage_limit INTEGER,
+  usage_limit_unit VARCHAR(50), -- e.g., "requests", "users", "records"
+  
+  -- Rollout Control
+  rollout_percentage INTEGER DEFAULT 100 CHECK (rollout_percentage >= 0 AND rollout_percentage <= 100),
+  target_organizations JSONB DEFAULT '[]', -- Specific org IDs for targeted rollout
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID, -- References users(id)
+  
+  UNIQUE(product_id, feature_key)
+);
+
+CREATE INDEX idx_features_product ON features(product_id);
+CREATE INDEX idx_features_key ON features(feature_key);
+CREATE INDEX idx_features_status ON features(status);
+CREATE INDEX idx_features_category ON features(category);
+CREATE INDEX idx_features_add_on ON features(is_add_on);
+CREATE INDEX idx_features_tier ON features(min_tier);
+CREATE INDEX idx_features_rollout ON features(rollout_percentage) WHERE rollout_percentage < 100;
+
+COMMENT ON TABLE features IS 'Central registry of all features across products with granular access control';
+COMMENT ON COLUMN features.is_add_on IS 'If true, this feature can be purchased separately regardless of tier';
+COMMENT ON COLUMN features.required_features IS 'Features that must be enabled before this feature can be activated';
+COMMENT ON COLUMN features.conflicting_features IS 'Features that cannot be active when this feature is active';
+
+-- ============================================================================
+-- ORGANIZATION_FEATURE_GRANTS TABLE - Track which features are granted to which orgs
+-- ============================================================================
+CREATE TABLE organization_feature_grants (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- References
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  feature_id UUID NOT NULL REFERENCES features(id) ON DELETE CASCADE,
+  
+  -- Grant Details
+  granted_via VARCHAR(50) NOT NULL CHECK (granted_via IN ('tier_included', 'add_on_purchase', 'manual_grant', 'trial', 'promotional')),
+  granted_reason TEXT,
+  
+  -- Grant Status
+  is_active BOOLEAN DEFAULT TRUE,
+  
+  -- Configuration Override
+  config JSONB DEFAULT '{}', -- Organization-specific feature configuration
+  
+  -- Expiration
+  expires_at TIMESTAMPTZ,
+  auto_renew BOOLEAN DEFAULT FALSE,
+  
+  -- Usage Limits
+  usage_limit INTEGER, -- Override default usage limit
+  current_usage INTEGER DEFAULT 0,
+  last_usage_at TIMESTAMPTZ,
+  usage_reset_at TIMESTAMPTZ, -- When usage counter resets (e.g., monthly)
+  
+  -- Billing
+  billing_status VARCHAR(50) CHECK (billing_status IN ('active', 'past_due', 'canceled', 'trial')),
+  subscription_id VARCHAR(255),
+  
+  -- Metadata
+  granted_at TIMESTAMPTZ DEFAULT NOW(),
+  granted_by UUID, -- References users(id)
+  revoked_at TIMESTAMPTZ,
+  revoked_by UUID, -- References users(id)
+  revoked_reason TEXT,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(organization_id, feature_id)
+);
+
+CREATE INDEX idx_org_feature_grants_org ON organization_feature_grants(organization_id);
+CREATE INDEX idx_org_feature_grants_feature ON organization_feature_grants(feature_id);
+CREATE INDEX idx_org_feature_grants_active ON organization_feature_grants(is_active) WHERE is_active = TRUE;
+CREATE INDEX idx_org_feature_grants_expires ON organization_feature_grants(expires_at) WHERE expires_at IS NOT NULL;
+CREATE INDEX idx_org_feature_grants_granted_via ON organization_feature_grants(granted_via);
+CREATE INDEX idx_org_feature_grants_billing ON organization_feature_grants(billing_status);
+CREATE INDEX idx_org_feature_grants_usage ON organization_feature_grants(organization_id, feature_id, current_usage);
+
+COMMENT ON TABLE organization_feature_grants IS 'Tracks which organizations have access to which features and how they were granted';
+COMMENT ON COLUMN organization_feature_grants.granted_via IS 'How the feature was granted: tier (included in tier), add_on (purchased), manual (admin granted), trial, promotional';
+COMMENT ON COLUMN organization_feature_grants.current_usage IS 'Current usage count for features with usage limits';
+COMMENT ON COLUMN organization_feature_grants.usage_reset_at IS 'When the usage counter resets (typically monthly)';
+
+-- ============================================================================
+-- FEATURE_USAGE_EVENTS TABLE - Track feature usage for analytics and billing
+-- Partitioned by month for performance
+-- ============================================================================
+CREATE TABLE feature_usage_events (
+  id UUID DEFAULT uuid_generate_v4(),
+  
+  -- References
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  feature_id UUID NOT NULL REFERENCES features(id) ON DELETE CASCADE,
+  user_id UUID, -- References users(id), nullable for system usage
+  
+  -- Event Details
+  event_type VARCHAR(50) NOT NULL CHECK (event_type IN ('access', 'usage', 'limit_exceeded', 'trial_started', 'trial_ended')),
+  event_data JSONB DEFAULT '{}', -- Additional event metadata
+  
+  -- Usage Tracking
+  usage_count INTEGER DEFAULT 1,
+  
+  -- Request Context
+  ip_address INET,
+  user_agent TEXT,
+  request_path VARCHAR(500),
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  PRIMARY KEY (id, created_at)
+) PARTITION BY RANGE (created_at);
+
+-- Create initial partitions (last 3 months, current month, next 3 months)
+CREATE TABLE feature_usage_events_2025_08 PARTITION OF feature_usage_events
+  FOR VALUES FROM ('2025-08-01') TO ('2025-09-01');
+CREATE TABLE feature_usage_events_2025_09 PARTITION OF feature_usage_events
+  FOR VALUES FROM ('2025-09-01') TO ('2025-10-01');
+CREATE TABLE feature_usage_events_2025_10 PARTITION OF feature_usage_events
+  FOR VALUES FROM ('2025-10-01') TO ('2025-11-01');
+CREATE TABLE feature_usage_events_2025_11 PARTITION OF feature_usage_events
+  FOR VALUES FROM ('2025-11-01') TO ('2025-12-01');
+CREATE TABLE feature_usage_events_2025_12 PARTITION OF feature_usage_events
+  FOR VALUES FROM ('2025-12-01') TO ('2026-01-01');
+CREATE TABLE feature_usage_events_2026_01 PARTITION OF feature_usage_events
+  FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+CREATE TABLE feature_usage_events_2026_02 PARTITION OF feature_usage_events
+  FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+
+CREATE INDEX idx_feature_usage_org ON feature_usage_events(organization_id, created_at DESC);
+CREATE INDEX idx_feature_usage_feature ON feature_usage_events(feature_id, created_at DESC);
+CREATE INDEX idx_feature_usage_user ON feature_usage_events(user_id, created_at DESC) WHERE user_id IS NOT NULL;
+CREATE INDEX idx_feature_usage_event_type ON feature_usage_events(event_type, created_at DESC);
+
+COMMENT ON TABLE feature_usage_events IS 'Time-series data for feature usage tracking, analytics, and billing (partitioned by month)';
+COMMENT ON COLUMN feature_usage_events.event_type IS 'Type of usage event: access (feature checked), usage (feature used), limit_exceeded, trial events';
+COMMENT ON COLUMN feature_usage_events.usage_count IS 'Number of usage units consumed in this event';
+
+-- ============================================================================
+-- FEATURE_AUDIT_LOG TABLE - Immutable audit trail for feature changes
+-- ============================================================================
+CREATE TABLE feature_audit_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  
+  -- What Changed
+  entity_type VARCHAR(50) NOT NULL CHECK (entity_type IN ('feature', 'grant', 'config')),
+  entity_id UUID NOT NULL,
+  
+  -- Action
+  action VARCHAR(50) NOT NULL CHECK (action IN ('created', 'updated', 'deleted', 'granted', 'revoked', 'expired', 'usage_limit_exceeded')),
+  
+  -- Changes
+  changes JSONB NOT NULL DEFAULT '{}', -- What changed
+  old_values JSONB DEFAULT '{}', -- Previous values
+  new_values JSONB DEFAULT '{}', -- New values
+  
+  -- Context
+  organization_id UUID, -- References organizations(id)
+  feature_id UUID, -- References features(id)
+  
+  -- Actor
+  performed_by UUID, -- References users(id), null for system actions
+  performed_by_type VARCHAR(50) DEFAULT 'user' CHECK (performed_by_type IN ('user', 'system', 'api', 'scheduled_job')),
+  
+  -- Request Context
+  ip_address INET,
+  user_agent TEXT,
+  
+  -- Metadata
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_feature_audit_entity ON feature_audit_log(entity_type, entity_id, created_at DESC);
+CREATE INDEX idx_feature_audit_action ON feature_audit_log(action, created_at DESC);
+CREATE INDEX idx_feature_audit_org ON feature_audit_log(organization_id, created_at DESC) WHERE organization_id IS NOT NULL;
+CREATE INDEX idx_feature_audit_feature ON feature_audit_log(feature_id, created_at DESC) WHERE feature_id IS NOT NULL;
+CREATE INDEX idx_feature_audit_performed_by ON feature_audit_log(performed_by, created_at DESC) WHERE performed_by IS NOT NULL;
+CREATE INDEX idx_feature_audit_created_at ON feature_audit_log(created_at DESC);
+
+COMMENT ON TABLE feature_audit_log IS 'Immutable audit trail of all changes to features, grants, and configurations';
+COMMENT ON COLUMN feature_audit_log.entity_type IS 'Type of entity that changed: feature, grant, or config';
+COMMENT ON COLUMN feature_audit_log.changes IS 'Summary of what changed in human-readable format';
+COMMENT ON COLUMN feature_audit_log.performed_by_type IS 'Whether change was made by user, system, API call, or scheduled job';
+
+-- ============================================================================
+-- HELPER VIEWS FOR FEATURE MANAGEMENT
+-- ============================================================================
+
+-- View: Active feature grants with feature details
+CREATE VIEW active_feature_grants AS
+SELECT 
+  ofg.id AS grant_id,
+  ofg.organization_id,
+  o.name AS organization_name,
+  f.id AS feature_id,
+  f.feature_key,
+  f.feature_name,
+  f.product_id,
+  p.name AS product_name,
+  ofg.granted_via,
+  ofg.is_active,
+  ofg.expires_at,
+  ofg.usage_limit,
+  ofg.current_usage,
+  CASE 
+    WHEN ofg.usage_limit IS NOT NULL 
+    THEN ofg.usage_limit - ofg.current_usage 
+    ELSE NULL 
+  END AS remaining_usage,
+  ofg.granted_at,
+  ofg.granted_by
+FROM organization_feature_grants ofg
+JOIN features f ON ofg.feature_id = f.id
+JOIN products p ON f.product_id = p.id
+JOIN organizations o ON ofg.organization_id = o.id
+WHERE ofg.is_active = TRUE
+  AND (ofg.expires_at IS NULL OR ofg.expires_at > NOW())
+  AND (ofg.usage_limit IS NULL OR ofg.current_usage < ofg.usage_limit);
+
+COMMENT ON VIEW active_feature_grants IS 'All currently active and usable feature grants with remaining usage';
+
+-- View: Feature usage summary (materialized for performance)
+CREATE MATERIALIZED VIEW feature_usage_summary AS
+SELECT 
+  f.id AS feature_id,
+  f.feature_key,
+  f.feature_name,
+  f.product_id,
+  p.name AS product_name,
+  COUNT(DISTINCT ofg.organization_id) AS organizations_using,
+  COUNT(DISTINCT fue.user_id) AS unique_users,
+  SUM(fue.usage_count) AS total_usage_last_30_days,
+  MAX(fue.created_at) AS last_used_at
+FROM features f
+JOIN products p ON f.product_id = p.id
+LEFT JOIN organization_feature_grants ofg ON f.id = ofg.feature_id AND ofg.is_active = TRUE
+LEFT JOIN feature_usage_events fue ON f.id = fue.feature_id AND fue.created_at >= NOW() - INTERVAL '30 days'
+GROUP BY f.id, f.feature_key, f.feature_name, f.product_id, p.name;
+
+CREATE UNIQUE INDEX idx_feature_usage_summary_feature ON feature_usage_summary(feature_id);
+
+COMMENT ON MATERIALIZED VIEW feature_usage_summary IS 'Aggregated feature usage statistics (refresh periodically)';
+
+-- ============================================================================
+-- TRIGGERS FOR FEATURE MANAGEMENT
+-- ============================================================================
+
+-- Trigger: Audit feature grant changes
+CREATE OR REPLACE FUNCTION audit_feature_grant_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO feature_audit_log (
+      entity_type,
+      entity_id,
+      action,
+      organization_id,
+      feature_id,
+      new_values,
+      performed_by,
+      performed_by_type
+    ) VALUES (
+      'grant',
+      NEW.id,
+      'granted',
+      NEW.organization_id,
+      NEW.feature_id,
+      to_jsonb(NEW),
+      NEW.granted_by,
+      'user'
+    );
+  ELSIF TG_OP = 'UPDATE' THEN
+    -- Only log if significant fields changed
+    IF (OLD.is_active != NEW.is_active OR 
+        OLD.expires_at IS DISTINCT FROM NEW.expires_at OR
+        OLD.usage_limit IS DISTINCT FROM NEW.usage_limit OR
+        OLD.config IS DISTINCT FROM NEW.config) THEN
+      
+      INSERT INTO feature_audit_log (
+        entity_type,
+        entity_id,
+        action,
+        organization_id,
+        feature_id,
+        old_values,
+        new_values,
+        changes,
+        performed_by,
+        performed_by_type
+      ) VALUES (
+        'grant',
+        NEW.id,
+        CASE 
+          WHEN OLD.is_active = TRUE AND NEW.is_active = FALSE THEN 'revoked'
+          WHEN OLD.is_active = FALSE AND NEW.is_active = TRUE THEN 'granted'
+          ELSE 'updated'
+        END,
+        NEW.organization_id,
+        NEW.feature_id,
+        to_jsonb(OLD),
+        to_jsonb(NEW),
+        jsonb_build_object(
+          'is_active_changed', OLD.is_active != NEW.is_active,
+          'expires_at_changed', OLD.expires_at IS DISTINCT FROM NEW.expires_at,
+          'usage_limit_changed', OLD.usage_limit IS DISTINCT FROM NEW.usage_limit
+        ),
+        NEW.updated_at,
+        'user'
+      );
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO feature_audit_log (
+      entity_type,
+      entity_id,
+      action,
+      organization_id,
+      feature_id,
+      old_values,
+      performed_by_type
+    ) VALUES (
+      'grant',
+      OLD.id,
+      'deleted',
+      OLD.organization_id,
+      OLD.feature_id,
+      to_jsonb(OLD),
+      'system'
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_audit_feature_grants
+  AFTER INSERT OR UPDATE OR DELETE ON organization_feature_grants
+  FOR EACH ROW EXECUTE FUNCTION audit_feature_grant_changes();
+
+COMMENT ON FUNCTION audit_feature_grant_changes IS 'Automatically logs all feature grant changes to audit trail';
+
+-- ============================================================================
+-- HELPER FUNCTIONS FOR FEATURE MANAGEMENT
+-- ============================================================================
+
+-- Function: Check if organization has feature access
+CREATE OR REPLACE FUNCTION has_feature_access(
+  p_organization_id UUID,
+  p_feature_key VARCHAR,
+  p_product_id UUID DEFAULT NULL
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_has_access BOOLEAN;
+BEGIN
+  SELECT EXISTS(
+    SELECT 1
+    FROM organization_feature_grants ofg
+    JOIN features f ON ofg.feature_id = f.id
+    WHERE ofg.organization_id = p_organization_id
+      AND f.feature_key = p_feature_key
+      AND (p_product_id IS NULL OR f.product_id = p_product_id)
+      AND ofg.is_active = TRUE
+      AND (ofg.expires_at IS NULL OR ofg.expires_at > NOW())
+      AND (ofg.usage_limit IS NULL OR ofg.current_usage < ofg.usage_limit)
+  ) INTO v_has_access;
+  
+  RETURN v_has_access;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+COMMENT ON FUNCTION has_feature_access IS 'Quick check if an organization has active access to a feature';
+
+-- Function: Auto-expire feature grants
+CREATE OR REPLACE FUNCTION expire_feature_grants()
+RETURNS INTEGER AS $$
+DECLARE
+  v_expired_count INTEGER;
+BEGIN
+  WITH expired AS (
+    UPDATE organization_feature_grants
+    SET is_active = FALSE,
+        revoked_at = NOW(),
+        revoked_reason = 'Expired automatically'
+    WHERE is_active = TRUE
+      AND expires_at IS NOT NULL
+      AND expires_at <= NOW()
+    RETURNING id
+  )
+  SELECT COUNT(*) INTO v_expired_count FROM expired;
+  
+  RETURN v_expired_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION expire_feature_grants IS 'Deactivates expired feature grants (run via scheduled job)';
+
+-- Function: Reset usage counters (for monthly limits)
+CREATE OR REPLACE FUNCTION reset_usage_counters()
+RETURNS INTEGER AS $$
+DECLARE
+  v_reset_count INTEGER;
+BEGIN
+  WITH reset AS (
+    UPDATE organization_feature_grants
+    SET current_usage = 0,
+        usage_reset_at = NOW() + INTERVAL '1 month'
+    WHERE usage_limit IS NOT NULL
+      AND usage_reset_at <= NOW()
+    RETURNING id
+  )
+  SELECT COUNT(*) INTO v_reset_count FROM reset;
+  
+  RETURN v_reset_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION reset_usage_counters IS 'Resets usage counters for features with monthly limits (run via scheduled job)';
+
+-- ============================================================================
 -- PERMISSIONS TABLE - Define all available system permissions
 -- ============================================================================
 CREATE TABLE permissions (
@@ -117,7 +787,7 @@ CREATE TABLE permissions (
   description TEXT,
   
   -- Metadata
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_permissions_category ON permissions(category);
@@ -145,8 +815,8 @@ CREATE TABLE roles (
   level INTEGER NOT NULL DEFAULT 0,
   
   -- Metadata
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_roles_name ON roles(name);
@@ -165,7 +835,7 @@ CREATE TABLE role_permissions (
   permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
   
   -- Metadata
-  created_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
   
   UNIQUE(role_id, permission_id)
 );
@@ -176,9 +846,14 @@ CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
 -- ============================================================================
 -- USERS TABLE
 -- ============================================================================
-CREATE TABLE users (
+-- ============================================================================
+-- PLATFORM USERS TABLE - Platform Administrators Only
+-- ============================================================================
+-- Platform users access: Portal app, License Manager, Admin Panel
+-- NOT for tenant/product users (those are in hris.user_account)
+-- ============================================================================
+CREATE TABLE platform_users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
   
   -- Auth
   email VARCHAR(255) NOT NULL UNIQUE,
@@ -188,105 +863,101 @@ CREATE TABLE users (
   
   -- Profile
   name VARCHAR(255) NOT NULL,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
   avatar_url VARCHAR(500),
   phone VARCHAR(50),
   timezone VARCHAR(100) DEFAULT 'UTC',
   
-  -- Platform vs Tenant User
-  user_type VARCHAR(20) NOT NULL DEFAULT 'tenant' CHECK (user_type IN ('platform', 'tenant')),
+  -- Platform Roles (no organization_id - platform users are global)
+  -- super_admin: Full platform control
+  -- admin: Product/feature/organization management
+  -- support: View + support functions
+  -- viewer: Read-only access
+  role VARCHAR(50) NOT NULL DEFAULT 'viewer' 
+    CHECK (role IN ('super_admin', 'admin', 'support', 'viewer')),
   
-  -- Role & Permissions
-  role_id UUID REFERENCES roles(id),
-  
-  -- Legacy role field (for backward compatibility, will be deprecated)
-  legacy_role VARCHAR(50) CHECK (legacy_role IN ('owner', 'admin', 'recruiter', 'member', 'applicant', 'platform_admin', 'security_admin')),
-  
-  -- Additional permissions beyond role (if needed)
-  additional_permissions UUID[] DEFAULT '{}',
+  -- Additional permissions beyond role (JSON array of permission strings)
+  permissions JSONB DEFAULT '[]',
   
   -- Security
-  last_login_at TIMESTAMP,
+  last_login_at TIMESTAMPTZ,
   last_login_ip VARCHAR(50),
   failed_login_attempts INTEGER DEFAULT 0,
-  locked_until TIMESTAMP,
+  locked_until TIMESTAMPTZ,
   password_reset_token VARCHAR(255),
-  password_reset_expires_at TIMESTAMP,
+  password_reset_expires_at TIMESTAMPTZ,
   
   -- MFA (Multi-Factor Authentication)
   mfa_enabled BOOLEAN DEFAULT FALSE,
   mfa_secret VARCHAR(255),
   mfa_backup_codes JSONB DEFAULT '[]',
   mfa_backup_codes_used INTEGER DEFAULT 0,
-  mfa_enabled_at TIMESTAMP,
+  mfa_enabled_at TIMESTAMPTZ,
   
   -- Status
   is_active BOOLEAN DEFAULT TRUE,
   
   -- Metadata
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP,
-  
-  -- Constraints
-  CONSTRAINT check_tenant_user_has_org CHECK (
-    (user_type = 'tenant' AND organization_id IS NOT NULL) OR 
-    (user_type = 'platform' AND organization_id IS NULL)
-  )
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID,
+  deleted_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_users_organization_id ON users(organization_id);
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role_id ON users(role_id);
-CREATE INDEX idx_users_user_type ON users(user_type);
-CREATE INDEX idx_users_legacy_role ON users(legacy_role);
-CREATE INDEX idx_users_is_active ON users(is_active);
+CREATE INDEX idx_platform_users_email ON platform_users(email) WHERE deleted_at IS NULL;
+CREATE INDEX idx_platform_users_role ON platform_users(role) WHERE deleted_at IS NULL;
+CREATE INDEX idx_platform_users_is_active ON platform_users(is_active) WHERE deleted_at IS NULL;
+CREATE INDEX idx_platform_users_last_login ON platform_users(last_login_at DESC) WHERE deleted_at IS NULL;
 
-COMMENT ON TABLE users IS 'Unified users table for both platform admins and tenant users';
-COMMENT ON COLUMN users.user_type IS 'Platform users access admin panel/license manager, Tenant users access RecruitIQ instances';
-COMMENT ON COLUMN users.organization_id IS 'NULL for platform users, set for tenant users';
-COMMENT ON COLUMN users.role_id IS 'References roles table for RBAC';
-COMMENT ON COLUMN users.legacy_role IS 'Deprecated - for backward compatibility only';
-COMMENT ON COLUMN users.additional_permissions IS 'Array of permission IDs for user-specific permissions beyond their role';
-COMMENT ON COLUMN users.is_active IS 'Whether user is enabled. Disabled users do not count against license limits. Different from deleted_at which is soft delete.';
+COMMENT ON TABLE platform_users IS 'Platform administrators for Portal app, License Manager, and Admin Panel. Tenant users are in hris.user_account.';
+COMMENT ON COLUMN platform_users.role IS 'Platform role: super_admin (full control), admin (product/org management), support (view + support), viewer (read-only)';
+COMMENT ON COLUMN platform_users.permissions IS 'JSONB array of additional permission strings beyond role permissions';
+COMMENT ON COLUMN platform_users.email IS 'Unique email address for platform login. Platform users do not belong to any organization.';
+COMMENT ON COLUMN platform_users.is_active IS 'Whether user account is enabled. Inactive users cannot log in.';
 
 -- ============================================================================
--- REFRESH TOKENS TABLE - Session Management with Device Tracking
+-- PLATFORM REFRESH TOKENS TABLE - Session Management for Platform Users
 -- ============================================================================
-CREATE TABLE refresh_tokens (
+CREATE TABLE platform_refresh_tokens (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES platform_users(id) ON DELETE CASCADE,
   token VARCHAR(500) NOT NULL UNIQUE,
-  expires_at TIMESTAMP NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW(),
-  revoked_at TIMESTAMP,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ,
   
   -- Device/Session Tracking
   user_agent TEXT,
   ip_address VARCHAR(45),
   device_fingerprint VARCHAR(32),
   device_name VARCHAR(100),
-  last_used_at TIMESTAMP DEFAULT NOW(),
+  last_used_at TIMESTAMPTZ DEFAULT NOW(),
   
   -- Token Rotation Support
   replaced_by_token VARCHAR(255)
 );
 
-CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
-CREATE INDEX idx_refresh_tokens_user_active ON refresh_tokens(user_id, revoked_at, expires_at) WHERE revoked_at IS NULL;
-CREATE INDEX idx_refresh_tokens_device_fingerprint ON refresh_tokens(device_fingerprint);
-CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+CREATE INDEX idx_platform_refresh_tokens_user_id ON platform_refresh_tokens(user_id);
+CREATE INDEX idx_platform_refresh_tokens_token ON platform_refresh_tokens(token);
+CREATE INDEX idx_platform_refresh_tokens_user_active ON platform_refresh_tokens(user_id, revoked_at, expires_at) WHERE revoked_at IS NULL;
+CREATE INDEX idx_platform_refresh_tokens_device_fingerprint ON platform_refresh_tokens(device_fingerprint);
+CREATE INDEX idx_platform_refresh_tokens_expires_at ON platform_refresh_tokens(expires_at);
 
-COMMENT ON COLUMN refresh_tokens.user_agent IS 'Full User-Agent string from client';
-COMMENT ON COLUMN refresh_tokens.ip_address IS 'IP address of the client (IPv4 or IPv6)';
-COMMENT ON COLUMN refresh_tokens.device_fingerprint IS 'SHA-256 hash of device characteristics';
-COMMENT ON COLUMN refresh_tokens.device_name IS 'Human-readable device name (e.g., "iPhone", "Windows PC")';
-COMMENT ON COLUMN refresh_tokens.last_used_at IS 'Timestamp of last token usage for session tracking';
-COMMENT ON COLUMN refresh_tokens.replaced_by_token IS 'Token that replaced this one during rotation';
+COMMENT ON TABLE platform_refresh_tokens IS 'Refresh tokens for platform user sessions. Separate from tenant tokens in hris schema.';
+COMMENT ON COLUMN platform_refresh_tokens.user_agent IS 'Full User-Agent string from client';
+COMMENT ON COLUMN platform_refresh_tokens.ip_address IS 'IP address of the client (IPv4 or IPv6)';
+COMMENT ON COLUMN platform_refresh_tokens.device_fingerprint IS 'SHA-256 hash of device characteristics';
+COMMENT ON COLUMN platform_refresh_tokens.device_name IS 'Human-readable device name (e.g., "iPhone", "Windows PC")';
+COMMENT ON COLUMN platform_refresh_tokens.last_used_at IS 'Timestamp of last token usage for session tracking';
+COMMENT ON COLUMN platform_refresh_tokens.replaced_by_token IS 'Token that replaced this one during rotation';
 
 -- ============================================================================
--- WORKSPACES TABLE
+-- WORKSPACES TABLE (RecruitIQ-specific - TODO: Move to recruitiq schema)
 -- ============================================================================
+-- COMMENTED OUT: References old users table, needs refactoring
+-- Will be moved to recruitiq schema with proper hris.user_account references
+/*
 CREATE TABLE workspaces (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -301,17 +972,22 @@ CREATE TABLE workspaces (
   settings JSONB DEFAULT '{}',
   
   -- Metadata
-  created_by UUID REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
+  created_by UUID, -- TODO: Reference hris.user_account(id)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_workspaces_organization_id ON workspaces(organization_id);
+*/
 
 -- ============================================================================
--- WORKSPACE MEMBERS TABLE
+-- RECRUITIQ APPLICATION TABLES
 -- ============================================================================
+-- TODO: Move to recruitiq schema with proper hris.user_account references
+-- These tables are commented out during authentication refactoring
+-- They will be recreated in a recruitiq-specific schema
+/*
 CREATE TABLE workspace_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -321,294 +997,20 @@ CREATE TABLE workspace_members (
   role VARCHAR(50) DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
   
   -- Metadata
-  joined_at TIMESTAMP DEFAULT NOW(),
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
   
   UNIQUE(workspace_id, user_id)
 );
 
 CREATE INDEX idx_workspace_members_workspace_id ON workspace_members(workspace_id);
 CREATE INDEX idx_workspace_members_user_id ON workspace_members(user_id);
+*/
 
 -- ============================================================================
--- FLOW TEMPLATES TABLE
+-- RECRUITIQ APPLICATION TABLES
 -- ============================================================================
-CREATE TABLE flow_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  workspace_id UUID REFERENCES workspaces(id) ON DELETE CASCADE,
-  
-  -- Template Details
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  category VARCHAR(100),
-  
-  -- Stages Definition (array of stage objects)
-  stages JSONB NOT NULL,
-  
-  -- Usage
-  is_default BOOLEAN DEFAULT FALSE,
-  is_global BOOLEAN DEFAULT FALSE,
-  
-  -- Metadata
-  created_by UUID REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
-);
-
-CREATE INDEX idx_flow_templates_organization_id ON flow_templates(organization_id);
-CREATE INDEX idx_flow_templates_workspace_id ON flow_templates(workspace_id);
-
--- ============================================================================
--- JOBS TABLE
--- ============================================================================
-CREATE TABLE jobs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  
-  -- Job Details
-  title VARCHAR(255) NOT NULL,
-  department VARCHAR(100),
-  location VARCHAR(255),
-  employment_type VARCHAR(50) CHECK (employment_type IN ('full-time', 'part-time', 'contract', 'internship', 'temporary')),
-  experience_level VARCHAR(50) CHECK (experience_level IN ('entry', 'mid', 'senior', 'lead', 'executive')),
-  remote_policy VARCHAR(50) CHECK (remote_policy IN ('onsite', 'hybrid', 'remote')),
-  is_remote BOOLEAN DEFAULT FALSE,
-  
-  -- Description
-  description TEXT,
-  requirements TEXT, -- Can be JSON array or text
-  responsibilities TEXT,
-  benefits TEXT, -- Can be JSON array or text
-  
-  -- Compensation
-  salary_min INTEGER,
-  salary_max INTEGER,
-  salary_currency VARCHAR(10) DEFAULT 'USD',
-  
-  -- Status & Visibility
-  status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'open', 'paused', 'filled', 'closed', 'archived')),
-  is_public BOOLEAN DEFAULT FALSE,
-  
-  -- Public Portal Settings
-  public_slug VARCHAR(255) UNIQUE,
-  public_portal_settings JSONB DEFAULT '{
-    "companyName": "",
-    "companyLogo": "",
-    "salaryPublic": false,
-    "customFields": []
-  }'::jsonb,
-  view_count INTEGER DEFAULT 0,
-  application_count INTEGER DEFAULT 0,
-  
-  -- Flow Template
-  flow_template_id UUID REFERENCES flow_templates(id),
-  
-  -- Hiring Team
-  hiring_manager_id UUID REFERENCES users(id),
-  recruiter_id UUID REFERENCES users(id),
-  
-  -- Dates
-  posted_at TIMESTAMP,
-  closes_at TIMESTAMP,
-  
-  -- Metadata
-  created_by UUID REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
-);
-
-CREATE INDEX idx_jobs_organization_id ON jobs(organization_id);
-CREATE INDEX idx_jobs_workspace_id ON jobs(workspace_id);
-CREATE INDEX idx_jobs_status ON jobs(status);
-CREATE INDEX idx_jobs_flow_template_id ON jobs(flow_template_id);
-CREATE INDEX idx_jobs_public_slug ON jobs(public_slug);
-CREATE INDEX idx_jobs_is_public ON jobs(is_public);
-
--- ============================================================================
--- CANDIDATES TABLE
--- ============================================================================
-CREATE TABLE candidates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  
-  -- Personal Info
-  first_name VARCHAR(255) NOT NULL,
-  last_name VARCHAR(255) NOT NULL,
-  name VARCHAR(255), -- Computed field (first_name + last_name)
-  email VARCHAR(255) NOT NULL,
-  phone VARCHAR(50),
-  location VARCHAR(255),
-  
-  -- Professional Info
-  current_job_title VARCHAR(255),
-  current_company VARCHAR(255),
-  
-  -- Profile Links
-  linkedin_url VARCHAR(500),
-  portfolio_url VARCHAR(500),
-  resume_url VARCHAR(500),
-  
-  -- Additional Info
-  skills TEXT[],
-  experience TEXT,
-  education TEXT,
-  
-  -- Source
-  source VARCHAR(100),
-  source_details VARCHAR(500),
-  
-  -- Public Application Fields
-  application_source VARCHAR(50) DEFAULT 'manual' CHECK (application_source IN ('manual', 'public-portal', 'referral', 'linkedin', 'indeed', 'other')),
-  tracking_code VARCHAR(50) UNIQUE,
-  application_data JSONB DEFAULT '{}'::jsonb,
-  
-  -- Tags & Notes
-  tags TEXT[],
-  notes TEXT,
-  
-  -- Metadata
-  created_by UUID REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
-);
-
-CREATE INDEX idx_candidates_organization_id ON candidates(organization_id);
-CREATE INDEX idx_candidates_email ON candidates(email);
-CREATE INDEX idx_candidates_name ON candidates(first_name, last_name);
-
--- ============================================================================
--- APPLICATIONS TABLE
--- ============================================================================
-CREATE TABLE applications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-  candidate_id UUID NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
-  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-  
-  -- Tracking Code (unique identifier for applicants)
-  tracking_code VARCHAR(50) UNIQUE NOT NULL,
-  
-  -- Application Status
-  status VARCHAR(50) DEFAULT 'applied' CHECK (status IN ('active', 'rejected', 'withdrawn', 'hired')),
-  stage VARCHAR(50) DEFAULT 'applied' CHECK (stage IN ('applied', 'screening', 'phone_screen', 'assessment', 'interview', 'offer', 'hired', 'rejected', 'withdrawn')),
-  current_stage INTEGER,
-  current_stage_name VARCHAR(255),
-  
-  -- Application Data
-  cover_letter TEXT,
-  notes TEXT,
-  rejection_reason TEXT,
-  
-  -- Metadata
-  applied_at TIMESTAMP DEFAULT NOW(),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
-);
-
-CREATE INDEX idx_applications_job_id ON applications(job_id);
-CREATE INDEX idx_applications_candidate_id ON applications(candidate_id);
-CREATE INDEX idx_applications_organization_id ON applications(organization_id);
-CREATE INDEX idx_applications_workspace_id ON applications(workspace_id);
-CREATE INDEX idx_applications_tracking_code ON applications(tracking_code);
-CREATE INDEX idx_applications_status ON applications(status);
-CREATE INDEX idx_applications_stage ON applications(stage);
-
--- ============================================================================
--- INTERVIEWS TABLE
--- ============================================================================
-CREATE TABLE interviews (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
-  
-  -- Interview Details
-  title VARCHAR(255) NOT NULL,
-  type VARCHAR(50) CHECK (type IN ('phone', 'video', 'onsite', 'technical', 'behavioral', 'panel')),
-  status VARCHAR(50) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'in_progress', 'completed', 'cancelled', 'rescheduled', 'no_show')),
-  
-  -- Scheduling
-  scheduled_at TIMESTAMP,
-  duration_minutes INTEGER,
-  duration INTEGER, -- alias for duration_minutes
-  location VARCHAR(500),
-  meeting_link VARCHAR(500),
-  
-  -- Notes
-  notes TEXT,
-  
-  -- Feedback
-  feedback TEXT,
-  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
-  recommendation VARCHAR(50),
-  strengths TEXT,
-  weaknesses TEXT,
-  technical_skills JSONB,
-  culture_fit INTEGER CHECK (culture_fit >= 1 AND culture_fit <= 5),
-  
-  -- Metadata
-  created_by UUID REFERENCES users(id),
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
-);
-
-CREATE INDEX idx_interviews_application_id ON interviews(application_id);
-CREATE INDEX idx_interviews_scheduled_at ON interviews(scheduled_at);
-
--- ============================================================================
--- INTERVIEW INTERVIEWERS (Junction Table)
--- ============================================================================
-CREATE TABLE interview_interviewers (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  interview_id UUID NOT NULL REFERENCES interviews(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  
-  -- Metadata
-  created_at TIMESTAMP DEFAULT NOW(),
-  
-  UNIQUE(interview_id, user_id)
-);
-
-CREATE INDEX idx_interview_interviewers_interview_id ON interview_interviewers(interview_id);
-CREATE INDEX idx_interview_interviewers_user_id ON interview_interviewers(user_id);
-
--- ============================================================================
--- COMMUNICATIONS TABLE
--- ============================================================================
-CREATE TABLE communications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  application_id UUID NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
-  
-  -- Message Details
-  from_type VARCHAR(20) CHECK (from_type IN ('recruiter', 'candidate', 'system')),
-  from_user_id UUID REFERENCES users(id), -- NULL for candidate messages
-  from_candidate_id UUID REFERENCES candidates(id), -- NULL for recruiter/system messages
-  
-  message_type VARCHAR(50) CHECK (message_type IN ('status-update', 'interview-invite', 'document-request', 'general', 'rejection', 'offer')),
-  subject VARCHAR(255),
-  message TEXT NOT NULL,
-  
-  -- Visibility
-  is_public BOOLEAN DEFAULT TRUE, -- Visible to candidate on tracking page
-  
-  -- Attachments (stored as JSONB array of file metadata)
-  attachments JSONB DEFAULT '[]'::jsonb,
-  
-  -- Read Status
-  read_at TIMESTAMP,
-  
-  -- Metadata
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX idx_communications_application_id ON communications(application_id);
-CREATE INDEX idx_communications_from_type ON communications(from_type);
-CREATE INDEX idx_communications_created_at ON communications(created_at);
+-- Note: RecruitIQ tables have been moved to recruitiq-schema.sql
+-- They are loaded separately by setup-database.ps1
 
 -- ============================================================================
 -- CENTRAL LOGGING TABLES (for cloud instances)
@@ -619,7 +1021,7 @@ CREATE TABLE system_logs (
   id BIGSERIAL PRIMARY KEY,
   
   -- Timestamp
-  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   
   -- Log details
   level VARCHAR(10) NOT NULL CHECK (level IN ('info', 'warn', 'error', 'debug')),
@@ -661,7 +1063,7 @@ CREATE TABLE security_events (
   id BIGSERIAL PRIMARY KEY,
   
   -- Timestamp
-  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   
   -- Event details
   event_type VARCHAR(50) NOT NULL,
@@ -703,7 +1105,7 @@ CREATE TABLE security_alerts (
   id BIGSERIAL PRIMARY KEY,
   
   -- Timestamp
-  timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+  timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   
   -- Alert details
   alert_id VARCHAR(100) UNIQUE NOT NULL,
@@ -724,7 +1126,7 @@ CREATE TABLE security_alerts (
   
   -- Resolution
   resolved BOOLEAN DEFAULT FALSE,
-  resolved_at TIMESTAMP,
+  resolved_at TIMESTAMPTZ,
   resolved_by UUID,
   resolution_notes TEXT,
   
@@ -836,14 +1238,14 @@ CREATE TABLE vps_instances (
   cpu_usage_percent DECIMAL(5,2),
   memory_usage_percent DECIMAL(5,2),
   disk_usage_percent DECIMAL(5,2),
-  last_health_check TIMESTAMP,
+  last_health_check TIMESTAMPTZ,
   
   -- Metadata
   notes TEXT,
   metadata JSONB DEFAULT '{}',
   
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_vps_deployment_type ON vps_instances(deployment_type);
@@ -879,8 +1281,8 @@ CREATE TABLE instance_deployments (
   vps_id UUID REFERENCES vps_instances(id) ON DELETE SET NULL,
   
   -- Timestamps
-  created_at TIMESTAMP DEFAULT NOW(),
-  completed_at TIMESTAMP,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
   
   -- Error handling
   error_message TEXT,
@@ -928,15 +1330,15 @@ CREATE TABLE IF NOT EXISTS customers (
   
   -- Instance Info
   app_version VARCHAR(50),
-  last_heartbeat TIMESTAMP,
+  last_heartbeat TIMESTAMPTZ,
   
   -- Metadata
   notes TEXT,
   metadata JSONB DEFAULT '{}',
   
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  deleted_at TIMESTAMP
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_customers_organization ON customers(organization_id);
@@ -969,10 +1371,10 @@ CREATE TABLE IF NOT EXISTS tier_presets (
   effective_date DATE,
   
   -- Metadata
-  created_by UUID REFERENCES users(id),
+  created_by UUID, -- References platform_users(id)
   notes TEXT,
   
-  created_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
   
   UNIQUE(tier_name, version)
 );
@@ -993,8 +1395,8 @@ CREATE TABLE IF NOT EXISTS licenses (
   tier_preset_id UUID REFERENCES tier_presets(id),
   
   -- Validity
-  issued_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  expires_at TIMESTAMP NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
   
   -- Status
   status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'expired', 'revoked')),
@@ -1014,8 +1416,8 @@ CREATE TABLE IF NOT EXISTS licenses (
   notes TEXT,
   metadata JSONB DEFAULT '{}',
   
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_licenses_customer ON licenses(customer_id);
@@ -1041,14 +1443,14 @@ CREATE TABLE IF NOT EXISTS instances (
   status VARCHAR(50) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'maintenance')),
   
   -- Heartbeat
-  last_heartbeat TIMESTAMP,
+  last_heartbeat TIMESTAMPTZ,
   last_heartbeat_ip VARCHAR(50),
   
   -- Metadata
   metadata JSONB DEFAULT '{}',
   
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_instances_customer ON instances(customer_id);
@@ -1075,7 +1477,7 @@ CREATE TABLE IF NOT EXISTS usage_events (
   candidates_count INTEGER,
   
   -- Timestamp
-  timestamp TIMESTAMP DEFAULT NOW(),
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
   
   -- Metadata
   app_version VARCHAR(50),
@@ -1108,17 +1510,17 @@ CREATE TABLE IF NOT EXISTS tier_migrations (
   migrated_customers INTEGER DEFAULT 0,
   
   -- Execution
-  started_at TIMESTAMP,
-  completed_at TIMESTAMP,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
   
   -- Error Handling
   errors JSONB DEFAULT '[]',
   
   -- Metadata
-  created_by UUID REFERENCES users(id),
+  created_by UUID REFERENCES platform_users(id),
   notes TEXT,
   
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_tier_migrations_tier ON tier_migrations(tier_name);
@@ -1132,7 +1534,7 @@ CREATE TABLE IF NOT EXISTS license_audit_log (
   id BIGSERIAL PRIMARY KEY,
   
   -- User who performed the action
-  user_id UUID REFERENCES users(id),
+  user_id UUID REFERENCES platform_users(id),
   user_email VARCHAR(255),
   
   -- Action Details
@@ -1149,7 +1551,7 @@ CREATE TABLE IF NOT EXISTS license_audit_log (
   user_agent TEXT,
   
   -- Timestamp
-  timestamp TIMESTAMP DEFAULT NOW()
+  timestamp TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_audit_log_user ON license_audit_log(user_id);

@@ -1,33 +1,44 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import SecurityDashboard from './pages/security/SecurityDashboard';
-import SecurityEvents from './pages/security/SecurityEvents';
-import SecurityAlerts from './pages/security/SecurityAlerts';
-import LogViewer from './pages/logs/LogViewer';
-import SystemLogs from './pages/logs/SystemLogs';
-import VPSManager from './pages/infrastructure/VPSManager';
-import ClientProvisioning from './pages/infrastructure/ClientProvisioning';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Lazy load all pages for code splitting
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const SecurityDashboard = lazy(() => import('./pages/security/SecurityDashboard'));
+const SecurityEvents = lazy(() => import('./pages/security/SecurityEvents'));
+const SecurityAlerts = lazy(() => import('./pages/security/SecurityAlerts'));
+const LogViewer = lazy(() => import('./pages/logs/LogViewer'));
+const SystemLogs = lazy(() => import('./pages/logs/SystemLogs'));
+const VPSManager = lazy(() => import('./pages/infrastructure/VPSManager'));
+const ClientProvisioning = lazy(() => import('./pages/infrastructure/ClientProvisioning'));
+
 // License Manager Pages
-import LicenseDashboard from './pages/licenses/Dashboard';
-import CustomerList from './pages/licenses/CustomerList';
-import CustomerDetail from './pages/licenses/CustomerDetail';
-import LicenseCreate from './pages/licenses/LicenseCreate';
-import Analytics from './pages/licenses/Analytics';
-import Tiers from './pages/licenses/Tiers';
-import LicenseSettings from './pages/licenses/Settings';
-import Settings from './pages/Settings';
+const LicenseDashboard = lazy(() => import('./pages/licenses/Dashboard'));
+const CustomerList = lazy(() => import('./pages/licenses/CustomerList'));
+const CustomerDetail = lazy(() => import('./pages/licenses/CustomerDetail'));
+const LicenseCreate = lazy(() => import('./pages/licenses/LicenseCreate'));
+const Analytics = lazy(() => import('./pages/licenses/Analytics'));
+const Tiers = lazy(() => import('./pages/licenses/Tiers'));
+const LicenseSettings = lazy(() => import('./pages/licenses/Settings'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 // User Management Pages
-import UserManagement from './pages/users/UserManagement';
-import UserCreate from './pages/users/UserCreate';
-import UserDetail from './pages/users/UserDetail';
-import RoleManagement from './pages/roles/RoleManagement';
-import PermissionManagement from './pages/permissions/PermissionManagement';
+const UserManagement = lazy(() => import('./pages/users/UserManagement'));
+const UserCreate = lazy(() => import('./pages/users/UserCreate'));
+const UserDetail = lazy(() => import('./pages/users/UserDetail'));
+const RoleManagement = lazy(() => import('./pages/roles/RoleManagement'));
+const PermissionManagement = lazy(() => import('./pages/permissions/PermissionManagement'));
+
+// Product & Feature Management Pages
+const ProductManagement = lazy(() => import('./pages/products/ProductManagement'));
+const ProductDetail = lazy(() => import('./pages/products/ProductDetail'));
+const FeatureCatalog = lazy(() => import('./pages/features/FeatureCatalog'));
+const FeatureDetail = lazy(() => import('./pages/features/FeatureDetail'));
+const FeatureForm = lazy(() => import('./pages/features/FeatureForm'));
+const FeatureGrants = lazy(() => import('./pages/features/FeatureGrants'));
 
 function App() {
   return (
@@ -56,7 +67,8 @@ function App() {
           },
         }}
       />
-      <Routes>
+      <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+        <Routes>
       {/* Public Route */}
       <Route path="/login" element={<Login />} />
       
@@ -112,10 +124,23 @@ function App() {
         <Route path="permissions">
           <Route index element={<PermissionManagement />} />
         </Route>
-      </Route>
-    </Routes>
+        
+        {/* Product & Feature Management Section */}
+        <Route path="products">
+          <Route index element={<ProductManagement />} />
+          <Route path=":id" element={<ProductDetail />} />
+          <Route path=":id/features" element={<ProductDetail />} />
+        </Route>
+        <Route path="features">
+          <Route index element={<FeatureCatalog />} />
+          <Route path="create" element={<FeatureForm />} />
+          <Route path=":id" element={<FeatureDetail />} />
+          <Route path=":id/edit" element={<FeatureForm />} />
+          <Route path=":id/grants" element={<FeatureGrants />} />
+        </Route>
+        </Route>
+      </Routes>
+      </Suspense>
     </>
   );
-}
-
-export default App;
+}export default App;

@@ -61,7 +61,7 @@ export default function MFAVerification({ mfaToken, onSuccess, onCancel }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-500 to-teal-600 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-500 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -70,7 +70,7 @@ export default function MFAVerification({ mfaToken, onSuccess, onCancel }) {
       >
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
             <span className="text-3xl">🔐</span>
           </div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">

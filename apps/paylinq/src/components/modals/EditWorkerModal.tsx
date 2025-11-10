@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, FormField, Input, TextArea, Select } from '@/components/ui';
 import { useToast } from '@/contexts/ToastContext';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface EditWorkerModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ interface EditWorkerModalProps {
 }
 
 export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: EditWorkerModalProps) {
+  const { paylinq } = usePaylinqAPI();
   const { success, error } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,17 +99,75 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // await api.workers.update(worker.id, formData);
+      // Split full name into first and last name
+      const nameParts = formData.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || nameParts[0] || '';
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await paylinq.updateWorker(worker.id, {
+        firstName: firstName,
+        lastName: lastName,
+        email: formData.email,
+        status: formData.status,
+        bankName: formData.bankName,
+        bankAccountNumber: formData.bankAccount,
+        // Store additional fields in metadata
+        metadata: {
+          phone: formData.phone,
+          nationalId: formData.nationalId,
+          dateOfBirth: formData.dateOfBirth,
+          workerType: formData.workerType,
+          department: formData.department,
+          position: formData.position,
+          compensation: Number(formData.compensation),
+          address: formData.address,
+        },
+      });
 
-      success(`Worker ${formData.fullName} has been updated successfully`);
-      onSuccess();
-      onClose();
-    } catch (err) {
-      error('Failed to update worker. Please try again.');
+      if (response.success) {
+        success(`Worker ${formData.fullName} has been updated successfully`);
+        onSuccess();
+        onClose();
+      }
+    } catch (err: any) {
+      // Handle validation errors from API
+      if (err.response?.status === 400 && err.response?.data?.errors) {
+        const apiErrors = err.response.data.errors;
+        const fieldErrors: Record<string, string> = {};
+        
+        // Map field names to user-friendly labels
+        const fieldLabels: Record<string, string> = {
+          fullName: 'Full Name',
+          email: 'Email',
+          phone: 'Phone',
+          nationalId: 'National ID',
+          dateOfBirth: 'Date of Birth',
+          startDate: 'Start Date',
+          workerType: 'Worker Type',
+          department: 'Department',
+          position: 'Position',
+          compensation: 'Base Compensation',
+          status: 'Status',
+          bankName: 'Bank Name',
+          bankAccount: 'Bank Account Number',
+          address: 'Address',
+        };
+        
+        apiErrors.forEach((apiError: any) => {
+          fieldErrors[apiError.field] = apiError.message;
+        });
+        
+        setErrors(fieldErrors);
+        
+        // Show user-friendly error message with labels
+        const errorMessages = apiErrors
+          .map((e: any) => `${fieldLabels[e.field] || e.field}: ${e.message}`)
+          .join(', ');
+        error(errorMessages || 'Please fix the validation errors');
+      } else {
+        // Handle other errors
+        error(err.response?.data?.message || err.message || 'Failed to update worker. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

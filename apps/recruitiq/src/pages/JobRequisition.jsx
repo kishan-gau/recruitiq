@@ -20,8 +20,9 @@ export default function JobRequisition() {
   const { flowTemplates, createJobFlow, ensureLoaded } = useFlow()
   
   const isEdit = !!id
-  const existingJob = isEdit ? jobs.find(j => String(j.id) === id) : null
+  const existingJob = isEdit && Array.isArray(jobs) ? jobs.find(j => j && j.id && String(j.id) === id) : null
   
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
   const [activeStep, setActiveStep] = useState('basics')
   const [isDraft, setIsDraft] = useState(true)
   
@@ -59,7 +60,11 @@ export default function JobRequisition() {
       setType(existingJob.employmentType || existingJob.type || 'full-time') // Handle both field names
       setOpenings(existingJob.openings || 1)
       setDescription(existingJob.description || '')
-      setRequirements(existingJob.requirements || '')
+      // Convert requirements array back to string for textarea
+      const requirementsStr = Array.isArray(existingJob.requirements)
+        ? existingJob.requirements.join('\n')
+        : existingJob.requirements || ''
+      setRequirements(requirementsStr)
       setExperienceLevel(existingJob.experienceLevel || 'mid')
       setSalary(existingJob.salary || '')
       setFlowTemplateId(existingJob.flowTemplateId || '')
@@ -236,21 +241,38 @@ export default function JobRequisition() {
       return
     }
     
+    console.log('[JobRequisition] type value:', type, 'type:', typeof type)
+    console.log('[JobRequisition] requirements raw value:', requirements, 'type:', typeof requirements)
+    
+    // Convert requirements from string to array if needed
+    const requirementsArray = typeof requirements === 'string' 
+      ? requirements.split('\n').filter(r => r.trim()) 
+      : requirements
+    
+    console.log('[JobRequisition] requirementsArray after conversion:', requirementsArray, 'length:', requirementsArray?.length)
+    
     const jobData = {
       title,
       department,
       location,
       employmentType: type, // Backend expects 'employmentType', not 'type'
       description,
-      requirements,
-      experienceLevel,
-      flowTemplateId: flowTemplateId // Required flow template ID
+      requirements: requirementsArray,
+      experienceLevel
     }
+    
+    // Only include flowTemplateId when creating a new job, not when updating
+    if (!isEdit) {
+      jobData.flowTemplateId = flowTemplateId
+    }
+    
+    console.log('[JobRequisition] jobData before sending:', jobData)
+    console.log('[JobRequisition] jobData.requirements:', jobData.requirements)
     
     try {
       if (isEdit) {
         await updateJob(existingJob.id, jobData)
-        toast.show('Job published')
+        toast.show('Job updated successfully')
         navigate(`/jobs/${existingJob.id}`)
       } else {
         const newJob = await addJob(jobData)
@@ -260,7 +282,9 @@ export default function JobRequisition() {
       }
     } catch (err) {
       console.error(err)
-      toast.show('Failed to publish job')
+      // Show the actual error message from the API if available
+      const errorMessage = err.message || 'Failed to publish job'
+      toast.show(errorMessage)
     }
   }
   
@@ -584,8 +608,8 @@ export default function JobRequisition() {
     )
   }
 
-  // Show not found for edit mode
-  if (isEdit && !existingJob) {
+  // Show not found for edit mode (only if not loading)
+  if (isEdit && !existingJob && !loading.jobs) {
     return (
       <div className="text-center py-12">
         <svg className="w-16 h-16 text-slate-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1573,7 +1597,7 @@ export default function JobRequisition() {
                 <div className="space-y-4">
                   {recentActivity.map((activity, index) => (
                     <div key={index} className="flex gap-3">
-                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                      <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
                         {activity.candidate.split(' ').map(n => n[0]).slice(0, 2).join('')}
                       </div>
                       <div className="flex-1 min-w-0">

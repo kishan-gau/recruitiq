@@ -9,8 +9,6 @@ export default function JobDetail(){
   const { jobs, candidates, loading, error, updateJob } = useData()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   
-  const job = jobs.find(j=> String(j.id) === id)
-  
   const handleJobUpdate = (updatedJob) => {
     // Refresh job data after update
     if (updateJob && typeof updateJob === 'function') {
@@ -18,7 +16,7 @@ export default function JobDetail(){
     }
   }
 
-  // Show loading state
+  // Show loading state FIRST before trying to access jobs
   if (loading.jobs || loading.candidates) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -54,6 +52,9 @@ export default function JobDetail(){
       </div>
     )
   }
+
+  // Find the job after loading is complete
+  const job = jobs?.find(j=> j && String(j.id) === id)
 
   if(!job) return (
     <div className="flex items-center justify-center py-12">

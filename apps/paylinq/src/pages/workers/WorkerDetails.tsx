@@ -1,21 +1,132 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit, Mail, Calendar, Building2, CreditCard } from 'lucide-react';
-import { WorkerAvatar, StatusBadge, Badge, Tabs, CurrencyDisplay } from '@/components/ui';
-import type { Tab } from '@/components/ui';
-import { mockWorkers, mockYTDSummary } from '@/utils/mockData';
+import WorkerAvatar from '@/components/ui/WorkerAvatar';
+import StatusBadge from '@/components/ui/StatusBadge';
+import Badge from '@/components/ui/Badge';
+import Tabs from '@/components/ui/Tabs';
+import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
+import type { Tab } from '@/components/ui/Tabs';
 import { formatDate, maskAccountNumber } from '@/utils/helpers';
 import EditWorkerModal from '@/components/modals/EditWorkerModal';
+import WorkerPayStructure from '@/components/worker/WorkerPayStructure';
+import SystemAccessPanel from '@/components/worker/SystemAccessPanel';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function WorkerDetails() {
   const { workerId } = useParams();
   const navigate = useNavigate();
+  const { paylinq } = usePaylinqAPI();
+  const { error: showError } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [worker, setWorker] = useState<any>(null);
+  const [ytdSummary, setYtdSummary] = useState<any>(null);
 
-  // Find the worker
-  const worker = mockWorkers.find((w) => w.id === workerId);
-  const ytdSummary = mockYTDSummary[workerId as keyof typeof mockYTDSummary];
+  // Fetch worker details from API
+  useEffect(() => {
+    const fetchWorkerDetails = async () => {
+      if (!workerId) return;
+
+      try {
+        setIsLoading(true);
+        const response = await paylinq.getWorker(workerId);
+
+        console.log('Worker API Response:', response); // Debug log
+
+        if (response.success) {
+          // API client returns response.data directly, so response IS the data
+          // Backend controller returns: { success: true, employee: {...} }
+          const w = response.employee || response.data?.employee || response;
+          
+          if (!w || !w.id) {
+            console.error('Worker data missing ID:', w);
+            throw new Error('Worker not found');
+          }
+          
+          // Extract metadata fields if they exist
+          const metadata = w.metadata || {};
+          
+          setWorker({
+            id: w.id,
+            employeeNumber: w.employee_number || w.employeeNumber || 'N/A',
+            fullName: w.fullName || w.full_name || `${w.firstName || w.first_name || ''} ${w.lastName || w.last_name || ''}`.trim() || 'Unknown',
+            email: w.email || w.user_email || 'N/A',
+            status: w.status || 'active',
+            workerType: w.worker_type || w.workerType || w.workerTypeName || metadata.workerType || 'N/A',
+            hireDate: w.hire_date || w.hireDate || w.start_date || new Date().toISOString(),
+            compensation: metadata.compensation || w.compensation || w.current_compensation || w.currentCompensation || 0,
+            currency: w.currency || 'SRD',
+            nationalId: w.tax_id || w.taxId || w.tax_id_number || w.taxIdNumber || w.national_id || metadata.nationalId || 'N/A',
+            // Bank info (structured for tax-info tab)
+            bankInfo: {
+              bankName: w.bank_name || w.bankName || metadata.bankName || 'Not provided',
+              accountNumber: w.account_number || w.accountNumber || w.bank_account_number || w.bankAccountNumber || 'N/A',
+              accountType: w.account_type || w.accountType || 'checking',
+              currency: w.currency || 'SRD',
+            },
+            // Tax info (structured for tax-info tab)
+            taxInfo: {
+              nationalId: w.tax_id || w.taxId || w.tax_id_number || w.taxIdNumber || w.national_id || metadata.nationalId || 'N/A',
+              standardDeduction: w.standard_deduction || w.standardDeduction || w.tax_allowances || 0,
+              dependents: w.dependents || 0,
+              aovEnrolled: w.aov_enrolled || w.aovEnrolled || false,
+              awwEnrolled: w.aww_enrolled || w.awwEnrolled || false,
+            },
+            // Personal info (check metadata for fields stored there)
+            dateOfBirth: w.date_of_birth || w.dateOfBirth || metadata.dateOfBirth,
+            gender: w.gender || metadata.gender,
+            nationality: w.nationality || metadata.nationality,
+            address: w.address || metadata.address,
+            phoneNumber: w.phone_number || w.phoneNumber || metadata.phone,
+            // Additional metadata fields
+            department: metadata.department,
+            position: metadata.position,
+            payFrequency: metadata.payFrequency,
+          });
+
+          // Fetch YTD summary if available
+          if (w.ytd_summary || w.ytdSummary) {
+            setYtdSummary(w.ytd_summary || w.ytdSummary);
+          }
+        } else {
+          console.error('Worker API response missing success flag:', response);
+          throw new Error('Invalid response from server');
+        }
+      } catch (err: any) {
+        console.error('Failed to load worker:', err);
+        console.error('Worker ID:', workerId);
+        showError(err.message || 'Failed to load worker details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWorkerDetails();
+  }, [workerId, paylinq, showError]);
+
+  // Show loading skeleton
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+            <div className="flex items-start space-x-4">
+              <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-full"></div>
+              <div className="flex-1 space-y-3">
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!worker) {
     return (
@@ -31,9 +142,11 @@ export default function WorkerDetails() {
   const tabs: Tab[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'compensation', label: 'Compensation' },
+    { id: 'pay-structure', label: 'Pay Structure' },
     { id: 'tax-info', label: 'Tax Info' },
     { id: 'bank-info', label: 'Bank Info' },
     { id: 'ytd-summary', label: 'YTD Summary' },
+    { id: 'system-access', label: 'System Access' },
   ];
 
   return (
@@ -52,9 +165,9 @@ export default function WorkerDetails() {
             <p className="mt-1 text-gray-600 dark:text-gray-400">{worker.employeeNumber}</p>
           </div>
         </div>
-        <button
+          <button
           onClick={() => setIsEditModalOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+          className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
         >
           <Edit className="w-5 h-5" />
           <span>Edit Worker</span>
@@ -188,7 +301,7 @@ export default function WorkerDetails() {
               <div className="mt-6">
                 <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">Deductions</h4>
                 <div className="space-y-2">
-                  {worker.deductions.map((deduction) => (
+                  {worker.deductions.map((deduction: any) => (
                     <div
                       key={deduction.id}
                       className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
@@ -283,6 +396,9 @@ export default function WorkerDetails() {
         </div>
       )}
 
+      {/* Pay Structure Tab */}
+      {activeTab === 'pay-structure' && <WorkerPayStructure workerId={workerId!} workerName={worker.fullName} />}
+
       {activeTab === 'ytd-summary' && ytdSummary && (
         <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -334,6 +450,15 @@ export default function WorkerDetails() {
         </div>
       )}
 
+      {/* System Access Tab */}
+      {activeTab === 'system-access' && (
+        <SystemAccessPanel
+          employeeId={worker.id}
+          employeeName={worker.fullName}
+          employeeEmail={worker.email}
+        />
+      )}
+
       {/* Edit Worker Modal */}
       <EditWorkerModal
         isOpen={isEditModalOpen}
@@ -343,21 +468,22 @@ export default function WorkerDetails() {
           employeeNumber: worker.employeeNumber,
           fullName: worker.fullName,
           email: worker.email,
-          phone: '',
+          phone: worker.phoneNumber || '',
           nationalId: worker.nationalId,
-          dateOfBirth: worker.hireDate,
-          startDate: worker.hireDate,
+          dateOfBirth: worker.dateOfBirth || '',
+          startDate: worker.hireDate ? new Date(worker.hireDate).toISOString().split('T')[0] : '',
           workerType: worker.workerType,
-          department: '',
-          position: '',
+          department: worker.department || '',
+          position: worker.position || '',
           status: worker.status,
           compensation: worker.compensation,
           bankName: worker.bankInfo.bankName,
           bankAccount: worker.bankInfo.accountNumber,
-          address: '',
+          address: worker.address || '',
         }}
         onSuccess={() => {
-          // In real app, this would trigger a refetch
+          // Refetch worker data after update
+          window.location.reload();
         }}
       />
     </div>

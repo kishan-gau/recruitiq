@@ -4,9 +4,11 @@ import { useData } from '../context/DataContext'
 import { useToast } from '../context/ToastContext'
 import { useFlow } from '../context/FlowContext'
 
-export default function CandidateForm({open, onClose}){
-  const { state, addCandidate } = useData()
+export default function CandidateForm({open, onClose, candidate}){
+  const { state, addCandidate, updateCandidate } = useData()
   const { flowTemplates, ensureLoaded } = useFlow()
+  
+  const isEdit = !!candidate
   
   // Ensure flow templates are loaded when component mounts
   useEffect(() => {
@@ -14,12 +16,15 @@ export default function CandidateForm({open, onClose}){
   }, [ensureLoaded])
   
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [title, setTitle] = useState('')
   const [location, setLocation] = useState('Remote')
   const [jobId, setJobId] = useState(state.jobs[0]?.id || '')
   const [nameError, setNameError] = useState('')
-  const [touched, setTouched] = useState({ name: false })
+  const [emailError, setEmailError] = useState('')
+  const [touched, setTouched] = useState({ name: false, email: false })
   const nameRef = useRef(null)
+  const emailRef = useRef(null)
 
   const toast = useToast()
   
@@ -44,21 +49,45 @@ export default function CandidateForm({open, onClose}){
     return 'Applied' // Fallback
   }
   
-  // Reset form when modal closes/opens
+  // Reset form when modal closes/opens or populate when editing
   useEffect(() => {
-    if (!open) {
+    if (open && candidate) {
+      // Populate fields for editing
+      setName(candidate.name || `${candidate.firstName || ''} ${candidate.lastName || ''}`.trim())
+      setEmail(candidate.email || '')
+      setTitle(candidate.currentJobTitle || candidate.title || '')
+      setLocation(candidate.location || 'Remote')
+      setJobId(candidate.jobId || state.jobs[0]?.id || '')
+      setNameError('')
+      setEmailError('')
+      setTouched({ name: false, email: false })
+    } else if (!open) {
+      // Reset form when closing
       setName('')
+      setEmail('')
       setTitle('')
       setLocation('Remote')
       setJobId(state.jobs[0]?.id || '')
       setNameError('')
-      setTouched({ name: false })
+      setEmailError('')
+      setTouched({ name: false, email: false })
     }
-  }, [open, state.jobs])
+  }, [open, candidate, state.jobs])
 
   const validateName = (value) => {
     if (!value.trim()) {
       return 'Candidate name is required'
+    }
+    return ''
+  }
+
+  const validateEmail = (value) => {
+    if (!value.trim()) {
+      return 'Email is required'
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(value)) {
+      return 'Please enter a valid email address'
     }
     return ''
   }
@@ -76,15 +105,30 @@ export default function CandidateForm({open, onClose}){
     setNameError(validateName(name))
   }
 
+  const handleEmailChange = (e) => {
+    const value = e.target.value
+    setEmail(value)
+    if (touched.email) {
+      setEmailError(validateEmail(value))
+    }
+  }
+
+  const handleEmailBlur = () => {
+    setTouched(prev => ({ ...prev, email: true }))
+    setEmailError(validateEmail(email))
+  }
+
   function submit(e){
     e.preventDefault()
     
     // Mark all as touched
-    setTouched({ name: true })
+    setTouched({ name: true, email: true })
     
     // Validate
     const nameValidationError = validateName(name)
+    const emailValidationError = validateEmail(email)
     setNameError(nameValidationError)
+    setEmailError(emailValidationError)
     
     if (nameValidationError) {
       toast.show('Please fix the errors before submitting')
@@ -100,28 +144,58 @@ export default function CandidateForm({open, onClose}){
       }
       return
     }
-    
-    const initialStage = getInitialStage()
-    const candidate = { 
-      name, 
-      title, 
-      location, 
-      jobId: Number(jobId), 
-      stage: initialStage, 
-      experience: '', 
-      resume: '' 
+
+    if (emailValidationError) {
+      toast.show('Please fix the errors before submitting')
+      
+      // Scroll to and focus email field with animation
+      if (emailRef.current) {
+        emailRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        emailRef.current.classList.add('animate-shake')
+        setTimeout(() => {
+          emailRef.current?.classList.remove('animate-shake')
+          emailRef.current?.focus()
+        }, 400)
+      }
+      return
     }
-    addCandidate(candidate).then(()=>{
-      toast.show('Candidate added')
-      onClose()
-    }).catch(err=>{
-      console.error(err)
-      toast.show('Failed to add candidate on server')
-    })
+    
+    const candidateData = { 
+      name,
+      email,
+      title, 
+      location
+    }
+    
+    if (isEdit) {
+      // Update existing candidate
+      updateCandidate(candidate.id, candidateData).then(()=>{
+        toast.show('Candidate updated')
+        onClose()
+      }).catch(err=>{
+        console.error(err)
+        toast.show('Failed to update candidate')
+      })
+    } else {
+      // Add new candidate
+      const initialStage = getInitialStage()
+      candidateData.jobId = Number(jobId)
+      candidateData.stage = initialStage
+      candidateData.experience = ''
+      candidateData.resume = ''
+      
+      addCandidate(candidateData).then(()=>{
+        toast.show('Candidate added')
+        onClose()
+      }).catch(err=>{
+        console.error(err)
+        toast.show('Failed to add candidate on server')
+      })
+    }
   }
 
   return (
-    <Modal open={open} title="Add candidate" onClose={onClose}>
+    <Modal open={open} title={isEdit ? 'Edit Candidate' : 'Add Candidate'} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         <div>
           <label htmlFor="candidate-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -147,6 +221,33 @@ export default function CandidateForm({open, onClose}){
           {nameError && (
             <div id="name-error" className="mt-2 text-sm text-red-600 dark:text-red-400 animate-fadeIn" role="alert">
               {nameError}
+            </div>
+          )}
+        </div>
+        <div>
+          <label htmlFor="candidate-email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Email <span className="text-red-500">*</span>
+          </label>
+          <input 
+            id="candidate-email"
+            ref={emailRef}
+            type="email"
+            value={email} 
+            onChange={handleEmailChange}
+            onBlur={handleEmailBlur}
+            placeholder="email@example.com" 
+            aria-required="true"
+            aria-invalid={emailError ? 'true' : 'false'}
+            aria-describedby={emailError ? 'email-error' : undefined}
+            className={`w-full border px-3 py-2 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-all ${
+              emailError 
+                ? 'border-red-400 dark:border-red-500 focus:ring-red-500 focus:border-red-500' 
+                : 'border-slate-300 dark:border-slate-600 focus:ring-emerald-500 focus:border-emerald-500'
+            }`}
+          />
+          {emailError && (
+            <div id="email-error" className="mt-2 text-sm text-red-600 dark:text-red-400 animate-fadeIn" role="alert">
+              {emailError}
             </div>
           )}
         </div>

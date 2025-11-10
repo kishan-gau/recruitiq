@@ -75,6 +75,7 @@ export default function JobDescriptionStep({
   descriptionRef,
   toast
 }) {
+  console.log('[JobDescriptionStep] Props:', { description: description?.length, error, touched })
   // Text formatting functions
   const applyFormat = (formatType) => {
     const textarea = descriptionRef?.current

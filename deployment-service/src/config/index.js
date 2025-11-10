@@ -32,6 +32,21 @@ module.exports = {
     maxRetriesPerRequest: 3,
   },
 
+  // Database Configuration (for approval workflow)
+  database: {
+    url: process.env.DATABASE_URL,
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    name: process.env.DB_NAME || 'deployment_service',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    ssl: process.env.DB_SSL === 'true',
+    pool: {
+      min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+      max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+    },
+  },
+
   // Server Configuration
   server: {
     port: parseInt(process.env.DEPLOYMENT_SERVICE_PORT || '5001', 10),

@@ -77,6 +77,10 @@ export function getCorsConfig() {
       'Accept',
       'Accept-Language',
       'Content-Language',
+      'X-CSRF-Token',
+      'CSRF-Token',
+      'XSRF-Token',
+      'X-XSRF-Token',
     ],
     exposedHeaders: [
       'X-Request-ID',

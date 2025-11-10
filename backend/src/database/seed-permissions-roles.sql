@@ -78,6 +78,51 @@ INSERT INTO permissions (name, category, description) VALUES
 ('reports.view', 'recruitiq', 'View reports and analytics')
 ON CONFLICT (name) DO NOTHING;
 
+-- Paylinq Application Permissions (Tenant-level)
+INSERT INTO permissions (name, category, description) VALUES
+-- Employee & Compensation
+('payroll.employees.view', 'paylinq', 'View employee payroll records'),
+('payroll.employees.create', 'paylinq', 'Create employee payroll records'),
+('payroll.employees.edit', 'paylinq', 'Edit employee payroll records'),
+('payroll.employees.delete', 'paylinq', 'Delete employee payroll records'),
+('payroll.compensation.manage', 'paylinq', 'Manage employee compensation'),
+-- Timesheets & Attendance
+('payroll.timesheets.view', 'paylinq', 'View timesheets'),
+('payroll.timesheets.submit', 'paylinq', 'Submit timesheets'),
+('payroll.timesheets.approve', 'paylinq', 'Approve timesheets'),
+('payroll.timesheets.edit', 'paylinq', 'Edit timesheets'),
+('payroll.attendance.view', 'paylinq', 'View time attendance records'),
+('payroll.attendance.manage', 'paylinq', 'Manage time attendance'),
+-- Payroll Processing
+('payroll.runs.view', 'paylinq', 'View payroll runs'),
+('payroll.runs.create', 'paylinq', 'Create payroll runs'),
+('payroll.runs.process', 'paylinq', 'Process payroll runs'),
+('payroll.runs.approve', 'paylinq', 'Approve payroll runs'),
+('payroll.runs.delete', 'paylinq', 'Delete payroll runs'),
+-- Paychecks & Payments
+('payroll.paychecks.view', 'paylinq', 'View paychecks'),
+('payroll.paychecks.generate', 'paylinq', 'Generate paychecks'),
+('payroll.paychecks.void', 'paylinq', 'Void paychecks'),
+('payroll.payments.view', 'paylinq', 'View payment records'),
+('payroll.payments.process', 'paylinq', 'Process payments'),
+-- Tax Management
+('payroll.taxes.view', 'paylinq', 'View tax information'),
+('payroll.taxes.manage', 'paylinq', 'Manage tax rates and rules'),
+('payroll.taxes.file', 'paylinq', 'File tax reports'),
+-- Deductions & Benefits
+('payroll.deductions.view', 'paylinq', 'View deductions'),
+('payroll.deductions.manage', 'paylinq', 'Manage deductions'),
+-- Reporting & Analytics
+('payroll.reports.view', 'paylinq', 'View payroll reports'),
+('payroll.reports.export', 'paylinq', 'Export payroll reports'),
+('payroll.analytics.view', 'paylinq', 'View payroll analytics'),
+-- Configuration
+('payroll.config.view', 'paylinq', 'View payroll configuration'),
+('payroll.config.manage', 'paylinq', 'Manage payroll configuration'),
+('payroll.workers.manage', 'paylinq', 'Manage worker types and shifts'),
+('payroll.components.manage', 'paylinq', 'Manage pay components')
+ON CONFLICT (name) DO NOTHING;
+
 -- ============================================================================
 -- 2. SEED ROLES
 -- ============================================================================
@@ -100,6 +145,16 @@ INSERT INTO roles (name, display_name, description, role_type, level) VALUES
 ('interviewer', 'Interviewer', 'Conduct interviews and provide feedback', 'tenant', 60),
 ('member', 'Member', 'View-only access', 'tenant', 50),
 ('applicant', 'Applicant', 'Track application status', 'tenant', 10)
+ON CONFLICT (name) DO NOTHING;
+
+-- Paylinq Roles (for Paylinq payroll instances)
+INSERT INTO roles (name, display_name, description, role_type, level) VALUES
+('payroll_admin', 'Payroll Administrator', 'Full access to payroll system', 'tenant', 95),
+('payroll_manager', 'Payroll Manager', 'Process payroll and manage employees', 'tenant', 85),
+('payroll_processor', 'Payroll Processor', 'Process payroll runs and generate paychecks', 'tenant', 75),
+('payroll_clerk', 'Payroll Clerk', 'Enter timesheets and view payroll data', 'tenant', 65),
+('payroll_approver', 'Payroll Approver', 'Approve timesheets and payroll runs', 'tenant', 80),
+('employee_self_service', 'Employee', 'View own paychecks and submit timesheets', 'tenant', 30)
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================
@@ -230,75 +285,163 @@ WHERE r.name = 'applicant'
 AND p.name IN ('applications.view')
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+-- Paylinq Roles Permissions
+
+-- Payroll Admin - Full access to all payroll features
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'payroll_admin'
+AND p.category = 'paylinq'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Payroll Manager - Most features except sensitive config
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'payroll_manager'
+AND p.name IN (
+  'payroll.employees.view', 'payroll.employees.edit',
+  'payroll.compensation.manage',
+  'payroll.timesheets.view', 'payroll.timesheets.approve', 'payroll.timesheets.edit',
+  'payroll.attendance.view', 'payroll.attendance.manage',
+  'payroll.runs.view', 'payroll.runs.create', 'payroll.runs.process', 'payroll.runs.approve',
+  'payroll.paychecks.view', 'payroll.paychecks.generate',
+  'payroll.payments.view', 'payroll.payments.process',
+  'payroll.taxes.view', 'payroll.taxes.manage',
+  'payroll.deductions.view', 'payroll.deductions.manage',
+  'payroll.reports.view', 'payroll.reports.export',
+  'payroll.analytics.view',
+  'payroll.config.view', 'payroll.workers.manage'
+)
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Payroll Processor - Process payroll and generate paychecks
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'payroll_processor'
+AND p.name IN (
+  'payroll.employees.view',
+  'payroll.timesheets.view', 'payroll.timesheets.edit',
+  'payroll.attendance.view',
+  'payroll.runs.view', 'payroll.runs.create', 'payroll.runs.process',
+  'payroll.paychecks.view', 'payroll.paychecks.generate',
+  'payroll.payments.view',
+  'payroll.taxes.view',
+  'payroll.deductions.view',
+  'payroll.reports.view'
+)
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Payroll Approver - Approve timesheets and payroll
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'payroll_approver'
+AND p.name IN (
+  'payroll.employees.view',
+  'payroll.timesheets.view', 'payroll.timesheets.approve',
+  'payroll.attendance.view',
+  'payroll.runs.view', 'payroll.runs.approve',
+  'payroll.paychecks.view',
+  'payroll.payments.view',
+  'payroll.reports.view'
+)
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Payroll Clerk - Data entry and viewing
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'payroll_clerk'
+AND p.name IN (
+  'payroll.employees.view',
+  'payroll.timesheets.view', 'payroll.timesheets.submit',
+  'payroll.attendance.view',
+  'payroll.runs.view',
+  'payroll.paychecks.view',
+  'payroll.reports.view'
+)
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Employee Self Service - View own data and submit timesheets
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'employee_self_service'
+AND p.name IN (
+  'payroll.timesheets.view', 'payroll.timesheets.submit',
+  'payroll.paychecks.view'
+)
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 -- ============================================================================
 -- 4. CREATE DEFAULT PLATFORM ADMIN USER
 -- ============================================================================
 
 -- Insert default super admin (password: Admin123!)
 -- Password hash for 'Admin123!' (bcrypt, 10 rounds)
-INSERT INTO users (
+INSERT INTO platform_users (
   email, 
   password_hash, 
   name, 
-  user_type, 
-  role_id,
+  role,
   email_verified,
   created_at
 )
-SELECT 
+VALUES (
   'admin@recruitiq.com',
   '$2a$10$bJj0F63g2bnq9tL52p65e.ynUaBcXg340tgzV4m5.ImdFkOupxvuO', -- Admin123!
   'System Administrator',
-  'platform',
-  r.id,
+  'super_admin',
   true,
   NOW()
-FROM roles r
-WHERE r.name = 'super_admin'
+)
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert license admin user (password: Admin123!)
-INSERT INTO users (
+INSERT INTO platform_users (
   email, 
   password_hash, 
   name, 
-  user_type, 
-  role_id,
+  role,
   email_verified,
   created_at
 )
-SELECT 
+VALUES (
   'license@recruitiq.com',
   '$2a$10$bJj0F63g2bnq9tL52p65e.ynUaBcXg340tgzV4m5.ImdFkOupxvuO', -- Admin123!
   'License Administrator',
-  'platform',
-  r.id,
+  'admin',
   true,
   NOW()
-FROM roles r
-WHERE r.name = 'license_admin'
+)
 ON CONFLICT (email) DO NOTHING;
 
 -- Insert security admin user (password: Admin123!)
-INSERT INTO users (
+INSERT INTO platform_users (
   email, 
   password_hash, 
   name, 
-  user_type, 
-  role_id,
+  role,
   email_verified,
   created_at
 )
-SELECT 
+VALUES (
   'security@recruitiq.com',
   '$2a$10$bJj0F63g2bnq9tL52p65e.ynUaBcXg340tgzV4m5.ImdFkOupxvuO', -- Admin123!
   'Security Administrator',
-  'platform',
-  r.id,
+  'admin',
   true,
   NOW()
-FROM roles r
-WHERE r.name = 'security_admin'
+)
 ON CONFLICT (email) DO NOTHING;
 
 -- ============================================================================

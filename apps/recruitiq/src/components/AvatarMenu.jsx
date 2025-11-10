@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '@recruitiq/auth'
 
 export default function AvatarMenu(){
   const [open, setOpen] = React.useState(false)
@@ -43,7 +43,7 @@ export default function AvatarMenu(){
         aria-haspopup="true" 
         aria-expanded={open} 
         onClick={()=>setOpen(o=>!o)} 
-        className="w-9 h-9 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center focus-ring text-white font-semibold shadow-sm hover:shadow-md transition-shadow"
+        className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center focus-ring text-white font-semibold shadow-sm hover:shadow-md transition-shadow"
         title={user?.name || 'User'}
       >
         {user?.name?.charAt(0).toUpperCase() || 'U'}

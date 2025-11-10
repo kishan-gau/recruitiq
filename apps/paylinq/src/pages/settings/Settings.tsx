@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Building2,
   DollarSign,
@@ -8,22 +8,104 @@ import {
   Calculator,
   Zap,
 } from 'lucide-react';
-import { Tabs, Badge, StatusBadge } from '@/components/ui';
-import type { Tab } from '@/components/ui';
+import Tabs from '@/components/ui/Tabs';
+import Badge from '@/components/ui/Badge';
+import StatusBadge from '@/components/ui/StatusBadge';
+import type { Tab } from '@/components/ui/Tabs';
 import { useToast } from '@/contexts/ToastContext';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('company');
-  const { success } = useToast();
+  const { success, error: showError } = useToast();
+  const { paylinq } = usePaylinqAPI();
+  const navigate = useNavigate();
+  const [taxRules, setTaxRules] = useState<any[]>([]);
+  const [isLoadingTaxRules, setIsLoadingTaxRules] = useState(false);
+  const [companySettings, setCompanySettings] = useState<any>({});
+  const [payrollSettings, setPayrollSettings] = useState<any>({});
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
-  const handleSaveCompanySettings = () => {
-    // TODO: Replace with actual API call
-    success('Company settings saved successfully');
+  // Fetch company settings when company tab is active
+  useEffect(() => {
+    if (activeTab === 'company') {
+      const fetchCompanySettings = async () => {
+        try {
+          setIsLoadingSettings(true);
+          const response = await paylinq.getCompanySettings();
+          if (response.success && response.data) {
+            setCompanySettings(response.data);
+          }
+        } catch (err: any) {
+          console.error('Failed to fetch company settings:', err);
+        } finally {
+          setIsLoadingSettings(false);
+        }
+      };
+      fetchCompanySettings();
+    }
+  }, [activeTab, paylinq]);
+
+  // Fetch payroll settings when payroll tab is active
+  useEffect(() => {
+    if (activeTab === 'payroll') {
+      const fetchPayrollSettings = async () => {
+        try {
+          setIsLoadingSettings(true);
+          const response = await paylinq.getPayrollSettings();
+          if (response.success && response.data) {
+            setPayrollSettings(response.data);
+          }
+        } catch (err: any) {
+          console.error('Failed to fetch payroll settings:', err);
+        } finally {
+          setIsLoadingSettings(false);
+        }
+      };
+      fetchPayrollSettings();
+    }
+  }, [activeTab, paylinq]);
+
+  // Fetch tax rules when tax-rules tab is active
+  useEffect(() => {
+    if (activeTab === 'tax-rules') {
+      const fetchTaxRules = async () => {
+        try {
+          setIsLoadingTaxRules(true);
+          const response = await paylinq.getTaxRules();
+          if (response.success && response.data) {
+            setTaxRules(response.data);
+          }
+        } catch (err: any) {
+          console.error('Failed to fetch tax rules:', err);
+          showError(err.message || 'Failed to load tax rules');
+        } finally {
+          setIsLoadingTaxRules(false);
+        }
+      };
+      fetchTaxRules();
+    }
+  }, [activeTab, paylinq, showError]);
+
+  const handleSaveCompanySettings = async () => {
+    try {
+      await paylinq.updateCompanySettings(companySettings);
+      success('Company settings saved successfully');
+    } catch (err: any) {
+      console.error('Failed to save company settings:', err);
+      showError(err.message || 'Failed to save company settings');
+    }
   };
 
-  const handleSavePayrollSettings = () => {
-    // TODO: Replace with actual API call
-    success('Payroll settings saved successfully');
+  const handleSavePayrollSettings = async () => {
+    try {
+      await paylinq.updatePayrollSettings(payrollSettings);
+      success('Payroll settings saved successfully');
+    } catch (err: any) {
+      console.error('Failed to save payroll settings:', err);
+      showError(err.message || 'Failed to save payroll settings');
+    }
   };
 
   const tabs: Tab[] = [
@@ -51,7 +133,13 @@ export default function Settings() {
       {/* Company Settings */}
       {activeTab === 'company' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+          {isLoadingSettings ? (
+            <div className="animate-pulse bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+          ) : (
+            <>
+              <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Company Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -60,8 +148,9 @@ export default function Settings() {
                 </label>
                 <input
                   type="text"
-                  defaultValue="ABC Company Suriname"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  value={companySettings.name || ''}
+                  onChange={(e) => setCompanySettings({ ...companySettings, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -70,8 +159,9 @@ export default function Settings() {
                 </label>
                 <input
                   type="text"
-                  defaultValue="SR-12345678"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  value={companySettings.taxRegistrationNumber || ''}
+                  onChange={(e) => setCompanySettings({ ...companySettings, taxRegistrationNumber: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -80,8 +170,9 @@ export default function Settings() {
                 </label>
                 <input
                   type="email"
-                  defaultValue="payroll@abccompany.sr"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  value={companySettings.email || ''}
+                  onChange={(e) => setCompanySettings({ ...companySettings, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -90,8 +181,9 @@ export default function Settings() {
                 </label>
                 <input
                   type="tel"
-                  defaultValue="+597 123-4567"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  value={companySettings.phone || ''}
+                  onChange={(e) => setCompanySettings({ ...companySettings, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div className="md:col-span-2">
@@ -100,17 +192,18 @@ export default function Settings() {
                 </label>
                 <input
                   type="text"
-                  defaultValue="123 Main Street, Paramaribo, Suriname"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  value={companySettings.address || ''}
+                  onChange={(e) => setCompanySettings({ ...companySettings, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
             <div className="mt-4 flex justify-end">
-              <button 
+                <button
                 onClick={handleSaveCompanySettings}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
               >
-                <Save className="w-4 h-4" />
+                <Save className="w-5 h-5" />
                 <span>Save Changes</span>
               </button>
             </div>
@@ -123,7 +216,7 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Default Currency
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
                   <option value="SRD">SRD - Surinamese Dollar</option>
                   <option value="USD">USD - US Dollar</option>
                 </select>
@@ -132,7 +225,7 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Timezone
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
                   <option value="America/Paramaribo">Paramaribo (GMT-3)</option>
                 </select>
               </div>
@@ -140,7 +233,7 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Date Format
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
                   <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                   <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                   <option value="YYYY-MM-DD">YYYY-MM-DD</option>
@@ -150,13 +243,15 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Language
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
                   <option value="en">English</option>
                   <option value="nl">Dutch</option>
                 </select>
               </div>
             </div>
           </div>
+            </>
+          )}
         </div>
       )}
 
@@ -170,7 +265,7 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Pay Frequency
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
                   <option value="biweekly">Bi-weekly (Every 2 weeks)</option>
                   <option value="monthly">Monthly</option>
                   <option value="semimonthly">Semi-monthly (Twice a month)</option>
@@ -181,7 +276,7 @@ export default function Settings() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Pay Day
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
+                <select className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
                   <option value="15">15th of the month</option>
                   <option value="last">Last day of the month</option>
                   <option value="custom">Custom</option>
@@ -190,7 +285,7 @@ export default function Settings() {
             </div>
             <div className="mt-4">
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-emerald-500" defaultChecked />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Enable 13th month bonus (December)
                 </span>
@@ -202,31 +297,31 @@ export default function Settings() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Approval Workflow</h3>
             <div className="space-y-3">
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-emerald-500" defaultChecked />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Require manager approval for time entries
                 </span>
               </label>
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" defaultChecked />
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-emerald-500" defaultChecked />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Require HR review before payroll processing
                 </span>
               </label>
               <label className="flex items-center space-x-2">
-                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-emerald-500" />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
                   Auto-approve regular scheduled shifts
                 </span>
               </label>
             </div>
             <div className="mt-4 flex justify-end">
-              <button 
+                <button
                 onClick={handleSavePayrollSettings}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
               >
-                <Save className="w-4 h-4" />
-                <span>Save Changes</span>
+                <Save className="w-5 h-5" />
+                <span>Save Settings</span>
               </button>
             </div>
           </div>
@@ -239,47 +334,42 @@ export default function Settings() {
           <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Active Tax Rules</h3>
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium">
-                Add Tax Rule
+              <button 
+                onClick={() => navigate('/tax-rules')}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors font-medium"
+              >
+                Manage Tax Rules
               </button>
             </div>
-            <div className="space-y-3">
-              {/* Wage Tax */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Wage Tax (Loonbelasting)</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Progressive brackets • Active</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <StatusBadge status="active" size="sm" />
-                  <button className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm">Edit</button>
-                </div>
+            {isLoadingTaxRules ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="animate-pulse h-20 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                ))}
               </div>
-
-              {/* AOV */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">AOV (Old Age Pension)</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">4% employee + 2% employer • Active</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <StatusBadge status="active" size="sm" />
-                  <button className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm">Edit</button>
-                </div>
+            ) : taxRules.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">No tax rules configured yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {taxRules.map((rule) => (
+                  <div key={rule.id} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{rule.name}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{rule.description}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <StatusBadge status={rule.status} size="sm" />
+                      <button 
+                        onClick={() => navigate('/tax-rules')}
+                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm"
+                      >
+                        View
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              {/* AWW */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">AWW (Widow/Orphan)</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Variable rate • Active</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <StatusBadge status="active" size="sm" />
-                  <button className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm">Edit</button>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
@@ -296,7 +386,7 @@ export default function Settings() {
           <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Pay Components</h3>
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium">
+              <button className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors font-medium">
                 Add Component
               </button>
             </div>
@@ -347,7 +437,7 @@ export default function Settings() {
           <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">System Users</h3>
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors font-medium">
+              <button className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors font-medium">
                 Invite User
               </button>
             </div>
@@ -455,3 +545,5 @@ export default function Settings() {
     </div>
   );
 }
+
+

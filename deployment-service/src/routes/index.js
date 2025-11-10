@@ -1,10 +1,14 @@
 const express = require('express');
 const deploymentController = require('../controllers/deploymentController');
+const approvalRoutes = require('./approvalRoutes');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
-// All routes require authentication
+// Approval workflow routes (with their own authentication)
+router.use('/api', approvalRoutes);
+
+// All other routes require authentication
 router.use(authenticate);
 
 // Deployment routes

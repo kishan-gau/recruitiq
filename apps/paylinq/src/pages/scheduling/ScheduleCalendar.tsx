@@ -1,16 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Plus, Users, Download } from 'lucide-react';
-import { ScheduleGrid, Badge } from '@/components/ui';
-import type { Schedule, Employee } from '@/components/ui';
-import { mockWorkers } from '@/utils/mockData';
+import ScheduleGrid from '@/components/ui/ScheduleGrid';
+import Badge from '@/components/ui/Badge';
+import type { Schedule, Employee } from '@/components/ui/ScheduleGrid';
 import { formatDate } from '@/utils/helpers';
 import { useToast } from '@/contexts/ToastContext';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import ShiftModal from '@/components/modals/ShiftModal';
 
 export default function ScheduleCalendar() {
-  const { success } = useToast();
+  const { success, error: showError } = useToast();
+  const { paylinq } = usePaylinqAPI();
   const [currentWeekStart, setCurrentWeekStart] = useState(new Date('2025-11-03')); // Monday
   const [shiftModal, setShiftModal] = useState<{ isOpen: boolean; employeeId?: string; date?: string }>({ isOpen: false });
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Generate week days
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -25,52 +30,72 @@ export default function ScheduleCalendar() {
     return `${name} ${date.getDate()}/${date.getMonth() + 1}`;
   });
 
-  // Convert mock workers to Employee type
-  const employees: Employee[] = mockWorkers
-    .filter((w) => w.status === 'active')
-    .map((w) => ({
-      id: w.id,
-      fullName: w.fullName,
-      employeeNumber: w.employeeNumber,
-    }));
+  // Fetch workers and schedules
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch workers
+        const workersResponse = await paylinq.getWorkers({ status: 'active' });
+        if (workersResponse.success && workersResponse.data) {
+          const transformedEmployees: Employee[] = workersResponse.data.map((w: any) => ({
+            id: w.id,
+            fullName: w.fullName,
+            employeeNumber: w.employeeNumber,
+          }));
+          setEmployees(transformedEmployees);
+        }
 
-  // Mock schedule data
-  const schedules: Schedule[] = [
-    // John Doe (SR-001)
-    { id: '1-mon', workerId: '1', day: daysForGrid[0], startTime: '08:00', endTime: '17:00', type: 'regular' },
-    { id: '1-tue', workerId: '1', day: daysForGrid[1], startTime: '08:00', endTime: '17:00', type: 'regular' },
-    { id: '1-wed', workerId: '1', day: daysForGrid[2], startTime: '08:00', endTime: '17:00', type: 'regular' },
-    { id: '1-thu', workerId: '1', day: daysForGrid[3], startTime: '08:00', endTime: '17:00', type: 'regular' },
-    { id: '1-fri', workerId: '1', day: daysForGrid[4], startTime: '08:00', endTime: '17:00', type: 'regular' },
-    
-    // Jane Smith (SR-002)
-    { id: '2-mon', workerId: '2', day: daysForGrid[0], startTime: '09:00', endTime: '18:00', type: 'regular' },
-    { id: '2-tue', workerId: '2', day: daysForGrid[1], startTime: '09:00', endTime: '18:00', type: 'regular' },
-    { id: '2-wed', workerId: '2', day: daysForGrid[2], startTime: '09:00', endTime: '18:00', type: 'regular' },
-    { id: '2-thu', workerId: '2', day: daysForGrid[3], startTime: '09:00', endTime: '18:00', type: 'regular' },
-    { id: '2-fri', workerId: '2', day: daysForGrid[4], startTime: '09:00', endTime: '18:00', type: 'regular' },
-    { id: '2-sat', workerId: '2', day: daysForGrid[5], startTime: '09:00', endTime: '13:00', type: 'overtime' },
-    
-    // Maria Garcia (SR-003)
-    { id: '3-mon', workerId: '3', day: daysForGrid[0], startTime: '07:00', endTime: '15:00', type: 'regular' },
-    { id: '3-tue', workerId: '3', day: daysForGrid[1], startTime: '07:00', endTime: '15:00', type: 'regular' },
-    { id: '3-wed', workerId: '3', day: daysForGrid[2], startTime: '07:00', endTime: '15:00', type: 'regular' },
-    { id: '3-thu', workerId: '3', day: daysForGrid[3], startTime: '07:00', endTime: '15:00', type: 'regular' },
-    { id: '3-fri', workerId: '3', day: daysForGrid[4], startTime: '07:00', endTime: '15:00', type: 'regular' },
-    
-    // Peter Chen (SR-004)
-    { id: '4-tue', workerId: '4', day: daysForGrid[1], startTime: '10:00', endTime: '14:00', type: 'regular' },
-    { id: '4-thu', workerId: '4', day: daysForGrid[3], startTime: '10:00', endTime: '14:00', type: 'regular' },
-    { id: '4-sat', workerId: '4', day: daysForGrid[5], startTime: '09:00', endTime: '17:00', type: 'regular' },
-    { id: '4-sun', workerId: '4', day: daysForGrid[6], startTime: '09:00', endTime: '17:00', type: 'holiday' },
-    
-    // Sarah Johnson (SR-005)
-    { id: '5-mon', workerId: '5', day: daysForGrid[0], startTime: '13:00', endTime: '21:00', type: 'regular' },
-    { id: '5-tue', workerId: '5', day: daysForGrid[1], startTime: '13:00', endTime: '21:00', type: 'regular' },
-    { id: '5-wed', workerId: '5', day: daysForGrid[2], startTime: '13:00', endTime: '21:00', type: 'regular' },
-    { id: '5-thu', workerId: '5', day: daysForGrid[3], startTime: '13:00', endTime: '21:00', type: 'regular' },
-    { id: '5-fri', workerId: '5', day: daysForGrid[4], startTime: '13:00', endTime: '21:00', type: 'regular' },
-  ];
+        // Fetch schedules for the current week
+        const startDate = currentWeekStart.toISOString().split('T')[0];
+        const endDate = new Date(currentWeekStart);
+        endDate.setDate(endDate.getDate() + 6);
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const schedulesResponse = await paylinq.getSchedules({ 
+          startDate, 
+          endDate: endDateStr 
+        });
+        
+        if (schedulesResponse.success && schedulesResponse.data) {
+          // Generate daysForGrid inside useEffect to match the current week
+          const dayLabels = dayNames.map((name, i) => {
+            const date = weekDays[i];
+            return `${name} ${date.getDate()}/${date.getMonth() + 1}`;
+          });
+          
+          // Transform API schedules to UI format
+          const transformedSchedules: Schedule[] = schedulesResponse.data.map((s: any) => {
+            const scheduleDate = new Date(s.date);
+            const dayIndex = (scheduleDate.getDay() + 6) % 7; // Convert to Monday=0 format
+            return {
+              id: s.id,
+              workerId: s.employeeId || s.workerId,
+              day: dayLabels[dayIndex],
+              startTime: s.startTime,
+              endTime: s.endTime,
+              type: s.shiftType || 'regular',
+            };
+          });
+          setSchedules(transformedSchedules);
+        } else {
+          setSchedules([]);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch scheduling data:', err);
+        showError(err.message || 'Failed to load scheduling data');
+        setEmployees([]);
+        setSchedules([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+    // Removed daysForGrid from dependencies to prevent infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paylinq, currentWeekStart]);
 
   // Calculate total scheduled hours
   const totalHours = schedules.reduce((sum, schedule) => {
@@ -107,13 +132,60 @@ export default function ScheduleCalendar() {
   };
 
   const handleShiftSuccess = () => {
-    // In real app, this would trigger a refetch
-    success('Shift added successfully');
+    // Refetch schedules after successful operation
+    const fetchSchedules = async () => {
+      try {
+        const startDate = currentWeekStart.toISOString().split('T')[0];
+        const endDate = new Date(currentWeekStart);
+        endDate.setDate(endDate.getDate() + 6);
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const schedulesResponse = await paylinq.getSchedules({ 
+          startDate, 
+          endDate: endDateStr 
+        });
+        
+        if (schedulesResponse.success && schedulesResponse.data) {
+          const transformedSchedules: Schedule[] = schedulesResponse.data.map((s: any) => {
+            const scheduleDate = new Date(s.date);
+            const dayIndex = (scheduleDate.getDay() + 6) % 7;
+            return {
+              id: s.id,
+              workerId: s.employeeId || s.workerId,
+              day: daysForGrid[dayIndex],
+              startTime: s.startTime,
+              endTime: s.endTime,
+              type: s.shiftType || 'regular',
+            };
+          });
+          setSchedules(transformedSchedules);
+        }
+      } catch (err) {
+        console.error('Failed to refetch schedules:', err);
+      }
+    };
+    
+    fetchSchedules();
+    success('Shift saved successfully');
   };
 
-  const handleExport = () => {
-    success('Schedule exported successfully');
-    // TODO: Implement actual export logic
+  const handleExport = async () => {
+    try {
+      const startDate = currentWeekStart.toISOString().split('T')[0];
+      const endDate = new Date(currentWeekStart);
+      endDate.setDate(endDate.getDate() + 6);
+      
+      await paylinq.exportReport('schedules', {
+        startDate,
+        endDate: endDate.toISOString().split('T')[0],
+        format: 'xlsx',
+      });
+      
+      success('Schedule exported successfully');
+    } catch (err: any) {
+      console.error('Failed to export schedule:', err);
+      showError(err.message || 'Failed to export schedule');
+    }
   };
 
   return (
@@ -135,8 +207,22 @@ export default function ScheduleCalendar() {
             <span>Export</span>
           </button>
           <button
-            onClick={() => setShiftModal({ isOpen: true })}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+            onClick={() => {
+              // For now, open modal for first employee and current week's Monday
+              // In a real app, you'd want to show an employee/date picker first
+              const firstEmployee = employees[0];
+              const monday = weekDays[0];
+              if (firstEmployee && monday) {
+                setShiftModal({ 
+                  isOpen: true, 
+                  employeeId: firstEmployee.id, 
+                  date: monday.toISOString().split('T')[0] 
+                });
+              } else {
+                showError('Please ensure employees are loaded before adding a shift');
+              }
+            }}
+            className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
           >
             <Plus className="w-5 h-5" />
             <span>Add Shift</span>
@@ -214,12 +300,18 @@ export default function ScheduleCalendar() {
       </div>
 
       {/* Schedule Grid */}
-      <ScheduleGrid
-        schedules={schedules}
-        employees={employees}
-        days={daysForGrid}
-        onCellClick={handleCellClick}
-      />
+      {isLoading ? (
+        <div className="animate-pulse bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+          <div className="h-96 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        </div>
+      ) : (
+        <ScheduleGrid
+          schedules={schedules}
+          employees={employees}
+          days={daysForGrid}
+          onCellClick={handleCellClick}
+        />
+      )}
 
       {/* Shift Modal */}
       <ShiftModal
@@ -239,3 +331,4 @@ export default function ScheduleCalendar() {
     </div>
   );
 }
+

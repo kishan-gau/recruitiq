@@ -24,10 +24,10 @@ class User {
     const query = `
       INSERT INTO users (
         id, organization_id, email, password_hash, 
-        name, role, permissions
+        name, first_name, last_name, role, permissions
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id, organization_id, email, name, 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, organization_id, email, name, first_name, last_name,
                 role, permissions, mfa_enabled,
                 created_at, updated_at
     `;
@@ -38,6 +38,8 @@ class User {
       email.toLowerCase(),
       hashedPassword,
       fullName,
+      firstName,
+      lastName,
       role,
       JSON.stringify(permissions)
     ];

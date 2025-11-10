@@ -81,7 +81,7 @@
 ### Service Unit Test Template
 
 ```javascript
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import JobService from '../../src/services/jobs/JobService.js';
 import JobRepository from '../../src/repositories/JobRepository.js';
 import { ValidationError, NotFoundError } from '../../src/utils/errors.js';
@@ -93,12 +93,12 @@ describe('JobService', () => {
   beforeEach(() => {
     // Setup: Create fresh mocks for each test
     mockRepository = {
-      create: vi.fn(),
-      findById: vi.fn(),
-      findAll: vi.fn(),
-      update: vi.fn(),
-      softDelete: vi.fn(),
-      findWorkspaceById: vi.fn()
+      create: jest.fn(),
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      update: jest.fn(),
+      softDelete: jest.fn(),
+      findWorkspaceById: jest.fn()
     };
 
     // Inject mock repository
@@ -465,10 +465,9 @@ describe('JobService', () => {
 ### Integration Test Template
 
 ```javascript
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import app from '../../src/app.js';
-import { pool } from '../../src/config/database.js';
+import { query } from '../../src/config/database.js';
 import { generateTestToken } from '../helpers/auth.js';
 
 describe('Jobs API - Integration Tests', () => {
@@ -775,9 +774,9 @@ describe('Jobs API - Integration Tests', () => {
 ```javascript
 // Mock repository
 const mockRepository = {
-  create: vi.fn(),
-  findById: vi.fn(),
-  findAll: vi.fn()
+  create: jest.fn(),
+  findById: jest.fn(),
+  findAll: jest.fn()
 };
 
 // Mock with return value
@@ -809,7 +808,7 @@ expect(mockRepository.create).toHaveBeenCalledTimes(1);
 
 // Reset mock
 beforeEach(() => {
-  vi.clearAllMocks();
+  jest.clearAllMocks();
 });
 ```
 
@@ -817,42 +816,294 @@ beforeEach(() => {
 
 ## Test Data Management
 
-### Test Data Best Practices
+### Test Data Factory Pattern (Integration Tests)
+
+**RECOMMENDED:** For integration tests that interact with the database, use the **Test Data Factory Class pattern** for true test isolation.
+
+#### Why Test Data Factories?
+
+✅ **Test Isolation** - Each test creates its own data  
+✅ **No Seed Data Dependency** - Tests are self-contained  
+✅ **Parallel Execution** - Tests don't interfere with each other  
+✅ **Reusable** - Centralized data creation logic  
+✅ **Type Safety** - Factory validates data structure  
+✅ **Easy Cleanup** - Automated cleanup after tests
+
+#### Implementation Pattern
 
 ```javascript
-// ✅ GOOD: Use factories for test data
-const createTestJob = (overrides = {}) => ({
-  id: uuid.v4(),
+import { v4 as uuidv4 } from 'uuid';
+import { query } from '../../src/config/database.js';
+
+// Test constants from seed data (for foreign keys only)
+const testOrganizationId = '9ee50aee-76c3-46ce-87ed-005c6dd893ef';
+const testUserId = '550e8400-e29b-41d4-a716-446655440000';
+const testWorkspaceId = '550e8400-e29b-41d4-a716-446655440100';
+
+/**
+ * Test Data Factory Class
+ * Creates and manages test data with proper cleanup
+ */
+class JobTestFactory {
+  /**
+   * Create a test job
+   * @param {Object} overrides - Override default values
+   * @returns {Promise<Object>} Created job record
+   */
+  static async createJob(overrides = {}) {
+    const defaultData = {
+      id: uuidv4(), // Generate unique UUID for each test
+      organization_id: testOrganizationId,
+      workspace_id: testWorkspaceId,
+      title: 'Test Job',
+      description: 'Test job description',
+      employment_type: 'full-time',
+      status: 'published',
+      created_by: testUserId,
+      ...overrides // Allow test-specific overrides
+    };
+
+    const result = await query(
+      `INSERT INTO jobs (
+        id, organization_id, workspace_id, title, description,
+        employment_type, status, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *`,
+      [
+        defaultData.id,
+        defaultData.organization_id,
+        defaultData.workspace_id,
+        defaultData.title,
+        defaultData.description,
+        defaultData.employment_type,
+        defaultData.status,
+        defaultData.created_by
+      ]
+    );
+
+    return result.rows[0];
+  }
+
+  /**
+   * Create a test application for a job
+   * @param {Object} overrides - Override default values
+   * @returns {Promise<Object>} Created application record
+   */
+  static async createApplication(overrides = {}) {
+    const defaultData = {
+      id: uuidv4(),
+      job_id: overrides.job_id, // Required
+      candidate_id: overrides.candidate_id, // Required
+      status: 'submitted',
+      created_by: testUserId,
+      ...overrides
+    };
+
+    const result = await query(
+      `INSERT INTO applications (
+        id, job_id, candidate_id, status, created_by
+      ) VALUES ($1, $2, $3, $4, $5)
+      RETURNING *`,
+      [
+        defaultData.id,
+        defaultData.job_id,
+        defaultData.candidate_id,
+        defaultData.status,
+        defaultData.created_by
+      ]
+    );
+
+    return result.rows[0];
+  }
+
+  /**
+   * Clean up all test data created in the last hour
+   * Uses timestamp-based deletion to avoid removing seed data
+   */
+  static async cleanup() {
+    // Delete in reverse order to respect foreign keys
+    await query(
+      `DELETE FROM applications WHERE created_at > NOW() - INTERVAL '1 hour'`
+    );
+    await query(
+      `DELETE FROM jobs WHERE created_at > NOW() - INTERVAL '1 hour'`
+    );
+  }
+}
+```
+
+#### Usage in Tests
+
+```javascript
+import request from 'supertest';
+import app from '../../src/app.js';
+import JobTestFactory from '../factories/JobTestFactory.js';
+
+describe('Jobs API - Integration Tests', () => {
+  // Clean up after ALL tests complete
+  afterAll(async () => {
+    await JobTestFactory.cleanup();
+  });
+
+  describe('GET /api/jobs/:id', () => {
+    let testJob;
+
+    // Create fresh data before EACH test (test isolation)
+    beforeEach(async () => {
+      testJob = await JobTestFactory.createJob({
+        title: 'Senior Developer',
+        employment_type: 'full-time'
+      });
+    });
+
+    it('should return job by ID', async () => {
+      // Act
+      const response = await request(app)
+        .get(`/api/jobs/${testJob.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      // Assert
+      expect(response.body.success).toBe(true);
+      expect(response.body.job.id).toBe(testJob.id);
+      expect(response.body.job.title).toBe('Senior Developer');
+    });
+
+    it('should return 404 for non-existent job', async () => {
+      const fakeId = uuidv4();
+
+      await request(app)
+        .get(`/api/jobs/${fakeId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(404);
+    });
+  });
+
+  describe('POST /api/jobs', () => {
+    it('should create job with valid data', async () => {
+      const jobData = {
+        title: 'New Job',
+        description: 'Job description',
+        workspaceId: testWorkspaceId,
+        employmentType: 'full-time'
+      };
+
+      const response = await request(app)
+        .post('/api/jobs')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(jobData)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.job.title).toBe('New Job');
+    });
+  });
+});
+```
+
+#### Key Patterns
+
+**1. UUID Generation:**
+```javascript
+import { v4 as uuidv4 } from 'uuid';
+
+const id = uuidv4(); // Generates unique UUID v4
+```
+
+**2. Timestamp-Based Cleanup (Safe for Parallel Tests):**
+```javascript
+static async cleanup() {
+  // Only deletes data created in last hour (test data, not seed data)
+  await query(`DELETE FROM table WHERE created_at > NOW() - INTERVAL '1 hour'`);
+}
+```
+
+**3. Foreign Key Order in Cleanup:**
+```javascript
+static async cleanup() {
+  // Delete child records first
+  await query(`DELETE FROM applications WHERE created_at > NOW() - INTERVAL '1 hour'`);
+  // Then parent records
+  await query(`DELETE FROM jobs WHERE created_at > NOW() - INTERVAL '1 hour'`);
+}
+```
+
+**4. Test Isolation with beforeEach:**
+```javascript
+beforeEach(async () => {
+  // Each test gets fresh data
+  testJob = await JobTestFactory.createJob({ title: 'Specific Title' });
+});
+```
+
+**5. Centralized Cleanup with afterAll:**
+```javascript
+afterAll(async () => {
+  // Clean up once after all tests
+  await JobTestFactory.cleanup();
+});
+```
+
+### Simple Factory Functions (Unit Tests)
+
+For **unit tests** with mocked dependencies, use simple factory functions:
+
+```javascript
+// ✅ GOOD: Simple factory for unit tests (returns objects, no DB)
+const createMockJob = (overrides = {}) => ({
+  id: uuidv4(),
   title: 'Test Job',
   description: 'Test Description',
-  workspaceId: uuid.v4(),
-  organizationId: uuid.v4(),
-  createdBy: uuid.v4(),
+  workspaceId: uuidv4(),
+  organizationId: uuidv4(),
+  createdBy: uuidv4(),
   ...overrides
 });
 
-// Usage
-const job1 = createTestJob({ title: 'Custom Title' });
-const job2 = createTestJob({ employmentType: 'part-time' });
+// Usage in unit tests
+const mockJob = createMockJob({ title: 'Custom Title' });
+mockRepository.findById.mockResolvedValue(mockJob);
+```
 
-// ✅ GOOD: Use constants for test UUIDs
+### Test Constants
+
+```javascript
+// ✅ GOOD: Use constants for test UUIDs (from seed data)
 const TEST_UUIDS = {
   ORG1: '123e4567-e89b-12d3-a456-426614174000',
   ORG2: '223e4567-e89b-12d3-a456-426614174001',
   USER1: '323e4567-e89b-12d3-a456-426614174002'
 };
+```
 
-// ✅ GOOD: Clean up test data
-afterEach(async () => {
-  await pool.query('DELETE FROM jobs WHERE organization_id = $1', [TEST_UUIDS.ORG1]);
-});
+### Anti-Patterns to Avoid
 
+```javascript
 // ❌ BAD: Hard-coded test data everywhere
 const job = {
   id: '123e4567-e89b-12d3-a456-426614174000',
   title: 'Test Job',
   // ... repeated in every test
 };
+
+// ❌ BAD: Inline SQL in every test (not reusable)
+beforeEach(async () => {
+  const result = await pool.query(`INSERT INTO jobs...`);
+  jobId = result.rows[0].id;
+});
+
+// ❌ BAD: Deleting all data (removes seed data too)
+afterEach(async () => {
+  await pool.query('DELETE FROM jobs'); // Dangerous!
+});
+
+// ❌ BAD: Depending on seed data without creating it
+test('should get job', async () => {
+  // Assumes job with this ID exists from seed - brittle!
+  const response = await request(app)
+    .get('/api/jobs/550e8400-e29b-41d4-a716-446655440888')
+    .expect(200);
+});
 ```
 
 ---

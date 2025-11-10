@@ -99,6 +99,8 @@ RecruitIQ follows a layered architecture pattern:
 - [Production Resource Planning](./PRODUCTION_RESOURCE_PLANNING.md)
 - [Docker Deployment Guide](./DOCKER_DEPLOYMENT_GUIDE.md)
 - [Security Audit Report](./SECURITY_AUDIT_REPORT.md)
+- **[Feature Management System](./FEATURE_MANAGEMENT_IMPLEMENTATION_COMPLETE.md)** - Tier-based access control
+  - [Quick Start Guide](./FEATURE_MANAGEMENT_QUICK_START.md) - Developer reference with examples
 
 ## 📦 Installation
 

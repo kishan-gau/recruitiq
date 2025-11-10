@@ -17,7 +17,7 @@ vi.mock('../context/WorkspaceContext', () => ({
 }))
 
 // Mock AuthContext
-vi.mock('../context/AuthContext', () => ({
+vi.mock('@recruitiq/auth', () => ({
   useAuth: () => ({
     user: { name: 'Test User', email: 'test@example.com' },
     logout: vi.fn(),

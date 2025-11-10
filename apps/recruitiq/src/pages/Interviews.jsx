@@ -430,7 +430,7 @@ export default function Interviews() {
               {selectedCandidate && (
                 <div className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">
                   <div className="flex items-start gap-3 mb-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-medium text-sm shadow-lg">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-medium text-sm shadow-lg">
                       {selectedCandidate.name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -459,7 +459,7 @@ export default function Interviews() {
               <div className="space-y-4 mb-6">
                 {AUDIT_TRAIL.map(activity => (
                   <div key={activity.id} className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-medium text-xs shadow">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-medium text-xs shadow">
                       {activity.avatar}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -809,7 +809,7 @@ function DocumentInterviewModal({ interview, candidate, onClose, onSave }) {
         {/* Interview Header Info */}
         <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-medium text-sm shadow-lg">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-medium text-sm shadow-lg">
               {candidate?.name.split(' ').map(n => n[0]).join('')}
             </div>
             <div className="flex-1">

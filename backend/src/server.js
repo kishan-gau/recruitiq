@@ -18,10 +18,11 @@ import {
 import { csrfMiddleware, getCsrfToken, csrfErrorHandler } from './middleware/csrf.js';
 
 // Import routes
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/auth/authRoutes.js'; // New authentication system
 import mfaRoutes from './routes/mfa.routes.js';
 import organizationRoutes from './routes/organizations.js';
 import userRoutes from './routes/users.js';
+import platformUserRoutes from './routes/platformUsers.js';
 import workspaceRoutes from './routes/workspaces.js';
 import jobRoutes from './routes/jobs.js';
 import candidateRoutes from './routes/candidates.js';
@@ -36,11 +37,24 @@ import rolesPermissionsRoutes from './routes/rolesPermissions.js';
 import securityRoutes from './routes/security.js';
 import provisioningRoutes from './routes/provisioning.js';
 
+// Import Feature Management routes
+import adminFeaturesRoutes from './routes/adminFeatures.js';
+import featuresRoutes from './routes/features.js';
+
 // Import License Manager module routes
 import licenseAdminRoutes from './modules/license/routes/admin.js';
 import licenseValidationRoutes from './modules/license/routes/validation.js';
 import licenseTelemetryRoutes from './modules/license/routes/telemetry.js';
 import licenseTierRoutes from './modules/license/routes/tiers.js';
+
+// Import Product Management routes (Core Platform)
+import productManagementRoutes from './products/nexus/routes/productManagementRoutes.js';
+
+// Import Product System Management routes (Admin)
+import systemRoutes from './products/nexus/routes/systemRoutes.js';
+
+// Import Product Manager (Dynamic Product Loading System)
+import productManager from './products/core/ProductManager.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -48,6 +62,7 @@ import { requestLogger } from './middleware/requestLogger.js';
 import requestIdMiddleware from './middleware/requestId.js';
 import { authenticate } from './middleware/auth.js';
 import { secureRequest, blockFilePathInjection } from './middleware/requestSecurity.js';
+import { timezoneMiddleware, timezoneHeaderMiddleware } from './middleware/timezone.js';
 
 const app = express();
 
@@ -134,6 +149,10 @@ app.use(requestIdMiddleware);
 // Log all requests with enhanced context
 app.use(requestLogger);
 
+// Add timezone context to all requests (after auth middleware will be applied)
+app.use(timezoneMiddleware);
+app.use(timezoneHeaderMiddleware);
+
 // ============================================================================
 // HEALTH CHECK (No auth required)
 // ============================================================================
@@ -208,6 +227,34 @@ app.get('/', (req, res) => {
 
 const apiRouter = express.Router();
 
+// Initialize Product Manager and load all active products
+// This happens asynchronously after server starts
+let dynamicProductRouter = null;
+
+// Create a middleware that forwards to the dynamic router once it's loaded
+const dynamicProductMiddleware = (req, res, next) => {
+  if (dynamicProductRouter) {
+    dynamicProductRouter(req, res, next);
+  } else {
+    res.status(503).json({
+      error: 'Dynamic product system not yet initialized',
+      message: 'Please wait for the system to complete initialization'
+    });
+  }
+};
+
+const initializeProducts = async () => {
+  try {
+    logger.info('🔧 Initializing Dynamic Product System...');
+    dynamicProductRouter = await productManager.initialize(app);
+    logger.info('✅ Dynamic Product System ready');
+    logger.info('📍 Dynamic product routes available at /api/products');
+  } catch (error) {
+    logger.error('Failed to initialize Product Manager:', error);
+    logger.warn('⚠️  Server will continue without dynamic product loading');
+  }
+};
+
 // CSRF token endpoint (must be before CSRF middleware)
 apiRouter.get('/csrf-token', getCsrfToken);
 
@@ -217,7 +264,7 @@ apiRouter.get('/csrf-token', getCsrfToken);
 app.use('/api', csrfMiddleware);
 
 // Public routes (no auth)
-apiRouter.use('/auth', authRoutes);
+apiRouter.use('/auth', authRoutes); // New separated authentication (platform/tenant)
 apiRouter.use('/public', publicRoutes);
 
 // MFA routes (partially public - some endpoints use temporary MFA token)
@@ -227,6 +274,7 @@ apiRouter.use('/auth/mfa', mfaRoutes);
 // Note: Some routes handle their own public endpoints internally (jobs, applications)
 apiRouter.use('/organizations', authenticate, organizationRoutes);
 apiRouter.use('/users', authenticate, userRoutes);
+apiRouter.use('/platform-users', platformUserRoutes); // Platform admin management (auth + super_admin check in routes)
 apiRouter.use('/workspaces', authenticate, workspaceRoutes);
 apiRouter.use('/jobs', jobRoutes);  // Has public endpoints - handles auth internally
 apiRouter.use('/candidates', authenticate, candidateRoutes);
@@ -247,6 +295,22 @@ apiRouter.use('/admin', licenseAdminRoutes);  // License Manager admin panel
 apiRouter.use('/validate', licenseValidationRoutes);  // License validation
 apiRouter.use('/telemetry', licenseTelemetryRoutes);  // Usage telemetry
 apiRouter.use('/tiers', licenseTierRoutes);  // Tier management
+
+// Feature Management routes
+apiRouter.use('/admin/features', adminFeaturesRoutes);  // Feature management admin panel (requires platform admin)
+apiRouter.use('/features', authenticate, featuresRoutes);  // Tenant-facing feature access API
+
+// Product Registry/Management routes (Core Platform - requires authentication)
+// Admin APIs for managing product metadata, permissions, configs, features
+apiRouter.use('/admin', authenticate, productManagementRoutes);  // Product CRUD, Permission, Config, Feature APIs
+
+// Product System Management routes (Admin only - runtime control)
+apiRouter.use('/system/products', systemRoutes);  // Dynamic product system admin (reload, unload, status)
+
+// Dynamic Product Routes (loaded at runtime)
+// Product application endpoints (PayLinQ, Nexus, etc.)
+// Authentication is handled by individual product routes (e.g., PayLinQ uses authenticateTenant)
+apiRouter.use('/products', dynamicProductMiddleware);  // Product application routes
 
 app.use('/api', apiRouter);
 
@@ -273,12 +337,17 @@ let server;
 // Only start server if not in test mode
 // This allows tests to import the app without starting the server
 if (process.env.NODE_ENV !== 'test') {
-  server = app.listen(PORT, () => {
+  server = app.listen(PORT, async () => {
     logger.info(`🚀 RecruitIQ API Server started`);
     logger.info(`📍 Environment: ${config.env}`);
     logger.info(`🌐 Server running on: ${config.appUrl}`);
     logger.info(`📊 Health check: ${config.appUrl}/health`);
     logger.info(`🔐 CORS enabled for: ${config.frontend.allowedOrigins.join(', ')}`);
+    logger.info(`🎯 Feature Management: /api/features, /api/admin (feature management)`);
+    logger.info('');
+    
+    // Initialize dynamic product loading after server starts
+    await initializeProducts();
   });
 }
 

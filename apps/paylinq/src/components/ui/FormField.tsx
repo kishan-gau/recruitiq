@@ -41,7 +41,7 @@ export function Input({ error, className, ...props }: InputProps) {
       className={clsx(
         'w-full px-3 py-2 border rounded-lg transition-colors',
         'bg-white dark:bg-gray-900 text-gray-900 dark:text-white',
-        'focus:ring-2 focus:ring-blue-500 focus:outline-none',
+        'focus:ring-2 focus:ring-emerald-500 focus:outline-none',
         error
           ? 'border-red-500 dark:border-red-500'
           : 'border-gray-300 dark:border-gray-700',
@@ -62,7 +62,7 @@ export function TextArea({ error, className, ...props }: TextAreaProps) {
       className={clsx(
         'w-full px-3 py-2 border rounded-lg transition-colors',
         'bg-white dark:bg-gray-900 text-gray-900 dark:text-white',
-        'focus:ring-2 focus:ring-blue-500 focus:outline-none',
+        'focus:ring-2 focus:ring-emerald-500 focus:outline-none',
         error
           ? 'border-red-500 dark:border-red-500'
           : 'border-gray-300 dark:border-gray-700',
@@ -84,7 +84,7 @@ export function Select({ error, options, className, ...props }: SelectProps) {
       className={clsx(
         'w-full px-3 py-2 border rounded-lg transition-colors',
         'bg-white dark:bg-gray-900 text-gray-900 dark:text-white',
-        'focus:ring-2 focus:ring-blue-500 focus:outline-none',
+        'focus:ring-2 focus:ring-emerald-500 focus:outline-none',
         error
           ? 'border-red-500 dark:border-red-500'
           : 'border-gray-300 dark:border-gray-700',
@@ -100,3 +100,4 @@ export function Select({ error, options, className, ...props }: SelectProps) {
     </select>
   );
 }
+

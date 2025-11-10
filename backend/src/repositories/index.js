@@ -8,3 +8,5 @@ export { CandidateRepository } from './CandidateRepository.js';
 export { JobRepository } from './JobRepository.js';
 export { ApplicationRepository } from './ApplicationRepository.js';
 export { InterviewRepository } from './InterviewRepository.js';
+export { default as FeatureRepository } from './FeatureRepository.js';
+export { default as FeatureGrantRepository } from './FeatureGrantRepository.js';

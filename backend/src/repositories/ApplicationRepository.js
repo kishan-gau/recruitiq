@@ -36,7 +36,12 @@ export class ApplicationRepository extends BaseRepository {
       `;
 
       const result = await db.query(query, [id, organizationId]);
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      if (!dbRecord) return null;
+      
+      // Import DTO mapper
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return mapDbToApi(dbRecord);
     } catch (error) {
       this.logger.error('Error finding application with details:', error);
       throw error;
@@ -57,7 +62,11 @@ export class ApplicationRepository extends BaseRepository {
       `;
 
       const result = await db.query(query, [candidateId, jobId, organizationId]);
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      if (!dbRecord) return null;
+      
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return mapDbToApi(dbRecord);
     } catch (error) {
       this.logger.error('Error finding application by candidate and job:', error);
       throw error;
@@ -129,8 +138,11 @@ export class ApplicationRepository extends BaseRepository {
       const countResult = await db.query(countQuery, countParams);
       const total = parseInt(countResult.rows[0].total, 10);
 
+      // Import DTO mapper
+      const { mapToListDto } = await import('../utils/dtoMapper.js');
+
       return {
-        applications: result.rows,
+        applications: mapToListDto(result.rows, 'applications'),
         total,
         page,
         limit,
@@ -161,7 +173,9 @@ export class ApplicationRepository extends BaseRepository {
       `;
 
       const result = await db.query(query, [candidateId, organizationId]);
-      return result.rows;
+      
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding applications by candidate:', error);
       throw error;
@@ -252,7 +266,7 @@ export class ApplicationRepository extends BaseRepository {
         'SELECT COUNT(*) as total FROM'
       );
       const countResult = await db.query(countQuery, params);
-      const total = parseInt(countResult.rows[0].total, 10);
+      const total = countResult?.rows?.[0]?.total ? parseInt(countResult.rows[0].total, 10) : 0;
 
       // Add sorting
       const allowedSortFields = ['applied_at', 'status', 'first_name', 'last_name', 'job_title'];
@@ -279,8 +293,10 @@ export class ApplicationRepository extends BaseRepository {
 
       const result = await db.query(query, params);
 
+      const { mapToListDto } = await import('../utils/dtoMapper.js');
+
       return {
-        applications: result.rows,
+        applications: mapToListDto(result.rows, 'applications'),
         total,
         page,
         limit,

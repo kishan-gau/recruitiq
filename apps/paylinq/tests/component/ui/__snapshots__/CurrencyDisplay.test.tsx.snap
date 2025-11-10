@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CurrencyDisplay > Snapshot > matches snapshot for SRD currency 1`] = `
+<div>
+  <span
+    class="font-medium tabular-nums text-gray-900 dark:text-gray-100"
+  >
+    SRD 1,234.56
+  </span>
+</div>
+`;
+
+exports[`CurrencyDisplay > Snapshot > matches snapshot for USD currency 1`] = `
+<div>
+  <span
+    class="font-medium tabular-nums text-gray-900 dark:text-gray-100"
+  >
+    $1,234.56
+  </span>
+</div>
+`;
+
+exports[`CurrencyDisplay > Snapshot > matches snapshot for positive variant 1`] = `
+<div>
+  <span
+    class="font-medium tabular-nums text-green-600 dark:text-green-400"
+  >
+    SRD 5,000.00
+  </span>
+</div>
+`;

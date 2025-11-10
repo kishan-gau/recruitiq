@@ -22,16 +22,34 @@
 \i schema.sql
 
 -- ============================================================================
--- Step 2: Add License Manager tables
+-- Step 2: Add Nexus (HRIS) schema
 -- ============================================================================
 \echo ''
 \echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-\echo '📦 Creating License Manager tables...'
+\echo '👥 Creating Nexus HRIS schema...'
 \echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-\i schema-license-manager.sql
+\i nexus-hris-schema.sql
 
 -- ============================================================================
--- Step 3: Seed permissions and roles
+-- Step 3: Add Paylinq (Payroll) schema
+-- ============================================================================
+\echo ''
+\echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+\echo '💰 Creating Paylinq payroll schema...'
+\echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+\i paylinq-schema.sql
+
+-- ============================================================================
+-- Step 4: Add ScheduleHub (Scheduling) schema
+-- ============================================================================
+\echo ''
+\echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+\echo '📅 Creating ScheduleHub scheduling schema...'
+\echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+\i schedulehub-schema.sql
+
+-- ============================================================================
+-- Step 5: Seed permissions and roles
 -- ============================================================================
 \echo ''
 \echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
@@ -40,7 +58,7 @@
 \i seed-permissions-roles.sql
 
 -- ============================================================================
--- Step 4: Seed sample data (optional)
+-- Step 6: Seed sample data (optional)
 -- ============================================================================
 \echo ''
 \echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
@@ -58,11 +76,30 @@
 \echo '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
 \echo ''
 \echo '📊 Database: recruitiq_dev'
-\echo '🔑 Default Users:'
+\echo '📂 Schemas: public, hris, payroll, scheduling'
+\echo '👥🔑 Default Users:'
 \echo '   • admin@recruitiq.com (Super Admin)'
 \echo '   • license@recruitiq.com (License Admin)'
 \echo '   • security@recruitiq.com (Security Admin)'
 \echo '   Password: Admin123!'
+\echo ''
+\echo '� Nexus HRIS: Employee lifecycle management'
+\echo '   • Employee records & contracts'
+\echo '   • Performance reviews & goals'
+\echo '   • Benefits administration'
+\echo '   • Time-off & attendance'
+\echo ''
+\echo '💰 Paylinq: Payroll processing'
+\echo '   • Employee payroll records'
+\echo '   • Compensation & deductions'
+\echo '   • Time tracking & paychecks'
+\echo '   • Tax calculation & payments'
+\echo ''
+\echo '📅 ScheduleHub: Workforce scheduling'
+\echo '   • Shift scheduling & management'
+\echo '   • Worker availability tracking'
+\echo '   • Shift swapping marketplace'
+\echo '   • Demand forecasting & optimization'
 \echo ''
 \echo '⚠️  IMPORTANT:'
 \echo '   1. Change default passwords immediately'

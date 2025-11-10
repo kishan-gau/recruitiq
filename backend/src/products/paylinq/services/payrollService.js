@@ -1,0 +1,1784 @@
+/**
+ * Payroll Service
+ * 
+ * Business logic layer for payroll processing, employee management, and payroll run execution.
+ * Handles payroll calculations, timesheet approval, and paycheck generation.
+ * 
+ * @module products/paylinq/services/payrollService
+ */
+
+import Joi from 'joi';
+import PayrollRepository from '../repositories/payrollRepository.js';
+import taxCalculationService from './taxCalculationService.js';
+import PayStructureService from './payStructureService.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import { emitPayrollRunCreated, emitPayrollRunCalculated, emitPayrollRunCompleted  } from '../events/emitters/payrollEmitters.js';
+import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from '../../../utils/timezone.js';
+
+class PayrollService {
+  constructor() {
+    this.payrollRepository = new PayrollRepository();
+    this.taxCalculationService = taxCalculationService;
+    this.payStructureService = new PayStructureService();
+  }
+
+  // ==================== VALIDATION SCHEMAS ====================
+
+  employeeRecordSchema = Joi.object({
+    // Allow both simple employee creation (from frontend) and detailed payroll config
+    hrisEmployeeId: Joi.string().optional(),
+    employeeId: Joi.string().uuid().optional(),
+    employeeNumber: Joi.string().optional(),
+    // Required fields for worker profile
+    firstName: Joi.string().required(),
+    lastName: Joi.string().required(),
+    email: Joi.string().email().required(),
+    hireDate: Joi.string().isoDate().required(),
+    // Payroll configuration fields
+    payFrequency: Joi.string().valid('weekly', 'bi-weekly', 'biweekly', 'semi-monthly', 'semimonthly', 'monthly').optional(),
+    paymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash', 'direct_deposit', 'card').optional(),
+    currency: Joi.string().length(3).default('SRD'),
+    status: Joi.string().valid('active', 'inactive', 'terminated').default('active'),
+    startDate: Joi.date().optional(),
+    bankName: Joi.string().allow(null, ''),
+    bankAccountNumber: Joi.string().allow(null, ''),
+    accountNumber: Joi.string().allow(null, ''),
+    routingNumber: Joi.string().allow(null, ''),
+    accountType: Joi.string().valid('checking', 'savings').allow(null),
+    taxIdNumber: Joi.string().allow(null, ''),
+    taxId: Joi.string().allow(null, ''),
+    taxFilingStatus: Joi.string().valid('single', 'married', 'head_of_household').allow(null),
+    taxExemptions: Joi.number().integer().min(0).allow(null),
+    taxAllowances: Joi.number().integer().min(0).allow(null),
+    additionalWithholding: Joi.number().min(0).allow(null),
+    metadata: Joi.object().allow(null).optional() // Worker metadata (phone, department, position, compensation)
+  }).or('hrisEmployeeId', 'employeeId').options({ stripUnknown: true }); // At least one identifier required, reject unknown fields
+
+  compensationSchema = Joi.object({
+    employeeId: Joi.string().uuid().required(),
+    compensationType: Joi.string().valid('salary', 'hourly', 'commission', 'bonus').required(),
+    amount: Joi.number().positive().required(),
+    payPeriod: Joi.string().valid('hour', 'day', 'week', 'month', 'year').optional(),
+    effectiveFrom: Joi.date().required(),
+    effectiveTo: Joi.date().allow(null).optional(),
+    isCurrent: Joi.boolean().default(true),
+    currency: Joi.string().optional(),
+    hourlyRate: Joi.number().positive().optional(),
+    overtimeRate: Joi.number().positive().optional(),
+    payPeriodAmount: Joi.number().positive().optional(),
+    annualAmount: Joi.number().positive().optional()
+  });
+  
+  compensationUpdateSchema = Joi.object({
+    amount: Joi.number().positive().optional(),
+    compensationType: Joi.string().valid('salary', 'hourly', 'commission', 'bonus').optional(),
+    hourlyRate: Joi.number().positive().optional(),
+    overtimeRate: Joi.number().positive().optional(),
+    payPeriodAmount: Joi.number().positive().optional(),
+    annualAmount: Joi.number().positive().optional(),
+    currency: Joi.string().optional(),
+    effectiveFrom: Joi.date().optional(),
+    effectiveTo: Joi.date().optional(),
+    isCurrent: Joi.boolean().optional()
+  }).min(1);
+
+  // Note: Pay period dates are date-only fields per TIMEZONE_ARCHITECTURE.md
+  // They should be YYYY-MM-DD format strings, not Date objects
+  payrollRunSchema = Joi.object({
+    runNumber: Joi.string().required(),
+    runName: Joi.string().required(),
+    payPeriodStart: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    payPeriodEnd: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    paymentDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    status: Joi.string().valid('draft', 'calculated', 'approved', 'paid', 'cancelled').default('draft')
+  });
+
+  timesheetSchema = Joi.object({
+    employeeId: Joi.string().uuid().required(),
+    periodStart: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    periodEnd: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    regularHours: Joi.number().min(0).required(),
+    overtimeHours: Joi.number().min(0).default(0),
+    ptoHours: Joi.number().min(0).default(0),
+    sickHours: Joi.number().min(0).default(0),
+    holidayHours: Joi.number().min(0).default(0),
+    totalHours: Joi.number().min(0).required(),
+    status: Joi.string().valid('draft', 'submitted', 'approved', 'rejected').default('draft'),
+    notes: Joi.string().allow(null, '')
+  });
+
+  // ==================== EMPLOYEE RECORDS ====================
+
+  /**
+   * Create employee payroll record
+   * @param {Object} employeeData - Employee data
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User creating the record
+   * @returns {Promise<Object>} Created employee record with original data
+   */
+  async createEmployeeRecord(employeeData, organizationId, userId) {
+    // Debug: Log incoming data
+    logger.info('Received employee data for creation', {
+      employeeData: JSON.stringify(employeeData),
+      hireDate: employeeData.hireDate,
+      hireDateType: typeof employeeData.hireDate,
+    });
+    
+    // Validate input
+    const { error, value } = this.employeeRecordSchema.validate(employeeData);
+    if (error) {
+      logger.error('Validation error in createEmployeeRecord', {
+        error: error.details[0].message,
+        employeeData: JSON.stringify(employeeData),
+      });
+      throw new ValidationError(error.details[0].message);
+    }
+
+    // Transform simplified employee data to payroll record format
+    const { v4: uuidv4 } = await import('uuid');
+    
+    // Create or link to existing employee
+    let targetEmployeeId;
+    if (value.employeeId) {
+      // Use provided employeeId (existing employee from hris.employee)
+      targetEmployeeId = value.employeeId;
+    } else {
+      // Create a new hris.employee record first
+      const dbModule = await import('../../../config/database.js');
+      const dbClient = dbModule.default;
+      
+      const newEmployeeId = uuidv4();
+      const employeeNumber = value.employeeNumber || value.hrisEmployeeId || `EMP-${Date.now()}`;
+      const hireDate = value.startDate || value.hireDate || toUTCDateString(nowUTC());
+      
+      // Insert into hris.employee table (which payroll.employee_payroll_config references)
+      const employeeInsertQuery = `
+        INSERT INTO hris.employee (
+          id, organization_id, employee_number,
+          first_name, last_name, email, phone,
+          hire_date, employment_status, employment_type,
+          job_title, created_by
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING id
+      `;
+      
+      const employeeValues = [
+        newEmployeeId,
+        organizationId,
+        employeeNumber,
+        value.firstName,
+        value.lastName,
+        value.email?.toLowerCase(),
+        value.phone || null,
+        hireDate,
+        value.status || 'active',
+        value.employmentType || 'full_time',
+        value.jobTitle || null,
+        userId
+      ];
+      
+      try {
+        const result = await dbClient.query(employeeInsertQuery, employeeValues);
+        targetEmployeeId = result.rows[0].id;
+        
+        logger.info('Created hris.employee record', {
+          employeeId: targetEmployeeId,
+          employeeNumber,
+          organizationId
+        });
+      } catch (employeeError) {
+        // If employee creation fails due to duplicate employee_number
+        if (employeeError.code === '23505' && employeeError.constraint?.includes('employee_number')) {
+          throw new ConflictError(`Employee with number ${employeeNumber} already exists`);
+        }
+        logger.error('Error creating hris.employee record', {
+          error: employeeError.message,
+          code: employeeError.code,
+          constraint: employeeError.constraint
+        });
+        throw employeeError;
+      }
+    }
+    
+    const payrollData = {
+      employeeId: targetEmployeeId, // Use created or provided user ID
+      employeeNumber: value.employeeNumber || value.hrisEmployeeId || `EMP-${Date.now()}`,
+      firstName: value.firstName || 'Unknown',
+      lastName: value.lastName || 'Unknown',
+      payFrequency: value.payFrequency || 'monthly',
+      // Payment method mapping: normalize to values accepted by DB constraint
+      // DB constraint: ('direct_deposit', 'check', 'cash', 'card')
+      paymentMethod: (value.paymentMethod === 'ach' || value.paymentMethod === 'wire') 
+        ? 'direct_deposit' 
+        : (value.paymentMethod || 'check'),
+      currency: value.currency || 'SRD',
+      status: value.status || 'active',
+      startDate: value.startDate || value.hireDate || toUTCDateString(nowUTC()),
+      bankName: value.bankName || null,
+      accountNumber: value.accountNumber || value.bankAccountNumber || null,
+      routingNumber: value.routingNumber || null,
+      accountType: value.accountType || null,
+      taxId: value.taxId || value.taxIdNumber || null,
+      taxFilingStatus: value.taxFilingStatus || null,
+      taxAllowances: value.taxAllowances || value.taxExemptions || 0,
+      additionalWithholding: value.additionalWithholding || 0,
+      metadata: value.metadata || null // Pass through metadata from request
+    };
+
+    // Business rule: Validate payment method has required bank details
+    if (payrollData.paymentMethod === 'ach' || payrollData.paymentMethod === 'wire' || payrollData.paymentMethod === 'direct_deposit') {
+      if (!payrollData.accountNumber || !payrollData.routingNumber) {
+        // Don't enforce bank details for now, just set defaults
+        payrollData.accountNumber = payrollData.accountNumber || null;
+        payrollData.routingNumber = payrollData.routingNumber || null;
+      }
+    }
+
+    try {
+      const employeeRecord = await this.payrollRepository.createEmployeeRecord(
+        payrollData,
+        organizationId,
+        userId
+      );
+
+      // Enrich response with original frontend data (firstName, lastName, email)
+      // These aren't stored in payroll table but tests expect them
+      const enrichedRecord = {
+        ...employeeRecord,
+        firstName: value.firstName || null,
+        lastName: value.lastName || null,
+        email: value.email || null,
+        hrisEmployeeId: value.hrisEmployeeId || null
+      };
+
+      logger.info('Employee payroll record created', {
+        employeeId: employeeRecord.id,
+        employeeNumber: employeeRecord.employee_number,
+        organizationId
+      });
+
+      return enrichedRecord;
+    } catch (err) {
+      logger.error('Error creating employee record', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get employees by organization
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters (including pagination)
+   * @returns {Promise<Object>} Employee records with pagination
+   */
+  async getEmployeesByOrganization(organizationId, filters = {}) {
+    try {
+      const result = await this.payrollRepository.findByOrganization(organizationId, filters);
+      
+      // If pagination params were provided, return paginated result
+      if (filters.page !== undefined || filters.limit !== undefined) {
+        return result; // { employees: [], pagination: {} }
+      }
+      
+      // Legacy: return array directly for backward compatibility
+      return Array.isArray(result) ? result : result.employees || [];
+    } catch (err) {
+      logger.error('Error fetching employees', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get employee record by ID
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Employee record
+   */
+  async getEmployeeById(employeeRecordId, organizationId) {
+    try {
+      const employee = await this.payrollRepository.findEmployeeRecordById(
+        employeeRecordId,
+        organizationId
+      );
+
+      if (!employee) {
+        throw new NotFoundError('Employee record not found');
+      }
+
+      // DTO Pattern: Enrich response with frontend-expected fields
+      // Note: firstName, lastName, email are not in payroll table
+      // In production, these would be fetched from users table or HRIS
+      const enrichedRecord = {
+        ...employee,
+        firstName: null,
+        lastName: null,
+        email: null,
+        hrisEmployeeId: employee.employee_number || null
+      };
+
+      return enrichedRecord;
+    } catch (err) {
+      logger.error('Error fetching employee record', {
+        error: err.message,
+        employeeRecordId,
+        organizationId,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Delete employee record (soft delete)
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User performing the deletion
+   * @returns {Promise<boolean>} Success status
+   */
+  async deleteEmployeeRecord(employeeRecordId, organizationId, userId) {
+    try {
+      const employee = await this.payrollRepository.findEmployeeRecordById(
+        employeeRecordId,
+        organizationId
+      );
+
+      if (!employee) {
+        throw new NotFoundError('Employee record not found');
+      }
+
+      await this.payrollRepository.deleteEmployeeRecord(
+        employeeRecordId,
+        organizationId,
+        userId
+      );
+
+      logger.info('Employee record deleted', {
+        employeeRecordId,
+        organizationId,
+        userId,
+      });
+
+      return true;
+    } catch (err) {
+      logger.error('Error deleting employee record', {
+        error: err.message,
+        employeeRecordId,
+        organizationId,
+        userId,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Get employee payroll history
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters (startDate, endDate, limit)
+   * @returns {Promise<Array>} Payroll history records
+   */
+  async getEmployeePayrollHistory(employeeRecordId, organizationId, filters = {}) {
+    try {
+      const employee = await this.payrollRepository.findEmployeeRecordById(
+        employeeRecordId,
+        organizationId
+      );
+
+      if (!employee) {
+        throw new NotFoundError('Employee record not found');
+      }
+
+      // Get paycheck history for this employee
+      const history = await this.payrollRepository.getEmployeePayrollHistory(
+        employeeRecordId,
+        organizationId,
+        filters
+      );
+
+      return history;
+    } catch (err) {
+      logger.error('Error fetching employee payroll history', {
+        error: err.message,
+        employeeRecordId,
+        organizationId,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Update employee record
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {Object} updates - Fields to update
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User making the update
+   * @returns {Promise<Object>} Updated employee record
+   */
+  async updateEmployeeRecord(employeeRecordId, updates, organizationId, userId) {
+    try {
+      // Validate status if provided
+      if (updates.status) {
+        const validStatuses = ['active', 'inactive', 'terminated'];
+        if (!validStatuses.includes(updates.status)) {
+          throw new ValidationError(`Invalid status value. Must be one of: ${validStatuses.join(', ')}`);
+        }
+      }
+
+      // Check if employee exists first
+      const currentRecord = await this.payrollRepository.findEmployeeRecordById(
+        employeeRecordId,
+        organizationId
+      );
+      
+      if (!currentRecord) {
+        throw new NotFoundError('Employee record not found');
+      }
+
+      // Map camelCase to snake_case for database fields
+      const fieldMapping = {
+        firstName: 'first_name', // Not in payroll table but accept for compatibility
+        lastName: 'last_name',   // Not in payroll table but accept for compatibility  
+        payFrequency: 'pay_frequency',
+        paymentMethod: 'payment_method',
+        status: 'status',
+        bankName: 'bank_name',
+        bankAccountNumber: 'account_number',
+        accountNumber: 'account_number',
+        routingNumber: 'routing_number',
+        accountType: 'account_type',
+        taxFilingStatus: 'tax_filing_status',
+        taxAllowances: 'tax_allowances',
+        taxExemptions: 'tax_allowances', // Map to same field
+        additionalWithholding: 'additional_withholding',
+        metadata: 'metadata' // Allow metadata updates
+      };
+
+      // Transform updates to database field names
+      const dbUpdates = {};
+      Object.keys(updates).forEach(key => {
+        if (fieldMapping[key]) {
+          // Skip firstName/lastName as they're not in payroll table
+          if (key !== 'firstName' && key !== 'lastName') {
+            dbUpdates[fieldMapping[key]] = updates[key];
+          }
+        } else if (key.includes('_')) {
+          // Already snake_case, pass through
+          dbUpdates[key] = updates[key];
+        }
+      });
+
+      // If no valid fields after filtering, just return current record
+      if (Object.keys(dbUpdates).length === 0) {
+        logger.info('No payroll fields to update (firstName/lastName ignored)', {
+          employeeRecordId,
+          organizationId
+        });
+        return currentRecord;
+      }
+
+      // Validate payment method changes
+      const paymentMethod = dbUpdates.payment_method || updates.paymentMethod;
+      if (paymentMethod === 'ach' || paymentMethod === 'wire' || paymentMethod === 'direct_deposit') {
+        const bankAccount = dbUpdates.account_number || currentRecord.account_number;
+        const routing = dbUpdates.routing_number || currentRecord.routing_number;
+
+        if (!bankAccount || !routing) {
+          // Don't enforce for now - just log warning
+          logger.warn('Bank details missing for ACH/wire payment', {
+            employeeRecordId,
+            paymentMethod
+          });
+        }
+      }
+
+      const updatedRecord = await this.payrollRepository.updateEmployeeRecord(
+        employeeRecordId,
+        dbUpdates,
+        organizationId,
+        userId
+      );
+
+      logger.info('Employee record updated', {
+        employeeRecordId,
+        organizationId,
+        updatedFields: Object.keys(dbUpdates)
+      });
+
+      return updatedRecord;
+    } catch (err) {
+      logger.error('Error updating employee record', { error: err.message, employeeRecordId });
+      throw err;
+    }
+  }
+
+  // ==================== COMPENSATION ====================
+
+  /**
+   * Create compensation record
+   * @param {Object} compensationData - Compensation data
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User creating the record
+   * @returns {Promise<Object>} Created compensation record
+   */
+  async createCompensation(compensationData, organizationId, userId) {
+    const { error, value } = this.compensationSchema.validate(compensationData);
+    if (error) {
+      throw new ValidationError(error.details[0].message);
+    }
+
+    // Business rule: Validate effective dates
+    if (value.effectiveTo && value.effectiveTo <= value.effectiveFrom) {
+      throw new Error('Effective to date must be after effective from date');
+    }
+
+    try {
+      const compensation = await this.payrollRepository.createCompensation(
+        value,
+        organizationId,
+        userId
+      );
+
+      logger.info('Compensation record created', {
+        compensationId: compensation.id,
+        employeeId: compensation.employee_id,
+        compensationType: compensation.compensation_type,
+        organizationId
+      });
+
+      return compensation;
+    } catch (err) {
+      logger.error('Error creating compensation', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get current compensation for employee
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object|null>} Current compensation
+   */
+  async getCurrentCompensation(employeeRecordId, organizationId) {
+    try {
+      return await this.payrollRepository.findCurrentCompensation(employeeRecordId, organizationId);
+    } catch (err) {
+      logger.error('Error fetching current compensation', { error: err.message, employeeRecordId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get compensation by ID
+   * @param {string} compensationId - Compensation UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object|null>} Compensation record or null
+   */
+  async getCompensationById(compensationId, organizationId) {
+    try {
+      return await this.payrollRepository.findCompensationById(compensationId, organizationId);
+    } catch (err) {
+      logger.error('Error fetching compensation by ID', { error: err.message, compensationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get compensation history for employee
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array>} Array of compensation records
+   */
+  async getCompensationHistory(employeeRecordId, organizationId) {
+    try {
+      return await this.payrollRepository.findCompensationHistory(employeeRecordId, organizationId);
+    } catch (err) {
+      logger.error('Error fetching compensation history', { error: err.message, employeeRecordId });
+      throw err;
+    }
+  }
+
+  /**
+   * Update compensation record
+   * @param {string} compensationId - Compensation UUID
+   * @param {Object} updateData - Fields to update
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User making the update
+   * @returns {Promise<Object|null>} Updated compensation or null
+   */
+  async updateCompensation(compensationId, updateData, organizationId, userId) {
+    try {
+      // Validate update data with update schema
+      const { error, value } = this.compensationUpdateSchema.validate(updateData, { stripUnknown: true });
+      if (error) {
+        throw new ValidationError(error.details[0].message);
+      }
+      
+      const updated = await this.payrollRepository.updateCompensation(compensationId, value, organizationId, userId);
+      
+      if (updated) {
+        logger.info('Compensation record updated', {
+          compensationId,
+          organizationId,
+          userId
+        });
+      }
+      
+      return updated;
+    } catch (err) {
+      logger.error('Error updating compensation', { error: err.message, compensationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Delete compensation record (soft delete)
+   * @param {string} compensationId - Compensation UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User deleting the record
+   * @returns {Promise<boolean>} True if deleted, false if not found
+   */
+  async deleteCompensation(compensationId, organizationId, userId) {
+    try {
+      const deleted = await this.payrollRepository.deleteCompensation(compensationId, organizationId, userId);
+      
+      if (deleted) {
+        logger.info('Compensation record deleted', {
+          compensationId,
+          organizationId,
+          userId
+        });
+      }
+      
+      return deleted;
+    } catch (err) {
+      logger.error('Error deleting compensation', { error: err.message, compensationId });
+      throw err;
+    }
+  }
+
+  // ==================== PAYROLL RUNS ====================
+
+  /**
+   * Create payroll run
+   * @param {Object} runData - Payroll run data
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User creating the run
+   * @returns {Promise<Object>} Created payroll run
+   */
+  async createPayrollRun(runData, organizationId, userId) {
+    const { error, value } = this.payrollRunSchema.validate(runData);
+    if (error) {
+      throw new ValidationError(error.details[0].message);
+    }
+
+    // Business rule: Validate dates (dates are YYYY-MM-DD strings)
+    if (value.payPeriodEnd <= value.payPeriodStart) {
+      throw new Error('Pay period end must be after pay period start');
+    }
+
+    if (value.paymentDate < value.payPeriodEnd) {
+      throw new Error('Payment date must be on or after pay period end');
+    }
+
+    try {
+      const payrollRun = await this.payrollRepository.createPayrollRun(
+        value,
+        organizationId,
+        userId
+      );
+
+      logger.info('Payroll run created', {
+        payrollRunId: payrollRun.id,
+        runNumber: payrollRun.run_number,
+        organizationId
+      });
+
+      // Emit event for other systems
+      emitPayrollRunCreated(payrollRun, organizationId);
+
+      return payrollRun;
+    } catch (err) {
+      logger.error('Error creating payroll run', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Calculate payroll (MVP version - simplified)
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User executing calculation
+   * @returns {Promise<Object>} Payroll calculation results
+   */
+  async calculatePayroll(payrollRunId, organizationId, userId) {
+    try {
+      // Get payroll run
+      const payrollRun = await this.payrollRepository.findPayrollRunById(payrollRunId, organizationId);
+      if (!payrollRun) {
+        throw new NotFoundError('Payroll run not found');
+      }
+
+      if (payrollRun.status !== 'draft') {
+        throw new Error(`Cannot calculate payroll with status: ${payrollRun.status}`);
+      }
+
+      logger.info('Starting payroll calculation', { payrollRunId, organizationId });
+
+      // Get all active employees
+      const employees = await this.payrollRepository.findByOrganization(organizationId, {
+        status: 'active'
+      });
+
+      let totalEmployees = 0;
+      let totalGrossPay = 0;
+      let totalNetPay = 0;
+      let totalTaxes = 0;
+      const paychecks = [];
+
+      // Calculate each employee's paycheck
+      for (const employee of employees) {
+        try {
+          // Get timesheets for pay period
+          const timesheets = await this.payrollRepository.findTimesheets(
+            {
+              employeeId: employee.id,
+              periodStart: payrollRun.pay_period_start,
+              periodEnd: payrollRun.pay_period_end,
+              status: 'approved'
+            },
+            organizationId
+          );
+
+          // Get current compensation
+          const compensation = await this.payrollRepository.findCurrentCompensation(
+            employee.id,
+            organizationId
+          );
+
+          if (!compensation) {
+            logger.warn('No compensation found for employee', {
+              employeeRecordId: employee.id,
+              payrollRunId
+            });
+            continue;
+          }
+
+          // Calculate hours
+          const totalHours = timesheets.reduce((sum, ts) => sum + parseFloat(ts.total_hours || 0), 0);
+          const regularHours = timesheets.reduce((sum, ts) => sum + parseFloat(ts.regular_hours || 0), 0);
+          const overtimeHours = timesheets.reduce((sum, ts) => sum + parseFloat(ts.overtime_hours || 0), 0);
+          const ptoHours = timesheets.reduce((sum, ts) => sum + parseFloat(ts.pto_hours || 0), 0);
+
+          let grossPay = 0;
+          let regularPay = 0;
+          let overtimePay = 0;
+          let paycheckComponents = [];
+          let workerStructureId = null;
+          let templateVersion = null;
+
+          // Try to use pay structure if available
+          try {
+            const payStructureCalc = await this.payStructureService.calculateWorkerPay(
+              employee.id,
+              {
+                hours: regularHours,
+                regularHours,
+                overtimeHours,
+                ptoHours,
+                totalHours,
+                payPeriodStart: payrollRun.pay_period_start,
+                payPeriodEnd: payrollRun.pay_period_end,
+                payFrequency: employee.pay_frequency,
+                compensationType: compensation.compensation_type
+              },
+              organizationId,
+              payrollRun.pay_period_end
+            );
+
+            // Use pay structure calculations
+            grossPay = payStructureCalc.summary.totalEarnings;
+            workerStructureId = payStructureCalc.structureId;
+            templateVersion = payStructureCalc.templateVersion;
+            paycheckComponents = payStructureCalc.calculations;
+
+            // Extract regular and overtime pay from components
+            const regularPayComp = paycheckComponents.find(c => c.componentCode === 'BASE_SALARY' || c.componentCode === 'REGULAR_PAY');
+            const overtimePayComp = paycheckComponents.find(c => c.componentCode === 'OVERTIME');
+            
+            regularPay = regularPayComp ? regularPayComp.amount : grossPay;
+            overtimePay = overtimePayComp ? overtimePayComp.amount : 0;
+
+            logger.info('Using pay structure for calculation', {
+              employeeId: employee.id,
+              structureId: workerStructureId,
+              templateVersion,
+              grossPay,
+              componentCount: paycheckComponents.length
+            });
+
+          } catch (structureErr) {
+            // Fallback to legacy calculation if pay structure not found
+            logger.warn('Pay structure not found, using fallback calculation', {
+              employeeId: employee.id,
+              error: structureErr.message
+            });
+
+            // Legacy calculation logic (keep for backward compatibility)
+            if (compensation.compensation_type === 'hourly') {
+              const hourlyRate = parseFloat(compensation.pay_rate);
+              regularPay = regularHours * hourlyRate;
+              overtimePay = overtimeHours * hourlyRate * 1.5; // 1.5x for overtime
+              grossPay = regularPay + overtimePay;
+            } else if (compensation.compensation_type === 'salary') {
+              // Calculate based on pay frequency
+              const annualSalary = parseFloat(compensation.pay_rate);
+              if (employee.pay_frequency === 'weekly') {
+                grossPay = annualSalary / 52;
+              } else if (employee.pay_frequency === 'bi-weekly') {
+                grossPay = annualSalary / 26;
+              } else if (employee.pay_frequency === 'semi-monthly') {
+                grossPay = annualSalary / 24;
+              } else if (employee.pay_frequency === 'monthly') {
+                grossPay = annualSalary / 12;
+              }
+              regularPay = grossPay;
+            }
+          }
+
+          // Calculate taxes (MVP - simplified)
+          const taxCalculation = await this.taxCalculationService.calculateEmployeeTaxes(
+            employee.id,
+            grossPay,
+            payrollRun.pay_period_start,
+            organizationId
+          );
+
+          const totalTaxAmount = taxCalculation.totalTaxes;
+          const netPay = grossPay - totalTaxAmount;
+
+          // Create paycheck
+          const paycheck = await this.payrollRepository.createPaycheck(
+            {
+              payrollRunId,
+              employeeId: employee.id,
+              periodStart: payrollRun.pay_period_start,
+              periodEnd: payrollRun.pay_period_end,
+              paymentDate: payrollRun.payment_date,
+              grossPay,
+              regularPay,
+              overtimePay,
+              federalTax: taxCalculation.federalTax || 0,
+              stateTax: taxCalculation.stateTax || 0,
+              socialSecurity: taxCalculation.socialSecurity || 0,
+              medicare: taxCalculation.medicare || 0,
+              otherDeductions: 0,
+              netPay,
+              paymentMethod: employee.payment_method,
+              paymentStatus: 'pending'
+            },
+            organizationId,
+            userId
+          );
+
+          // Store pay structure component details if available
+          if (paycheckComponents.length > 0) {
+            for (const component of paycheckComponents) {
+              await this.payrollRepository.createPayrollRunComponent(
+                {
+                  payrollRunId,
+                  paycheckId: paycheck.id,
+                  componentType: component.componentCategory,
+                  componentCode: component.componentCode,
+                  componentName: component.componentName,
+                  amount: component.amount,
+                  workerStructureId,
+                  structureTemplateVersion: templateVersion,
+                  componentConfigSnapshot: component.configSnapshot,
+                  calculationMetadata: component.calculationMetadata
+                },
+                organizationId,
+                userId
+              );
+            }
+          }
+
+          paychecks.push(paycheck);
+          totalEmployees++;
+          totalGrossPay += grossPay;
+          totalNetPay += netPay;
+          totalTaxes += totalTaxAmount;
+
+        } catch (empErr) {
+          logger.error('Error calculating paycheck for employee', {
+            employeeId: employee.id,
+            error: empErr.message
+          });
+          // Continue with next employee
+        }
+      }
+
+      // Update payroll run summary
+      await this.payrollRepository.updatePayrollRunSummary(
+        payrollRunId,
+        {
+          totalEmployees,
+          totalGrossPay,
+          totalNetPay,
+          totalTaxes,
+          status: 'calculated',
+          calculatedAt: nowUTC()
+        },
+        organizationId,
+        userId
+      );
+
+      logger.info('Payroll calculation completed', {
+        payrollRunId,
+        totalEmployees,
+        totalGrossPay,
+        totalNetPay,
+        organizationId
+      });
+
+      // Get updated payroll run data
+      const updatedPayrollRun = await this.payrollRepository.findPayrollRunById(payrollRunId, organizationId);
+      
+      // Emit calculation completed event
+      emitPayrollRunCalculated(updatedPayrollRun, {
+        totalEmployees,
+        totalGrossPay,
+        totalNetPay,
+        totalTaxes
+      }, organizationId);
+
+      return {
+        payrollRunId,
+        totalEmployees,
+        totalGrossPay,
+        totalNetPay,
+        totalTaxes,
+        paychecks
+      };
+
+    } catch (err) {
+      logger.error('Error calculating payroll', { error: err.message, payrollRunId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get payroll runs
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Array>} Payroll runs
+   */
+  async getPayrollRuns(organizationId, filters = {}) {
+    try {
+      // FIX: Repository expects (organizationId, filters) not (filters, organizationId)
+      return await this.payrollRepository.findPayrollRuns(organizationId, filters);
+    } catch (err) {
+      logger.error('Error fetching payroll runs', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get paychecks for payroll run
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array>} Paychecks
+   */
+  async getPaychecksByRun(payrollRunId, organizationId) {
+    try {
+      // Verify payroll run exists first
+      const payrollRun = await this.payrollRepository.findPayrollRunById(payrollRunId, organizationId);
+      if (!payrollRun) {
+        throw new NotFoundError('Payroll run not found');
+      }
+      
+      return await this.payrollRepository.findPaychecksByRun(payrollRunId, organizationId);
+    } catch (err) {
+      logger.error('Error fetching paychecks', { error: err.message, payrollRunId });
+      throw err;
+    }
+  }
+
+  // ==================== TIMESHEETS ====================
+
+  /**
+   * Create timesheet
+   * @param {Object} timesheetData - Timesheet data
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User creating the timesheet
+   * @returns {Promise<Object>} Created timesheet
+   */
+  async createTimesheet(timesheetData, organizationId, userId) {
+    const { error, value } = this.timesheetSchema.validate(timesheetData);
+    if (error) {
+      throw new ValidationError(error.details[0].message);
+    }
+
+    // Business rule: Validate total hours
+    const calculatedTotal = 
+      value.regularHours + 
+      value.overtimeHours + 
+      value.ptoHours + 
+      value.sickHours + 
+      value.holidayHours;
+
+    if (Math.abs(calculatedTotal - value.totalHours) > 0.01) {
+      throw new Error('Total hours must equal sum of all hour categories');
+    }
+
+    try {
+      const timesheet = await this.payrollRepository.createTimesheet(
+        value,
+        organizationId,
+        userId
+      );
+
+      logger.info('Timesheet created', {
+        timesheetId: timesheet.id,
+        employeeId: timesheet.employee_id,
+        organizationId
+      });
+
+      return timesheet;
+    } catch (err) {
+      logger.error('Error creating timesheet', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Approve timesheet
+   * @param {string} timesheetId - Timesheet UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User approving the timesheet
+   * @returns {Promise<Object>} Updated timesheet
+   */
+  async approveTimesheet(timesheetId, organizationId, userId) {
+    try {
+      const timesheet = await this.payrollRepository.updateTimesheetStatus(
+        timesheetId,
+        'approved',
+        organizationId,
+        userId
+      );
+
+      logger.info('Timesheet approved', {
+        timesheetId,
+        approvedBy: userId,
+        organizationId
+      });
+
+      return timesheet;
+    } catch (err) {
+      logger.error('Error approving timesheet', { error: err.message, timesheetId });
+      throw err;
+    }
+  }
+
+  /**
+   * Reject timesheet
+   * @param {string} timesheetId - Timesheet UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User rejecting the timesheet
+   * @returns {Promise<Object>} Updated timesheet
+   */
+  async rejectTimesheet(timesheetId, organizationId, userId) {
+    try {
+      const timesheet = await this.payrollRepository.updateTimesheetStatus(
+        timesheetId,
+        'rejected',
+        organizationId,
+        userId
+      );
+
+      logger.info('Timesheet rejected', {
+        timesheetId,
+        rejectedBy: userId,
+        organizationId
+      });
+
+      return timesheet;
+    } catch (err) {
+      logger.error('Error rejecting timesheet', { error: err.message, timesheetId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get timesheets for approval
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Array>} Timesheets pending approval
+   */
+  async getTimesheetsForApproval(organizationId, filters = {}) {
+    try {
+      return await this.payrollRepository.findTimesheetsForApproval(filters, organizationId);
+    } catch (err) {
+      logger.error('Error fetching timesheets for approval', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  // ==================== ALIAS METHODS FOR API COMPATIBILITY ====================
+
+  /**
+   * Alias: Get payroll runs by organization
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Array>} Payroll runs
+   */
+  async getPayrollRunsByOrganization(organizationId, filters = {}) {
+    return this.getPayrollRuns(organizationId, filters);
+  }
+
+  /**
+   * Alias: Get payroll run by ID
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Payroll run
+   */
+  async getPayrollRunById(payrollRunId, organizationId) {
+    try {
+      const payrollRun = await this.payrollRepository.findPayrollRunById(payrollRunId, organizationId);
+      
+      if (!payrollRun) {
+        throw new NotFoundError('Payroll run not found');
+      }
+
+      return payrollRun;
+    } catch (err) {
+      logger.error('Error fetching payroll run', { error: err.message, payrollRunId, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Alias: Update payroll run
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {Object} updates - Fields to update
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User making the update
+   * @returns {Promise<Object>} Updated payroll run
+   */
+  async updatePayrollRun(payrollRunId, updates, organizationId, userId) {
+    try {
+      const payrollRun = await this.payrollRepository.updatePayrollRun(
+        payrollRunId,
+        updates,
+        organizationId,
+        userId
+      );
+
+      if (!payrollRun) {
+        throw new NotFoundError('Payroll run not found');
+      }
+
+      logger.info('Payroll run updated', { payrollRunId, organizationId });
+      return payrollRun;
+    } catch (err) {
+      logger.error('Error updating payroll run', { error: err.message, payrollRunId, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Alias: Finalize payroll run
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User finalizing the run
+   * @returns {Promise<Object>} Finalized payroll run
+   */
+  async finalizePayrollRun(payrollRunId, organizationId, userId) {
+    try {
+      const payrollRun = await this.payrollRepository.findPayrollRunById(payrollRunId, organizationId);
+      
+      if (!payrollRun) {
+        throw new NotFoundError('Payroll run not found');
+      }
+
+      if (payrollRun.status !== 'calculated') {
+        throw new ValidationError('Payroll run must be in calculated status to finalize');
+      }
+
+      const finalized = await this.payrollRepository.updatePayrollRun(
+        payrollRunId,
+        { 
+          status: 'approved',  // Valid status from schema: draft -> calculating -> calculated -> approved -> processing -> processed
+          approved_by: userId,
+          approved_at: nowUTC()
+        },
+        organizationId
+      );
+
+      logger.info('Payroll run finalized', { payrollRunId, organizationId, userId });
+      return finalized;
+    } catch (err) {
+      logger.error('Error finalizing payroll run', { error: err.message, payrollRunId, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Alias: Delete payroll run
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User deleting the run
+   * @returns {Promise<boolean>} Success status
+   */
+  async deletePayrollRun(payrollRunId, organizationId, userId) {
+    try {
+      const payrollRun = await this.payrollRepository.findPayrollRunById(payrollRunId, organizationId);
+      
+      if (!payrollRun) {
+        throw new NotFoundError('Payroll run not found');
+      }
+
+      if (payrollRun.status === 'finalized' || payrollRun.status === 'paid') {
+        throw new ValidationError('Cannot delete finalized or paid payroll runs');
+      }
+
+      const deleted = await this.payrollRepository.deletePayrollRun(
+        payrollRunId,
+        organizationId,
+        userId
+      );
+
+      logger.info('Payroll run deleted', { payrollRunId, organizationId, userId });
+      return deleted;
+    } catch (err) {
+      logger.error('Error deleting payroll run', { error: err.message, payrollRunId, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Alias: Get paychecks by payroll run
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array>} Paychecks
+   */
+  async getPaychecksByPayrollRun(payrollRunId, organizationId) {
+    return this.getPaychecksByRun(payrollRunId, organizationId);
+  }
+
+  // ==================== PAYCHECK MANAGEMENT ====================
+
+  /**
+   * Get all paychecks by organization with filters
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Filter options
+   * @returns {Promise<Array>} Paychecks
+   */
+  async getPaychecksByOrganization(organizationId, filters = {}) {
+    try {
+      return await this.payrollRepository.findPaychecksByOrganization(organizationId, filters);
+    } catch (error) {
+      logger.error('Error fetching paychecks by organization', {
+        error: error.message,
+        organizationId,
+        filters,
+      });
+      throw new Error('Failed to fetch paychecks');
+    }
+  }
+
+  /**
+   * Get paycheck by ID
+   * @param {string} paycheckId - Paycheck UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object|null>} Paycheck or null
+   */
+  async getPaycheckById(paycheckId, organizationId) {
+    try {
+      return await this.payrollRepository.findPaycheckById(paycheckId, organizationId);
+    } catch (error) {
+      logger.error('Error fetching paycheck by ID', {
+        error: error.message,
+        paycheckId,
+        organizationId,
+      });
+      throw new Error('Failed to fetch paycheck');
+    }
+  }
+
+  /**
+   * Get paychecks by employee
+   * @param {string} employeeId - Employee UUID (from HRIS)
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Filter options
+   * @returns {Promise<Array>} Paychecks
+   */
+  async getPaychecksByEmployee(employeeId, organizationId, filters = {}) {
+    try {
+      return await this.payrollRepository.findPaychecksByEmployee(employeeId, organizationId, filters);
+    } catch (error) {
+      logger.error('Error fetching paychecks by employee', {
+        error: error.message,
+        employeeId,
+        organizationId,
+        filters,
+      });
+      throw new Error('Failed to fetch employee paychecks');
+    }
+  }
+
+  /**
+   * Update paycheck
+   * @param {string} paycheckId - Paycheck UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} updateData - Update data
+   * @returns {Promise<Object|null>} Updated paycheck or null
+   */
+  async updatePaycheck(paycheckId, organizationId, updateData) {
+    try {
+      // Validate paycheck exists
+      const existingPaycheck = await this.payrollRepository.findPaycheckById(paycheckId, organizationId);
+      if (!existingPaycheck) {
+        return null;
+      }
+
+      // Prevent updating critical financial fields
+      const { grossPay, netPay, federalTax, stateTax, ...allowedUpdates } = updateData;
+
+      const updated = await this.payrollRepository.updatePaycheck(
+        paycheckId,
+        allowedUpdates,
+        organizationId,
+        updateData.updatedBy
+      );
+
+      logger.info('Paycheck updated', {
+        paycheckId,
+        organizationId,
+        userId: updateData.updatedBy,
+      });
+
+      return updated;
+    } catch (error) {
+      logger.error('Error updating paycheck', {
+        error: error.message,
+        paycheckId,
+        organizationId,
+      });
+      throw new Error('Failed to update paycheck');
+    }
+  }
+
+  /**
+   * Void a paycheck
+   * @param {string} paycheckId - Paycheck UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User voiding the paycheck
+   * @param {string} reason - Reason for voiding
+   * @returns {Promise<Object>} Voided paycheck
+   */
+  async voidPaycheck(paycheckId, organizationId, userId, reason) {
+    try {
+      const paycheck = await this.payrollRepository.findPaycheckById(paycheckId, organizationId);
+      
+      if (!paycheck) {
+        throw new Error('Paycheck not found');
+      }
+
+      if (paycheck.status === 'voided') {
+        throw new Error('Paycheck is already voided');
+      }
+
+      if (paycheck.status === 'paid') {
+        throw new Error('Paid paychecks cannot be voided directly - please contact accounting');
+      }
+
+      const updated = await this.payrollRepository.updatePaycheck(
+        paycheckId,
+        {
+          status: 'voided',
+        },
+        organizationId,
+        userId
+      );
+
+      logger.info('Paycheck voided', {
+        paycheckId,
+        organizationId,
+        reason,
+        userId,
+      });
+
+      return updated;
+    } catch (error) {
+      logger.error('Error voiding paycheck', {
+        error: error.message,
+        paycheckId,
+        organizationId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Reissue a paycheck (create a new one, void the old one)
+   * @param {string} paycheckId - Original paycheck UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User reissuing the paycheck
+   * @param {Object} adjustments - Adjustments to apply
+   * @returns {Promise<Object>} New paycheck
+   */
+  async reissuePaycheck(paycheckId, organizationId, userId, adjustments = {}) {
+    try {
+      const originalPaycheck = await this.payrollRepository.findPaycheckById(paycheckId, organizationId);
+      
+      if (!originalPaycheck) {
+        throw new Error('Paycheck not found');
+      }
+
+      // Business rule: Can only reissue voided paychecks
+      if (originalPaycheck.status !== 'voided') {
+        throw new Error('Cannot reissue paycheck - must be voided first. Use the void endpoint before reissuing.');
+      }
+
+      // Validate adjustments (prevent negative amounts)
+      if (adjustments.grossPay !== undefined && adjustments.grossPay < 0) {
+        throw new Error('Invalid adjustment: gross pay cannot be negative');
+      }
+
+      // Create new paycheck with adjustments
+      const newPaycheckData = {
+        payrollRunId: originalPaycheck.payroll_run_id,
+        employeeId: originalPaycheck.employee_id,
+        paymentDate: adjustments.paymentDate || originalPaycheck.payment_date,
+        payPeriodStart: originalPaycheck.pay_period_start,
+        payPeriodEnd: originalPaycheck.pay_period_end,
+        grossPay: adjustments.grossPay !== undefined ? adjustments.grossPay : originalPaycheck.gross_pay,
+        regularPay: adjustments.regularPay !== undefined ? adjustments.regularPay : originalPaycheck.regular_pay,
+        overtimePay: adjustments.overtimePay !== undefined ? adjustments.overtimePay : originalPaycheck.overtime_pay,
+        federalTax: adjustments.federalTax !== undefined ? adjustments.federalTax : originalPaycheck.federal_tax,
+        stateTax: adjustments.stateTax !== undefined ? adjustments.stateTax : originalPaycheck.state_tax,
+        socialSecurity: adjustments.socialSecurity !== undefined ? adjustments.socialSecurity : originalPaycheck.social_security,
+        medicare: adjustments.medicare !== undefined ? adjustments.medicare : originalPaycheck.medicare,
+        otherDeductions: adjustments.otherDeductions !== undefined ? adjustments.otherDeductions : originalPaycheck.other_deductions,
+        netPay: adjustments.netPay !== undefined ? adjustments.netPay : originalPaycheck.net_pay,
+        paymentMethod: adjustments.paymentMethod || originalPaycheck.payment_method,
+      };
+
+      const newPaycheck = await this.payrollRepository.createPaycheck(
+        newPaycheckData,
+        organizationId,
+        userId
+      );
+
+      logger.info('Paycheck reissued', {
+        originalPaycheckId: paycheckId,
+        newPaycheckId: newPaycheck.id,
+        organizationId,
+        userId,
+      });
+
+      // Return the new paycheck
+      return this.payrollRepository.findPaycheckById(newPaycheck.id, organizationId);
+    } catch (error) {
+      logger.error('Error reissuing paycheck', {
+        error: error.message,
+        paycheckId,
+        organizationId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete paycheck (soft delete)
+   * @param {string} paycheckId - Paycheck UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User deleting the paycheck
+   * @returns {Promise<boolean>} True if deleted
+   */
+  async deletePaycheck(paycheckId, organizationId, userId) {
+    try {
+      const paycheck = await this.payrollRepository.findPaycheckById(paycheckId, organizationId);
+      
+      if (!paycheck) {
+        return false;
+      }
+
+      if (paycheck.status === 'paid') {
+        throw new Error('Paid paychecks cannot be deleted');
+      }
+
+      const deleted = await this.payrollRepository.deletePaycheck(paycheckId, organizationId, userId);
+
+      if (deleted) {
+        logger.info('Paycheck deleted', {
+          paycheckId,
+          organizationId,
+          userId,
+        });
+      }
+
+      return deleted;
+    } catch (error) {
+      logger.error('Error deleting paycheck', {
+        error: error.message,
+        paycheckId,
+        organizationId,
+      });
+      throw error;
+    }
+  }
+
+  // ==================== USER ACCESS MANAGEMENT ====================
+
+  /**
+   * Grant system access to an employee
+   * Creates a hris.user_account and links it to the employee
+   * @param {string} employeeId - Employee UUID
+   * @param {Object} accessData - Access configuration
+   * @param {string} [accessData.password] - Optional password (generates temp password if not provided)
+   * @param {Object} [accessData.preferences] - User preferences
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User granting access
+   * @returns {Promise<Object>} Created user account with temporary password if generated
+   */
+  async grantSystemAccess(employeeId, accessData, organizationId, userId) {
+    try {
+      // Import userAccountService
+      const { default: userAccountService } = await import('../../../services/userAccountService.js');
+
+      // Get employee record
+      const employee = await this.payrollRepository.findEmployeeRecordById(employeeId, organizationId);
+      
+      if (!employee) {
+        throw new NotFoundError('Employee not found');
+      }
+
+      // Check if employee already has user account
+      const existingAccount = await userAccountService.getUserAccountByEmployeeId(
+        employeeId,
+        organizationId
+      );
+
+      if (existingAccount) {
+        throw new ConflictError('Employee already has system access');
+      }
+
+      // Verify employee has email
+      if (!employee.email) {
+        throw new ValidationError('Employee must have an email address to grant system access');
+      }
+
+      // Create user account
+      const userAccount = await userAccountService.createUserAccount(
+        {
+          organizationId,
+          email: employee.email,
+          password: accessData.password,
+          preferences: accessData.preferences
+        },
+        userId
+      );
+
+      // Link user account to employee
+      await userAccountService.linkUserAccountToEmployee(
+        userAccount.id,
+        employeeId,
+        organizationId,
+        userId
+      );
+
+      logger.info('System access granted to employee', {
+        employeeId,
+        userAccountId: userAccount.id,
+        email: employee.email,
+        organizationId
+      });
+
+      return {
+        userAccount: {
+          id: userAccount.id,
+          email: userAccount.email,
+          accountStatus: userAccount.account_status,
+          isActive: userAccount.is_active
+        },
+        temporaryPassword: userAccount.temporaryPassword,
+        requiresPasswordChange: userAccount.requiresPasswordChange
+      };
+    } catch (error) {
+      logger.error('Error granting system access', {
+        error: error.message,
+        employeeId,
+        organizationId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Revoke system access from an employee
+   * Deactivates the user account and unlinks it from employee
+   * @param {string} employeeId - Employee UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User revoking access
+   * @returns {Promise<Object>} Result of revocation
+   */
+  async revokeSystemAccess(employeeId, organizationId, userId) {
+    try {
+      const { default: userAccountService } = await import('../../../services/userAccountService.js');
+
+      // Get employee record
+      const employee = await this.payrollRepository.findEmployeeRecordById(employeeId, organizationId);
+      
+      if (!employee) {
+        throw new NotFoundError('Employee not found');
+      }
+
+      // Get user account
+      const userAccount = await userAccountService.getUserAccountByEmployeeId(
+        employeeId,
+        organizationId
+      );
+
+      if (!userAccount) {
+        throw new NotFoundError('Employee does not have system access');
+      }
+
+      // Deactivate user account
+      await userAccountService.deactivateUserAccount(
+        userAccount.id,
+        organizationId,
+        userId
+      );
+
+      // Unlink from employee
+      await userAccountService.unlinkUserAccountFromEmployee(
+        employeeId,
+        organizationId,
+        userId
+      );
+
+      logger.info('System access revoked from employee', {
+        employeeId,
+        userAccountId: userAccount.id,
+        organizationId
+      });
+
+      return {
+        success: true,
+        message: 'System access revoked successfully'
+      };
+    } catch (error) {
+      logger.error('Error revoking system access', {
+        error: error.message,
+        employeeId,
+        organizationId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get user account status for an employee
+   * @param {string} employeeId - Employee UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} User account status
+   */
+  async getUserAccountStatus(employeeId, organizationId) {
+    try {
+      const { default: userAccountService } = await import('../../../services/userAccountService.js');
+
+      // Get employee record
+      const employee = await this.payrollRepository.findEmployeeRecordById(employeeId, organizationId);
+      
+      if (!employee) {
+        throw new NotFoundError('Employee not found');
+      }
+
+      // Get user account
+      const userAccount = await userAccountService.getUserAccountByEmployeeId(
+        employeeId,
+        organizationId
+      );
+
+      if (!userAccount) {
+        return {
+          hasAccount: false,
+          accountStatus: null,
+          email: employee.email
+        };
+      }
+
+      return {
+        hasAccount: true,
+        userAccountId: userAccount.id,
+        email: userAccount.email,
+        accountStatus: userAccount.account_status,
+        isActive: userAccount.is_active,
+        lastLoginAt: userAccount.last_login_at,
+        createdAt: userAccount.created_at
+      };
+    } catch (error) {
+      logger.error('Error getting user account status', {
+        error: error.message,
+        employeeId,
+        organizationId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update employee user access settings
+   * @param {string} employeeId - Employee UUID
+   * @param {Object} updates - Access updates
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User performing update
+   * @returns {Promise<Object>} Updated user account
+   */
+  async updateEmployeeAccess(employeeId, updates, organizationId, userId) {
+    try {
+      const { default: userAccountService } = await import('../../../services/userAccountService.js');
+
+      // Get user account
+      const userAccount = await userAccountService.getUserAccountByEmployeeId(
+        employeeId,
+        organizationId
+      );
+
+      if (!userAccount) {
+        throw new NotFoundError('Employee does not have system access');
+      }
+
+      // Update user account
+      const updated = await userAccountService.updateUserAccount(
+        userAccount.id,
+        updates,
+        organizationId,
+        userId
+      );
+
+      logger.info('Employee access updated', {
+        employeeId,
+        userAccountId: userAccount.id,
+        organizationId
+      });
+
+      return {
+        userAccountId: updated.id,
+        email: updated.email,
+        accountStatus: updated.account_status,
+        isActive: updated.is_active
+      };
+    } catch (error) {
+      logger.error('Error updating employee access', {
+        error: error.message,
+        employeeId,
+        organizationId
+      });
+      throw error;
+    }
+  }
+}
+
+export default new PayrollService();

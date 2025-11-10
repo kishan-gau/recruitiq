@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@recruitiq/auth';
 import { motion } from 'framer-motion';
 import MFAVerification from '../components/MFAVerification';
 import apiClient from '../services/api';
@@ -8,13 +8,11 @@ import apiClient from '../services/api';
 export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, setUser } = useAuth();
+  const { login, setUser, isLoading, error: authError } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [sessionMessage, setSessionMessage] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -61,7 +59,6 @@ export default function Login() {
     if (touched.email) {
       setEmailError(validateEmail(value));
     }
-    setError('');
   };
 
   const handleEmailBlur = () => {
@@ -75,7 +72,6 @@ export default function Login() {
     if (touched.password) {
       setPasswordError(validatePassword(value));
     }
-    setError('');
   };
 
   const handlePasswordBlur = () => {
@@ -85,7 +81,6 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     
     // Mark all as touched
     setTouched({ email: true, password: true });
@@ -111,36 +106,24 @@ export default function Login() {
       return;
     }
 
-    setIsLoading(true);
+    console.log('Attempting login with:', email);
+    const result = await login(email, password);
+    console.log('Login result:', result);
     
-    try {
-      console.log('Attempting login with:', email);
-      const result = await login(email, password);
-      console.log('Login result:', result);
-      
-      // Check if MFA is required
-      if (result && result.mfaRequired) {
-        console.log('MFA required, showing verification step');
-        setMfaToken(result.mfaToken);
-        setShowMFA(true);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Normal login success (no MFA)
-      if (result) {
-        console.log('Login successful, navigating to /');
-        navigate('/');
-      } else {
-        console.log('Login failed');
-        setError('Invalid credentials. Please try again.');
-      }
-    } catch (err) {
-      console.error('Login error:', err);
-      setError(err.message || 'Invalid credentials. Please try again.');
-    } finally {
-      setIsLoading(false);
+    // Check if MFA is required
+    if (result && result.mfaRequired) {
+      console.log('MFA required, showing verification step');
+      setMfaToken(result.mfaToken);
+      setShowMFA(true);
+      return;
     }
+    
+    // Normal login success (no MFA)
+    if (result) {
+      console.log('Login successful, navigating to /');
+      navigate('/');
+    }
+    // Error is already set by AuthContext, no need to set it again
   };
 
   const handleMFASuccess = async (code, isBackupCode) => {
@@ -150,10 +133,9 @@ export default function Login() {
         ? await apiClient.useBackupCode(mfaToken, code)
         : await apiClient.verifyMFA(mfaToken, code);
       
-      // Store tokens and set user
-      localStorage.setItem('accessToken', response.data.accessToken);
-      localStorage.setItem('refreshToken', response.data.refreshToken);
-      setUser(response.data.user);
+      // SECURITY: Tokens are now in httpOnly cookies set by backend
+      // No need to store them in localStorage
+      setUser(response.user);
       
       // Navigate to app
       navigate('/');
@@ -171,13 +153,11 @@ export default function Login() {
 
   const handleGoogleSignIn = () => {
     // Simulate Google sign-in
-    setError('');
     login('demo@example.com', 'demo').then(() => navigate('/'));
   };
 
   const handleMicrosoftSignIn = () => {
     // Simulate Microsoft sign-in
-    setError('');
     login('demo@microsoft.com', 'demo').then(() => navigate('/'));
   };
 
@@ -199,7 +179,7 @@ export default function Login() {
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
-        className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-teal-500 to-teal-600 p-12 flex-col justify-between text-white"
+        className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-500 to-teal-500 p-12 flex-col justify-between text-white"
       >
         {/* Logo */}
         <div className="flex items-center gap-3">
@@ -253,7 +233,7 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-xl font-bold text-white">RI</span>
             </div>
             <div>
@@ -287,13 +267,13 @@ export default function Login() {
           )}
 
           {/* Error Message */}
-          {error && (
+          {authError && (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm"
             >
-              {error}
+              {authError}
             </motion.div>
           )}
 

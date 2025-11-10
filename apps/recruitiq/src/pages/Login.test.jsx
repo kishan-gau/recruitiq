@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BrowserRouter } from 'react-router-dom'
 import Login from './Login'
-import { AuthProvider } from '../context/AuthContext'
+import { AuthProvider } from '@recruitiq/auth'
 
 // Mock scrollIntoView
 Element.prototype.scrollIntoView = vi.fn()
@@ -28,8 +28,8 @@ vi.mock('react-router-dom', async () => {
 })
 
 // Mock the AuthContext
-vi.mock('../context/AuthContext', async () => {
-  const actual = await vi.importActual('../context/AuthContext')
+vi.mock('@recruitiq/auth', async () => {
+  const actual = await vi.importActual('@recruitiq/auth')
   return {
     ...actual,
     useAuth: () => ({

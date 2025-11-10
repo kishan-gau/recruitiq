@@ -5,6 +5,10 @@ export default {
   // Enable ES modules support
   transform: {},
 
+  // Global setup and teardown
+  globalSetup: './tests/setup.js',
+  globalTeardown: './tests/teardown.js',
+
   // Coverage configuration
   collectCoverageFrom: [
     'src/**/*.js',
@@ -27,6 +31,9 @@ export default {
   // Verbose output
   verbose: true,
 
+  // Timeout for integration tests
+  testTimeout: 10000,
+
   // Coverage thresholds (note: singular 'Threshold')
   coverageThreshold: {
     global: {
@@ -37,3 +44,4 @@ export default {
     },
   },
 };
+

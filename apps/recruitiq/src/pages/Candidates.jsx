@@ -318,15 +318,25 @@ export default function Candidates(){
           >
             <Link to={`/candidates/${c.id}`} className="flex items-center gap-4 flex-1 min-w-0 group-hover:opacity-90 transition-opacity">
               <div className="relative w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-500 dark:to-emerald-700 rounded-full flex items-center justify-center font-semibold text-white flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
-                {c.name.split(' ').map(n=>n[0]).slice(0,2).join('')}
+                {(c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'N/A').split(' ').map(n=>n[0]).slice(0,2).join('')}
                 <div className="absolute inset-0 rounded-full bg-white/0 group-hover:bg-white/10 transition-colors"></div>
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{c.name}</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown'}</div>
                 <div className="text-sm text-slate-500 dark:text-slate-400 truncate flex items-center gap-2">
-                  <span>{c.title}</span>
-                  <span className="text-slate-300 dark:text-slate-600">•</span>
-                  <span>{c.location}</span>
+                  <span>{c.currentJobTitle || 'No title'}</span>
+                  {c.currentCompany && (
+                    <>
+                      <span className="text-slate-300 dark:text-slate-600">@</span>
+                      <span className="truncate">{c.currentCompany}</span>
+                    </>
+                  )}
+                  {c.location && (
+                    <>
+                      <span className="text-slate-300 dark:text-slate-600">•</span>
+                      <span>{c.location}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </Link>
@@ -336,28 +346,42 @@ export default function Candidates(){
                 <ApplicationSourceBadge source={c.application_source} />
               )}
               
-              {/* Stage Badge */}
-              <div className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${getStageColor(stageData.find(s => s.name === c.stage)?.type)}`}>
-                {c.stage}
-              </div>
+              {/* Status Badge - Show recent application stage if available, otherwise active status */}
+              {c.recentApplication?.stage ? (
+                <div className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                  c.recentApplication.stage === 'hired' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' :
+                  c.recentApplication.stage === 'rejected' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                  c.recentApplication.stage === 'withdrawn' ? 'bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300' :
+                  c.recentApplication.stage === 'offer' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' :
+                  c.recentApplication.stage === 'interview' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                  c.recentApplication.stage === 'assessment' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' :
+                  c.recentApplication.stage === 'phone_screen' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' :
+                  c.recentApplication.stage === 'screening' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                  'bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300'
+                }`}>
+                  {c.recentApplication.stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </div>
+              ) : (
+                <div className="px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                  Active
+                </div>
+              )}
               
-              {/* Stage Navigation Buttons */}
+              {/* Quick Action Buttons */}
               <div className="flex items-center gap-1 ml-auto sm:ml-0">
-                <button 
-                  onClick={()=>moveStage(c.id, -1)}
-                  disabled={stages.indexOf(c.stage) === 0}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Move to previous stage"
+                <Link
+                  to={`/candidates/${c.id}`}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                  title="View details"
                 >
                   <svg className="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
-                </button>
+                </Link>
                 <button 
-                  onClick={()=>moveStage(c.id, 1)}
-                  disabled={stages.indexOf(c.stage) === stages.length - 1}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Move to next stage"
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                  title="More actions"
                 >
                   <svg className="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

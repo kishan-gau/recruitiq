@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Dialog, FormField, Input, Select } from '@/components/ui';
 import { useToast } from '@/contexts/ToastContext';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface ShiftModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface ShiftModalProps {
 
 export default function ShiftModal({ isOpen, onClose, employeeId, date, existingShift, onSuccess }: ShiftModalProps) {
   const { success, error } = useToast();
+  const { paylinq } = usePaylinqAPI();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
@@ -29,6 +31,16 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
+
+    // Validate required fields from parent component
+    if (!employeeId) {
+      error('Employee must be selected to create a shift');
+      return false;
+    }
+    if (!date) {
+      error('Date must be selected to create a shift');
+      return false;
+    }
 
     if (!formData.startTime) newErrors.startTime = 'Start time is required';
     if (!formData.endTime) newErrors.endTime = 'End time is required';
@@ -59,22 +71,57 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // if (existingShift) {
-      //   await api.schedules.update(existingShift.id, formData);
-      // } else {
-      //   await api.schedules.create({ employeeId, date, ...formData });
-      // }
+      const scheduleData = {
+        employeeId: employeeId,
+        scheduleDate: date,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        breakMinutes: 0,
+        notes: formData.notes,
+        status: 'scheduled',
+      };
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      if (existingShift) {
+        await paylinq.updateSchedule(existingShift.id, scheduleData);
+      } else {
+        await paylinq.createSchedule(scheduleData);
+      }
 
       const action = existingShift ? 'updated' : 'added';
       success(`Shift ${action} successfully`);
       onSuccess();
       onClose();
-    } catch (err) {
-      error(`Failed to ${existingShift ? 'update' : 'add'} shift. Please try again.`);
+    } catch (err: any) {
+      // Handle validation errors from API
+      if (err.response?.status === 400 && err.response?.data?.errors) {
+        const apiErrors = err.response.data.errors;
+        const fieldErrors: Record<string, string> = {};
+        
+        // Map field names to user-friendly labels
+        const fieldLabels: Record<string, string> = {
+          name: 'Shift Name',
+          startTime: 'Start Time',
+          endTime: 'End Time',
+          workDays: 'Work Days',
+          color: 'Color',
+          description: 'Description',
+        };
+        
+        apiErrors.forEach((apiError: any) => {
+          fieldErrors[apiError.field] = apiError.message;
+        });
+        
+        setErrors(fieldErrors);
+        
+        // Show user-friendly error message with labels
+        const errorMessages = apiErrors
+          .map((e: any) => `${fieldLabels[e.field] || e.field}: ${e.message}`)
+          .join(', ');
+        error(errorMessages || 'Please fix the validation errors');
+      } else {
+        console.error('Failed to save shift:', err);
+        error(err.response?.data?.message || err.message || `Failed to ${existingShift ? 'update' : 'add'} shift. Please try again.`);
+      }
     } finally {
       setIsLoading(false);
     }

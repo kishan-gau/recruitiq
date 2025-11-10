@@ -17,24 +17,30 @@ import { ValidationError } from './errorHandler.js';
 import logger from '../utils/logger.js';
 
 /**
- * Dangerous patterns that should never appear in user input
+ * Dangerous patterns based on OWASP recommendations
+ * 
+ * OWASP Principle: Defense in depth - these patterns catch obvious attacks
+ * but parameterized queries and output encoding are primary defenses.
+ * 
+ * Note: These patterns should not block legitimate structured data (JSON, etc.)
+ * Context-aware validation happens at the controller/service layer.
  */
 const DANGEROUS_PATTERNS = [
-  // SQL injection patterns
-  /(\%27)|(')|(--)|(\%23)|(#)/i, // SQL meta-characters
-  /((\%3D)|(=))[^\n]*((\%27)|(')|(--)|(\%3B)|(;))/i, // SQL tautologies
-  /\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))/i, // SQL 'or' keyword
+  // SQL injection - only catch obvious attacks with URL encoding
+  /(\%27)(\%6F|\%4F)(\%72|\%52)/i, // Encoded 'or'
+  /(\%27)(\%20)*(union|select|insert|update|delete|drop)/gi, // Encoded SQL keywords
   
-  // Command injection patterns
-  /[;&|`$(){}<>]/g, // Shell meta-characters
+  // Command injection - only in obviously dangerous contexts
+  /;\s*(rm|cat|ls|wget|curl|bash|sh)\s+-/gi, // Shell commands with flags
+  /\|\s*(nc|telnet|ncat)\s+/gi, // Network commands
+  /`[^`]*\$\([^)]*\)[^`]*`/g, // Command substitution in backticks
   
-  // Path traversal patterns
-  /\.\.[\/\\]/g, // Directory traversal
-  /(\/|\\)etc(\/|\\)passwd/gi, // Unix password file access
+  // Path traversal - but allow legitimate relative paths
+  /\.\.[\/\\]\.\.[\/\\]/g, // Multiple directory traversals
+  /(\/|\\)(etc|windows|system32|boot)[\/\\](passwd|shadow|sam)/gi, // System file access
   
-  // NoSQL injection patterns
-  /(\$gt|\$gte|\$lt|\$lte|\$ne|\$eq|\$regex)/i, // MongoDB operators
-  /\{.*\$.*\}/i, // JSON with $ operators
+  // NoSQL injection - only dangerous operators that execute code
+  /\{\s*['"]\$where['"]\s*:\s*["']?\s*(function|=>)/gi, // $where with functions
 ];
 
 /**
@@ -151,14 +157,34 @@ export function sanitizeQueryParams(params, options = {}) {
 }
 
 /**
+ * Fields that contain structured data (JSON, configuration, etc.)
+ * These fields are validated at the application layer, not by pattern matching
+ */
+const STRUCTURED_DATA_FIELDS = [
+  'config',
+  'configuration',
+  'settings',
+  'metadata',
+  'data',
+  'definition',
+  'steps',
+  'nodes',
+  'edges',
+  'schema',
+  'payload',
+  'content',
+];
+
+/**
  * Recursively sanitize object
  * 
  * @param {any} obj - Object to sanitize
  * @param {number} depth - Current recursion depth
  * @param {number} maxDepth - Maximum recursion depth
+ * @param {string} fieldName - Current field name for context-aware validation
  * @returns {any} Sanitized object
  */
-function sanitizeObject(obj, depth = 0, maxDepth = 5) {
+function sanitizeObject(obj, depth = 0, maxDepth = 5, fieldName = '') {
   if (depth > maxDepth) {
     throw new ValidationError('Object nesting too deep');
   }
@@ -168,21 +194,26 @@ function sanitizeObject(obj, depth = 0, maxDepth = 5) {
   }
 
   if (typeof obj === 'string') {
-    // Check for dangerous patterns
-    if (containsDangerousPattern(obj)) {
-      throw new ValidationError(
-        'Input contains disallowed characters or patterns'
-      );
+    // Skip pattern checking for structured data fields
+    const isStructuredData = STRUCTURED_DATA_FIELDS.includes(fieldName.toLowerCase());
+    
+    if (!isStructuredData) {
+      // Check for dangerous patterns
+      if (containsDangerousPattern(obj)) {
+        throw new ValidationError(
+          'Input contains disallowed characters or patterns'
+        );
+      }
+
+      // Check for XSS patterns
+      if (containsXSSPattern(obj)) {
+        throw new ValidationError(
+          'Input contains potentially malicious HTML/JavaScript'
+        );
+      }
     }
 
-    // Check for XSS patterns
-    if (containsXSSPattern(obj)) {
-      throw new ValidationError(
-        'Input contains potentially malicious HTML/JavaScript'
-      );
-    }
-
-    // Strip control characters
+    // Strip control characters (safe for all data types)
     return validator.stripLow(obj);
   }
 
@@ -191,7 +222,7 @@ function sanitizeObject(obj, depth = 0, maxDepth = 5) {
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeObject(item, depth + 1, maxDepth));
+    return obj.map(item => sanitizeObject(item, depth + 1, maxDepth, fieldName));
   }
 
   if (typeof obj === 'object') {
@@ -212,7 +243,8 @@ function sanitizeObject(obj, depth = 0, maxDepth = 5) {
         );
       }
 
-      sanitized[key] = sanitizeObject(value, depth + 1, maxDepth);
+      // Pass the key name for context-aware validation
+      sanitized[key] = sanitizeObject(value, depth + 1, maxDepth, key);
     }
 
     return sanitized;

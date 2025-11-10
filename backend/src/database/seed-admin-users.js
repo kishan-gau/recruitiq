@@ -32,47 +32,51 @@ const adminUsers = [
     email: 'platform_admin@recruitiq.com',
     password: 'Admin123!',
     name: 'Platform Administrator',
-    role: 'platform_admin'
+    role: 'platform_admin',
+    userType: 'platform' // Platform user - no organization
   },
   {
     email: 'security_admin@recruitiq.com',
     password: 'Admin123!',
     name: 'Security Administrator',
-    role: 'security_admin'
+    role: 'security_admin',
+    userType: 'platform' // Platform user - no organization
   },
   {
     email: 'admin@recruitiq.com',
     password: 'Admin123!',
     name: 'Test Admin',
-    role: 'admin'
+    role: 'admin',
+    userType: 'tenant' // Tenant user - needs organization
   }
 ];
 
 /**
- * Create or get a default organization for admin users
+ * Create or get a test organization for tenant users
  */
-async function ensureDefaultOrganization() {
+async function ensureTestOrganization() {
   const client = await pool.connect();
   try {
-    // Check if default org exists
+    // Check if test org exists
     const result = await client.query(
       'SELECT id FROM organizations WHERE slug = $1',
-      ['platform']
+      ['test-company']
     );
 
     if (result.rows.length > 0) {
+      console.log('✓ Test organization already exists');
       return result.rows[0].id;
     }
 
-    // Create default organization
+    // Create test organization
     const insertResult = await client.query(
-      `INSERT INTO organizations (name, slug, tier, max_users, max_workspaces)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO organizations (name, slug, tier, max_users, max_workspaces, deployment_model, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
        RETURNING id`,
-      ['Platform Administration', 'platform', 'enterprise', 100, 10]
+      ['Test Company', 'test-company', 'professional', 50, 10, 'shared']
     );
 
-    console.log('✓ Created default platform organization');
+    console.log('✓ Created test organization: Test Company');
     return insertResult.rows[0].id;
   } finally {
     client.release();
@@ -159,9 +163,9 @@ async function seedAdminUsers() {
     // Seed permissions first
     const permissionIds = await seedPermissions();
 
-    // Get or create organization
-    const organizationId = await ensureDefaultOrganization();
-    console.log(`Using organization ID: ${organizationId}\n`);
+    // Get or create test organization for tenant users
+    const testOrganizationId = await ensureTestOrganization();
+    console.log(`Test organization ID: ${testOrganizationId}\n`);
 
     // Create each admin user
     for (const user of adminUsers) {
@@ -173,7 +177,7 @@ async function seedAdminUsers() {
         );
 
         if (existingUser.rows.length > 0) {
-          console.log(`⚠ User ${user.email} already exists (${existingUser.rows[0].legacy_role}), updating permissions...`);
+          console.log(`⚠ User ${user.email} already exists (${existingUser.rows[0].legacy_role}), updating...`);
           
           // Update permissions for existing user
           const userPermissions = [];
@@ -188,16 +192,24 @@ async function seedAdminUsers() {
             );
           }
           
+          // Update user with organization if tenant type
           await client.query(
             `UPDATE users 
              SET additional_permissions = $1,
-                 user_type = 'platform',
-                 legacy_role = $2
-             WHERE email = $3`,
-            [userPermissions, user.role, user.email]
+                 user_type = $2,
+                 legacy_role = $3,
+                 organization_id = $4
+             WHERE email = $5`,
+            [
+              userPermissions, 
+              user.userType, 
+              user.role, 
+              user.userType === 'tenant' ? testOrganizationId : null,
+              user.email
+            ]
           );
           
-          console.log(`  ✓ Updated with ${userPermissions.length} permissions`);
+          console.log(`  ✓ Updated with ${userPermissions.length} permissions${user.userType === 'tenant' ? ' and organization' : ''}`);
           continue;
         }
 
@@ -219,7 +231,7 @@ async function seedAdminUsers() {
           );
         }
 
-        // Insert user
+        // Insert user with organization for tenant users
         const result = await client.query(
           `INSERT INTO users (
             email,
@@ -228,21 +240,23 @@ async function seedAdminUsers() {
             user_type,
             legacy_role,
             additional_permissions,
-            email_verified
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            email_verified,
+            organization_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           RETURNING id, email, legacy_role`,
           [
             user.email,
             passwordHash,
             user.name,
-            'platform',
+            user.userType,
             user.role,
             userPermissions,
-            true // Email verified for test users
+            true, // Email verified for test users
+            user.userType === 'tenant' ? testOrganizationId : null
           ]
         );
 
-        console.log(`✓ Created ${user.role}: ${user.email} (${userPermissions.length} permissions)`);
+        console.log(`✓ Created ${user.role}: ${user.email} (${userPermissions.length} permissions${user.userType === 'tenant' ? ', with organization' : ''})`);
       } catch (error) {
         console.error(`✗ Failed to create ${user.email}:`, error.message);
       }
@@ -284,3 +298,4 @@ if (import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}` ||
 }
 
 export { seedAdminUsers };
+ 

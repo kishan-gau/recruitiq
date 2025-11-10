@@ -9,9 +9,20 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['@recruitiq/api-client'],
+    exclude: [],
+  },
   server: {
     port: 5174,
-    open: true,
+    open: false, // Don't auto-open, use gateway URL instead
+    watch: {
+      ignored: ['**/node_modules/**', '**/packages/api-client/dist/**'],
+    },
+    hmr: {
+      overlay: true,
+    },
+    // No proxy needed - gateway handles routing
   },
   build: {
     outDir: 'dist',

@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Download, Send, Eye, Search, ChevronUp, ChevronDown, Filter, X } from 'lucide-react';
-import { StatusBadge, Pagination, WorkerAvatar, FilterPanel, TableSkeleton } from '@/components/ui';
-import type { FilterConfig } from '@/components/ui';
-import { mockPayrollRuns, mockWorkers } from '@/utils/mockData';
+import StatusBadge from '@/components/ui/StatusBadge';
+import Pagination from '@/components/ui/Pagination';
+import WorkerAvatar from '@/components/ui/WorkerAvatar';
+import FilterPanel from '@/components/ui/FilterPanel';
+import TableSkeleton from '@/components/ui/TableSkeleton';
+import type { FilterConfig } from '@/components/ui/FilterPanel';
 import { formatDate } from '@/utils/helpers';
 import { useToast } from '@/contexts/ToastContext';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface Payslip {
   id: string;
@@ -24,6 +28,8 @@ interface Payslip {
 
 export default function PayslipsList() {
   const { success } = useToast();
+  const { paylinq } = usePaylinqAPI();
+  const { error: showError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<keyof Payslip | 'worker.fullName'>('worker.fullName');
@@ -32,15 +38,47 @@ export default function PayslipsList() {
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [payslips, setPayslips] = useState<Payslip[]>([]);
   const perPage = 10;
 
-  // Simulate loading data
+  // Fetch payslips data
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchPayslips = async () => {
+      try {
+        setIsLoading(true);
+        const response = await paylinq.getPaychecks();
+        
+        if (response.data) {
+          const apiData = response.data as any;
+          // Transform API data to match UI format
+          const transformedPayslips = (Array.isArray(apiData) ? apiData : []).map((paycheck: any) => ({
+            id: paycheck.id,
+            worker: {
+              id: paycheck.employee?.id || paycheck.employeeId,
+              fullName: paycheck.employee?.fullName || 'Unknown',
+              employeeNumber: paycheck.employee?.employeeNumber || 'N/A',
+            },
+            payrollRun: {
+              period: paycheck.payrollRun?.period || `${formatDate(paycheck.payPeriodStart)} - ${formatDate(paycheck.payPeriodEnd)}`,
+              payDate: formatDate(paycheck.payDate),
+            },
+            grossPay: paycheck.grossPay || 0,
+            netPay: paycheck.netPay || 0,
+            status: (paycheck.status === 'paid' ? 'sent' : paycheck.status === 'draft' ? 'generated' : 'generated') as 'generated' | 'sent' | 'viewed',
+          }));
+          setPayslips(transformedPayslips);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch payslips:', err);
+        showError(err.message || 'Failed to load payslips');
+        setPayslips([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPayslips();
+  }, [paylinq, showError]);
 
   // Filter configuration
   const filterConfigs: FilterConfig[] = [
@@ -55,31 +93,6 @@ export default function PayslipsList() {
       ],
     },
   ];
-
-  // Mock payslips data
-  const payslips: Payslip[] = mockWorkers
-    .filter((w) => w.status === 'active')
-    .flatMap((worker) =>
-      mockPayrollRuns.slice(0, 2).map((run, index) => {
-        const grossPay = worker.compensation;
-        const netPay = grossPay * 0.80; // Simplified: 80% after deductions
-        return {
-          id: `${worker.id}-${run.id}`,
-          worker: {
-            id: worker.id,
-            fullName: worker.fullName,
-            employeeNumber: worker.employeeNumber,
-          },
-          payrollRun: {
-            period: `${formatDate(run.payPeriodStart)} - ${formatDate(run.payPeriodEnd)}`,
-            payDate: formatDate(run.paymentDate),
-          },
-          grossPay,
-          netPay,
-          status: index === 0 ? ('sent' as const) : ('generated' as const),
-        };
-      })
-    );
 
   // Filter payslips
   const filteredPayslips = payslips.filter((p) => {
@@ -182,7 +195,7 @@ export default function PayslipsList() {
             View and manage employee payslips
           </p>
         </div>
-        <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium">
+        <button className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium">
           <Send className="w-5 h-5" />
           <span>Send All Latest</span>
         </button>
@@ -197,7 +210,7 @@ export default function PayslipsList() {
             placeholder="Search by employee name or number..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
         </div>
         <button
@@ -403,3 +416,5 @@ export default function PayslipsList() {
     </div>
   );
 }
+
+

@@ -151,18 +151,22 @@ export function useJobForm(existingJob = null) {
 
   // Get job data formatted for API
   const getJobData = () => {
-    return {
+    const jobData = {
       title: formData.title,
       department: formData.department,
       location: formData.location,
-      employmentType: formData.type, // Backend expects 'employmentType'
+      employment_type: formData.type, // Backend DB uses snake_case
       openings: formData.openings,
       description: formData.description,
       requirements: formData.requirements,
-      experienceLevel: formData.experienceLevel,
+      experience_level: formData.experienceLevel, // Backend DB uses snake_case
       salary: formData.salary,
       flowTemplateId: formData.flowTemplateId
     }
+    console.log('[useJobForm] getJobData - formData.type:', formData.type)
+    console.log('[useJobForm] getJobData - jobData.employment_type:', jobData.employment_type)
+    console.log('[useJobForm] getJobData - full jobData:', jobData)
+    return jobData
   }
 
   return {

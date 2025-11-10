@@ -1,37 +1,81 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, X, Download } from 'lucide-react';
-import { TimeEntryCard, Tabs, Pagination } from '@/components/ui';
-import type { TimeEntry, Tab } from '@/components/ui';
-import { mockTimeEntries } from '@/utils/mockData';
+import TimeEntryCard from '@/components/ui/TimeEntryCard';
+import Tabs from '@/components/ui/Tabs';
+import Pagination from '@/components/ui/Pagination';
+import type { TimeEntry } from '@/components/ui/TimeEntryCard';
+import type { Tab } from '@/components/ui/Tabs';
 import { useToast } from '@/contexts/ToastContext';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import ApprovalModal from '@/components/modals/ApprovalModal';
 
 export default function TimeEntries() {
-  const { success } = useToast();
+  const { success, error } = useToast();
+  const { paylinq } = usePaylinqAPI();
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [approvalModal, setApprovalModal] = useState<{ isOpen: boolean; action: 'approve' | 'reject'; entryIds: string[] }>({ isOpen: false, action: 'approve', entryIds: [] });
   const [sortField, setSortField] = useState<'date' | 'worker.fullName'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [isLoading, setIsLoading] = useState(true);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const entriesPerPage = 5;
 
-  // Convert mock time entries to TimeEntry type for cards
-  const timeEntries: TimeEntry[] = mockTimeEntries.map((entry) => ({
-    id: entry.id,
-    worker: {
-      id: entry.employeeId,
-      fullName: entry.employeeName,
-      employeeNumber: entry.employeeNumber,
-    },
-    date: entry.date,
-    clockIn: entry.clockIn || '00:00',
-    clockOut: entry.clockOut || null,
-    breakMinutes: entry.breakHours * 60,
-    status: entry.status,
-    issues: entry.hasIssue && entry.notes ? [entry.notes] : undefined,
-    notes: entry.notes,
-  }));
+  // Fetch time entries from API
+  useEffect(() => {
+    const fetchTimeEntries = async () => {
+      try {
+        setIsLoading(true);
+
+        const params: Record<string, any> = {
+          page: currentPage,
+          limit: entriesPerPage,
+          sortField: sortField === 'worker.fullName' ? 'worker' : sortField,
+          sortDirection,
+        };
+
+        if (activeTab !== 'all') {
+          params.status = activeTab;
+        }
+
+        const response = await paylinq.getTimeEntries(params);
+
+        // Handle both wrapped and unwrapped responses
+        const apiData = response.data as any;
+        const responseData = apiData?.data || apiData || [];
+        const isSuccess = apiData?.success !== false;
+
+        if (isSuccess && Array.isArray(responseData)) {
+          // Map API response to TimeEntry type
+          const mappedEntries: TimeEntry[] = responseData.map((entry: any) => ({
+            id: entry.id,
+            worker: {
+              id: entry.worker_id || entry.workerId,
+              fullName: entry.worker_name || entry.workerName || 'Unknown',
+              employeeNumber: entry.employee_number || entry.employeeNumber || '',
+            },
+            date: entry.date || entry.entry_date,
+            clockIn: entry.clock_in || entry.clockIn || '00:00',
+            clockOut: entry.clock_out || entry.clockOut || null,
+            breakMinutes: entry.break_minutes || (entry.break_hours ? entry.break_hours * 60 : 0),
+            status: entry.status,
+            issues: entry.has_issue && entry.notes ? [entry.notes] : undefined,
+            notes: entry.notes,
+          }));
+
+          setTimeEntries(mappedEntries);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch time entries:', err);
+        error(err.message || 'Failed to load time entries');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTimeEntries();
+  }, [paylinq, currentPage, activeTab, sortField, sortDirection, error]);
 
   // Define tabs
   const tabs: Tab[] = [
@@ -73,15 +117,16 @@ export default function TimeEntries() {
   const startIndex = (currentPage - 1) * entriesPerPage;
   const paginatedEntries = sortedEntries.slice(startIndex, startIndex + entriesPerPage);
 
-  const handleSort = (field: 'date' | 'worker.fullName') => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection(field === 'date' ? 'desc' : 'asc');
-    }
-    setCurrentPage(1);
-  };
+  // Sort handler (not currently used but kept for future implementation)
+  // const handleSort = (field: 'date' | 'worker.fullName') => {
+  //   if (sortField === field) {
+  //     setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+  //   } else {
+  //     setSortField(field);
+  //     setSortDirection(field === 'date' ? 'desc' : 'asc');
+  //   }
+  //   setCurrentPage(1);
+  // };
 
   const handleApprove = (entryId: string) => {
     setApprovalModal({ isOpen: true, action: 'approve', entryIds: [entryId] });
@@ -105,9 +150,32 @@ export default function TimeEntries() {
     setApprovalModal({ isOpen: true, action: 'reject', entryIds: selectedIds });
   };
 
-  const handleApprovalSuccess = () => {
+  const handleApprovalSuccess = async (action: 'approve' | 'reject', entryIds: string[], notes?: string) => {
+    if (action === 'approve') {
+      if (entryIds.length === 1) {
+        await paylinq.approveTimeEntry(entryIds[0]);
+      } else {
+        await paylinq.bulkApproveTimeEntries(entryIds);
+      }
+      success(`${entryIds.length} time ${entryIds.length === 1 ? 'entry' : 'entries'} approved successfully`);
+    } else {
+      // For reject, call individual reject for each entry with notes
+      for (const id of entryIds) {
+        await paylinq.rejectTimeEntry(id, notes || 'Rejected by manager');
+      }
+      success(`${entryIds.length} time ${entryIds.length === 1 ? 'entry' : 'entries'} rejected successfully`);
+    }
+
+    // Update local state
+    setTimeEntries((prev) =>
+      prev.map((entry) =>
+        entryIds.includes(entry.id)
+          ? { ...entry, status: action === 'approve' ? 'approved' : 'rejected' }
+          : entry
+      )
+    );
     setSelectedIds([]);
-    // In real app, this would trigger a refetch
+    setApprovalModal({ isOpen: false, action: 'approve', entryIds: [] });
   };
 
   const handleExport = () => {
@@ -169,24 +237,47 @@ export default function TimeEntries() {
       </p>
 
       {/* Time Entry Cards */}
-      <div className="space-y-4">
-        {paginatedEntries.map((entry) => (
-          <TimeEntryCard
-            key={entry.id}
-            entry={entry}
-            onApprove={entry.status === 'pending' ? handleApprove : undefined}
-            onReject={entry.status === 'pending' ? handleReject : undefined}
-            onSelect={handleSelect}
-            selected={selectedIds.includes(entry.id)}
-          />
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {filteredEntries.length === 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-12 text-center">
-          <p className="text-gray-500 dark:text-gray-400">No time entries found</p>
+      {isLoading ? (
+        <div className="space-y-4">
+          {[...Array(entriesPerPage)].map((_, i) => (
+            <div
+              key={i}
+              className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 animate-pulse"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-3 flex-1">
+                  <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
+      ) : (
+        <>
+          <div className="space-y-4">
+            {paginatedEntries.map((entry) => (
+              <TimeEntryCard
+                key={entry.id}
+                entry={entry}
+                onApprove={entry.status === 'pending' ? handleApprove : undefined}
+                onReject={entry.status === 'pending' ? handleReject : undefined}
+                onSelect={handleSelect}
+                selected={selectedIds.includes(entry.id)}
+              />
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {filteredEntries.length === 0 && (
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-12 text-center">
+              <p className="text-gray-500 dark:text-gray-400">No time entries found</p>
+            </div>
+          )}
+        </>
       )}
 
       {/* Pagination */}

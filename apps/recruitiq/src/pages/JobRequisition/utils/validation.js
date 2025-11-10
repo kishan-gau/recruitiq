@@ -16,8 +16,8 @@ export const validateDescription = (value) => {
   if (!value || !value.trim()) {
     return 'Job description is required'
   }
-  if (value.trim().length < 20) {
-    return 'Job description must be at least 20 characters'
+  if (value.trim().length < 50) {
+    return 'Job description must be at least 50 characters'
   }
   return ''
 }

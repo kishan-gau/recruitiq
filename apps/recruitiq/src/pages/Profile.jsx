@@ -1,6 +1,6 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '@recruitiq/auth'
 import SessionManagement from '../components/SessionManagement'
 import MFASetup from '../components/MFASetup'
 
@@ -36,7 +36,7 @@ export default function Profile(){
       <div className="bg-white dark:bg-slate-800/50 p-6 rounded-lg shadow-sm border dark:border-slate-700/50 mb-4">
         <h2 className="font-semibold text-slate-900 dark:text-slate-100 mb-4">Account</h2>
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
             {user?.name?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div>

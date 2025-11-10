@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog, FormField, Select, Input } from '@/components/ui';
 import { useToast } from '@/contexts/ToastContext';
 import { FileDown } from 'lucide-react';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface ReportConfigModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface ReportConfigModalProps {
 
 export default function ReportConfigModal({ isOpen, onClose, reportType }: ReportConfigModalProps) {
   const { success, error } = useToast();
+  const { paylinq } = usePaylinqAPI();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -24,20 +26,56 @@ export default function ReportConfigModal({ isOpen, onClose, reportType }: Repor
   });
 
   const handleGenerate = async () => {
+    if (!reportType) return;
+    
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // const result = await api.reports.generate(reportType?.id, formData);
-      // downloadFile(result.url);
+      const params: Record<string, any> = {
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        format: formData.format,
+      };
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (formData.groupBy !== 'none') {
+        params.groupBy = formData.groupBy;
+      }
 
-      success(`${reportType?.title} report generated successfully`);
+      const result = await paylinq.exportReport(reportType.id, params);
+      
+      // Handle blob response for file download
+      if (result instanceof Blob) {
+        const url = window.URL.createObjectURL(result);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${reportType.id}_${formData.startDate}_${formData.endDate}.${formData.format}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+
+      success(`${reportType.title} report generated successfully`);
       onClose();
-    } catch (err) {
-      error('Failed to generate report. Please try again.');
+    } catch (err: any) {
+      // Handle validation errors from API
+      if (err.response?.status === 400 && err.response?.data?.errors) {
+        const fieldLabels: Record<string, string> = {
+          reportType: 'Report Type',
+          startDate: 'Start Date',
+          endDate: 'End Date',
+          format: 'Format',
+          filters: 'Filters',
+        };
+        
+        const errors = err.response.data.errors
+          .map((e: any) => `${fieldLabels[e.field] || e.field}: ${e.message}`)
+          .join(', ');
+        error(errors || 'Please fix the validation errors');
+      } else {
+        console.error('Failed to generate report:', err);
+        error(err.response?.data?.message || err.message || 'Failed to generate report. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -14,7 +14,7 @@ export interface Worker {
   type: string;
   compensationType: 'hourly' | 'salary';
   compensationAmount: number;
-  status: 'active' | 'inactive' | 'suspended' | 'terminated';
+  status?: 'active' | 'inactive' | 'suspended' | 'terminated';
 }
 
 type SortField = 'employeeNumber' | 'fullName' | 'type' | 'compensationAmount' | 'status';
@@ -135,7 +135,7 @@ export default function WorkerTable({
                     type="checkbox"
                     checked={selectedIds.length === workers.length && workers.length > 0}
                     onChange={handleSelectAll}
-                    className="h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-300 dark:border-gray-700 rounded"
+                    className="h-4 w-4 text-blue-500 focus:ring-emerald-500 border-gray-300 dark:border-gray-700 rounded"
                   />
                 </th>
               )}
@@ -217,7 +217,7 @@ export default function WorkerTable({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleSelectOne(worker.id)}
-                        className="h-4 w-4 text-blue-500 focus:ring-blue-500 border-gray-300 dark:border-gray-700 rounded"
+                        className="h-4 w-4 text-blue-500 focus:ring-emerald-500 border-gray-300 dark:border-gray-700 rounded"
                       />
                     </td>
                   )}
@@ -229,12 +229,15 @@ export default function WorkerTable({
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => onView?.(worker.id)}
+                      className="flex items-center space-x-3 text-left hover:opacity-75 transition-opacity group"
+                    >
                       <WorkerAvatar fullName={worker.fullName} size="sm" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline">
                         {worker.fullName}
                       </span>
-                    </div>
+                    </button>
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -256,7 +259,7 @@ export default function WorkerTable({
                     <StatusBadge status={worker.status} size="sm" />
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                  <td className="px-6 py-4 whitespace-nowrap text-right relative">
                     {actionItems.length > 0 && (
                       <DropdownMenu
                         items={actionItems}
@@ -279,3 +282,4 @@ export default function WorkerTable({
     </div>
   );
 }
+

@@ -4,6 +4,7 @@
  */
 
 import { CandidateRepository } from '../../repositories/CandidateRepository.js';
+import { ApplicationRepository } from '../../repositories/ApplicationRepository.js';
 import Organization from '../../models/Organization.js';
 import logger from '../../utils/logger.js';
 import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.js';
@@ -12,6 +13,7 @@ import Joi from 'joi';
 export class CandidateService {
   constructor() {
     this.candidateRepository = new CandidateRepository();
+    this.applicationRepository = new ApplicationRepository();
     this.logger = logger;
   }
 
@@ -25,18 +27,22 @@ export class CandidateService {
       email: Joi.string().email().required().lowercase().trim(),
       phone: Joi.string().optional().allow('', null).trim().max(50),
       linkedin_url: Joi.string().uri().optional().allow('', null),
+      portfolio_url: Joi.string().uri().optional().allow('', null),
       resume_url: Joi.string().optional().allow('', null),
       source: Joi.string().optional().allow('', null),
-      status: Joi.string().valid('new', 'screening', 'interviewing', 'offer', 'hired', 'rejected').default('new'),
       tags: Joi.array().items(Joi.string()).optional().default([]),
       notes: Joi.string().optional().allow('', null),
       skills: Joi.array().items(Joi.string()).optional().default([]),
       experience_years: Joi.number().integer().min(0).optional().allow(null),
       current_company: Joi.string().optional().allow('', null).max(200),
-      current_title: Joi.string().optional().allow('', null).max(200),
+      current_job_title: Joi.string().optional().allow('', null).max(200),
       location: Joi.string().optional().allow('', null).max(200),
       expected_salary: Joi.number().optional().allow(null),
-      notice_period_days: Joi.number().integer().min(0).optional().allow(null)
+      notice_period_days: Joi.number().integer().min(0).optional().allow(null),
+      // Optional fields for creating application
+      job_id: Joi.string().uuid().optional().allow(null),
+      stage: Joi.string().optional().allow('', null),
+      workspace_id: Joi.string().uuid().optional().allow(null)
     });
   }
 
@@ -50,15 +56,15 @@ export class CandidateService {
       email: Joi.string().email().optional().lowercase().trim(),
       phone: Joi.string().optional().allow('', null).trim().max(50),
       linkedin_url: Joi.string().uri().optional().allow('', null),
+      portfolio_url: Joi.string().uri().optional().allow('', null),
       resume_url: Joi.string().optional().allow('', null),
       source: Joi.string().optional().allow('', null),
-      status: Joi.string().valid('new', 'screening', 'interviewing', 'offer', 'hired', 'rejected').optional(),
       tags: Joi.array().items(Joi.string()).optional(),
       notes: Joi.string().optional().allow('', null),
       skills: Joi.array().items(Joi.string()).optional(),
       experience_years: Joi.number().integer().min(0).optional().allow(null),
       current_company: Joi.string().optional().allow('', null).max(200),
-      current_title: Joi.string().optional().allow('', null).max(200),
+      current_job_title: Joi.string().optional().allow('', null).max(200),
       location: Joi.string().optional().allow('', null).max(200),
       expected_salary: Joi.number().optional().allow(null),
       notice_period_days: Joi.number().integer().min(0).optional().allow(null)
@@ -94,11 +100,50 @@ export class CandidateService {
         );
       }
 
+      // Extract job_id and stage for application creation
+      const { job_id, stage, workspace_id, ...candidateFields } = value;
+
+      // Compute full name from first_name and last_name
+      const candidateData = {
+        ...candidateFields,
+        name: `${value.first_name} ${value.last_name}`.trim()
+      };
+
       // Create candidate
       const candidate = await this.candidateRepository.create(
-        value,
+        candidateData,
         user.organization_id
       );
+
+      // If job_id is provided, automatically create an application
+      if (job_id) {
+        try {
+          await this.applicationRepository.create({
+            candidate_id: candidate.id,
+            job_id: job_id,
+            workspace_id: workspace_id || user.workspace_id,
+            organization_id: user.organization_id,
+            stage: stage || 'Applied',
+            status: 'active',
+            source: candidateFields.source || 'direct',
+            applied_at: new Date(),
+            created_by: user.id
+          });
+
+          this.logger.info('Application created for candidate', {
+            candidateId: candidate.id,
+            jobId: job_id,
+            stage: stage || 'Applied'
+          });
+        } catch (appError) {
+          this.logger.error('Failed to create application for candidate', {
+            candidateId: candidate.id,
+            jobId: job_id,
+            error: appError.message
+          });
+          // Don't fail the candidate creation if application fails
+        }
+      }
 
       this.logger.info('Candidate created', {
         candidateId: candidate.id,

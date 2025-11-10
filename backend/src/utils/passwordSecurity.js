@@ -97,6 +97,12 @@ export function isCommonPassword(password) {
  */
 export async function checkBreachedPassword(password) {
   try {
+    // Handle empty or invalid passwords
+    if (!password || password.length === 0) {
+      // Fail open: treat as not breached to allow validation to handle it
+      return { breached: false, count: 0 };
+    }
+    
     // Generate SHA-1 hash of password
     const hash = crypto.createHash('sha1')
       .update(password)

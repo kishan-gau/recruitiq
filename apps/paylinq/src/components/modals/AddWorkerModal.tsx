@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Dialog, FormField, Input, TextArea, Select } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface AddWorkerModalProps {
   isOpen: boolean;
@@ -27,6 +29,7 @@ interface WorkerFormData {
 }
 
 export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorkerModalProps) {
+  const { paylinq } = usePaylinqAPI();
   const { success, error } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof WorkerFormData, string>>>({});
@@ -83,17 +86,118 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // await api.workers.create(formData);
+      // Split full name into first and last name
+      const nameParts = formData.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || nameParts[0] || '';
       
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Convert date to ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)
+      const hireDateISO = new Date(formData.startDate).toISOString();
       
-      success(`Worker ${formData.fullName} has been added successfully`);
-      onSuccess();
-      onClose();
-    } catch (err) {
-      error('Failed to add worker. Please try again.');
+      const response = await paylinq.createWorker({
+        hrisEmployeeId: formData.employeeNumber, // Use employee number as HRIS ID
+        employeeNumber: formData.employeeNumber,
+        firstName: firstName,
+        lastName: lastName,
+        email: formData.email,
+        hireDate: hireDateISO,
+        status: 'active',
+        paymentMethod: 'direct_deposit',
+        bankAccountNumber: formData.bankAccount,
+        bankRoutingNumber: '', // Optional
+        metadata: {
+          phone: formData.phone,
+          nationalId: formData.nationalId,
+          dateOfBirth: formData.dateOfBirth,
+          workerType: formData.workerType,
+          department: formData.department,
+          position: formData.position,
+          compensation: Number(formData.compensation),
+          payFrequency: formData.payFrequency,
+          bankName: formData.bankName,
+          address: formData.address,
+        },
+      });
+      
+      if (response.success) {
+        success(`Worker ${formData.fullName} has been added successfully`);
+        // Reset form
+        setFormData({
+          employeeNumber: '',
+          fullName: '',
+          email: '',
+          phone: '',
+          nationalId: '',
+          dateOfBirth: '',
+          startDate: new Date().toISOString().split('T')[0],
+          workerType: 'Full-Time',
+          department: '',
+          position: '',
+          compensation: '',
+          payFrequency: 'monthly',
+          bankName: '',
+          bankAccount: '',
+          address: '',
+        });
+        onSuccess();
+        onClose();
+      }
+    } catch (err: any) {
+      // Handle validation errors from API
+      // Backend returns validation errors in 'details' field
+      if (err.response?.status === 400 && err.response?.data?.details) {
+        const apiErrors = err.response.data.details;
+        const fieldErrors: Record<string, string> = {};
+        
+        // Map backend field names to frontend form field names
+        const fieldMapping: Record<string, string> = {
+          hrisEmployeeId: 'employeeNumber',
+          firstName: 'fullName',
+          lastName: 'fullName',
+          hireDate: 'startDate',
+          bankAccountNumber: 'bankAccount',
+        };
+        
+        // Map field names to user-friendly labels
+        const fieldLabels: Record<string, string> = {
+          employeeNumber: 'Employee Number',
+          fullName: 'Full Name',
+          email: 'Email',
+          phone: 'Phone',
+          nationalId: 'National ID',
+          dateOfBirth: 'Date of Birth',
+          startDate: 'Start Date',
+          workerType: 'Worker Type',
+          department: 'Department',
+          position: 'Position',
+          compensation: 'Base Compensation',
+          payFrequency: 'Pay Frequency',
+          bankName: 'Bank Name',
+          bankAccount: 'Bank Account Number',
+          address: 'Address',
+        };
+        
+        apiErrors.forEach((apiError: any) => {
+          // Map backend field name to frontend field name
+          const frontendField = fieldMapping[apiError.field] || apiError.field;
+          fieldErrors[frontendField] = apiError.message;
+        });
+        
+        setErrors(fieldErrors);
+        
+        // Show user-friendly error message with labels
+        const errorMessages = apiErrors
+          .map((e: any) => {
+            const frontendField = fieldMapping[e.field] || e.field;
+            const label = fieldLabels[frontendField] || e.field;
+            return `${label}: ${e.message}`;
+          })
+          .join(', ');
+        error(errorMessages || 'Please fix the validation errors');
+      } else {
+        // Handle other errors
+        error(err.response?.data?.message || err.message || 'Failed to add worker. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useCallback, useRef } from 'react'
 import { useFlowTemplates } from '../hooks/useFlowTemplates'
 import { useWorkspace } from './WorkspaceContext'
-import { useAuth } from './AuthContext'
+import { useAuth } from '@recruitiq/auth'
 
 const FlowContext = createContext(null)
 

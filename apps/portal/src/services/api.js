@@ -13,8 +13,11 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: true // Enable sending cookies for authentication
+  withCredentials: true // CRITICAL: Send httpOnly cookies with requests
 })
+
+// SECURITY: No need for request interceptor to add Authorization header
+// Auth tokens are now in httpOnly cookies, sent automatically by browser
 
 // Response interceptor for error handling and token refresh
 api.interceptors.response.use(
@@ -23,22 +26,26 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // Don't retry for login, refresh, or logout endpoints
-    const skipRefreshUrls = ['/auth/login', '/auth/refresh', '/auth/logout'];
+    const skipRefreshUrls = ['/auth/platform/login', '/auth/platform/refresh', '/auth/platform/logout'];
     const shouldSkipRefresh = skipRefreshUrls.some(url => originalRequest.url?.includes(url));
 
-    // If 401 and not already retrying, try to refresh token via cookies
+    // If 401 and not already retrying, try to refresh token
     if (error.response?.status === 401 && !originalRequest._retry && !shouldSkipRefresh) {
       originalRequest._retry = true;
 
       try {
-        // Refresh token is sent automatically via cookies
-        await api.post('/auth/refresh', {});
+        // SECURITY: Backend will read refreshToken from httpOnly cookie
+        // Refresh the access token
+        const response = await axios.post(`${API_BASE_URL}/auth/platform/refresh`, {})
         
-        // Retry original request (new token is now in cookies)
+        // New access token is set as httpOnly cookie by backend
+        
+        // Retry original request (cookie will be sent automatically)
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, redirect to login only if not already on login page
-        localStorage.removeItem('user');
+        // Refresh failed, clear storage and redirect to login
+        localStorage.removeItem('user')
+        
         if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
         }
@@ -56,12 +63,15 @@ api.interceptors.response.use(
  */
 class APIService {
   // ============================================================================
-  // Authentication API Methods
+  // Authentication API Methods (Platform)
   // ============================================================================
 
   async login(email, password) {
-    const response = await api.post('/auth/login', { email, password })
+    const response = await api.post('/auth/platform/login', { email, password })
     const { user } = response.data
+    
+    // SECURITY: Tokens are now in httpOnly cookies set by backend
+    // No need to store them in localStorage (prevents XSS attacks)
     
     // Store user data in localStorage for convenience (non-sensitive)
     if (user) {
@@ -72,15 +82,18 @@ class APIService {
 
   async logout() {
     try {
-      await api.post('/auth/logout', {})
+      // SECURITY: Backend will read refreshToken from httpOnly cookie
+      await api.post('/auth/platform/logout', {})
     } catch (err) {
       console.error('Logout error:', err)
     }
+    // Clear user data (tokens are in httpOnly cookies, cleared by backend)
     localStorage.removeItem('user')
   }
 
   async getMe() {
-    const response = await api.get('/auth/me')
+    // SECURITY: Auth token is in httpOnly cookie, sent automatically
+    const response = await api.get('/auth/platform/me')
     return response.data.user
   }
 
@@ -821,6 +834,165 @@ class APIService {
    */
   async revokeAllSessions() {
     const response = await api.delete('/auth/sessions')
+    return response.data
+  }
+
+  // ============================================================================
+  // Product Management API Methods
+  // ============================================================================
+
+  /**
+   * Get all products
+   * @returns {Promise<Array>} List of products
+   */
+  async getProducts() {
+    const response = await api.get('/admin/products')
+    return response.data
+  }
+
+  /**
+   * Get product by ID
+   * @param {string} productId - Product ID
+   * @returns {Promise<Object>} Product details
+   */
+  async getProduct(productId) {
+    const response = await api.get(`/admin/products/${productId}`)
+    return response.data
+  }
+
+  // ============================================================================
+  // Feature Management API Methods
+  // ============================================================================
+
+  /**
+   * Get all features
+   * @param {Object} params - Query parameters (productId, status, category, page, limit)
+   * @returns {Promise<Object>} Features list with pagination
+   */
+  async getFeatures(params = {}) {
+    const response = await api.get('/admin/features', { params })
+    return response.data
+  }
+
+  /**
+   * Get feature by ID
+   * @param {string} featureId - Feature ID
+   * @returns {Promise<Object>} Feature details
+   */
+  async getFeature(featureId) {
+    const response = await api.get(`/admin/features/${featureId}`)
+    return response.data
+  }
+
+  /**
+   * Create a new feature
+   * @param {Object} data - Feature data
+   * @returns {Promise<Object>} Created feature
+   */
+  async createFeature(data) {
+    const response = await api.post('/admin/features', data)
+    return response.data
+  }
+
+  /**
+   * Update a feature
+   * @param {string} featureId - Feature ID
+   * @param {Object} data - Updated feature data
+   * @returns {Promise<Object>} Updated feature
+   */
+  async updateFeature(featureId, data) {
+    const response = await api.patch(`/admin/features/${featureId}`, data)
+    return response.data
+  }
+
+  /**
+   * Deprecate a feature
+   * @param {string} featureId - Feature ID
+   * @param {string} message - Deprecation message
+   * @returns {Promise<Object>} Result
+   */
+  async deprecateFeature(featureId, message) {
+    const response = await api.post(`/admin/features/${featureId}/deprecate`, { message })
+    return response.data
+  }
+
+  /**
+   * Update feature rollout
+   * @param {string} featureId - Feature ID
+   * @param {Object} data - Rollout configuration
+   * @returns {Promise<Object>} Updated feature
+   */
+  async updateFeatureRollout(featureId, data) {
+    const response = await api.patch(`/admin/features/${featureId}/rollout`, data)
+    return response.data
+  }
+
+  /**
+   * Get organizations using a feature
+   * @param {string} featureId - Feature ID
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Array>} List of organizations
+   */
+  async getFeatureOrganizations(featureId, params = {}) {
+    const response = await api.get(`/admin/features/${featureId}/organizations`, { params })
+    return response.data
+  }
+
+  /**
+   * Grant feature to organization
+   * @param {string} orgId - Organization ID
+   * @param {Object} data - Grant data
+   * @returns {Promise<Object>} Created grant
+   */
+  async grantFeature(orgId, data) {
+    const response = await api.post(`/admin/organizations/${orgId}/features/grant`, data)
+    return response.data
+  }
+
+  /**
+   * Revoke feature from organization
+   * @param {string} orgId - Organization ID
+   * @param {string} featureId - Feature ID
+   * @param {string} reason - Revocation reason
+   * @returns {Promise<Object>} Result
+   */
+  async revokeFeature(orgId, featureId, reason) {
+    const response = await api.post(`/admin/organizations/${orgId}/features/revoke`, {
+      featureId,
+      reason
+    })
+    return response.data
+  }
+
+  /**
+   * Get organization's feature grants
+   * @param {string} orgId - Organization ID
+   * @param {Object} params - Query parameters
+   * @returns {Promise<Array>} List of feature grants
+   */
+  async getOrganizationFeatures(orgId, params = {}) {
+    const response = await api.get(`/admin/organizations/${orgId}/features`, { params })
+    return response.data
+  }
+
+  /**
+   * Get feature analytics
+   * @param {string} featureId - Feature ID
+   * @param {Object} params - Query parameters (startDate, endDate, granularity)
+   * @returns {Promise<Object>} Analytics data
+   */
+  async getFeatureAnalytics(featureId, params = {}) {
+    const response = await api.get(`/admin/features/${featureId}/analytics`, { params })
+    return response.data
+  }
+
+  /**
+   * Get feature adoption report
+   * @param {Object} params - Query parameters (productId, timeRange)
+   * @returns {Promise<Object>} Adoption report
+   */
+  async getFeatureAdoptionReport(params = {}) {
+    const response = await api.get('/admin/features/adoption-report', { params })
     return response.data
   }
 }

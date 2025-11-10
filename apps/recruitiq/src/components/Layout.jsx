@@ -6,7 +6,7 @@ import FAB from './FAB'
 import QuickSearch from './QuickSearch'
 import Sidebar from './Sidebar'
 import AvatarMenu from './AvatarMenu'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '@recruitiq/auth'
 
 export default function Layout({children}){
   const [open, setOpen] = useState(false)
@@ -24,8 +24,8 @@ export default function Layout({children}){
   },[qsOpen])
   return (
   <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
-      <header className="bg-white border-b">
-        <div className="px-4 lg:px-6 py-3 flex items-center justify-between">
+      <header className="h-[72px] bg-white border-b flex items-center">
+        <div className="px-4 lg:px-6 flex items-center justify-between flex-1">
           <div className="flex items-center gap-3">
             <button className="md:hidden p-2 text-slate-600 focus-ring" onClick={()=>setOpen(o=>!o)} aria-label="Toggle navigation menu" aria-expanded={open} aria-controls="mobile-drawer">
               <Icon name="menu" className="w-6 h-6" />

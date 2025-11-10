@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@recruitiq/auth';
 import { useOrganization } from './OrganizationContext';
 import api from '../services/api';
 
@@ -67,6 +67,11 @@ export const WorkspaceProvider = ({ children }) => {
         setWorkspaces([]);
         setCurrentWorkspaceId(null);
         setIsInitialized(true);
+        return;
+      }
+
+      // Prevent re-running if already initialized
+      if (isInitialized) {
         return;
       }
 

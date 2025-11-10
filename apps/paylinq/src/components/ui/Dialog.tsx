@@ -9,9 +9,10 @@ interface DialogProps {
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   footer?: ReactNode;
+  'data-testid'?: string;
 }
 
-export default function Dialog({ isOpen, onClose, title, children, size = 'md', footer }: DialogProps) {
+export default function Dialog({ isOpen, onClose, title, children, size = 'md', footer, 'data-testid': dataTestId }: DialogProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -56,6 +57,7 @@ export default function Dialog({ isOpen, onClose, title, children, size = 'md', 
         )}
         role="dialog"
         aria-modal="true"
+        data-testid={dataTestId}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800">

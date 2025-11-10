@@ -93,7 +93,7 @@ export default function Login() {
         : await api.verifyMFA(mfaToken, code);
       
       // Store user data
-      const userData = response.data.user;
+      const userData = response.user;
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
       

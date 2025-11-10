@@ -1,18 +1,82 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Send, DollarSign, Users, Calendar, FileText, ChevronUp, ChevronDown } from 'lucide-react';
-import { StatusBadge, CurrencyDisplay, WorkerAvatar } from '@/components/ui';
-import { mockPayrollRuns, mockWorkers } from '@/utils/mockData';
+import StatusBadge from '@/components/ui/StatusBadge';
+import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
+import WorkerAvatar from '@/components/ui/WorkerAvatar';
 import { formatDate } from '@/utils/helpers';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function PayrollRunDetails() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
+  const { paylinq } = usePaylinqAPI();
+  const { error: showError } = useToast();
   const [sortField, setSortField] = useState<'fullName' | 'grossPay' | 'netPay'>('fullName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [isLoading, setIsLoading] = useState(true);
+  const [run, setRun] = useState<any>(null);
+  const [employeeData, setEmployeeData] = useState<any[]>([]);
 
-  // Find the payroll run
-  const run = mockPayrollRuns.find((r) => r.id === runId);
+  // Fetch payroll run details from API
+  useEffect(() => {
+    const fetchPayrollRunDetails = async () => {
+      if (!runId) return;
+
+      try {
+        setIsLoading(true);
+        const response = await paylinq.getPayrollRun(runId);
+
+        if (response.data) {
+          const apiData = response.data as any;
+          setRun(apiData.payroll_run || apiData);
+          
+          // Map employee breakdown from API
+          const employees = (apiData.employee_breakdown || []).map((emp: any) => ({
+            id: emp.worker_id,
+            fullName: emp.full_name,
+            employeeNumber: emp.employee_number,
+            grossPay: emp.gross_pay,
+            wageTax: emp.wage_tax,
+            aov: emp.aov,
+            aww: emp.aww,
+            totalDeductions: emp.total_deductions,
+            netPay: emp.net_pay,
+            status: emp.status || 'calculated',
+          }));
+          
+          setEmployeeData(employees);
+        }
+      } catch (err: any) {
+        showError(err.message || 'Failed to load payroll run details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPayrollRunDetails();
+  }, [runId, paylinq, showError]);
+
+  // Show loading skeleton
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!run) {
     return (
@@ -29,29 +93,6 @@ export default function PayrollRunDetails() {
       </div>
     );
   }
-
-  // Mock detailed payroll calculations for each employee
-  const employeeData = mockWorkers.filter((w) => w.status === 'active').map((worker) => {
-    const grossPay = worker.compensation;
-    const wageTax = grossPay * 0.15; // 15% wage tax (simplified)
-    const aov = grossPay * 0.04; // 4% AOV employee contribution
-    const aww = grossPay * 0.015; // 1.5% AWW (simplified)
-    const totalDeductions = wageTax + aov + aww;
-    const netPay = grossPay - totalDeductions;
-
-    return {
-      id: worker.id,
-      fullName: worker.fullName,
-      employeeNumber: worker.employeeNumber,
-      grossPay,
-      wageTax,
-      aov,
-      aww,
-      totalDeductions,
-      netPay,
-      status: 'calculated' as const,
-    };
-  });
 
   // Sort employees
   const employees = [...employeeData].sort((a, b) => {
@@ -102,7 +143,7 @@ export default function PayrollRunDetails() {
               Payroll Run Details
             </h1>
             <p className="mt-1 text-gray-600 dark:text-gray-400">
-              {formatDate(run.payPeriodStart)} - {formatDate(run.payPeriodEnd)}
+              {formatDate(run.pay_period_start || run.payPeriodStart)} - {formatDate(run.pay_period_end || run.payPeriodEnd)}
             </p>
           </div>
         </div>
@@ -111,7 +152,7 @@ export default function PayrollRunDetails() {
             <Download className="w-5 h-5" />
             <span>Export</span>
           </button>
-          <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium">
+          <button className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium">
             <Send className="w-5 h-5" />
             <span>Send Payslips</span>
           </button>
@@ -172,18 +213,18 @@ export default function PayrollRunDetails() {
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Pay Period</p>
             <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-              {formatDate(run.payPeriodStart)} - {formatDate(run.payPeriodEnd)}
+              {formatDate(run.pay_period_start || run.payPeriodStart)} - {formatDate(run.pay_period_end || run.payPeriodEnd)}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Payment Date</p>
             <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-              {formatDate(run.paymentDate)}
+              {formatDate(run.payment_date || run.paymentDate)}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Type</p>
-            <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">Regular</p>
+            <p className="mt-1 text-sm font-medium text-gray-900 dark:text-white">{run.run_type || run.runType || 'Regular'}</p>
           </div>
         </div>
       </div>
@@ -270,7 +311,7 @@ export default function PayrollRunDetails() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-              {employees.map((employee) => (
+              {employees.map((employee: any) => (
                 <tr key={employee.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-3">
@@ -335,3 +376,4 @@ export default function PayrollRunDetails() {
     </div>
   );
 }
+

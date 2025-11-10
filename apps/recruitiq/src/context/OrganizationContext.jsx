@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@recruitiq/auth';
 import api from '../services/api';
 
 const OrganizationContext = createContext();
@@ -18,6 +18,7 @@ export const OrganizationProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load organization data when user is authenticated
   useEffect(() => {
@@ -26,6 +27,12 @@ export const OrganizationProvider = ({ children }) => {
         setOrganization(null);
         setStats(null);
         setLoading(false);
+        setIsInitialized(true);
+        return;
+      }
+
+      // Prevent re-running if already initialized
+      if (isInitialized) {
         return;
       }
 
@@ -51,10 +58,12 @@ export const OrganizationProvider = ({ children }) => {
         }
 
         setLoading(false);
+        setIsInitialized(true);
       } catch (err) {
         console.error('Failed to load organization:', err);
         setError(err.message || 'Failed to load organization data');
         setLoading(false);
+        setIsInitialized(true);
       }
     };
 

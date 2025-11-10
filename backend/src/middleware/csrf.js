@@ -61,6 +61,27 @@ export function csrfMiddleware(req, res, next) {
     return next();
   }
   
+  // Skip CSRF for public authentication endpoints
+  // These endpoints need to be accessible without a token
+  // Note: req.path doesn't include the /api prefix when middleware is on apiRouter
+  const publicAuthEndpoints = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/refresh',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+    '/auth/platform/login',
+    '/auth/platform/refresh',
+    '/auth/platform/logout',
+    '/auth/tenant/login',
+    '/auth/tenant/refresh',
+    '/auth/tenant/logout',
+  ];
+  
+  if (publicAuthEndpoints.some(endpoint => req.path === endpoint || req.path.startsWith(endpoint))) {
+    return next();
+  }
+  
   // Skip CSRF for API endpoints using Bearer token authentication
   // CSRF is primarily a concern for cookie-based authentication
   const authHeader = req.headers.authorization;
@@ -169,6 +190,20 @@ export function shouldApplyCsrf(req) {
   // Apply CSRF to state-changing operations
   const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
   if (!stateChangingMethods.includes(req.method)) {
+    return false;
+  }
+  
+  // Skip CSRF for public authentication endpoints
+  // Note: req.path doesn't include the /api prefix when middleware is on apiRouter
+  const publicAuthEndpoints = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/refresh',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+  ];
+  
+  if (publicAuthEndpoints.some(endpoint => req.path === endpoint || req.path.startsWith(endpoint))) {
     return false;
   }
   

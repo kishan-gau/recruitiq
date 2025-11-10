@@ -1,0 +1,500 @@
+/**
+ * Paylinq Scheduling Controller
+ * Handles HTTP requests for work schedule management
+ */
+
+import schedulingService from '../services/schedulingService.js';
+import logger from '../../../utils/logger.js';
+import { mapScheduleApiToDb, mapScheduleChangeRequestApiToDb, mapScheduleDbToApi, mapScheduleDbArrayToApi } from '../utils/dtoMapper.js';
+
+/**
+ * Create a work schedule
+ * POST /api/paylinq/schedules
+ * Supports both single schedule and bulk schedule creation
+ */
+async function createSchedule(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    
+    // Validate required employeeId field
+    if (!req.body.employeeId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: '"employeeId" is required',
+      });
+    }
+    
+    // Check if this is bulk schedule format (startDate/endDate/shifts) or single format (scheduleDate)
+    const isBulkFormat = req.body.startDate && req.body.endDate;
+    
+    if (isBulkFormat) {
+      // Bulk format: Create multiple schedule records from date range and shifts array
+      const { employeeId, startDate, endDate, scheduleType, shifts } = req.body;
+      
+      // Map API field names to database schema names
+      const mappedData = mapScheduleApiToDb({ employeeId, scheduleType });
+      
+      const schedules = await schedulingService.createBulkSchedules(
+        mappedData.employee_id,
+        startDate,
+        endDate,
+        shifts || [],
+        mappedData.schedule_type,
+        organizationId,
+        userId
+      );
+
+      logger.info('Bulk schedules created', {
+        organizationId,
+        employeeId: mappedData.employee_id,
+        count: schedules.length,
+        userId,
+      });
+
+      return res.status(201).json({
+        success: true,
+        schedules: mapScheduleDbArrayToApi(schedules),
+        count: schedules.length,
+        message: 'Schedules created successfully',
+      });
+    }
+    
+    // Single format: Create one schedule record
+    // Validate single format required fields
+    if (!req.body.scheduleDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: '"scheduleDate" is required for single schedule creation',
+      });
+    }
+    
+    const scheduleData = mapScheduleApiToDb(req.body);
+
+    const schedule = await schedulingService.createWorkSchedule(
+      scheduleData,
+      organizationId,
+      userId
+    );
+
+    logger.info('Work schedule created', {
+      organizationId,
+      scheduleId: schedule.id,
+      employeeId: schedule.employee_id,
+      userId,
+    });
+
+    res.status(201).json({
+      success: true,
+      schedule: mapScheduleDbToApi(schedule),
+      message: 'Schedule created successfully',
+    });
+  } catch (error) {
+    logger.error('Error creating schedule', {
+      error: error.message,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('conflict')) {
+      return res.status(409).json({
+        success: false,
+        error: 'Conflict',
+        message: error.message,
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: error.message,
+    });
+  }
+}
+
+/**
+ * Get schedules
+ * GET /api/paylinq/schedules
+ */
+async function getSchedules(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { employeeId, startDate, endDate, status } = req.query;
+
+    const filters = {
+      employeeId,
+      startDate,
+      endDate,
+      status,
+    };
+
+    const schedules = await schedulingService.getSchedulesByOrganization(organizationId, filters);
+
+    res.status(200).json({
+      success: true,
+      schedules: mapScheduleDbArrayToApi(schedules),
+      count: schedules.length,
+    });
+  } catch (error) {
+    logger.error('Error fetching schedules', {
+      error: error.message,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch schedules',
+    });
+  }
+}
+
+/**
+ * Get schedules for an employee
+ * GET /api/paylinq/employees/:employeeId/schedules
+ */
+async function getEmployeeSchedules(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { employeeId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const filters = { startDate, endDate };
+    const schedules = await schedulingService.getSchedulesByEmployee(
+      employeeId,
+      organizationId,
+      filters
+    );
+
+    res.status(200).json({
+      success: true,
+      schedules: mapScheduleDbArrayToApi(schedules),
+      count: schedules.length,
+    });
+  } catch (error) {
+    logger.error('Error fetching employee schedules', {
+      error: error.message,
+      employeeId: req.params.employeeId,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch employee schedules',
+    });
+  }
+}
+
+/**
+ * Get a single schedule by ID
+ * GET /api/paylinq/schedules/:id
+ */
+async function getScheduleById(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { id } = req.params;
+
+    const schedule = await schedulingService.getScheduleById(id, organizationId);
+
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Schedule not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      schedule: mapScheduleDbToApi(schedule),
+    });
+  } catch (error) {
+    // Handle NotFoundError with 404 status
+    if (error.name === 'NotFoundError' || error.message?.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: error.message || 'Schedule not found',
+      });
+    }
+
+    logger.error('Error fetching schedule', {
+      error: error.message,
+      scheduleId: req.params.id,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch schedule',
+    });
+  }
+}
+
+/**
+ * Update a schedule
+ * PUT /api/paylinq/schedules/:id
+ */
+async function updateSchedule(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+
+    // Map API field names to database column names
+    const mappedData = mapScheduleApiToDb(req.body);
+    
+    const updateData = {
+      ...mappedData,
+      updatedBy: userId,
+    };
+
+    const schedule = await schedulingService.updateWorkSchedule(id, updateData, organizationId, userId);
+
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Schedule not found',
+      });
+    }
+
+    logger.info('Schedule updated', {
+      organizationId,
+      scheduleId: id,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      schedule: mapScheduleDbToApi(schedule),
+      message: 'Schedule updated successfully',
+    });
+  } catch (error) {
+    logger.error('Error updating schedule', {
+      error: error.message,
+      scheduleId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('conflict')) {
+      return res.status(409).json({
+        success: false,
+        error: 'Conflict',
+        message: error.message,
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: error.message,
+    });
+  }
+}
+
+/**
+ * Delete a schedule
+ * DELETE /api/paylinq/schedules/:id
+ */
+async function deleteSchedule(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+
+    const deleted = await schedulingService.deleteWorkSchedule(id, organizationId, userId);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Schedule not found',
+      });
+    }
+
+    logger.info('Schedule deleted', {
+      organizationId,
+      scheduleId: id,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Schedule deleted successfully',
+    });
+  } catch (error) {
+    logger.error('Error deleting schedule', {
+      error: error.message,
+      scheduleId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to delete schedule',
+    });
+  }
+}
+
+/**
+ * Create a schedule change request
+ * POST /api/paylinq/schedule-change-requests
+ */
+async function createChangeRequest(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    
+    // Map API field names to database column names
+    const mappedData = mapScheduleChangeRequestApiToDb(req.body);
+    
+    // Get the work schedule to find the employee_id
+    const schedule = await schedulingService.getScheduleById(mappedData.workScheduleId, organizationId);
+    
+    if (!schedule) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Work schedule not found',
+      });
+    }
+    
+    const requestData = {
+      ...mappedData,
+      requestedBy: schedule.employee_id, // Use employee_id from schedule
+    };
+
+    const request = await schedulingService.createScheduleChangeRequest(requestData, organizationId, userId);
+
+    logger.info('Schedule change request created', {
+      organizationId,
+      requestId: request.id,
+      workScheduleId: request.work_schedule_id,
+      userId,
+    });
+
+    res.status(201).json({
+      success: true,
+      request: request,
+      message: 'Change request created successfully',
+    });
+  } catch (error) {
+    logger.error('Error creating schedule change request', {
+      error: error.message,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: error.message,
+    });
+  }
+}
+
+/**
+ * Get schedule change requests
+ * GET /api/paylinq/schedule-change-requests
+ */
+async function getChangeRequests(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { status, employeeId } = req.query;
+
+    const filters = { status, employeeId };
+    const requests = await schedulingService.getScheduleChangeRequests(organizationId, filters);
+
+    res.status(200).json({
+      success: true,
+      requests: requests,
+      count: requests.length,
+    });
+  } catch (error) {
+    logger.error('Error fetching schedule change requests', {
+      error: error.message,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch change requests',
+    });
+  }
+}
+
+/**
+ * Approve or reject a schedule change request
+ * POST /api/paylinq/schedule-change-requests/:id/review
+ */
+async function reviewChangeRequest(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+    const { action, reviewNotes } = req.body;
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'action must be either "approve" or "reject"',
+      });
+    }
+
+    const result =
+      action === 'approve'
+        ? await schedulingService.approveScheduleChangeRequest(id, organizationId, userId, reviewNotes)
+        : await schedulingService.rejectScheduleChangeRequest(id, organizationId, userId, reviewNotes);
+
+    logger.info('Schedule change request reviewed', {
+      organizationId,
+      requestId: id,
+      action,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      result: result,
+      message: `Change request ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+    });
+  } catch (error) {
+    logger.error('Error reviewing schedule change request', {
+      error: error.message,
+      requestId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('status')) {
+      return res.status(409).json({
+        success: false,
+        error: 'Conflict',
+        message: error.message,
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: error.message,
+    });
+  }
+}
+
+export default {
+  createSchedule,
+  getSchedules,
+  getEmployeeSchedules,
+  getScheduleById,
+  updateSchedule,
+  deleteSchedule,
+  createChangeRequest,
+  getChangeRequests,
+  reviewChangeRequest,
+};

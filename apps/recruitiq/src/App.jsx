@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './context/AuthContext'
+import { useAuth } from '@recruitiq/auth'
 import Login from './pages/Login'
 import Layout from './components/Layout'
 import DebugOverlay from './components/DebugOverlay'
@@ -16,6 +16,9 @@ const Pipeline = lazy(() => import('./pages/Pipeline'))
 const Interviews = lazy(() => import('./pages/Interviews'))
 const MobileQuickResults = lazy(() => import('./pages/MobileQuickResults'))
 const Profile = lazy(() => import('./pages/Profile'))
+const Reports = lazy(() => import('./pages/Reports'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Help = lazy(() => import('./pages/Help'))
 
 // Lazy load public pages
 const ApplyJob = lazy(() => import('./pages/public/ApplyJob'))
@@ -40,9 +43,10 @@ function PageLoader() {
   )
 }
 
-// Protected Route wrapper for recruiters
+// Protected Route wrapper for tenant users
+// Checks authentication and product access
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, isLoading, isRecruiter } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   
   if (isLoading) {
     return (
@@ -55,8 +59,24 @@ function ProtectedRoute({ children }) {
     );
   }
   
-  if (!isAuthenticated || !isRecruiter) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+  
+  // Check if user has access to RecruitIQ product
+  const hasProductAccess = user?.enabledProducts?.includes('recruitiq');
+  if (!hasProductAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center max-w-md p-8">
+          <div className="text-red-500 text-6xl mb-4">🚫</div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
+          <p className="text-slate-600 mb-4">
+            You don't have access to RecruitIQ. Please contact your administrator to request access.
+          </p>
+        </div>
+      </div>
+    );
   }
   
   return children;
@@ -85,7 +105,7 @@ function ApplicantProtectedRoute({ children }) {
 }
 
 export default function App(){
-  const { isAuthenticated, isLoading, isRecruiter } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -103,7 +123,7 @@ export default function App(){
       {/* Public routes - No authentication required */}
       <Route 
         path="/login" 
-        element={isAuthenticated && isRecruiter ? <Navigate to="/" replace /> : <Login />} 
+        element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} 
       />
       <Route path="/apply/:jobId" element={
         <Suspense fallback={<PageLoader />}>
@@ -161,6 +181,9 @@ export default function App(){
                 <Route path="/candidates/:id" element={<CandidateDetail/>} />
                 <Route path="/interviews" element={<Interviews/>} />
                 <Route path="/pipeline" element={<Pipeline/>} />
+                <Route path="/reports" element={<Reports/>} />
+                <Route path="/settings" element={<Settings/>} />
+                <Route path="/help" element={<Help/>} />
                 <Route path="/profile" element={<Profile/>} />
                 <Route path="/mobile/quick-results" element={<MobileQuickResults/>} />
               </Routes>

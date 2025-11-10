@@ -1,15 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, X } from 'lucide-react';
-import { WorkerTable, Pagination, ConfirmDialog, FilterPanel, TableSkeleton } from '@/components/ui';
-import type { Worker, FilterConfig } from '@/components/ui';
-import { mockWorkers } from '@/utils/mockData';
+import WorkerTable from '@/components/ui/WorkerTable';
+import type { Worker } from '@/components/ui/WorkerTable';
+import Pagination from '@/components/ui/Pagination';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import FilterPanel from '@/components/ui/FilterPanel';
+import type { FilterConfig } from '@/components/ui/FilterPanel';
+import TableSkeleton from '@/components/ui/TableSkeleton';
 import { useToast } from '@/contexts/ToastContext';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import AddWorkerModal from '@/components/modals/AddWorkerModal';
 
 export default function WorkersList() {
   const navigate = useNavigate();
   const { success, error } = useToast();
+  const { paylinq } = usePaylinqAPI();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,16 +28,65 @@ export default function WorkersList() {
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const workersPerPage = 10;
 
-  // Simulate loading data
+  // Fetch workers from API
   useEffect(() => {
-    // Simulate API call delay
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchWorkers = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Build query params
+        const params: Record<string, any> = {
+          page: currentPage,
+          limit: workersPerPage,
+          sortField,
+          sortDirection,
+        };
+
+        if (searchTerm) {
+          params.search = searchTerm;
+        }
+
+        if (appliedFilters.status) {
+          params.status = appliedFilters.status;
+        }
+
+        if (appliedFilters.workerType && appliedFilters.workerType.length > 0) {
+          params.workerType = appliedFilters.workerType.join(',');
+        }
+
+        const response = await paylinq.getWorkers(params);
+        
+        if (response.success) {
+          // Map API response to Worker type
+          const employeeData = response.employees || [];
+          const mappedWorkers: Worker[] = employeeData.map((w: any) => ({
+            id: w.id,
+            employeeNumber: w.employee_number || w.employeeNumber,
+            fullName: w.full_name || w.fullName,
+            type: w.worker_type || w.type,
+            compensationType: w.compensation_type || 'salary',
+            compensationAmount: w.compensation_amount || w.compensationAmount || 0,
+            status: w.status,
+          }));
+
+          setWorkers(mappedWorkers);
+          setTotalCount(response.pagination?.total || mappedWorkers.length);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch workers:', err);
+        error(err.message || 'Failed to load workers');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWorkers();
+  }, [paylinq, currentPage, sortField, sortDirection, searchTerm, appliedFilters, error, refreshTrigger]);
 
   // Filter configuration
   const filterConfigs: FilterConfig[] = [
@@ -59,18 +114,7 @@ export default function WorkersList() {
     },
   ];
 
-  // Convert mock workers to Worker type for table
-  const workers: Worker[] = mockWorkers.map((w) => ({
-    id: w.id,
-    employeeNumber: w.employeeNumber,
-    fullName: w.fullName,
-    type: w.workerType,
-    compensationType: w.workerType === 'Hourly' ? 'hourly' : 'salary',
-    compensationAmount: w.compensation,
-    status: w.status,
-  }));
-
-  // Filter workers based on search and filters
+  // Filter workers based on client-side filters (for mock data fallback)
   const filteredWorkers = workers.filter((w) => {
     // Search filter
     const matchesSearch =
@@ -111,10 +155,11 @@ export default function WorkersList() {
     return 0;
   });
 
-  // Pagination
-  const totalPages = Math.ceil(sortedWorkers.length / workersPerPage);
+  // Pagination - use API total count if available, otherwise use filtered count
+  const totalPages = Math.ceil((totalCount || sortedWorkers.length) / workersPerPage);
   const startIndex = (currentPage - 1) * workersPerPage;
-  const paginatedWorkers = sortedWorkers.slice(startIndex, startIndex + workersPerPage);
+  // When using API pagination, workers are already paginated
+  const paginatedWorkers = totalCount > 0 ? workers : sortedWorkers.slice(startIndex, startIndex + workersPerPage);
 
   const handleSort = (field: string, direction: 'asc' | 'desc') => {
     setSortField(field);
@@ -139,17 +184,17 @@ export default function WorkersList() {
 
     setIsDeleting(true);
     try {
-      // TODO: Replace with actual API call
-      // await api.workers.delete(deleteWorkerId);
+      await paylinq.deleteWorker(deleteWorkerId);
       
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
-      const worker = mockWorkers.find((w) => w.id === deleteWorkerId);
+      const worker = workers.find((w) => w.id === deleteWorkerId);
       success(`Worker ${worker?.fullName || ''} has been deleted successfully`);
       setDeleteWorkerId(null);
-    } catch (err) {
-      error('Failed to delete worker. Please try again.');
+      
+      // Refresh the list
+      setWorkers((prev) => prev.filter((w) => w.id !== deleteWorkerId));
+      setTotalCount((prev) => prev - 1);
+    } catch (err: any) {
+      error(err.message || 'Failed to delete worker. Please try again.');
     } finally {
       setIsDeleting(false);
     }
@@ -157,7 +202,9 @@ export default function WorkersList() {
 
   const handleAddSuccess = () => {
     // Refresh worker list after successful add
-    // In real app, this would trigger a refetch
+    setRefreshTrigger(prev => prev + 1);
+    // Reset to first page to see the newly added worker
+    setCurrentPage(1);
   };
 
   const handleFilterChange = (filterId: string, value: any) => {
@@ -193,7 +240,7 @@ export default function WorkersList() {
         </div>
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+          className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
         >
           <Plus className="w-5 h-5" />
           <span>Add Worker</span>
@@ -209,7 +256,7 @@ export default function WorkersList() {
             placeholder="Search by name or employee number..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
         </div>
         <button 
@@ -348,3 +395,4 @@ export default function WorkersList() {
     </div>
   );
 }
+

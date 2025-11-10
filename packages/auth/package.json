@@ -1,0 +1,40 @@
+{
+  "name": "@recruitiq/auth",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Shared authentication and authorization module for RecruitIQ platform",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "test": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.0.0"
+  },
+  "dependencies": {
+    "@recruitiq/api-client": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.14",
+    "@types/react-dom": "^18.3.5",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "vite": "^7.0.0"
+  }
+}

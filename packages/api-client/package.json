@@ -1,6 +1,6 @@
 {
   "name": "@recruitiq/api-client",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Unified API client for RecruitIQ platform with authentication, error handling, and product-specific endpoints",
   "main": "./dist/index.js",
@@ -23,6 +23,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@recruitiq/types": "workspace:*",
     "axios": "^1.12.2"
   },
   "devDependencies": {

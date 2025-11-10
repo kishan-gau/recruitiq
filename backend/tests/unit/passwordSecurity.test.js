@@ -12,7 +12,7 @@ import {
   scorePasswordStrength,
   validatePassword,
   generateStrongPassword,
-} from '../src/utils/passwordSecurity.js';
+} from '../../src/utils/passwordSecurity.js';
 
 describe('Password Security', () => {
   describe('isCommonPassword', () => {

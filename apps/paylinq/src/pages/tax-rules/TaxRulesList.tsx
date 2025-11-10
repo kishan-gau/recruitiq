@@ -1,6 +1,11 @@
-import { Plus, Edit2, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Edit2, AlertCircle, Trash2, X } from 'lucide-react';
 import { StatusBadge } from '@/components/ui';
 import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
+import { useTaxRules, useCreateTaxRule, useUpdateTaxRule, useDeleteTaxRule } from '@/hooks/useTaxRules';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorAlert } from '@/components/ui/ErrorDisplay';
+import { useToast } from '@/contexts/ToastContext';
 
 interface TaxRule {
   id: string;
@@ -21,53 +26,100 @@ interface TaxRule {
   lastUpdated: string;
 }
 
-const mockTaxRules: TaxRule[] = [
-  {
-    id: '1',
-    name: 'Surinamese Wage Tax',
-    type: 'wage-tax',
-    description: 'Progressive income tax based on monthly gross salary',
-    brackets: [
-      { min: 0, max: 2500, rate: 8, deduction: 0 },
-      { min: 2500, max: 6250, rate: 15, deduction: 175 },
-      { min: 6250, max: 15625, rate: 25, deduction: 800 },
-      { min: 15625, max: null, rate: 36, deduction: 2520 },
-    ],
-    status: 'active',
-    effectiveDate: '2025-01-01',
-    lastUpdated: '2024-12-15',
-  },
-  {
-    id: '2',
-    name: 'AOV (Old Age Pension)',
-    type: 'aov',
-    description: 'General Old Age Pension Fund - mandatory social security contribution',
-    employeeContribution: 4,
-    employerContribution: 2,
-    status: 'active',
-    effectiveDate: '2025-01-01',
-    lastUpdated: '2024-12-15',
-  },
-  {
-    id: '3',
-    name: 'AWW (Widow and Orphan Pension)',
-    type: 'aww',
-    description: 'Widow and Orphan Insurance Fund - social security for dependents',
-    employeeContribution: 1.5,
-    employerContribution: 0,
-    status: 'active',
-    effectiveDate: '2025-01-01',
-    lastUpdated: '2024-12-15',
-  },
-];
+interface TaxRuleFormData {
+  name: string;
+  type: 'wage-tax' | 'aov' | 'aww';
+  description: string;
+  rate?: number;
+  employerContribution?: number;
+  employeeContribution?: number;
+  status: 'active' | 'inactive';
+  effectiveDate: string;
+}
 
 export default function TaxRulesList() {
-  const handleEdit = (_rule: TaxRule) => {
-    // TODO: Open edit modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<TaxRule | null>(null);
+  const [formData, setFormData] = useState<TaxRuleFormData>({
+    name: '',
+    type: 'wage-tax',
+    description: '',
+    status: 'active',
+    effectiveDate: new Date().toISOString().split('T')[0],
+  });
+
+  // Fetch tax rules using React Query
+  const { data: taxRules, isLoading, isError, error: fetchError, refetch } = useTaxRules({});
+  const createMutation = useCreateTaxRule();
+  const updateMutation = useUpdateTaxRule(editingRule?.id || '');
+  const deleteMutation = useDeleteTaxRule();
+  const { success, error: errorToast } = useToast();
+
+  const handleEdit = (rule: TaxRule) => {
+    setEditingRule(rule);
+    setFormData({
+      name: rule.name,
+      type: rule.type,
+      description: rule.description,
+      rate: rule.rate,
+      employerContribution: rule.employerContribution,
+      employeeContribution: rule.employeeContribution,
+      status: rule.status,
+      effectiveDate: rule.effectiveDate,
+    });
+    setIsModalOpen(true);
   };
 
   const handleAdd = () => {
-    // TODO: Open add modal
+    setEditingRule(null);
+    setFormData({
+      name: '',
+      type: 'wage-tax',
+      description: '',
+      status: 'active',
+      effectiveDate: new Date().toISOString().split('T')[0],
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (rule: TaxRule) => {
+    if (!confirm(`Are you sure you want to delete "${rule.name}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteMutation.mutateAsync(rule.id);
+      success('Tax rule deleted successfully');
+    } catch (err) {
+      errorToast(err instanceof Error ? err.message : 'Failed to delete tax rule');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      if (editingRule) {
+        await updateMutation.mutateAsync(formData);
+        success('Tax rule updated successfully');
+      } else {
+        await createMutation.mutateAsync(formData);
+        success('Tax rule created successfully');
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      errorToast(err instanceof Error ? err.message : 'Operation failed');
+    }
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value, type } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'number' ? parseFloat(value) || undefined : value,
+    }));
   };
 
   return (
@@ -82,7 +134,7 @@ export default function TaxRulesList() {
         </div>
         <button
           onClick={handleAdd}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Tax Rule
@@ -100,9 +152,32 @@ export default function TaxRulesList() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+      )}
+
+      {/* Error State */}
+      {isError && !isLoading && (
+        <ErrorAlert
+          message={fetchError?.message || 'Failed to load tax rules'}
+          onRetry={refetch}
+        />
+      )}
+
       {/* Tax Rules Cards */}
-      <div className="space-y-4">
-        {mockTaxRules.map((rule) => (
+      {!isLoading && !isError && (
+        <div className="space-y-4">
+          {(!taxRules || taxRules.length === 0) ? (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-12 text-center">
+              <p className="text-gray-500 dark:text-gray-400">No tax rules configured yet.</p>
+            </div>
+          ) : (
+            taxRules.map((rule: TaxRule) => (
           <div
             key={rule.id}
             className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow"
@@ -120,12 +195,22 @@ export default function TaxRulesList() {
                   {rule.description}
                 </p>
               </div>
-              <button
-                onClick={() => handleEdit(rule)}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleEdit(rule)}
+                  className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  title="Edit tax rule"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(rule)}
+                  className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                  title="Delete tax rule"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Rule Details */}
@@ -217,8 +302,177 @@ export default function TaxRulesList() {
               </div>
             </div>
           </div>
-        ))}
-      </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                {editingRule ? 'Edit Tax Rule' : 'Add Tax Rule'}
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  placeholder="e.g., Wage Tax 2025"
+                />
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Type *
+                </label>
+                <select
+                  name="type"
+                  value={formData.type}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                >
+                  <option value="wage-tax">Wage Tax</option>
+                  <option value="aov">AOV (Pension)</option>
+                  <option value="aww">AWW (Widows & Orphans)</option>
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description *
+                </label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  required
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  placeholder="Describe this tax rule..."
+                />
+              </div>
+
+              {/* Contributions (for AOV/AWW types) */}
+              {(formData.type === 'aov' || formData.type === 'aww') && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Employee Contribution (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="employeeContribution"
+                      value={formData.employeeContribution || ''}
+                      onChange={handleInputChange}
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      placeholder="e.g., 3.0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Employer Contribution (%)
+                    </label>
+                    <input
+                      type="number"
+                      name="employerContribution"
+                      value={formData.employerContribution || ''}
+                      onChange={handleInputChange}
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      placeholder="e.g., 4.5"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Status *
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              {/* Effective Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Effective Date *
+                </label>
+                <input
+                  type="date"
+                  name="effectiveDate"
+                  value={formData.effectiveDate}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {createMutation.isPending || updateMutation.isPending
+                    ? 'Saving...'
+                    : editingRule
+                    ? 'Update Rule'
+                    : 'Create Rule'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+

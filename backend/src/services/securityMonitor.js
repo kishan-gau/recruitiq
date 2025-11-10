@@ -49,9 +49,9 @@ if (config.deployment?.type === 'cloud' && config.centralMonitoring?.enabled) {
       });
       
       await centralMonitoringPool.query('SELECT 1');
-      console.log('✓ Central monitoring database connected');
+      // console.log('✓ Central monitoring database connected');
     } catch (error) {
-      console.error('✗ Failed to connect to central monitoring database:', error.message);
+      // console.error('✗ Failed to connect to central monitoring database:', error.message);
       centralMonitoringPool = null;
     }
   })();

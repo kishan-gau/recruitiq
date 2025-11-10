@@ -45,7 +45,12 @@ export class JobRepository extends BaseRepository {
         table: this.tableName
       });
 
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      if (!dbRecord) return null;
+      
+      // Import DTO mapper for specialized stats mapping
+      const { mapJobWithStatsDto } = await import('../utils/dtoMapper.js');
+      return mapJobWithStatsDto(dbRecord);
     } catch (error) {
       this.logger.error('Error in findByIdWithStats', {
         id,
@@ -67,12 +72,11 @@ export class JobRepository extends BaseRepository {
         SELECT 
           j.*,
           o.name as organization_name,
-          o.website as organization_website,
-          o.logo_url as organization_logo
+          o.slug as organization_slug
         FROM jobs j
         JOIN organizations o ON j.organization_id = o.id
         WHERE j.public_slug = $1 
-        AND j.is_published = true
+        AND j.is_public = true
         AND j.deleted_at IS NULL
       `;
 
@@ -81,7 +85,12 @@ export class JobRepository extends BaseRepository {
         table: this.tableName
       });
 
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      if (!dbRecord) return null;
+      
+      // Import DTO mapper
+      const { mapDbToApi } = await import('../utils/dtoMapper.js');
+      return mapDbToApi(dbRecord);
     } catch (error) {
       this.logger.error('Error in findBySlug', {
         slug,
@@ -211,8 +220,11 @@ export class JobRepository extends BaseRepository {
         table: this.tableName
       });
 
+      // Import DTO mapper for list results
+      const { mapToListDto } = await import('../utils/dtoMapper.js');
+      
       return {
-        jobs: dataResult.rows,
+        jobs: mapToListDto(dataResult.rows, 'jobs'),
         total,
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),

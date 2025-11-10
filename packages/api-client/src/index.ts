@@ -10,6 +10,17 @@ export type {
   SessionInfo,
 } from './core/auth';
 
+export { FeaturesAPI } from './core/features';
+export type {
+  FeatureCheckResult,
+  Feature,
+  FeatureGrant,
+  OrganizationFeatures,
+  UsageSummary,
+  FeatureAnalytics,
+  FeatureAdoptionReport,
+} from './core/features';
+
 // Product exports
 export { RecruitIQAPI } from './products/recruitiq';
 export { PortalAPI } from './products/portal';
@@ -18,6 +29,7 @@ export { PaylinqAPI } from './products/paylinq';
 // Unified API Client
 import { APIClient, APIClientConfig, TokenStorage } from './core/client';
 import { AuthAPI } from './core/auth';
+import { FeaturesAPI } from './core/features';
 import { RecruitIQAPI } from './products/recruitiq';
 import { PortalAPI } from './products/portal';
 import { PaylinqAPI } from './products/paylinq';
@@ -30,6 +42,7 @@ export class RecruitIQPlatformAPI {
   private apiClient: APIClient;
   
   public auth: AuthAPI;
+  public features: FeaturesAPI;
   public recruitiq: RecruitIQAPI;
   public portal: PortalAPI;
   public paylinq: PaylinqAPI;
@@ -39,6 +52,7 @@ export class RecruitIQPlatformAPI {
     
     // Initialize product APIs
     this.auth = new AuthAPI(this.apiClient);
+    this.features = new FeaturesAPI(this.apiClient);
     this.recruitiq = new RecruitIQAPI(this.apiClient);
     this.portal = new PortalAPI(this.apiClient);
     this.paylinq = new PaylinqAPI(this.apiClient);

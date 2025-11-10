@@ -1,12 +1,19 @@
 /**
  * BaseRepository - Abstract base class for all repositories
  * Implements common CRUD operations following Repository Pattern
+ * 
+ * Industry Standards:
+ * - Returns DTOs (Data Transfer Objects), not raw database records
+ * - Handles snake_case to camelCase transformation
+ * - Provides consistent API across all repositories
+ * 
  * @see https://martinfowler.com/eaaCatalog/repository.html
  */
 
 import pool, { query } from '../config/database.js';
 import logger from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
+import { mapDbToApi, mapApiToDb } from '../utils/dtoMapper.js';
 
 // Use the custom query function that supports organizationId filtering
 const db = { query };
@@ -27,7 +34,7 @@ export class BaseRepository {
    * Find a single record by ID
    * @param {string} id - Record ID
    * @param {string} organizationId - Organization ID for multi-tenancy
-   * @returns {Promise<Object|null>}
+   * @returns {Promise<Object|null>} DTO object with camelCase fields
    */
   async findById(id, organizationId) {
     try {
@@ -43,7 +50,8 @@ export class BaseRepository {
         table: this.tableName
       });
 
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      return dbRecord ? mapDbToApi(dbRecord) : null;
     } catch (error) {
       this.logger.error('Error in findById', {
         table: this.tableName,
@@ -87,7 +95,7 @@ export class BaseRepository {
         table: this.tableName
       });
 
-      return result.rows;
+      return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error in findAll', {
         table: this.tableName,
@@ -126,7 +134,8 @@ export class BaseRepository {
         table: this.tableName
       });
 
-      return result.rows[0] || null;
+      const dbRecord = result.rows[0] || null;
+      return dbRecord ? mapDbToApi(dbRecord) : null;
     } catch (error) {
       this.logger.error('Error in findOneBy', {
         table: this.tableName,
@@ -178,7 +187,7 @@ export class BaseRepository {
         organizationId
       });
 
-      return result.rows[0];
+      return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error in create', {
         table: this.tableName,
@@ -240,7 +249,7 @@ export class BaseRepository {
         organizationId
       });
 
-      return result.rows[0];
+      return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error in update', {
         table: this.tableName,

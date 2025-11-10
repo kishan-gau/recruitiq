@@ -32,7 +32,7 @@ export default function ConfirmDialog({
   const variantColors = {
     danger: 'bg-red-600 hover:bg-red-700 text-white',
     warning: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-    info: 'bg-blue-600 hover:bg-blue-700 text-white',
+    info: 'bg-emerald-600 hover:bg-emerald-700 text-white',
   };
 
   return (
@@ -69,3 +69,4 @@ export default function ConfirmDialog({
     </Dialog>
   );
 }
+

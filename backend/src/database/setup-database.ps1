@@ -3,7 +3,6 @@
 # ============================================================================
 
 param(
-    [switch]$DropExisting = $false,
     [string]$DBName = "recruitiq_dev",
     [string]$DBUser = "postgres",
     [string]$DBPassword = "postgres",
@@ -71,25 +70,37 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "[OK] Connected to PostgreSQL" -ForegroundColor Green
 Write-Host ""
 
-# Drop existing database if requested
-if ($DropExisting) {
-    Write-Host "[WARNING] Dropping existing database: $DBName" -ForegroundColor Yellow
-    & $psql -h $DBHost -p $DBPort -U $DBUser -d postgres -c "DROP DATABASE IF EXISTS $DBName;" 2>&1 | Out-Null
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "[OK] Database dropped" -ForegroundColor Green
-    }
-    Write-Host ""
+# Always drop existing database for clean reset
+Write-Host "[WARNING] Dropping existing database: $DBName" -ForegroundColor Yellow
+Write-Host "   This will delete all data!" -ForegroundColor Red
+
+# Terminate existing connections to the database
+& $psql -h $DBHost -p $DBPort -U $DBUser -d postgres -c @"
+SELECT pg_terminate_backend(pg_stat_activity.pid)
+FROM pg_stat_activity
+WHERE pg_stat_activity.datname = '$DBName'
+AND pid <> pg_backend_pid();
+"@ 2>&1 | Out-Null
+
+# Drop the database
+& $psql -h $DBHost -p $DBPort -U $DBUser -d postgres -c "DROP DATABASE IF EXISTS $DBName;" 2>&1 | Out-Null
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "[OK] Database dropped" -ForegroundColor Green
+} else {
+    Write-Host "[ERROR] Failed to drop database" -ForegroundColor Red
+    exit 1
 }
 
-# Create database if it doesn't exist
+# Create fresh database
 Write-Host "[*] Creating database: $DBName" -ForegroundColor Yellow
 & $psql -h $DBHost -p $DBPort -U $DBUser -d postgres -c "CREATE DATABASE $DBName;" 2>&1 | Out-Null
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "[OK] Database created" -ForegroundColor Green
 } else {
-    Write-Host "[INFO] Database already exists (this is ok)" -ForegroundColor Cyan
+    Write-Host "[ERROR] Failed to create database" -ForegroundColor Red
+    exit 1
 }
 Write-Host ""
 
@@ -111,14 +122,69 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "[*] Creating License Manager tables..." -ForegroundColor Cyan
+Write-Host "[*] Creating Nexus HRIS schema..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f schema-license-manager.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f nexus-hris-schema.sql
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error creating License Manager tables" -ForegroundColor Red
+    Write-Host "[ERROR] Error creating Nexus HRIS schema" -ForegroundColor Red
     exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Creating Paylinq payroll schema..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f paylinq-schema.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error creating Paylinq schema" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Creating ScheduleHub scheduling schema..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f schedulehub-schema.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error creating ScheduleHub schema" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Creating RecruitIQ ATS schema..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f recruitiq-schema.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error creating RecruitIQ schema" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Creating Deployment Service schema..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+# Check if deployment service schema file exists in deployment-service directory
+$deploymentSchemaPath = "..\..\deployment-service\src\database\deployment-service-schema.sql"
+if (Test-Path $deploymentSchemaPath) {
+    & $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f $deploymentSchemaPath
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[ERROR] Error creating Deployment Service schema" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "[WARNING] Deployment Service schema not found, skipping..." -ForegroundColor Yellow
+    Write-Host "   Expected at: $deploymentSchemaPath" -ForegroundColor Gray
 }
 
 Write-Host ""
@@ -133,6 +199,67 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding products and features..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-products.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding products" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding feature management system..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+# Run Node.js seed script for features
+$seedScriptPath = "..\..\scripts\seeds\seedFeatures.js"
+if (Test-Path $seedScriptPath) {
+    # Temporarily set database connection info for the seed script
+    $env:DATABASE_URL = "postgresql://${DBUser}:${DBPassword}@${DBHost}:${DBPort}/${DBName}"
+    
+    node $seedScriptPath
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[ERROR] Error seeding features" -ForegroundColor Red
+        Remove-Item Env:\DATABASE_URL -ErrorAction SilentlyContinue
+        exit 1
+    }
+    
+    Remove-Item Env:\DATABASE_URL -ErrorAction SilentlyContinue
+} else {
+    Write-Host "[WARNING] Feature seed script not found, skipping..." -ForegroundColor Yellow
+    Write-Host "   Expected at: $seedScriptPath" -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Creating formula template library..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f formula-templates-seed.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error creating formula templates" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Creating test organization and tenant users..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-test-tenant.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error creating test tenant" -ForegroundColor Red
+    exit 1
+}
+
 # Clean up environment variable
 Remove-Item Env:\PGPASSWORD
 
@@ -143,11 +270,63 @@ Write-Host "[OK] Database setup complete!" -ForegroundColor Green
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "[INFO] Database: $DBName" -ForegroundColor White
-Write-Host "[INFO] Default Users:" -ForegroundColor White
+Write-Host "[INFO] Schemas: public, hris, payroll, scheduling, deployment" -ForegroundColor White
+Write-Host ""
+Write-Host "[INFO] Platform Admin Users:" -ForegroundColor White
 Write-Host "   - admin@recruitiq.com (Super Admin)" -ForegroundColor White
 Write-Host "   - license@recruitiq.com (License Admin)" -ForegroundColor White
 Write-Host "   - security@recruitiq.com (Security Admin)" -ForegroundColor White
 Write-Host "   Password: Admin123!" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "[INFO] Test Organization: Test Company Ltd" -ForegroundColor Cyan
+Write-Host "[INFO] Tenant Users (for Paylinq access):" -ForegroundColor Cyan
+Write-Host "   - tenant@testcompany.com (Owner)" -ForegroundColor Cyan
+Write-Host "   - payroll@testcompany.com (Payroll Manager)" -ForegroundColor Cyan
+Write-Host "   - employee@testcompany.com (Employee)" -ForegroundColor Cyan
+Write-Host "   Password: Admin123!" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "[INFO] Nexus HRIS: Employee lifecycle management" -ForegroundColor Cyan
+Write-Host "   - Employee records & contracts" -ForegroundColor Gray
+Write-Host "   - Performance reviews & goals" -ForegroundColor Gray
+Write-Host "   - Benefits administration" -ForegroundColor Gray
+Write-Host "   - Time-off & attendance" -ForegroundColor Gray
+Write-Host "   - Document management" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Paylinq: 26 payroll tables created" -ForegroundColor Cyan
+Write-Host "   - Employee records & compensation" -ForegroundColor Gray
+Write-Host "   - Time & attendance tracking" -ForegroundColor Gray
+Write-Host "   - Payroll processing & paychecks" -ForegroundColor Gray
+Write-Host "   - Tax calculation & compliance" -ForegroundColor Gray
+Write-Host "   - Payment processing & reconciliation" -ForegroundColor Gray
+Write-Host "   - Formula engine & template library" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Formula Templates: 14 global templates seeded" -ForegroundColor Cyan
+Write-Host "   - 5 Earnings templates (percentage, overtime, daily rate)" -ForegroundColor Gray
+Write-Host "   - 2 Deduction templates (fixed, percentage)" -ForegroundColor Gray
+Write-Host "   - 4 Conditional templates (tiered bonus, conditional OT)" -ForegroundColor Gray
+Write-Host "   - 3 Advanced templates (safe division, capped, pro-rata)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Feature Management: 38 features seeded" -ForegroundColor Cyan
+Write-Host "   - Nexus ATS: 15 features (analytics, AI, integrations)" -ForegroundColor Gray
+Write-Host "   - Paylinq Payroll: 12 features (payments, time, compliance)" -ForegroundColor Gray
+Write-Host "   - Portal Platform: 11 features (branding, SSO, analytics)" -ForegroundColor Gray
+Write-Host "   - Tier-based access control (Starter/Professional/Enterprise)" -ForegroundColor Gray
+Write-Host "   - Usage tracking & limits for metered features" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] ScheduleHub: 16 scheduling tables created" -ForegroundColor Cyan
+Write-Host "   - Worker & role management" -ForegroundColor Gray
+Write-Host "   - Shift scheduling & stations" -ForegroundColor Gray
+Write-Host "   - Availability tracking" -ForegroundColor Gray
+Write-Host "   - Time-off requests" -ForegroundColor Gray
+Write-Host "   - Shift swapping marketplace" -ForegroundColor Gray
+Write-Host "   - Demand forecasting & optimization" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Deployment Service: 5 tables created" -ForegroundColor Cyan
+Write-Host "   - VPS provisioning approval workflow" -ForegroundColor Gray
+Write-Host "   - TransIP VPS inventory tracking" -ForegroundColor Gray
+Write-Host "   - Approver management & permissions" -ForegroundColor Gray
+Write-Host "   - Request comments & collaboration" -ForegroundColor Gray
+Write-Host "   - Comprehensive audit logging" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[WARNING] IMPORTANT:" -ForegroundColor Yellow
 Write-Host "   1. Change default passwords immediately" -ForegroundColor Yellow
@@ -163,7 +342,9 @@ Write-Host ""
 Write-Host "================================================================" -ForegroundColor Gray
 Write-Host "[INFO] Usage examples:" -ForegroundColor Gray
 Write-Host "   .\setup-database.ps1" -ForegroundColor Gray
-Write-Host "   .\setup-database.ps1 -DropExisting" -ForegroundColor Gray
 Write-Host "   .\setup-database.ps1 -DBUser myuser -DBPassword mypass" -ForegroundColor Gray
+Write-Host "   .\setup-database.ps1 -DBName recruitiq_prod" -ForegroundColor Gray
 Write-Host "================================================================" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Note: This script always drops and recreates the database!" -ForegroundColor Yellow
 Write-Host ""

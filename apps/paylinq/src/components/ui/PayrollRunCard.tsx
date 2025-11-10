@@ -9,7 +9,7 @@ export interface PayrollRun {
   period: string;
   startDate: string;
   endDate: string;
-  status: 'draft' | 'ready' | 'processing' | 'completed' | 'cancelled';
+  status: 'draft' | 'calculating' | 'calculated' | 'approved' | 'processing' | 'processed' | 'cancelled';
   employeeCount: number;
   totalAmount: number;
   type?: string;
@@ -23,14 +23,16 @@ interface PayrollRunCardProps {
 }
 
 export default function PayrollRunCard({ run, onProcess, onView, className }: PayrollRunCardProps) {
-  const isReady = run.status === 'ready';
-  const canProcess = isReady && onProcess;
+  const isCalculated = run.status === 'calculated' || run.status === 'draft';
+  const canProcess = isCalculated && onProcess;
 
   return (
     <div
+      data-testid="payroll-run-card"
+      data-run-id={run.id}
       className={clsx(
         'bg-white dark:bg-gray-900 rounded-lg border p-6 transition-all',
-        isReady
+        isCalculated
           ? 'border-blue-300 dark:border-blue-700 shadow-sm'
           : 'border-gray-200 dark:border-gray-800',
         className
@@ -39,12 +41,12 @@ export default function PayrollRunCard({ run, onProcess, onView, className }: Pa
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{run.period}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white" data-testid="run-period">{run.period}</h3>
           {run.type && (
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{run.type}</p>
           )}
         </div>
-        <StatusBadge status={run.status} />
+        <StatusBadge status={run.status} data-testid="run-status" />
       </div>
 
       {/* Stats */}
@@ -53,7 +55,7 @@ export default function PayrollRunCard({ run, onProcess, onView, className }: Pa
           <Calendar className="w-4 h-4 text-gray-400" />
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Period</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
+            <p className="text-sm font-medium text-gray-900 dark:text-white" data-testid="pay-period">
               {formatDateRange(run.startDate, run.endDate)}
             </p>
           </div>
@@ -63,13 +65,13 @@ export default function PayrollRunCard({ run, onProcess, onView, className }: Pa
           <Users className="w-4 h-4 text-gray-400" />
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Employees</p>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">{run.employeeCount}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white" data-testid="employee-count">{run.employeeCount}</p>
           </div>
         </div>
 
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400">Total Amount</p>
-          <CurrencyDisplay amount={run.totalAmount} className="text-sm font-medium" />
+          <CurrencyDisplay amount={run.totalAmount} className="text-sm font-medium" data-testid="total-amount" />
         </div>
       </div>
 

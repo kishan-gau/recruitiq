@@ -1,33 +1,58 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
-import { ErrorBoundary } from '@/components/ui';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Layout from '@/components/layout/Layout';
 
-// Pages (to be created)
-import Dashboard from '@/pages/Dashboard';
-import WorkersList from '@/pages/workers/WorkersList';
-import WorkerDetails from '@/pages/workers/WorkerDetails';
-import AddWorker from '@/pages/workers/AddWorker';
-import TaxRules from '@/pages/tax-rules/TaxRulesList';
-import PayComponents from '@/pages/pay-components/PayComponentsList';
-import TimeEntries from '@/pages/time-attendance/TimeEntries';
-import Scheduling from '@/pages/scheduling/ScheduleCalendar';
-import PayrollRuns from '@/pages/payroll/PayrollRunsList';
-import PayrollRunDetails from '@/pages/payroll/PayrollRunDetails';
-import Payslips from '@/pages/payslips/PayslipsList';
-import Reconciliation from '@/pages/reconciliation/ReconciliationDashboard';
-import Reports from '@/pages/reports/ReportsDashboard';
-import Settings from '@/pages/settings/Settings';
+// Only import Login eagerly (needed immediately)
+import Login from '@/pages/Login';
+
+// Lazy load all protected routes
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const WorkersList = lazy(() => import('@/pages/workers/WorkersList'));
+const WorkerDetails = lazy(() => import('@/pages/workers/WorkerDetails'));
+const AddWorker = lazy(() => import('@/pages/workers/AddWorker'));
+const TaxRules = lazy(() => import('@/pages/tax-rules/TaxRulesList'));
+const PayComponents = lazy(() => import('@/pages/pay-components/PayComponentsList'));
+const PayStructureTemplateDetail = lazy(() => import('@/pages/pay-structures/PayStructureTemplateDetail'));
+const TimeEntries = lazy(() => import('@/pages/time-attendance/TimeEntries'));
+const Scheduling = lazy(() => import('@/pages/scheduling/ScheduleCalendar'));
+const PayrollRuns = lazy(() => import('@/pages/payroll/PayrollRunsList'));
+const PayrollRunDetails = lazy(() => import('@/pages/payroll/PayrollRunDetails'));
+const Payslips = lazy(() => import('@/pages/payslips/PayslipsList'));
+const Reconciliation = lazy(() => import('@/pages/reconciliation/ReconciliationDashboard'));
+const Reports = lazy(() => import('@/pages/reports/ReportsDashboard'));
+const Settings = lazy(() => import('@/pages/settings/Settings'));
 
 function App() {
+  console.log('[App] Component rendering');
+  console.log('[App] Current pathname:', window.location.pathname);
+  console.log('[App] Current href:', window.location.href);
+  
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <ToastProvider>
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Layout />}>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/login" element={
+                  <>
+                    {console.log('[App] Rendering Login route')}
+                    <Login />
+                  </>
+                } />
+                
+                {/* Protected Routes */}
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             
@@ -41,6 +66,7 @@ function App() {
             
             {/* Pay Components */}
             <Route path="pay-components" element={<PayComponents />} />
+            <Route path="pay-structures/:templateId" element={<PayStructureTemplateDetail />} />
             
             {/* Time & Attendance */}
             <Route path="time-entries" element={<TimeEntries />} />
@@ -65,10 +91,11 @@ function App() {
             <Route path="settings" element={<Settings />} />
             
             {/* 404 */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Route>
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
         </ToastProvider>
       </ThemeProvider>
     </ErrorBoundary>

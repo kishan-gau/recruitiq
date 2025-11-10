@@ -246,7 +246,18 @@ export default function JobRequisition() {
       }
     } catch (err) {
       console.error('Failed to save draft:', err)
-      toast.show('Failed to save draft')
+      // Show the actual error message from the backend
+      const errorMessage = err.message || 'Failed to save draft'
+      toast.show(errorMessage, 'error')
+      
+      // If it's a validation error about description, navigate to that step
+      if (errorMessage.toLowerCase().includes('description')) {
+        focusFieldWithAnimation(descriptionRef, 'description')
+      } else if (errorMessage.toLowerCase().includes('title')) {
+        focusFieldWithAnimation(titleRef, 'basics')
+      } else if (errorMessage.toLowerCase().includes('requirements')) {
+        focusFieldWithAnimation(requirementsRef, 'requirements')
+      }
     }
   }
   
@@ -283,21 +294,119 @@ export default function JobRequisition() {
     
     console.log('[JobRequisition] Publishing job with data:', jobData)
     
-    try {
-      if (isEdit) {
-        await updateJob(existingJob.id, jobData)
-        toast.show('Job published')
-        navigate(`/jobs/${existingJob.id}`)
-      } else {
-        const newJob = await addJob(jobData)
-        console.log('[JobRequisition] Job published successfully:', newJob)
-        toast.show('Job published')
-        navigate(`/jobs/${newJob.id}`)
-      }
-    } catch (err) {
-      console.error('[JobRequisition] Failed to publish job:', err)
-      toast.show('Failed to publish job')
+    // Handle errors inline with the promise - MUST RETURN to prevent unhandled rejection
+    if (isEdit) {
+      return updateJob(existingJob.id, jobData)
+        .then(() => {
+          toast.show('Job published')
+          navigate(`/jobs/${existingJob.id}`)
+        })
+        .catch(err => {
+          console.log('=== ERROR HANDLER EXECUTING (UPDATE) ===')
+          handlePublishError(err)
+        })
+    } else {
+      return addJob(jobData)
+        .then(newJob => {
+          console.log('[JobRequisition] Job published successfully:', newJob)
+          toast.show('Job published')
+          navigate(`/jobs/${newJob.id}`)
+        })
+        .catch(err => {
+          console.log('=== ERROR HANDLER EXECUTING (CREATE) ===')
+          handlePublishError(err)
+        })
     }
+  }
+  
+  // Separate error handler function
+  const handlePublishError = (err) => {
+    console.log('=== INSIDE handlePublishError ===')
+      console.error('[JobRequisition] Failed to publish job:', err)
+      console.error('[JobRequisition] Error details:', {
+        message: err.message,
+        response: err.response,
+        status: err.status
+      })
+      
+      // Extract error message - handle both string and structured errors
+      let errorMessage = 'Failed to publish job'
+      let fieldName = null
+      
+      // Try to parse structured validation errors
+      if (err.response && typeof err.response === 'object') {
+        // Check for Joi validation errors
+        if (err.response.message) {
+          if (typeof err.response.message === 'string') {
+            errorMessage = err.response.message
+          } else if (typeof err.response.message === 'object') {
+            // Joi validation error format
+            const validationDetails = err.response.message.details || err.response.message
+            if (Array.isArray(validationDetails) && validationDetails.length > 0) {
+              errorMessage = validationDetails[0].message
+              fieldName = validationDetails[0].path?.[0] || validationDetails[0].context?.key
+            }
+          }
+        } else if (err.response.error) {
+          errorMessage = typeof err.response.error === 'string' ? err.response.error : JSON.stringify(err.response.error)
+        }
+      } else if (err.message && err.message !== '[object Object]') {
+        errorMessage = err.message
+      }
+      
+      // Extract field name from error message if not already found
+      if (!fieldName) {
+        const lowerMessage = errorMessage.toLowerCase()
+        console.log('[JobRequisition] Checking error message for field name:', lowerMessage)
+        if (lowerMessage.includes('description')) fieldName = 'description'
+        else if (lowerMessage.includes('title')) fieldName = 'title'
+        else if (lowerMessage.includes('requirements') || lowerMessage.includes('required')) fieldName = 'requirements'
+        else if (lowerMessage.includes('employment') || lowerMessage.includes('type')) fieldName = 'type'
+        else if (lowerMessage.includes('department')) fieldName = 'department'
+        else if (lowerMessage.includes('location')) fieldName = 'location'
+      }
+      
+      console.log('[JobRequisition] Extracted field name:', fieldName)
+      console.log('[JobRequisition] Error message:', errorMessage)
+      
+      // Show toast with error
+      toast.show(errorMessage, 'error')
+      
+      // Set field error and navigate to it
+      if (fieldName) {
+        console.log('[JobRequisition] Setting error for field:', fieldName)
+        setErrors(prev => {
+          const newErrors = { ...prev, [fieldName]: errorMessage }
+          console.log('[JobRequisition] New errors state:', newErrors)
+          return newErrors
+        })
+        setTouched(prev => {
+          const newTouched = { ...prev, [fieldName]: true }
+          console.log('[JobRequisition] New touched state:', newTouched)
+          return newTouched
+        })
+        
+        // Navigate to appropriate step
+        if (fieldName === 'title' || fieldName === 'flowTemplateId' || fieldName === 'type' || fieldName === 'department' || fieldName === 'location') {
+          console.log('[JobRequisition] Navigating to basics step')
+          setActiveStep('basics')
+          setTimeout(() => titleRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
+        } else if (fieldName === 'description') {
+          console.log('[JobRequisition] Navigating to description step')
+          setActiveStep('description')
+          setTimeout(() => {
+            console.log('[JobRequisition] Scrolling to description field')
+            descriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            descriptionRef.current?.focus()
+          }, 100)
+        } else if (fieldName === 'requirements') {
+          console.log('[JobRequisition] Navigating to requirements step')
+          setActiveStep('requirements')
+          setTimeout(() => requirementsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
+        }
+      } else {
+        console.log('[JobRequisition] No field name detected, cannot set field error')
+      }
   }
   
   // Loading state
@@ -398,7 +507,11 @@ export default function JobRequisition() {
               Save Draft
             </button>
             <button
-              onClick={handlePublish}
+              onClick={(e) => {
+                e.preventDefault()
+                // Defer to next tick to avoid React's error boundary
+                setTimeout(() => handlePublish(), 0)
+              }}
               className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -532,7 +645,7 @@ export default function JobRequisition() {
                   <div className="space-y-4">
                     {recentActivity.map((activity, index) => (
                       <div key={index} className="flex gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                        <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
                           {activity.candidate.split(' ').map(n => n[0]).slice(0, 2).join('')}
                         </div>
                         <div className="flex-1 min-w-0">

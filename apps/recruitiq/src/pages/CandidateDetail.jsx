@@ -2,6 +2,7 @@ import React from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import ConfirmationModal from '../components/ConfirmationModal'
+import CandidateEditForm from '../components/CandidateEditForm'
 import ApplicationSourceBadge from '../components/ApplicationSourceBadge'
 import { useToast } from '../context/ToastContext'
 
@@ -20,6 +21,7 @@ export default function CandidateDetail(){
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = React.useState('overview')
   const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [editOpen, setEditOpen] = React.useState(false)
   
   const c = candidates.find(x=> String(x.id) === id)
   
@@ -83,7 +85,10 @@ export default function CandidateDetail(){
   )
   
   const job = jobs.find(j=> j.id === c.jobId)
-  const stageColor = STAGE_COLORS[c.stage] || STAGE_COLORS['Applied']
+  // Candidates don't have a stage - that belongs to applications
+  // Show a generic active status
+  const candidateStatus = 'Active Candidate'
+  const stageColor = { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-300 dark:border-emerald-600' }
   
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -113,15 +118,15 @@ export default function CandidateDetail(){
           <div className="flex items-center gap-4 flex-1 min-w-0">
             {/* Avatar */}
             <div className="relative group flex-shrink-0">
-              <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg">
-                {c.name.split(' ').map(n=>n[0]).slice(0,2).join('')}
+              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 text-white rounded-full flex items-center justify-center font-bold text-xl shadow-lg">
+                {(c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'N/A').split(' ').map(n=>n[0]).slice(0,2).join('')}
               </div>
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-400/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
             </div>
             
             {/* Name and status */}
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">{c.name}</h1>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">{c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown'}</h1>
               <div className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
                 <span>{c.title}</span>
                 {c.application_source && (
@@ -135,17 +140,23 @@ export default function CandidateDetail(){
             
             {/* Status badge */}
             <span className={`flex-shrink-0 px-4 py-2 text-sm font-medium rounded-full ${stageColor.bg} ${stageColor.text} border ${stageColor.border}`}>
-              {c.stage}
+              {candidateStatus}
             </span>
           </div>
           
           {/* Action buttons */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button className="px-4 py-2 bg-white dark:bg-slate-800 border dark:border-slate-700 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 text-slate-700 dark:text-slate-300 rounded font-medium shadow-sm hover:shadow transition-all duration-200">
-              Advance
+            <button 
+              onClick={() => setEditOpen(true)}
+              className="px-4 py-2 bg-white dark:bg-slate-800 border dark:border-slate-700 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 text-slate-700 dark:text-slate-300 rounded font-medium shadow-sm hover:shadow transition-all duration-200"
+            >
+              Edit
             </button>
-            <button className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded font-medium shadow-sm hover:shadow-md transition-all duration-200">
-              Schedule Interview
+            <button 
+              onClick={() => setConfirmOpen(true)}
+              className="px-4 py-2 bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white rounded font-medium shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              Delete
             </button>
           </div>
         </div>
@@ -330,7 +341,21 @@ export default function CandidateDetail(){
         )}
       </div>
       
-      <ConfirmationModal open={confirmOpen} title="Delete candidate" message={`Delete ${c.name}? This action cannot be undone.`} onConfirm={doDelete} onCancel={()=>setConfirmOpen(false)} />
+      {/* Edit Modal */}
+      <CandidateEditForm 
+        open={editOpen} 
+        onClose={() => setEditOpen(false)} 
+        candidate={c}
+      />
+      
+      {/* Delete Confirmation */}
+      <ConfirmationModal 
+        open={confirmOpen} 
+        title="Delete candidate" 
+        message={`Delete ${c.name || 'this candidate'}? This action cannot be undone.`} 
+        onConfirm={doDelete} 
+        onCancel={()=>setConfirmOpen(false)} 
+      />
     </div>
   )
 }

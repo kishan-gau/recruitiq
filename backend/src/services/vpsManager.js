@@ -37,7 +37,7 @@ class VPSManager {
       ]
     );
 
-    console.log(`✅ VPS registered: ${vpsName}`);
+    logger.info(`✅ VPS registered: ${vpsName}`);
     return result.rows[0];
   }
 
@@ -171,7 +171,7 @@ class VPSManager {
 
       await client.query('COMMIT');
       
-      console.log(`✅ Organization ${organizationId} assigned to VPS ${vps.vps_name}`);
+      logger.info(`✅ Organization ${organizationId} assigned to VPS ${vps.vps_name}`);
       
       return vps;
 
@@ -218,7 +218,7 @@ class VPSManager {
 
       await client.query('COMMIT');
       
-      console.log(`✅ Organization ${organizationId} removed from VPS`);
+      logger.info(`✅ Organization ${organizationId} removed from VPS`);
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -309,7 +309,7 @@ class VPSManager {
 
       await client.query('COMMIT');
       
-      console.log(`✅ VPS ${vpsId} decommissioned`);
+      logger.info(`✅ VPS ${vpsId} decommissioned`);
 
     } catch (error) {
       await client.query('ROLLBACK');

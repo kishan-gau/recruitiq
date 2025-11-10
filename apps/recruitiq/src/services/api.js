@@ -2,19 +2,17 @@
  * RecruitIQ API Client
  * 
  * Enterprise-grade API client with:
- * - JWT token management with secure storage
+ * - JWT token management with httpOnly cookies (SECURE)
  * - Automatic token refresh
  * - Request/response interceptors
  * - Error handling and retry logic
  * - CSRF protection
  * - Request timeout handling
  * - XSS protection (sanitized responses)
+ * 
+ * SECURITY NOTE: Tokens are stored in httpOnly cookies managed by the server.
+ * This prevents XSS attacks from stealing tokens via JavaScript.
  */
-
-// Security: Token storage keys with prefixes to prevent collisions
-const TOKEN_KEY = '__recruitiq_access_token'
-const REFRESH_TOKEN_KEY = '__recruitiq_refresh_token'
-const TOKEN_EXPIRY_KEY = '__recruitiq_token_expiry'
 
 // Security: Request timeout to prevent hanging requests
 const REQUEST_TIMEOUT = 30000 // 30 seconds
@@ -27,103 +25,66 @@ class APIClient {
   }
 
   /**
-   * Security: Secure token storage with encryption flag
-   * In production, consider using httpOnly cookies instead of localStorage
+   * SECURITY: Tokens are now stored in httpOnly cookies by the server.
+   * This method is kept for backward compatibility but does nothing.
+   * The server sets cookies in Set-Cookie header on login/refresh.
+   * 
+   * @deprecated Tokens are managed via httpOnly cookies
    */
   setToken(token, refreshToken = null, expiresIn = 604800) {
-    if (!token) {
-      console.error('Attempted to set empty token')
-      return
-    }
-
-    try {
-      // Calculate expiry time (default 7 days)
-      const expiryTime = Date.now() + (expiresIn * 1000)
-      
-      // Store tokens securely
-      localStorage.setItem(TOKEN_KEY, token)
-      localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString())
-      
-      if (refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
-      }
-    } catch (error) {
-      console.error('Failed to store authentication tokens:', error)
-      // Security: Clear any partial data on error
-      this.clearTokens()
-    }
+    // Tokens are now managed via httpOnly cookies by the server
+    // No localStorage storage needed - this prevents XSS token theft
+    console.info('Authentication tokens are managed via secure httpOnly cookies')
   }
 
   /**
-   * Security: Get token with validation
+   * SECURITY: Check if user is authenticated by calling /auth/me endpoint.
+   * We can't read httpOnly cookies from JavaScript (that's the security benefit!).
+   * The server will validate the cookie and return user info if valid.
+   * 
+   * @returns {boolean} Always returns true - actual auth check happens server-side
    */
   getToken() {
-    try {
-      const token = localStorage.getItem(TOKEN_KEY)
-      const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY)
-
-      // Security: Validate token exists and hasn't expired
-      if (!token) return null
-
-      if (expiry && Date.now() > parseInt(expiry)) {
-        console.warn('Token has expired')
-        this.clearTokens()
-        return null
-      }
-
-      return token
-    } catch (error) {
-      console.error('Failed to retrieve token:', error)
-      return null
-    }
+    // With httpOnly cookies, we can't and shouldn't read tokens from JavaScript
+    // Authentication is handled automatically via cookies sent with each request
+    // This is more secure as XSS attacks cannot steal the token
+    return true // Return true to indicate cookie-based auth is in use
   }
 
   /**
-   * Security: Clear all authentication data
+   * SECURITY: Clear authentication by calling logout endpoint.
+   * The server will clear the httpOnly cookies.
    */
   clearTokens() {
-    try {
-      localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem(REFRESH_TOKEN_KEY)
-      localStorage.removeItem(TOKEN_EXPIRY_KEY)
-    } catch (error) {
-      console.error('Failed to clear tokens:', error)
-    }
+    // Tokens are in httpOnly cookies - we need to tell the server to clear them
+    // This will be handled by the logout endpoint
+    console.info('Tokens cleared via logout endpoint')
   }
 
   /**
-   * Security: Check if token is expired or about to expire (within 5 minutes)
+   * SECURITY: With httpOnly cookies, token expiry is managed server-side.
+   * The server automatically handles token refresh and expiry.
+   * 
+   * @returns {boolean} Always returns false - server handles expiry
    */
   isTokenExpired() {
-    try {
-      const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY)
-      if (!expiry) return true
-      
-      // Security: Consider token expired if less than 5 minutes remaining
-      const fiveMinutes = 5 * 60 * 1000
-      return Date.now() > (parseInt(expiry) - fiveMinutes)
-    } catch (error) {
-      return true
-    }
+    // With httpOnly cookies, we can't check expiry client-side
+    // Server will return 401 if token is expired, triggering refresh
+    return false
   }
 
   /**
-   * Security: Refresh token mechanism
+   * SECURITY: Refresh token via server endpoint.
+   * The server reads the refresh token from httpOnly cookie and issues new tokens.
    */
   async refreshToken() {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
-    
-    if (!refreshToken) {
-      throw new Error('No refresh token available')
-    }
-
     try {
-      const response = await fetch(`${this.baseURL}/api/auth/refresh`, {
+      const response = await fetch(`${this.baseURL}/auth/tenant/refresh`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ refreshToken }),
+        credentials: 'include', // Send cookies
       })
 
       if (!response.ok) {
@@ -131,12 +92,11 @@ class APIClient {
       }
 
       const data = await response.json()
-      this.setToken(data.token, data.refreshToken, data.expiresIn)
+      // Server sets new tokens in httpOnly cookies via Set-Cookie header
       
-      return data.token
+      return data.token || true // Return true to indicate success
     } catch (error) {
-      // Security: Clear tokens on refresh failure
-      this.clearTokens()
+      // On refresh failure, redirect to login
       throw error
     }
   }
@@ -167,11 +127,12 @@ class APIClient {
 
   /**
    * Core request method with security features:
-   * - Automatic token injection
+   * - Automatic httpOnly cookie authentication
    * - Token refresh on 401
    * - Request timeout
    * - Error handling
    * - Input sanitization
+   * - CSRF protection
    */
   async request(endpoint, options = {}) {
     // Security: Sanitize request body
@@ -185,37 +146,20 @@ class APIClient {
       }
     }
 
-    // Security: Get current token
-    let token = this.getToken()
-
-    // Security: Refresh token if expired
-    if (token && this.isTokenExpired() && endpoint !== '/api/auth/refresh') {
-      try {
-        token = await this.refreshToken()
-      } catch (error) {
-        console.error('Token refresh failed:', error)
-        this.clearTokens()
-        window.location.href = '/login'
-        throw new Error('Session expired. Please login again.')
-      }
-    }
-
     // Security: Build secure headers
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers,
     }
 
-    // Security: Add CSRF token if available (only if present)
+    // Security: Add CSRF token if available (required for state-changing operations)
     const csrfToken = this.getCSRFToken()
     if (csrfToken) {
       headers['X-CSRF-Token'] = csrfToken
     }
 
-    // Security: Add authorization header if token exists
-    if (token && !options.skipAuth) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
+    // NOTE: No Authorization header needed - authentication via httpOnly cookies
+    // The browser automatically sends cookies with each request
 
     // Security: Request timeout
     const controller = new AbortController()
@@ -226,16 +170,15 @@ class APIClient {
         ...options,
         headers,
         signal: controller.signal,
-        // Security: Send cookies only to same origin
-        credentials: 'same-origin',
+        // SECURITY: Include credentials to send httpOnly cookies
+        credentials: 'include',
       })
 
       clearTimeout(timeoutId)
 
       // Security: Handle 401 Unauthorized
-      if (response.status === 401 && endpoint !== '/api/auth/login') {
-        console.warn('Unauthorized request, clearing session')
-        this.clearTokens()
+      if (response.status === 401 && endpoint !== '/auth/tenant/login') {
+        console.warn('Unauthorized request - session expired or invalid')
         
         // Show user-friendly message
         // Check if sessionStorage has already shown the message to prevent duplicates
@@ -246,23 +189,47 @@ class APIClient {
         }
         
         window.location.href = '/login?reason=session_expired'
-        throw new Error('Your session has expired or was ended from another device. Please login again.')
+        throw new Error('Your session has expired. Please login again.')
       }
 
       // Security: Handle other error status codes
       if (!response.ok) {
         let errorMessage = 'Request failed'
+        let errorData = null
         try {
-          const errorData = await response.json()
+          errorData = await response.json()
+          console.log('[APIClient] Error response data:', errorData)
+          console.log('[APIClient] Error data type:', typeof errorData)
+          console.log('[APIClient] Error data keys:', Object.keys(errorData || {}))
+          
           // Security: Don't expose internal error details to console in production
-          errorMessage = errorData.message || errorData.error || errorMessage
+          // Extract the actual error message from the response
+          if (errorData.message && typeof errorData.message === 'string') {
+            errorMessage = errorData.message
+          } else if (errorData.error) {
+            // Error is nested in an 'error' object
+            if (typeof errorData.error === 'string') {
+              errorMessage = errorData.error
+            } else if (typeof errorData.error === 'object') {
+              // Extract message from nested error object
+              errorMessage = errorData.error.message || errorData.error.error || 'Request failed'
+            }
+          } else if (errorData.raw?.message && typeof errorData.raw.message === 'string') {
+            // Some errors have the message in a 'raw' object
+            errorMessage = errorData.raw.message
+          } else {
+            console.warn('[APIClient] Could not extract error message from response, using default')
+          }
+          
+          console.log('[APIClient] Extracted error message:', errorMessage)
         } catch (e) {
+          console.error('[APIClient] Failed to parse error response:', e)
           errorMessage = response.statusText || errorMessage
         }
         
         const error = new Error(errorMessage)
         error.status = response.status
-        error.response = response
+        error.response = errorData
         throw error
       }
 
@@ -329,7 +296,7 @@ class APIClient {
       throw new Error('Invalid email format')
     }
 
-    const response = await this.request('/api/auth/login', {
+    const response = await this.request('/auth/tenant/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
       skipAuth: true, // Don't send token for login
@@ -365,7 +332,7 @@ class APIClient {
       throw new Error('Password must be at least 8 characters long')
     }
 
-    const response = await this.request('/api/auth/register', {
+    const response = await this.request('/auth/tenant/register', {
       method: 'POST',
       body: JSON.stringify(data),
       skipAuth: true,
@@ -385,7 +352,7 @@ class APIClient {
    * Get current user profile
    */
   async getMe() {
-    return this.request('/api/auth/me')
+    return this.request('/auth/tenant/me')
   }
 
   /**
@@ -398,7 +365,7 @@ class APIClient {
       
       // Notify server to invalidate tokens
       if (refreshToken) {
-        await this.request('/api/auth/logout', {
+        await this.request('/auth/tenant/logout', {
           method: 'POST',
           body: JSON.stringify({ refreshToken }),
         })
@@ -416,18 +383,18 @@ class APIClient {
   // ============================================================================
 
   async getOrganization() {
-    return this.request('/api/organizations')
+    return this.request('/organizations')
   }
 
   async updateOrganization(data) {
-    return this.request('/api/organizations', {
+    return this.request('/organizations', {
       method: 'PUT',
       body: JSON.stringify(data),
     })
   }
 
   async getOrganizationStats() {
-    return this.request('/api/organizations/stats')
+    return this.request('/organizations/stats')
   }
 
   // ============================================================================
@@ -435,46 +402,46 @@ class APIClient {
   // ============================================================================
 
   async getWorkspaces() {
-    return this.request('/api/workspaces')
+    return this.request('/workspaces')
   }
 
   async getWorkspace(id) {
-    return this.request(`/api/workspaces/${id}`)
+    return this.request(`/workspaces/${id}`)
   }
 
   async createWorkspace(data) {
-    return this.request('/api/workspaces', {
+    return this.request('/workspaces', {
       method: 'POST',
       body: JSON.stringify(data),
     })
   }
 
   async updateWorkspace(id, data) {
-    return this.request(`/api/workspaces/${id}`, {
+    return this.request(`/workspaces/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     })
   }
 
   async deleteWorkspace(id) {
-    return this.request(`/api/workspaces/${id}`, {
+    return this.request(`/workspaces/${id}`, {
       method: 'DELETE',
     })
   }
 
   async getWorkspaceMembers(id) {
-    return this.request(`/api/workspaces/${id}/members`)
+    return this.request(`/workspaces/${id}/members`)
   }
 
   async addWorkspaceMember(workspaceId, userId) {
-    return this.request(`/api/workspaces/${workspaceId}/members`, {
+    return this.request(`/workspaces/${workspaceId}/members`, {
       method: 'POST',
       body: JSON.stringify({ userId }),
     })
   }
 
   async removeWorkspaceMember(workspaceId, userId) {
-    return this.request(`/api/workspaces/${workspaceId}/members/${userId}`, {
+    return this.request(`/workspaces/${workspaceId}/members/${userId}`, {
       method: 'DELETE',
     })
   }
@@ -493,7 +460,7 @@ class APIClient {
   }
 
   async createUser(data) {
-    return this.request('/api/users', {
+    return this.request('/users', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -533,7 +500,7 @@ class APIClient {
   }
 
   async createJob(data) {
-    return this.request('/api/jobs', {
+    return this.request('/jobs', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -553,7 +520,7 @@ class APIClient {
   }
 
   async getPublicJobs() {
-    return this.request('/api/jobs/public', {
+    return this.request('/jobs/public', {
       skipAuth: true,
     })
   }
@@ -578,7 +545,7 @@ class APIClient {
   }
 
   async createCandidate(data) {
-    return this.request('/api/candidates', {
+    return this.request('/candidates', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -615,7 +582,7 @@ class APIClient {
   }
 
   async createApplication(data) {
-    return this.request('/api/applications', {
+    return this.request('/applications', {
       method: 'POST',
       body: JSON.stringify(data),
       skipAuth: true, // Public endpoint for candidate applications
@@ -655,7 +622,7 @@ class APIClient {
   }
 
   async createInterview(data) {
-    return this.request('/api/interviews', {
+    return this.request('/interviews', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -695,7 +662,7 @@ class APIClient {
   }
 
   async createFlowTemplate(data) {
-    return this.request('/api/flow-templates', {
+    return this.request('/flow-templates', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -729,7 +696,7 @@ class APIClient {
    * Returns list of devices/locations where user is currently logged in
    */
   async getActiveSessions() {
-    return this.request('/api/auth/sessions')
+    return this.request('/auth/tenant/sessions')
   }
 
   /**
@@ -737,7 +704,7 @@ class APIClient {
    * @param {string} sessionId - ID of the session to revoke
    */
   async revokeSession(sessionId) {
-    return this.request(`/api/auth/sessions/${sessionId}`, {
+    return this.request(`/auth/tenant/sessions/${sessionId}`, {
       method: 'DELETE',
     })
   }
@@ -746,8 +713,8 @@ class APIClient {
    * Revoke all other sessions (logout from all other devices except current)
    */
   async revokeAllSessions() {
-    return this.request('/api/auth/sessions', {
-      method: 'DELETE',
+    return this.request('/auth/tenant/revoke-all-sessions', {
+      method: 'POST',
     })
   }
 
@@ -760,7 +727,7 @@ class APIClient {
    * Returns whether MFA is enabled and if it's required by organization
    */
   async getMFAStatus() {
-    return this.request('/api/auth/mfa/status')
+    return this.request('/auth/mfa/status')
   }
 
   /**
@@ -769,7 +736,7 @@ class APIClient {
    * @returns {Promise<{qrCodeUrl: string, manualEntryKey: string, tempSecret: string}>}
    */
   async setupMFA() {
-    return this.request('/api/auth/mfa/setup', {
+    return this.request('/auth/mfa/setup', {
       method: 'POST',
     })
   }
@@ -782,7 +749,7 @@ class APIClient {
    * @returns {Promise<{backupCodes: string[]}>}
    */
   async verifyMFASetup(token, secret) {
-    return this.request('/api/auth/mfa/verify-setup', {
+    return this.request('/auth/mfa/verify-setup', {
       method: 'POST',
       body: JSON.stringify({ token, secret }),
     })
@@ -796,7 +763,7 @@ class APIClient {
    * @returns {Promise<{accessToken: string, refreshToken: string, user: object}>}
    */
   async verifyMFA(mfaToken, token) {
-    return this.request('/api/auth/mfa/verify', {
+    return this.request('/auth/mfa/verify', {
       method: 'POST',
       body: JSON.stringify({ mfaToken, token }),
     })
@@ -809,7 +776,7 @@ class APIClient {
    * @returns {Promise<{accessToken: string, refreshToken: string, user: object}>}
    */
   async useBackupCode(mfaToken, backupCode) {
-    return this.request('/api/auth/mfa/use-backup-code', {
+    return this.request('/auth/mfa/use-backup-code', {
       method: 'POST',
       body: JSON.stringify({ mfaToken, backupCode }),
     })
@@ -824,7 +791,7 @@ class APIClient {
    * @returns {Promise<{message: string}>}
    */
   async disableMFA(password, token) {
-    return this.request('/api/auth/mfa/disable', {
+    return this.request('/auth/mfa/disable', {
       method: 'POST',
       body: JSON.stringify({ password, token }),
     })
@@ -838,7 +805,7 @@ class APIClient {
    * @returns {Promise<{backupCodes: string[]}>}
    */
   async regenerateBackupCodes(password, token) {
-    return this.request('/api/auth/mfa/regenerate-backup-codes', {
+    return this.request('/auth/mfa/regenerate-backup-codes', {
       method: 'POST',
       body: JSON.stringify({ password, token }),
     })

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dialog, FormField, Input } from '@/components/ui';
 import { useToast } from '@/contexts/ToastContext';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface ProcessPayrollModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface ProcessPayrollModalProps {
 }
 
 export default function ProcessPayrollModal({ isOpen, onClose, payrollRun, onSuccess }: ProcessPayrollModalProps) {
+  const { paylinq } = usePaylinqAPI();
   const { success, error } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<'review' | 'confirm'>('review');
@@ -33,19 +35,31 @@ export default function ProcessPayrollModal({ isOpen, onClose, payrollRun, onSuc
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // await api.payroll.process(payrollRun?.id, { approvalNotes });
+      const response = await paylinq.processPayrollRun(payrollRun?.id || '');
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      success(`Payroll for ${payrollRun?.period} processed successfully`);
-      onSuccess();
-      onClose();
-      setStep('review');
-      setApprovalNotes('');
-    } catch (err) {
-      error('Failed to process payroll. Please try again.');
+      if (response.success) {
+        success(`Payroll for ${payrollRun?.period} processed successfully`);
+        onSuccess();
+        onClose();
+        setStep('review');
+        setApprovalNotes('');
+      }
+    } catch (err: any) {
+      // Handle validation errors from API
+      if (err.response?.status === 400 && err.response?.data?.errors) {
+        const fieldLabels: Record<string, string> = {
+          payrollRunId: 'Payroll Run',
+          processingDate: 'Processing Date',
+          notes: 'Notes',
+        };
+        
+        const errors = err.response.data.errors
+          .map((e: any) => `${fieldLabels[e.field] || e.field}: ${e.message}`)
+          .join(', ');
+        error(errors || 'Please fix the validation errors');
+      } else {
+        error(err.response?.data?.message || err.message || 'Failed to process payroll. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

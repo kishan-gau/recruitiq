@@ -8,7 +8,7 @@ interface ApprovalModalProps {
   onClose: () => void;
   entryIds: string[];
   action: 'approve' | 'reject';
-  onSuccess: () => void;
+  onSuccess: (action: 'approve' | 'reject', entryIds: string[], notes?: string) => Promise<void>;
 }
 
 export default function ApprovalModal({ isOpen, onClose, entryIds, action, onSuccess }: ApprovalModalProps) {
@@ -20,21 +20,30 @@ export default function ApprovalModal({ isOpen, onClose, entryIds, action, onSuc
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual API call
-      // await api.timeEntries.bulkUpdate(entryIds, { status: action === 'approve' ? 'approved' : 'rejected', notes });
+      // Call parent's onSuccess handler which makes the API call
+      await onSuccess(action, entryIds, notes);
       
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      
-      const count = entryIds.length;
-      const actionText = action === 'approve' ? 'approved' : 'rejected';
-      success(`${count} time ${count === 1 ? 'entry' : 'entries'} ${actionText} successfully`);
-      
-      onSuccess();
+      success(`Time ${entryIds.length === 1 ? 'entry' : 'entries'} ${action}d successfully`);
       onClose();
       setNotes('');
     } catch (err) {
-      error(`Failed to ${action} time entries. Please try again.`);
+      // Handle validation errors from API
+      const apiError = err as any;
+      if (apiError.response?.status === 400 && apiError.response?.data?.errors) {
+        const fieldLabels: Record<string, string> = {
+          entryIds: 'Time Entries',
+          action: 'Action',
+          notes: 'Notes',
+          reason: 'Reason',
+        };
+        
+        const errors = apiError.response.data.errors
+          .map((e: any) => `${fieldLabels[e.field] || e.field}: ${e.message}`)
+          .join(', ');
+        error(errors || 'Please fix the validation errors');
+      } else {
+        error(apiError.response?.data?.message || apiError.message || `Failed to ${action} time entries. Please try again.`);
+      }
     } finally {
       setIsLoading(false);
     }

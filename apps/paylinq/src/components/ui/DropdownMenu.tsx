@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { MoreVertical } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -19,11 +20,37 @@ interface DropdownMenuProps {
 
 export default function DropdownMenu({ items, onSelect, className, trigger }: DropdownMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const updatePosition = () => {
+      if (buttonRef.current && isOpen) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        setPosition({
+          top: rect.bottom + window.scrollY + 8,
+          left: rect.right + window.scrollX - 224, // 224px = 14rem (w-56)
+        });
+      }
+    };
+
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+    }
+
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
@@ -53,8 +80,9 @@ export default function DropdownMenu({ items, onSelect, className, trigger }: Dr
   };
 
   return (
-    <div className={clsx('relative inline-block', className)} ref={dropdownRef}>
+    <div className={clsx('relative inline-block', className)}>
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         aria-label="Open menu"
@@ -62,8 +90,15 @@ export default function DropdownMenu({ items, onSelect, className, trigger }: Dr
         {trigger || <MoreVertical className="w-5 h-5 text-gray-500" />}
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg shadow-lg bg-white dark:bg-gray-900 ring-1 ring-black ring-opacity-5 dark:ring-gray-800">
+      {isOpen && createPortal(
+        <div 
+          ref={dropdownRef}
+          className="fixed z-[9999] w-56 rounded-lg shadow-lg bg-white dark:bg-gray-900 ring-1 ring-black ring-opacity-5 dark:ring-gray-800"
+          style={{
+            top: `${position.top}px`,
+            left: `${position.left}px`,
+          }}
+        >
           <div className="py-1" role="menu" aria-orientation="vertical">
             {items.map((item) => (
               <button
@@ -85,7 +120,8 @@ export default function DropdownMenu({ items, onSelect, className, trigger }: Dr
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

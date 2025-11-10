@@ -68,7 +68,7 @@ export default function FilterPanel({
                 <select
                   value={values[filter.id] || ''}
                   onChange={(e) => onChange(filter.id, e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">{filter.placeholder || 'All'}</option>
                   {filter.options?.map((option) => (
@@ -94,7 +94,7 @@ export default function FilterPanel({
                             : current.filter((v: string) => v !== option.value);
                           onChange(filter.id, newValue);
                         }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-gray-300 text-blue-600 focus:ring-emerald-500"
                       />
                       <span className="text-sm text-gray-700 dark:text-gray-300">
                         {option.label}
@@ -117,7 +117,7 @@ export default function FilterPanel({
                       })
                     }
                     placeholder="From"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                   />
                   <input
                     type="date"
@@ -129,7 +129,7 @@ export default function FilterPanel({
                       })
                     }
                     placeholder="To"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               )}
@@ -141,7 +141,7 @@ export default function FilterPanel({
                   value={values[filter.id] || ''}
                   onChange={(e) => onChange(filter.id, e.target.value)}
                   placeholder={filter.placeholder}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
                 />
               )}
             </div>
@@ -158,7 +158,7 @@ export default function FilterPanel({
           </button>
           <button
             onClick={onApply}
-            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+            className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white font-medium transition-colors"
           >
             Apply
           </button>
@@ -167,3 +167,5 @@ export default function FilterPanel({
     </>
   );
 }
+
+

@@ -6,6 +6,8 @@
  * npm install @transip/transip-api-javascript
  */
 
+import logger from '../utils/logger.js';
+
 class TransIPService {
   constructor() {
     // TODO: Initialize TransIP client when ready
@@ -15,7 +17,7 @@ class TransIPService {
     //   readOnly: false
     // });
     
-    console.log('⚠️  TransIP service initialized (API integration pending)');
+    logger.info('⚠️  TransIP service initialized (API integration pending)');
   }
 
   /**
@@ -26,7 +28,7 @@ class TransIPService {
   async createDedicatedVPS(config) {
     const { organizationId, slug, tier } = config;
 
-    console.log(`🚧 TODO: Create VPS via TransIP API for ${slug}`);
+    logger.info(`🚧 TODO: Create VPS via TransIP API for ${slug}`);
     
     // TODO: Implement actual TransIP API call
     // const vpsSpecs = this.getVPSSpecs(tier);
@@ -134,7 +136,7 @@ echo "✅ VPS setup complete for ${config.slug}"
    * Get VPS status
    */
   async getVPSStatus(vpsName) {
-    console.log(`🚧 TODO: Get VPS status from TransIP API: ${vpsName}`);
+    logger.info(`🚧 TODO: Get VPS status from TransIP API: ${vpsName}`);
     
     // TODO: Implement actual API call
     // const vps = await this.client.vps.get(vpsName);
@@ -154,7 +156,7 @@ echo "✅ VPS setup complete for ${config.slug}"
    * Stop VPS
    */
   async stopVPS(vpsName) {
-    console.log(`🚧 TODO: Stop VPS via TransIP API: ${vpsName}`);
+    logger.info(`🚧 TODO: Stop VPS via TransIP API: ${vpsName}`);
     // TODO: await this.client.vps.stop(vpsName);
   }
 
@@ -162,7 +164,7 @@ echo "✅ VPS setup complete for ${config.slug}"
    * Start VPS
    */
   async startVPS(vpsName) {
-    console.log(`🚧 TODO: Start VPS via TransIP API: ${vpsName}`);
+    logger.info(`🚧 TODO: Start VPS via TransIP API: ${vpsName}`);
     // TODO: await this.client.vps.start(vpsName);
   }
 
@@ -170,7 +172,7 @@ echo "✅ VPS setup complete for ${config.slug}"
    * Delete VPS
    */
   async deleteVPS(vpsName) {
-    console.log(`🚧 TODO: Delete VPS via TransIP API: ${vpsName}`);
+    logger.info(`🚧 TODO: Delete VPS via TransIP API: ${vpsName}`);
     // TODO: await this.client.vps.cancel(vpsName, 'end');
   }
 
@@ -178,7 +180,7 @@ echo "✅ VPS setup complete for ${config.slug}"
    * Create VPS snapshot (backup)
    */
   async createSnapshot(vpsName, description) {
-    console.log(`🚧 TODO: Create snapshot via TransIP API: ${vpsName}`);
+    logger.info(`🚧 TODO: Create snapshot via TransIP API: ${vpsName}`);
     // TODO: await this.client.vps.createSnapshot(vpsName, description);
   }
 }

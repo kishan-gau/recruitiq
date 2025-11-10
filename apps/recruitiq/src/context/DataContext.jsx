@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { getInitialData } from '../mockData'
 import { useWorkspace } from './WorkspaceContext'
-import { useAuth } from './AuthContext'
+import { useAuth } from '@recruitiq/auth'
 import api from '../services/api'
 
 const DataContext = createContext(null)
@@ -136,7 +136,8 @@ export function DataProvider({children}){
       console.log('[DataContext] addJob called with:', job)
       console.log('[DataContext] currentWorkspaceId:', currentWorkspaceId, 'type:', typeof currentWorkspaceId)
       
-      // Only send fields that match backend schema exactly
+      // Send API data in camelCase (industry standard)
+      // Backend controller will convert to snake_case using DTO mapper
       const jobData = {
         workspaceId: currentWorkspaceId,
         title: job.title,
@@ -145,10 +146,10 @@ export function DataProvider({children}){
         employmentType: job.employmentType,
         experienceLevel: job.experienceLevel || '',
         description: job.description,
-        requirements: job.requirements || '',
+        requirements: job.requirements, // Already converted to array in JobRequisition.jsx
         isRemote: false,
         isPublic: false,
-        flowTemplateId: job.flowTemplateId // Required - must have a workflow
+        flowTemplateId: job.flowTemplateId
       }
       
       console.log('[DataContext] Sending to API:', jobData)
@@ -173,7 +174,11 @@ export function DataProvider({children}){
         response: err.response,
         status: err.status
       })
-      setError(prev => ({ ...prev, jobs: err.message }))
+      // Only set global error for non-validation errors (500, network issues, etc.)
+      // Validation errors (400) should be handled by the calling component
+      if (!err.status || err.status >= 500) {
+        setError(prev => ({ ...prev, jobs: err.message }))
+      }
       throw err
     } finally {
       setLoading(prev => ({ ...prev, jobs: false }))
@@ -194,7 +199,11 @@ export function DataProvider({children}){
       return updated
     } catch (err) {
       console.error('[DataContext] Failed to update job:', err)
-      setError(prev => ({ ...prev, jobs: err.message }))
+      // Only set global error for non-validation errors (500, network issues, etc.)
+      // Validation errors (400) should be handled by the calling component
+      if (!err.status || err.status >= 500) {
+        setError(prev => ({ ...prev, jobs: err.message }))
+      }
       throw err
     } finally {
       setLoading(prev => ({ ...prev, jobs: false }))
@@ -243,10 +252,38 @@ export function DataProvider({children}){
       setLoading(prev => ({ ...prev, candidates: true }))
       setError(prev => ({ ...prev, candidates: null }))
       
-      const candidateData = {
-        ...candidate,
-        workspaceId: currentWorkspaceId
+      // Parse name into firstName and lastName if provided as single field
+      let firstName = candidate.firstName || ''
+      let lastName = candidate.lastName || ''
+      
+      if (candidate.name && !candidate.firstName && !candidate.lastName) {
+        const nameParts = candidate.name.trim().split(/\s+/)
+        firstName = nameParts[0] || ''
+        lastName = nameParts.slice(1).join(' ') || ''
       }
+      
+      // Generate temporary email if not provided (backend requires email)
+      const email = candidate.email?.trim() || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@temp.recruitiq.local`
+      
+      const candidateData = {
+        firstName,
+        lastName,
+        email,
+        phone: candidate.phone || '',
+        location: candidate.location || '',
+        currentJobTitle: candidate.title || candidate.currentJobTitle || '',
+        // Backend will derive organization from user context
+        source: candidate.source || 'manual',
+        linkedinUrl: candidate.linkedinUrl || '',
+        portfolioUrl: candidate.portfolioUrl || '',
+        resumeUrl: candidate.resume || '',
+        // Include job and stage for automatic application creation
+        jobId: candidate.jobId || null,
+        stage: candidate.stage || null,
+        workspaceId: currentWorkspaceId || null
+      }
+      
+      console.log('[DataContext] addCandidate - sending:', candidateData)
       
       const response = await api.createCandidate(candidateData)
       const created = response.candidate
