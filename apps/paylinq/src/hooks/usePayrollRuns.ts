@@ -8,8 +8,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePaylinqAPI } from './usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import type {
-  PayrollRun,
-  Paycheck,
   CreatePayrollRunRequest,
   UpdatePayrollRunRequest,
   CalculatePayrollRequest,
@@ -18,9 +16,6 @@ import type {
   PayrollRunFilters,
   PaycheckFilters,
   PaginationParams,
-  PayrollSummary,
-  PaycheckHistory,
-  PayrollCalculationResult,
 } from '@recruitiq/types';
 
 // Query keys
@@ -41,7 +36,7 @@ export function usePayrollRuns(params?: PayrollRunFilters & PaginationParams) {
     queryKey: [...PAYROLL_RUNS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getPayrollRuns(params);
-      return response.data;
+      return response.data || [];
     },
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -60,8 +55,9 @@ export function usePayrollRun(id: string) {
       return response.data;
     },
     enabled: !!id,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Auto-refetch if status is calculating or processing
+      const data = query.state.data as any;
       if (data?.status === 'calculating' || data?.status === 'processing') {
         return 5000; // 5 seconds
       }
@@ -103,9 +99,10 @@ export function useCreatePayrollRun() {
       const response = await paylinq.createPayrollRun(data);
       return response.data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
-      success(`Payroll run "${data.runName}" created successfully`);
+    onSuccess: async (data) => {
+      // Use refetchQueries to immediately refetch instead of just invalidating
+      await queryClient.refetchQueries({ queryKey: PAYROLL_RUNS_KEY });
+      success(`Payroll run "${data?.runName}" created successfully`);
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to create payroll run');
@@ -127,9 +124,9 @@ export function useUpdatePayrollRun() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data.id] });
+      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
-      success(`Payroll run "${data.runName}" updated successfully`);
+      success(`Payroll run "${data?.runName}" updated successfully`);
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to update payroll run');
@@ -180,9 +177,9 @@ export function useApprovePayrollRun() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data.id] });
+      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
-      success(`Payroll run "${data.runName}" approved successfully`);
+      success(`Payroll run "${data?.runName}" approved successfully`);
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to approve payroll run');
@@ -204,10 +201,10 @@ export function useProcessPayrollRun() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data.id] });
+      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
       queryClient.invalidateQueries({ queryKey: PAYCHECKS_KEY });
-      success(`Payroll run "${data.runName}" processed successfully`);
+      success(`Payroll run "${data?.runName}" processed successfully`);
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to process payroll run');
@@ -229,7 +226,7 @@ export function useCancelPayrollRun() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data.id] });
+      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
       success('Payroll run cancelled successfully');
     },
@@ -253,7 +250,7 @@ export function usePaychecks(params?: PaycheckFilters & PaginationParams) {
     queryKey: [...PAYCHECKS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getPaychecks(params);
-      return response.data;
+      return response.data || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -285,7 +282,7 @@ export function useEmployeePaychecks(employeeId: string, params?: PaginationPara
     queryKey: [...PAYCHECKS_KEY, 'employee', employeeId, params],
     queryFn: async () => {
       const response = await paylinq.getEmployeePaychecks(employeeId, params);
-      return response.data;
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -301,7 +298,7 @@ export function usePaycheckHistory(employeeId: string) {
     queryKey: [...PAYCHECKS_KEY, 'employee', employeeId, 'history'],
     queryFn: async () => {
       const response = await paylinq.getPaycheckHistory(employeeId);
-      return response.data;
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -317,7 +314,7 @@ export function usePaycheckComponents(paycheckId: string) {
     queryKey: [...PAYCHECKS_KEY, paycheckId, 'components'],
     queryFn: async () => {
       const response = await paylinq.getPaycheckComponents(paycheckId);
-      return response.data;
+      return response.data || [];
     },
     enabled: !!paycheckId,
   });
@@ -331,7 +328,7 @@ export function usePaycheckComponents(paycheckId: string) {
  * Hook to fetch payroll runs by status
  */
 export function usePayrollRunsByStatus(status: string, params?: PaginationParams) {
-  return usePayrollRuns({ ...params, status });
+  return usePayrollRuns({ ...params, status: status as any });
 }
 
 /**

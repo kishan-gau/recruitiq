@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { usePaylinqAPI } from './usePaylinqAPI';
 
-export const useCompareVersions = (fromId: number, toId: number) => {
+export const useCompareVersions = (fromId: string, toId: string) => {
   const api = usePaylinqAPI();
   
   const query = useQuery({

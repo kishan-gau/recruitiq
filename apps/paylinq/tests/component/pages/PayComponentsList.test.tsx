@@ -90,7 +90,8 @@ describe('PayComponentsList', () => {
       renderComponent()
       
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Pay Components', level: 1 })).toBeInTheDocument()
+        // Updated: Title changed to include "& Templates"
+        expect(screen.getByRole('heading', { name: /Pay Components/i, level: 1 })).toBeInTheDocument()
       })
     })
 
@@ -98,7 +99,8 @@ describe('PayComponentsList', () => {
       renderComponent()
       
       await waitFor(() => {
-        expect(screen.getByText('Manage earnings and deduction components for payroll calculations')).toBeInTheDocument()
+        // Updated: Description changed to mention templates
+        expect(screen.getByText(/Manage individual components and reusable pay structure templates/i)).toBeInTheDocument()
       })
     })
 
@@ -108,7 +110,8 @@ describe('PayComponentsList', () => {
       await waitFor(() => {
         const addButton = screen.getByRole('button', { name: /add component/i })
         expect(addButton).toBeInTheDocument()
-        expect(addButton).toHaveClass('bg-blue-600')
+        // Updated: Button color changed from blue to emerald
+        expect(addButton).toHaveClass('bg-emerald-600')
       })
     })
 

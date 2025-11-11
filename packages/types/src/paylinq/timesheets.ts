@@ -263,3 +263,68 @@ export interface HoursSummary {
   totalHours: number;
   daysWorked: number;
 }
+
+/**
+ * API Response Types for Timesheets & Time Tracking
+ * Following API standards: resource-specific keys, not generic "data"
+ */
+
+/** Single shift type response: { success, shiftType: {...} } */
+export interface ShiftTypeResponse {
+  success: boolean;
+  shiftType: ShiftType;
+  message?: string;
+}
+
+/** List of shift types response: { success, shiftTypes: [...], count } */
+export interface ShiftTypesListResponse {
+  success: boolean;
+  shiftTypes: ShiftType[];
+  count: number;
+}
+
+/** Single time entry response: { success, timeEntry: {...} } */
+export interface TimeEntryResponse {
+  success: boolean;
+  timeEntry: TimeEntry;
+  message?: string;
+}
+
+/** List of time entries response: { success, timeEntries: [...], count } */
+export interface TimeEntriesListResponse {
+  success: boolean;
+  timeEntries: TimeEntry[];
+  count: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalCount: number;
+  };
+}
+
+/** Single timesheet response: { success, timesheet: {...} } */
+export interface TimesheetResponse {
+  success: boolean;
+  timesheet: Timesheet;
+  message?: string;
+}
+
+/** List of timesheets response: { success, timesheets: [...], count } */
+export interface TimesheetsListResponse {
+  success: boolean;
+  timesheets: Timesheet[];
+  count: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalCount: number;
+  };
+}
+
+/** Hours summary response: { success, summary: {...} } */
+export interface HoursSummaryResponse {
+  success: boolean;
+  summary: HoursSummary;
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { formatCurrency, formatDate } from '@/utils/formatting';

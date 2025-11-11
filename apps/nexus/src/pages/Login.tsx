@@ -1,12 +1,23 @@
-import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, FormEvent, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@recruitiq/auth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [sessionMessage, setSessionMessage] = useState('');
   const { login, isLoading, error } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check for session expiration
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'session_expired') {
+      setSessionMessage('Your session has expired. Please login again.');
+      // Don't clear returnTo from URL - we need it for redirect after login
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -15,8 +26,13 @@ export default function Login() {
     
     // Check if login was successful (true) or if MFA is required
     if (result === true) {
-      // Navigate to dashboard on successful login
-      navigate('/dashboard');
+      // Check if there's a return URL
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        navigate(decodeURIComponent(returnTo));
+      } else {
+        navigate('/dashboard');
+      }
     } else if (typeof result === 'object' && result.mfaRequired) {
       // Handle MFA if needed (implement MFA page later)
       console.log('MFA required - implement MFA flow');
@@ -38,6 +54,12 @@ export default function Login() {
         <p className="text-center text-slate-600 dark:text-slate-400 mb-8">
           Human Resource Information System
         </p>
+        
+        {sessionMessage && (
+          <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-800 dark:text-amber-200 text-sm">
+            {sessionMessage}
+          </div>
+        )}
         
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-800 dark:text-red-200 text-sm">

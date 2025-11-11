@@ -22,6 +22,8 @@ class APIClient {
     this.baseURL = import.meta.env.VITE_API_URL || '/api'
     this.isRefreshing = false
     this.refreshSubscribers = []
+    // Store CSRF token in memory (safe to store in JS, not secret like access tokens)
+    this.csrfToken = null
   }
 
   /**
@@ -52,10 +54,12 @@ class APIClient {
   }
 
   /**
-   * SECURITY: Clear authentication by calling logout endpoint.
+   * Security: Clear authentication by calling logout endpoint.
    * The server will clear the httpOnly cookies.
    */
   clearTokens() {
+    // Clear CSRF token from memory
+    this.csrfToken = null
     // Tokens are in httpOnly cookies - we need to tell the server to clear them
     // This will be handled by the logout endpoint
     console.info('Tokens cleared via logout endpoint')
@@ -152,10 +156,49 @@ class APIClient {
       ...options.headers,
     }
 
-    // Security: Add CSRF token if available (required for state-changing operations)
-    const csrfToken = this.getCSRFToken()
-    if (csrfToken) {
-      headers['X-CSRF-Token'] = csrfToken
+    // Security: Add CSRF token for state-changing operations (POST, PUT, PATCH, DELETE)
+    const mutatingMethods = ['POST', 'PUT', 'PATCH', 'DELETE']
+    const method = options.method || 'GET'
+    if (mutatingMethods.includes(method.toUpperCase())) {
+      let csrfToken = this.csrfToken || this.getCSRFToken()
+      
+      // Lazy fetch CSRF token if not available and not on auth endpoints
+      const isAuthEndpoint = endpoint.includes('/auth/')
+      if (!csrfToken && !endpoint.includes('/csrf-token') && !isAuthEndpoint) {
+        console.log('[APIClient] No CSRF token found, fetching lazily...')
+        try {
+          const csrfResponse = await fetch(`${this.baseURL}/csrf-token`, {
+            credentials: 'include',
+          })
+          
+          if (csrfResponse.ok) {
+            const csrfData = await csrfResponse.json()
+            csrfToken = csrfData.csrfToken
+            if (csrfToken) {
+              this.csrfToken = csrfToken
+              console.log('[APIClient] CSRF token fetched and stored')
+            }
+          } else if (csrfResponse.status === 401) {
+            // Session expired, redirect to login
+            console.log('[APIClient] CSRF fetch failed - session expired, redirecting to login')
+            const returnTo = encodeURIComponent(window.location.pathname + window.location.search)
+            window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`
+            throw new Error('Authentication required. Please log in again.')
+          }
+        } catch (err) {
+          console.warn('[APIClient] Failed to fetch CSRF token:', err.message)
+          // If it's our redirect error, rethrow it
+          if (err.message === 'Authentication required. Please log in again.') {
+            throw err
+          }
+          // For other errors, continue without CSRF token - server will reject if required
+        }
+      }
+      
+      // Add CSRF token to request headers if available
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken
+      }
     }
 
     // NOTE: No Authorization header needed - authentication via httpOnly cookies
@@ -188,7 +231,9 @@ class APIClient {
           setTimeout(() => sessionStorage.removeItem('__session_expired_shown'), 1000)
         }
         
-        window.location.href = '/login?reason=session_expired'
+        // Include returnTo parameter to redirect user back after login
+        const returnTo = encodeURIComponent(window.location.pathname + window.location.search)
+        window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`
         throw new Error('Your session has expired. Please login again.')
       }
 
@@ -255,13 +300,22 @@ class APIClient {
   }
 
   /**
-   * Security: Get CSRF token from meta tag or cookie
+   * Security: Get CSRF token from memory, meta tag or cookie
    */
   getCSRFToken() {
-    // Try to get from meta tag first
+    // Check memory first
+    if (this.csrfToken) {
+      return this.csrfToken
+    }
+    
+    // Try to get from meta tag
     const metaTag = document.querySelector('meta[name="csrf-token"]')
     if (metaTag) {
-      return metaTag.getAttribute('content')
+      const token = metaTag.getAttribute('content')
+      if (token) {
+        this.csrfToken = token
+        return token
+      }
     }
 
     // Try to get from cookie
@@ -269,7 +323,9 @@ class APIClient {
     for (const cookie of cookies) {
       const [name, value] = cookie.trim().split('=')
       if (name === 'XSRF-TOKEN') {
-        return decodeURIComponent(value)
+        const token = decodeURIComponent(value)
+        this.csrfToken = token
+        return token
       }
     }
 

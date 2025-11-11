@@ -7,6 +7,7 @@
 
 import PayStructureService from '../services/payStructureService.js';
 import logger from '../../../utils/logger.js';
+import { mapWorkerOverrideDbArrayToApi } from '../utils/dtoMapper.js';
 
 const payStructureService = new PayStructureService();
 
@@ -25,7 +26,7 @@ export async function createTemplate(req, res) {
 
     res.status(201).json({
       success: true,
-      data: template,
+      template: template,  // Use 'template' key for consistency with API standards
       message: 'Pay structure template created successfully'
     });
   } catch (error) {
@@ -69,7 +70,7 @@ export async function getTemplates(req, res) {
 
     res.status(200).json({
       success: true,
-      data: templates,
+      templates: templates,
       count: templates.length
     });
   } catch (error) {
@@ -99,7 +100,7 @@ export async function getTemplateById(req, res) {
 
     res.status(200).json({
       success: true,
-      data: template
+      template: template
     });
   } catch (error) {
     logger.error('Error fetching pay structure template', {
@@ -132,7 +133,7 @@ export async function updateTemplate(req, res) {
 
     res.status(200).json({
       success: true,
-      data: template,
+      template: template,
       message: 'Pay structure template updated successfully'
     });
   } catch (error) {
@@ -169,7 +170,7 @@ export async function publishTemplate(req, res) {
 
     res.status(200).json({
       success: true,
-      data: template,
+      template: template,
       message: 'Pay structure template published successfully'
     });
   } catch (error) {
@@ -207,7 +208,7 @@ export async function deprecateTemplate(req, res) {
 
     res.status(200).json({
       success: true,
-      data: template,
+      template: template,
       message: 'Pay structure template deprecated successfully'
     });
   } catch (error) {
@@ -251,7 +252,7 @@ export async function createNewVersion(req, res) {
 
     res.status(201).json({
       success: true,
-      data: newTemplate,
+      template: newTemplate,
       message: `New ${versionType} version created successfully`
     });
   } catch (error) {
@@ -290,7 +291,7 @@ export async function addComponent(req, res) {
 
     res.status(201).json({
       success: true,
-      data: component,
+      component: component,
       message: 'Component added successfully'
     });
   } catch (error) {
@@ -326,7 +327,7 @@ export async function getTemplateComponents(req, res) {
 
     res.status(200).json({
       success: true,
-      data: components,
+      components: components,
       count: components.length
     });
   } catch (error) {
@@ -358,7 +359,7 @@ export async function updateComponent(req, res) {
 
     res.status(200).json({
       success: true,
-      data: component,
+      component: component,
       message: 'Component updated successfully'
     });
   } catch (error) {
@@ -431,7 +432,7 @@ export async function reorderComponents(req, res) {
 
     res.status(200).json({
       success: true,
-      data: components,
+      components: components,
       message: 'Components reordered successfully'
     });
   } catch (error) {
@@ -470,16 +471,26 @@ export async function assignTemplateToWorker(req, res) {
 
     res.status(201).json({
       success: true,
-      data: assignment,
+      assignment: assignment,
       message: 'Pay structure assigned to worker successfully'
     });
   } catch (error) {
     logger.error('Error assigning pay structure to worker', {
       error: error.message,
+      code: error.code,
       employeeId: req.params.employeeId,
       organizationId: req.user?.organization_id,
       userId: req.user?.id
     });
+
+    // Handle foreign key constraint violation for employee_id
+    if (error.code === '23503' && error.message.includes('worker_pay_structure_employee_id_fkey')) {
+      return res.status(404).json({
+        success: false,
+        error: 'EmployeeNotFound',
+        message: `Employee with ID ${req.params.employeeId} does not exist in the organization`
+      });
+    }
 
     const statusCode = error.name === 'NotFoundError' ? 404 
       : error.name === 'ValidationError' ? 400 
@@ -519,7 +530,7 @@ export async function getCurrentWorkerStructure(req, res) {
 
     res.status(200).json({
       success: true,
-      data: structure
+      workerPayStructure: structure
     });
   } catch (error) {
     logger.error('Error fetching worker pay structure', {
@@ -549,7 +560,7 @@ export async function getWorkerStructureHistory(req, res) {
 
     res.status(200).json({
       success: true,
-      data: history,
+      history: history,
       count: history.length
     });
   } catch (error) {
@@ -588,7 +599,7 @@ export async function upgradeWorkerToNewVersion(req, res) {
 
     res.status(201).json({
       success: true,
-      data: assignment,
+      assignment: assignment,
       message: 'Worker upgraded to new template version successfully'
     });
   } catch (error) {
@@ -626,7 +637,7 @@ export async function addComponentOverride(req, res) {
 
     res.status(201).json({
       success: true,
-      data: override,
+      override: override,
       message: 'Component override added successfully'
     });
   } catch (error) {
@@ -635,6 +646,15 @@ export async function addComponentOverride(req, res) {
       organizationId: req.user?.organization_id,
       userId: req.user?.id
     });
+
+    // Handle duplicate override error
+    if (error.code === '23505' && error.constraint === 'unique_worker_component_override') {
+      return res.status(409).json({
+        success: false,
+        error: 'DuplicateOverride',
+        message: 'An active override already exists for this component. Please edit or delete the existing override instead.'
+      });
+    }
 
     const statusCode = error.name === 'ValidationError' ? 400 : 500;
 
@@ -657,10 +677,13 @@ export async function getWorkerOverrides(req, res) {
 
     const overrides = await payStructureService.getWorkerOverrides(workerStructureId, organizationId);
 
+    // Transform snake_case to camelCase for frontend using DTO mapper
+    const transformedOverrides = mapWorkerOverrideDbArrayToApi(overrides);
+
     res.status(200).json({
       success: true,
-      data: overrides,
-      count: overrides.length
+      overrides: transformedOverrides,
+      count: transformedOverrides.length
     });
   } catch (error) {
     logger.error('Error fetching worker overrides', {
@@ -696,7 +719,7 @@ export async function updateComponentOverride(req, res) {
 
     res.status(200).json({
       success: true,
-      data: override,
+      override: override,
       message: 'Component override updated successfully'
     });
   } catch (error) {
@@ -762,7 +785,7 @@ export async function getTemplateVersions(req, res) {
 
     res.status(200).json({
       success: true,
-      data: versions,
+      versions: versions,
       count: versions.length
     });
   } catch (error) {
@@ -798,7 +821,7 @@ export async function getTemplateChangelog(req, res) {
 
     res.status(200).json({
       success: true,
-      data: changelog
+      changelog: changelog
     });
   } catch (error) {
     logger.error('Error fetching template changelog', {
@@ -837,7 +860,7 @@ export async function createTemplateVersion(req, res) {
 
     res.status(201).json({
       success: true,
-      data: newVersion,
+      template: newVersion,
       message: 'New template version created successfully'
     });
   } catch (error) {
@@ -883,7 +906,7 @@ export async function compareTemplateVersions(req, res) {
 
     res.status(200).json({
       success: true,
-      data: comparison
+      comparison: comparison
     });
   } catch (error) {
     logger.error('Error comparing template versions', {
@@ -931,7 +954,7 @@ export async function upgradeWorkersToVersion(req, res) {
 
     res.status(200).json({
       success: true,
-      data: results,
+      results: results,
       message: `Successfully upgraded ${results.successful} of ${results.total} workers`
     });
   } catch (error) {

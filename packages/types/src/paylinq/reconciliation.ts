@@ -240,3 +240,69 @@ export interface BulkPaymentProcessingResult {
     error: string;
   }>;
 }
+
+// ============================================================================
+// API Response Types
+// ============================================================================
+
+/**
+ * Single payment transaction response
+ */
+export interface PaymentTransactionResponse {
+  success: boolean;
+  paymentTransaction: PaymentTransaction;
+  message?: string;
+}
+
+/**
+ * Payment transactions list response
+ */
+export interface PaymentTransactionsListResponse {
+  success: boolean;
+  paymentTransactions: PaymentTransaction[];
+  count: number;
+  pagination?: {
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+}
+
+/**
+ * Single reconciliation response
+ */
+export interface ReconciliationResponse {
+  success: boolean;
+  reconciliation: Reconciliation;
+  message?: string;
+}
+
+/**
+ * Reconciliations list response
+ */
+export interface ReconciliationsListResponse {
+  success: boolean;
+  reconciliations: Reconciliation[];
+  count: number;
+  pagination?: {
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+}
+
+/**
+ * Reconciliation summary response
+ */
+export interface ReconciliationSummaryResponse {
+  success: boolean;
+  summary: ReconciliationSummary;
+}
+
+/**
+ * Bulk payment processing result response
+ */
+export interface BulkPaymentProcessingResponse {
+  success: boolean;
+  result: BulkPaymentProcessingResult;
+}

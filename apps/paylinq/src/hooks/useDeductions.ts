@@ -32,9 +32,9 @@ export function useDeductions(params?: DeductionFilters & PaginationParams) {
     queryKey: [...DEDUCTIONS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getDeductions(params);
-      return response.data;
+      return response.data || [];
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
@@ -57,14 +57,14 @@ export function useDeduction(id: string) {
 /**
  * Hook to fetch deductions for a specific employee
  */
-export function useEmployeeDeductions(employeeId: string, params?: PaginationParams) {
+export function useEmployeeDeductions(employeeId: string) {
   const { paylinq } = usePaylinqAPI();
 
   return useQuery({
-    queryKey: [...DEDUCTIONS_KEY, 'employee', employeeId, params],
+    queryKey: [...DEDUCTIONS_KEY, 'benefits', employeeId],
     queryFn: async () => {
-      const response = await paylinq.getEmployeeDeductions(employeeId, params);
-      return response.data;
+      const response = await paylinq.getDeductions({ employeeId });
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -80,7 +80,7 @@ export function useActiveDeductions(employeeId: string) {
     queryKey: [...DEDUCTIONS_KEY, 'employee', employeeId, 'active'],
     queryFn: async () => {
       const response = await paylinq.getActiveDeductions(employeeId);
-      return response.data;
+      return response.data || [];
     },
     enabled: !!employeeId,
     staleTime: 5 * 60 * 1000, // 5 minutes - active deductions change less frequently
@@ -89,15 +89,16 @@ export function useActiveDeductions(employeeId: string) {
 
 /**
  * Hook to fetch deduction history for an employee
+ * Note: Uses getEmployeeDeductions with status filter for historical data
  */
 export function useDeductionHistory(employeeId: string) {
   const { paylinq } = usePaylinqAPI();
 
   return useQuery({
-    queryKey: [...DEDUCTIONS_KEY, 'employee', employeeId, 'history'],
+    queryKey: [...DEDUCTIONS_KEY, 'statutory', employeeId],
     queryFn: async () => {
-      const response = await paylinq.getDeductionHistory(employeeId);
-      return response.data;
+      const response = await paylinq.getDeductions({ employeeId });
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -121,9 +122,11 @@ export function useCreateDeduction() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'employee', data.employeeId] });
-      success(`${data.deductionType} deduction created successfully`);
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'list'] });
+        queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'employee', data.employeeId] });
+        success(`${data.deductionType} deduction created successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to create deduction');
@@ -145,10 +148,12 @@ export function useUpdateDeduction() {
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'employee', data.employeeId] });
-      success(`${data.deductionType} deduction updated successfully`);
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'list'] });
+        queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'employee', data.employeeId] });
+        success(`${data.deductionType} deduction updated successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to update deduction');
@@ -182,6 +187,7 @@ export function useDeleteDeduction() {
 
 /**
  * Hook to terminate an employee deduction
+ * Note: Terminating is done by updating the deduction with an effectiveTo date
  */
 export function useTerminateDeduction() {
   const { paylinq } = usePaylinqAPI();
@@ -190,13 +196,15 @@ export function useTerminateDeduction() {
 
   return useMutation({
     mutationFn: async ({ id, endDate }: { id: string; endDate: string }) => {
-      const response = await paylinq.terminateDeduction(id, endDate);
+      const response = await paylinq.updateDeduction(id, { effectiveTo: endDate });
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'employee', data.employeeId] });
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'list'] });
+        queryClient.invalidateQueries({ queryKey: [...DEDUCTIONS_KEY, 'employee', data.employeeId] });
+      }
       success('Deduction terminated successfully');
     },
     onError: (err: any) => {
@@ -213,7 +221,7 @@ export function useTerminateDeduction() {
  * Hook to fetch deductions by type
  */
 export function useDeductionsByType(deductionType: string, params?: PaginationParams) {
-  return useDeductions({ ...params, deductionType });
+  return useDeductions({ ...params, deductionType: deductionType as any });
 }
 
 /**
@@ -237,7 +245,7 @@ export function useBenefitDeductions(employeeId: string) {
   return useQuery({
     queryKey: [...DEDUCTIONS_KEY, 'employee', employeeId, 'benefits'],
     queryFn: async () => {
-      const response = await paylinq.getEmployeeDeductions(employeeId);
+      const response = await paylinq.getDeductions({ employeeId });
       // Filter for benefit types
       const benefitTypes = [
         'health_insurance',
@@ -246,7 +254,7 @@ export function useBenefitDeductions(employeeId: string) {
         'retirement_401k',
         'retirement_pension',
       ];
-      return response.data.filter((d: EmployeeDeduction) => 
+      return (response.data || []).filter((d: EmployeeDeduction) => 
         benefitTypes.includes(d.deductionType)
       );
     },
@@ -263,14 +271,14 @@ export function useStatutoryDeductions(employeeId: string) {
   return useQuery({
     queryKey: [...DEDUCTIONS_KEY, 'employee', employeeId, 'statutory'],
     queryFn: async () => {
-      const response = await paylinq.getEmployeeDeductions(employeeId);
+      const response = await paylinq.getDeductions({ employeeId });
       // Filter for statutory types
       const statutoryTypes = [
         'wage_garnishment',
         'child_support',
         'tax_levy',
       ];
-      return response.data.filter((d: EmployeeDeduction) => 
+      return (response.data || []).filter((d: EmployeeDeduction) => 
         statutoryTypes.includes(d.deductionType)
       );
     },

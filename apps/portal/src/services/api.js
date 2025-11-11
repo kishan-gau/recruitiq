@@ -7,6 +7,9 @@ import axios from 'axios'
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
+// Store CSRF token in memory (safe to store in JS, not secret like access tokens)
+let csrfToken = null
+
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -16,8 +19,45 @@ const api = axios.create({
   withCredentials: true // CRITICAL: Send httpOnly cookies with requests
 })
 
-// SECURITY: No need for request interceptor to add Authorization header
-// Auth tokens are now in httpOnly cookies, sent automatically by browser
+// Request interceptor for CSRF tokens on mutating requests
+api.interceptors.request.use(
+  async config => {
+    // Add CSRF token to POST, PUT, PATCH, DELETE requests
+    const mutatingMethods = ['post', 'put', 'patch', 'delete'];
+    if (config.method && mutatingMethods.includes(config.method.toLowerCase())) {
+      // Lazy fetch CSRF token if not available
+      const isAuthRequest = config.url?.includes('/auth/') || config.headers?.['skip-auth'];
+      if (!csrfToken && !config.url?.includes('/csrf-token') && !isAuthRequest) {
+        console.log('[Portal API] No CSRF token found, fetching lazily...');
+        try {
+          const csrfResponse = await axios.get(`${API_BASE_URL}/csrf-token`, {
+            withCredentials: true
+          });
+          csrfToken = csrfResponse.data?.csrfToken;
+          if (csrfToken) {
+            console.log('[Portal API] CSRF token fetched and stored');
+          }
+        } catch (err) {
+          console.warn('[Portal API] Failed to fetch CSRF token:', err.response?.status || err.message);
+          // If it's a 401, redirect to login
+          if (err.response?.status === 401) {
+            console.log('[Portal API] CSRF fetch failed - session expired, redirecting to login');
+            const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`;
+            throw new Error('Authentication required. Please log in again.');
+          }
+        }
+      }
+      
+      // Add CSRF token to request headers if available
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
+    return config;
+  },
+  error => Promise.reject(error)
+)
 
 // Response interceptor for error handling and token refresh
 api.interceptors.response.use(
@@ -36,18 +76,34 @@ api.interceptors.response.use(
       try {
         // SECURITY: Backend will read refreshToken from httpOnly cookie
         // Refresh the access token
-        const response = await axios.post(`${API_BASE_URL}/auth/platform/refresh`, {})
+        const response = await axios.post(`${API_BASE_URL}/auth/platform/refresh`, {}, {
+          withCredentials: true
+        })
         
         // New access token is set as httpOnly cookie by backend
+        // Fetch fresh CSRF token after successful token refresh
+        try {
+          const csrfResponse = await axios.get(`${API_BASE_URL}/csrf-token`, {
+            withCredentials: true
+          });
+          csrfToken = csrfResponse.data?.csrfToken;
+          if (csrfToken) {
+            console.log('[Portal API] CSRF token refreshed after token rotation');
+          }
+        } catch (csrfErr) {
+          console.warn('[Portal API] Failed to refresh CSRF token after token rotation:', csrfErr);
+        }
         
         // Retry original request (cookie will be sent automatically)
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed, clear storage and redirect to login
         localStorage.removeItem('user')
+        csrfToken = null // Clear CSRF token
         
         if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
+          const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`;
         }
         return Promise.reject(refreshError);
       }
@@ -87,8 +143,9 @@ class APIService {
     } catch (err) {
       console.error('Logout error:', err)
     }
-    // Clear user data (tokens are in httpOnly cookies, cleared by backend)
+    // Clear user data and CSRF token
     localStorage.removeItem('user')
+    csrfToken = null
   }
 
   async getMe() {

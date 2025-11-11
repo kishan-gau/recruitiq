@@ -38,6 +38,7 @@ class PayComponentService {
     isTaxable: Joi.boolean().default(true),
     isRecurring: Joi.boolean().default(true),
     isPreTax: Joi.boolean().default(false),
+    isActive: Joi.boolean().default(true),
     isSystemComponent: Joi.boolean().default(false),
     appliesToGross: Joi.boolean().default(false),
     appliesToOvertime: Joi.boolean().default(false),

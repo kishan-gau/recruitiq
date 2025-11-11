@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, Search, Users } from 'lucide-react';
-import { Dialog, FormField, Input, TextArea } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, TextArea } from '@/components/ui/FormField';
 import { usePayStructureTemplates, useAssignPayStructureToWorker, useWorkers } from '@/hooks/usePayStructures';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -34,8 +35,8 @@ export default function BulkAssignPayStructureModal({
   
   const assignMutation = useAssignPayStructureToWorker();
 
-  // Get only published templates
-  const publishedTemplates = templates?.filter((t: any) => t.status === 'published') || [];
+  // Get only published templates (status = 'active' means published)
+  const publishedTemplates = templates?.filter((t: any) => t.status === 'active' || t.status === 'published') || [];
 
   // Filter workers based on search
   const filteredWorkers = workers?.filter((w: any) => {

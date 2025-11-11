@@ -190,11 +190,16 @@ class PayrollRepository {
               e.manager_id,
               e.job_title,
               c.compensation_type,
-              c.amount as current_compensation
+              c.amount as current_compensation,
+              c.effective_from as compensation_effective_from,
+              wtt.id as worker_type_template_id,
+              wtt.name as worker_type_name
        FROM payroll.employee_payroll_config epc
        JOIN hris.employee e ON e.id = epc.employee_id
        LEFT JOIN payroll.compensation c ON c.employee_id = epc.employee_id AND c.is_current = true
-       WHERE epc.id = $1 AND epc.organization_id = $2 AND epc.deleted_at IS NULL`,
+       LEFT JOIN payroll.worker_type wt ON wt.employee_id = epc.employee_id AND wt.is_current = true
+       LEFT JOIN payroll.worker_type_template wtt ON wtt.id = wt.worker_type_template_id
+       WHERE (epc.id = $1 OR epc.employee_id = $1) AND epc.organization_id = $2 AND epc.deleted_at IS NULL`,
       [employeeRecordId, organizationId],
       organizationId,
       { operation: 'SELECT', table: 'payroll.employee_payroll_config' }
@@ -252,7 +257,7 @@ class PayrollRepository {
     const result = await query(
       `UPDATE payroll.employee_payroll_config 
        SET ${setClause.join(', ')}
-       WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
+       WHERE (id = $${paramCount - 1} OR employee_id = $${paramCount - 1}) AND organization_id = $${paramCount} AND deleted_at IS NULL
        RETURNING *`,
       params,
       organizationId,
@@ -578,8 +583,18 @@ class PayrollRepository {
    */
   async findPayrollRunById(payrollRunId, organizationId) {
     const result = await query(
-      `SELECT * FROM payroll.payroll_run
-       WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+      `SELECT 
+         pr.*,
+         COALESCE((SELECT COUNT(DISTINCT employee_id) 
+                   FROM payroll.paycheck 
+                   WHERE payroll_run_id = pr.id 
+                   AND deleted_at IS NULL), 0) as employee_count,
+         COALESCE((SELECT SUM(net_pay) 
+                   FROM payroll.paycheck 
+                   WHERE payroll_run_id = pr.id 
+                   AND deleted_at IS NULL), 0) as total_amount
+       FROM payroll.payroll_run pr
+       WHERE pr.id = $1 AND pr.organization_id = $2 AND pr.deleted_at IS NULL`,
       [payrollRunId, organizationId],
       organizationId,
       { operation: 'SELECT', table: 'payroll.payroll_run' }
@@ -654,7 +669,17 @@ class PayrollRepository {
     }
     
     const result = await query(
-      `SELECT * FROM payroll.payroll_run
+      `SELECT 
+         pr.*,
+         COALESCE((SELECT COUNT(DISTINCT employee_id) 
+                   FROM payroll.paycheck 
+                   WHERE payroll_run_id = pr.id 
+                   AND deleted_at IS NULL), 0) as employee_count,
+         COALESCE((SELECT SUM(net_pay) 
+                   FROM payroll.paycheck 
+                   WHERE payroll_run_id = pr.id 
+                   AND deleted_at IS NULL), 0) as total_amount
+       FROM payroll.payroll_run pr
        ${whereClause}
        ${orderByClause}${limitClause}${offsetClause}`,
       params,

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, Eye, Package } from 'lucide-react';
-import { Dialog, FormField, Input, TextArea, Badge } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, TextArea } from '@/components/ui/FormField';
+import Badge from '@/components/ui/Badge';
 import { usePayStructureTemplates, useAssignPayStructureToWorker, usePayStructureComponents } from '@/hooks/usePayStructures';
 
 interface AssignPayStructureModalProps {
@@ -34,10 +36,30 @@ export default function AssignPayStructureModal({
     formData.templateId || ''
   );
 
-  // Get only published templates
-  const publishedTemplates = templates?.filter((t: any) => t.status === 'published') || [];
+  // Get only published templates (status = 'active' means published)
+  const publishedTemplates = templates?.filter((t: any) => t.status === 'active' || t.status === 'published') || [];
 
   const selectedTemplate = templates?.find((t: any) => t.id === formData.templateId);
+
+  // Helper function to display component calculation value
+  const getComponentValue = (component: any) => {
+    switch (component.calculationType) {
+      case 'fixed':
+        return component.defaultAmount ? `$${component.defaultAmount.toFixed(2)}` : 'No amount';
+      case 'percentage':
+        return component.percentageRate 
+          ? `${(component.percentageRate * 100).toFixed(2)}% of ${component.percentageOf || 'base'}`
+          : 'No rate';
+      case 'formula':
+        return component.formulaExpression || 'Formula';
+      case 'hourly_rate':
+        return component.rateMultiplier ? `$${component.rateMultiplier.toFixed(2)}/hr` : 'No rate';
+      case 'tiered':
+        return 'Tiered rates';
+      default:
+        return component.calculationType;
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -93,8 +115,16 @@ export default function AssignPayStructureModal({
         },
       });
       onClose();
-    } catch (error) {
-      // Error handled by mutation
+    } catch (error: any) {
+      // Handle specific constraint errors
+      const errorMessage = error?.response?.data?.message || error?.message || '';
+      
+      if (errorMessage.includes('unique_current_worker_structure')) {
+        setErrors({
+          effectiveFrom: 'This worker already has a pay structure assigned for this date range. Please end-date the existing assignment first or choose a different effective date.',
+        });
+      }
+      
       console.error('Failed to assign pay structure:', error);
     }
   };
@@ -183,18 +213,9 @@ export default function AssignPayStructureModal({
                             {component.componentName}
                           </span>
                         </div>
-                        <Badge
-                          variant={
-                            component.componentType === 'earnings'
-                              ? 'green'
-                              : component.componentType === 'deductions'
-                              ? 'red'
-                              : 'blue'
-                          }
-                          className="text-xs"
-                        >
-                          {component.componentType}
-                        </Badge>
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                          {getComponentValue(component)}
+                        </span>
                       </div>
                     ))}
                   </div>

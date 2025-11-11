@@ -2,7 +2,7 @@ import { Users, Calendar, PlayCircle, Eye } from 'lucide-react';
 import clsx from 'clsx';
 import StatusBadge from './StatusBadge';
 import CurrencyDisplay from './CurrencyDisplay';
-import { formatDateRange } from '../../utils/helpers';
+import { formatDate } from '../../utils/helpers';
 
 export interface PayrollRun {
   id: string;
@@ -23,8 +23,8 @@ interface PayrollRunCardProps {
 }
 
 export default function PayrollRunCard({ run, onProcess, onView, className }: PayrollRunCardProps) {
-  const isCalculated = run.status === 'calculated' || run.status === 'draft';
-  const canProcess = isCalculated && onProcess;
+  const isReadyToProcess = run.status === 'calculated' || run.status === 'approved';
+  const canProcess = isReadyToProcess && onProcess;
 
   return (
     <div
@@ -32,7 +32,7 @@ export default function PayrollRunCard({ run, onProcess, onView, className }: Pa
       data-run-id={run.id}
       className={clsx(
         'bg-white dark:bg-gray-900 rounded-lg border p-6 transition-all',
-        isCalculated
+        isReadyToProcess
           ? 'border-blue-300 dark:border-blue-700 shadow-sm'
           : 'border-gray-200 dark:border-gray-800',
         className
@@ -51,18 +51,18 @@ export default function PayrollRunCard({ run, onProcess, onView, className }: Pa
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="flex items-center space-x-2">
-          <Calendar className="w-4 h-4 text-gray-400" />
+        <div className="flex items-start space-x-2">
+          <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Period</p>
             <p className="text-sm font-medium text-gray-900 dark:text-white" data-testid="pay-period">
-              {formatDateRange(run.startDate, run.endDate)}
+              {formatDate(run.startDate)} -<br />{formatDate(run.endDate)}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Users className="w-4 h-4 text-gray-400" />
+        <div className="flex items-start space-x-2">
+          <Users className="w-4 h-4 text-gray-400 mt-0.5" />
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Employees</p>
             <p className="text-sm font-medium text-gray-900 dark:text-white" data-testid="employee-count">{run.employeeCount}</p>

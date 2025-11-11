@@ -91,7 +91,7 @@ export default function PayComponentsList() {
 
   // Filter templates by status
   const draftTemplates = templates?.filter((t: PayStructureTemplate) => t.status === 'draft') || [];
-  const publishedTemplates = templates?.filter((t: PayStructureTemplate) => t.status === 'published') || [];
+  const publishedTemplates = templates?.filter((t: PayStructureTemplate) => t.status === 'active') || [];
   const deprecatedTemplates = templates?.filter((t: PayStructureTemplate) => t.status === 'deprecated') || [];
 
   // Template handlers

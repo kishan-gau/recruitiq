@@ -42,7 +42,8 @@ import type {
   TimesheetFilters,
   HoursSummary,
   // Formulas
-  PayComponent,
+  PayComponentResponse,
+  PayComponentsListResponse,
   ComponentFormula,
   CustomPayComponent,
   CreatePayComponentRequest,
@@ -652,28 +653,31 @@ export class PaylinqAPI {
 
   /**
    * Get pay components
+   * Returns: { success: true, payComponents: [...], count: number }
    */
   async getPayComponents(params?: PayComponentFilters & PaginationParams) {
     const query = new URLSearchParams(params as any).toString();
-    return this.client.get<PaginatedResponse<PayComponent>>(
+    return this.client.get<PayComponentsListResponse>(
       `${this.basePath}/pay-components${query ? '?' + query : ''}`
     );
   }
 
   /**
    * Get pay component by ID
+   * Returns: { success: true, payComponent: {...} }
    */
   async getPayComponent(id: string) {
-    return this.client.get<ApiResponse<PayComponent>>(
+    return this.client.get<PayComponentResponse>(
       `${this.basePath}/pay-components/${id}`
     );
   }
 
   /**
    * Create pay component
+   * Returns: { success: true, payComponent: {...}, message: string }
    */
   async createPayComponent(data: CreatePayComponentRequest) {
-    return this.client.post<ApiResponse<PayComponent>>(
+    return this.client.post<PayComponentResponse>(
       `${this.basePath}/pay-components`,
       data
     );
@@ -681,9 +685,10 @@ export class PaylinqAPI {
 
   /**
    * Update pay component
+   * Returns: { success: true, payComponent: {...}, message: string }
    */
   async updatePayComponent(id: string, data: UpdatePayComponentRequest) {
-    return this.client.put<ApiResponse<PayComponent>>(
+    return this.client.put<PayComponentResponse>(
       `${this.basePath}/pay-components/${id}`,
       data
     );
@@ -885,6 +890,15 @@ export class PaylinqAPI {
   async cancelPayrollRun(id: string) {
     return this.client.post<ApiResponse<PayrollRun>>(
       `${this.basePath}/payroll-runs/${id}/cancel`
+    );
+  }
+
+  /**
+   * Send payslips to employees
+   */
+  async sendPayslips(id: string) {
+    return this.client.post<ApiResponse<{ payrollRunId: string; employeeCount: number; status: string }>>(
+      `${this.basePath}/payroll-runs/${id}/send-payslips`
     );
   }
 
@@ -1674,7 +1688,7 @@ export class PaylinqAPI {
   /**
    * Compare two template versions
    */
-  async compareTemplateVersions(fromId: number, toId: number) {
+  async compareTemplateVersions(fromId: string, toId: string) {
     return this.client.get(`${this.basePath}/pay-structures/templates/compare?fromId=${fromId}&toId=${toId}`);
   }
 

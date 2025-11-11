@@ -14,6 +14,7 @@ import Login from '@/pages/Login';
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
 const WorkersList = lazy(() => import('@/pages/workers/WorkersList'));
 const WorkerDetails = lazy(() => import('@/pages/workers/WorkerDetails'));
+const WorkerPayStructureDetail = lazy(() => import('@/pages/WorkerPayStructureDetail'));
 const AddWorker = lazy(() => import('@/pages/workers/AddWorker'));
 const TaxRules = lazy(() => import('@/pages/tax-rules/TaxRulesList'));
 const PayComponents = lazy(() => import('@/pages/pay-components/PayComponentsList'));
@@ -25,13 +26,9 @@ const PayrollRunDetails = lazy(() => import('@/pages/payroll/PayrollRunDetails')
 const Payslips = lazy(() => import('@/pages/payslips/PayslipsList'));
 const Reconciliation = lazy(() => import('@/pages/reconciliation/ReconciliationDashboard'));
 const Reports = lazy(() => import('@/pages/reports/ReportsDashboard'));
-const Settings = lazy(() => import('@/pages/settings/Settings'));
+const SystemPreferences = lazy(() => import('@/pages/SystemPreferencesPage'));
 
 function App() {
-  console.log('[App] Component rendering');
-  console.log('[App] Current pathname:', window.location.pathname);
-  console.log('[App] Current href:', window.location.href);
-  
   return (
     <ErrorBoundary>
       <ThemeProvider>
@@ -40,12 +37,7 @@ function App() {
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 {/* Public Routes */}
-                <Route path="/login" element={
-                  <>
-                    {console.log('[App] Rendering Login route')}
-                    <Login />
-                  </>
-                } />
+                <Route path="/login" element={<Login />} />
                 
                 {/* Protected Routes */}
                 <Route path="/" element={
@@ -60,6 +52,7 @@ function App() {
             <Route path="workers" element={<WorkersList />} />
             <Route path="workers/add" element={<AddWorker />} />
             <Route path="workers/:workerId" element={<WorkerDetails />} />
+            <Route path="workers/:employeeId/pay-structure" element={<WorkerPayStructureDetail />} />
             
             {/* Tax Rules */}
             <Route path="tax-rules" element={<TaxRules />} />
@@ -88,7 +81,7 @@ function App() {
             <Route path="reports" element={<Reports />} />
             
             {/* Settings */}
-            <Route path="settings" element={<Settings />} />
+            <Route path="settings" element={<SystemPreferences />} />
             
             {/* 404 */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

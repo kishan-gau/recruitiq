@@ -65,13 +65,13 @@ export default function WorkersList() {
           // Map API response to Worker type
           const employeeData = response.employees || [];
           const mappedWorkers: Worker[] = employeeData.map((w: any) => ({
-            id: w.id,
+            id: w.employeeId || w.employee_id || w.id, // Use employeeId (hris.employee.id), not payroll config id
             employeeNumber: w.employee_number || w.employeeNumber,
             fullName: w.full_name || w.fullName,
-            type: w.worker_type || w.type,
-            compensationType: w.compensation_type || 'salary',
-            compensationAmount: w.compensation_amount || w.compensationAmount || 0,
-            status: w.status,
+            type: w.workerTypeName || w.worker_type_name || w.employmentType || w.employment_type || w.worker_type || w.type || '',
+            compensationType: w.compensationType || w.compensation_type || 'salary',
+            compensationAmount: w.currentCompensation || w.current_compensation || w.compensation_amount || w.compensationAmount || 0,
+            status: w.status || w.employment_status || w.employmentStatus,
           }));
 
           setWorkers(mappedWorkers);

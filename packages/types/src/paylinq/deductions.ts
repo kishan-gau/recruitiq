@@ -148,3 +148,34 @@ export interface BulkDeductionResult {
     error: string;
   }>;
 }
+
+/**
+ * API Response Types for Deductions
+ * Following API standards: resource-specific keys, not generic "data"
+ */
+
+/** Single deduction response: { success, deduction: {...} } */
+export interface DeductionResponse {
+  success: boolean;
+  deduction: EmployeeDeduction;
+  message?: string;
+}
+
+/** List of deductions response: { success, deductions: [...], count } */
+export interface DeductionsListResponse {
+  success: boolean;
+  deductions: EmployeeDeduction[];
+  count: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalCount: number;
+  };
+}
+
+/** Deduction summary response: { success, summary: {...} } */
+export interface DeductionSummaryResponse {
+  success: boolean;
+  summary: DeductionSummary;
+}

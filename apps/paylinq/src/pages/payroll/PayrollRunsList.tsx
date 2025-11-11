@@ -22,19 +22,16 @@ export default function PayrollRunsList() {
   const [sortField, setSortField] = useState<'period' | 'endDate' | 'employeeCount' | 'totalAmount'>('endDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [isLoading, setIsLoading] = useState(true);
-  const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [allPayrollRuns, setAllPayrollRuns] = useState<PayrollRun[]>([]);
   const runsPerPage = 6;
 
-  // Fetch payroll runs from API
+  // Fetch all payroll runs from API (without status filter)
   useEffect(() => {
     const fetchPayrollRuns = async () => {
       try {
         setIsLoading(true);
         const response = await paylinq.getPayrollRuns({
-          page: currentPage,
-          limit: runsPerPage,
-          status: activeTab === 'all' ? undefined : (activeTab as any),
+          // Fetch all runs without filtering by status
           sortBy: sortField === 'endDate' ? 'pay_period_end' : sortField === 'employeeCount' ? 'employee_count' : sortField === 'totalAmount' ? 'total_net_pay' : 'pay_period_end',
           sortOrder: sortDirection,
         });
@@ -51,8 +48,7 @@ export default function PayrollRunsList() {
             totalAmount: r.totalNetPay || 0,
             type: r.runType,
           }));
-          setPayrollRuns(runs);
-          setTotalCount(apiData.total || runs.length);
+          setAllPayrollRuns(runs);
         }
       } catch (err: any) {
         showError(err.message || 'Failed to load payroll runs');
@@ -62,22 +58,32 @@ export default function PayrollRunsList() {
     };
 
     fetchPayrollRuns();
-  }, [paylinq, currentPage, activeTab, sortField, sortDirection, showError]);
+  }, [paylinq, sortField, sortDirection, showError]);
 
-  // Define tabs with server-side counts
+  // Define tabs with counts from all runs
   const tabs: Tab[] = [
-    { id: 'all', label: 'All Runs', count: totalCount || payrollRuns.length },
-    { id: 'draft', label: 'Draft', count: payrollRuns.filter((r) => r.status === 'draft').length },
-    { id: 'calculated', label: 'Calculated', count: payrollRuns.filter((r) => r.status === 'calculated').length },
-    { id: 'approved', label: 'Approved', count: payrollRuns.filter((r) => r.status === 'approved').length },
-    { id: 'processing', label: 'Processing', count: payrollRuns.filter((r) => r.status === 'processing').length },
-    { id: 'processed', label: 'Completed', count: payrollRuns.filter((r) => r.status === 'processed').length },
+    { id: 'all', label: 'All Runs', count: allPayrollRuns.length },
+    { id: 'draft', label: 'Draft', count: allPayrollRuns.filter((r) => r.status === 'draft').length },
+    { id: 'calculated', label: 'Calculated', count: allPayrollRuns.filter((r) => r.status === 'calculated').length },
+    { id: 'approved', label: 'Approved', count: allPayrollRuns.filter((r) => r.status === 'approved').length },
+    { id: 'processing', label: 'Processing', count: allPayrollRuns.filter((r) => r.status === 'processing').length },
+    { id: 'processed', label: 'Completed', count: allPayrollRuns.filter((r) => r.status === 'processed').length },
   ];
 
-  // When using API, data is already filtered/sorted server-side
-  const filteredRuns = payrollRuns;
-  const totalPages = Math.ceil((totalCount || payrollRuns.length) / runsPerPage);
+  // Filter runs based on active tab
+  const filteredRuns = activeTab === 'all' 
+    ? allPayrollRuns 
+    : allPayrollRuns.filter((r) => r.status === activeTab);
+
+  // Paginate filtered runs
+  const totalPages = Math.ceil(filteredRuns.length / runsPerPage);
   const startIndex = (currentPage - 1) * runsPerPage;
+  const paginatedRuns = filteredRuns.slice(startIndex, startIndex + runsPerPage);
+  
+  // Reset to page 1 when changing tabs
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   // Sort handler (not currently used but kept for future implementation)
   // const handleSort = (field: 'period' | 'endDate' | 'employeeCount' | 'totalAmount') => {
@@ -91,7 +97,7 @@ export default function PayrollRunsList() {
   // };
 
   const handleProcess = async (runId: string) => {
-    const run = payrollRuns.find((r) => r.id === runId);
+    const run = allPayrollRuns.find((r) => r.id === runId);
     if (run) {
       setSelectedPayroll({
         id: run.id,
@@ -113,9 +119,6 @@ export default function PayrollRunsList() {
     // Refetch data after processing
     try {
       const response = await paylinq.getPayrollRuns({
-        page: currentPage,
-        limit: runsPerPage,
-        status: activeTab === 'all' ? undefined : (activeTab as any),
         sortBy: sortField === 'endDate' ? 'pay_period_end' : sortField === 'employeeCount' ? 'employee_count' : sortField === 'totalAmount' ? 'total_net_pay' : 'pay_period_end',
         sortOrder: sortDirection,
       });
@@ -132,8 +135,7 @@ export default function PayrollRunsList() {
           totalAmount: r.total_net_pay,
           type: r.run_type,
         }));
-        setPayrollRuns(runs);
-        setTotalCount(apiData.total || runs.length);
+        setAllPayrollRuns(runs);
         success('Payroll run processed successfully');
       }
     } catch (err: any) {
@@ -145,9 +147,6 @@ export default function PayrollRunsList() {
     // Refetch data after creating
     try {
       const response = await paylinq.getPayrollRuns({
-        page: 1, // Go to first page to see new run
-        limit: runsPerPage,
-        status: activeTab === 'all' ? undefined : (activeTab as any),
         sortBy: sortField === 'endDate' ? 'pay_period_end' : sortField === 'employeeCount' ? 'employee_count' : sortField === 'totalAmount' ? 'total_net_pay' : 'pay_period_end',
         sortOrder: sortDirection,
       });
@@ -164,9 +163,9 @@ export default function PayrollRunsList() {
           totalAmount: r.total_net_pay,
           type: r.run_type,
         }));
-        setPayrollRuns(runs);
-        setTotalCount(apiData.total || runs.length);
+        setAllPayrollRuns(runs);
         setCurrentPage(1);
+        setActiveTab('draft'); // Switch to draft tab to show the new run
         success('Payroll run created successfully');
       }
     } catch (err: any) {
@@ -225,7 +224,7 @@ export default function PayrollRunsList() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="payroll-runs-list">
-            {filteredRuns.map((run: PayrollRun) => (
+            {paginatedRuns.map((run: PayrollRun) => (
               <PayrollRunCard
                 key={run.id}
                 run={run}

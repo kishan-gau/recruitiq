@@ -40,7 +40,7 @@ export function usePayrollSummaryReport(filters?: ReportFilters) {
     queryKey: [...REPORTS_KEY, 'payroll-summary', filters],
     queryFn: async () => {
       const response = await paylinq.getPayrollSummaryReport(filters);
-      return response.data;
+      return response.report;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -67,7 +67,7 @@ export function useEmployeePayReport(filters?: ReportFilters) {
     queryKey: [...REPORTS_KEY, 'employee-pay', filters],
     queryFn: async () => {
       const response = await paylinq.getEmployeePayReport(filters);
-      return response.data;
+      return response.report;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -86,7 +86,7 @@ export function useEmployeePayDetails(employeeId: string, filters?: ReportFilter
         ...filters, 
         employeeId 
       });
-      return response.data;
+      return response.report;
     },
     enabled: !!employeeId,
   });
@@ -106,7 +106,7 @@ export function useDeductionReport(filters?: ReportFilters) {
     queryKey: [...REPORTS_KEY, 'deductions', filters],
     queryFn: async () => {
       const response = await paylinq.getDeductionReport(filters);
-      return response.data;
+      return response.report;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -133,7 +133,7 @@ export function useTaxReport(filters?: ReportFilters) {
     queryKey: [...REPORTS_KEY, 'taxes', filters],
     queryFn: async () => {
       const response = await paylinq.getTaxReport(filters);
-      return response.data;
+      return response.report;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -149,7 +149,7 @@ export function useQuarterlyTaxReport(year: number, quarter: number) {
     queryKey: [...REPORTS_KEY, 'taxes', 'quarterly', year, quarter],
     queryFn: async () => {
       const response = await paylinq.getQuarterlyTaxReport(year, quarter);
-      return response.data;
+      return response.report;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes - historical data
   });
@@ -165,7 +165,7 @@ export function useYearEndTaxReport(year: number) {
     queryKey: [...REPORTS_KEY, 'taxes', 'year-end', year],
     queryFn: async () => {
       const response = await paylinq.getYearEndTaxReport(year);
-      return response.data;
+      return response.report;
     },
     staleTime: 30 * 60 * 1000, // 30 minutes - historical data
   });
@@ -185,7 +185,7 @@ export function useCompensationReport(filters?: ReportFilters) {
     queryKey: [...REPORTS_KEY, 'compensation', filters],
     queryFn: async () => {
       const response = await paylinq.getCompensationReport(filters);
-      return response.data;
+      return response.report;
     },
     staleTime: 10 * 60 * 1000,
   });
@@ -212,7 +212,7 @@ export function useTimesheetReport(filters?: ReportFilters) {
     queryKey: [...REPORTS_KEY, 'timesheets', filters],
     queryFn: async () => {
       const response = await paylinq.getTimesheetReport(filters);
-      return response.data;
+      return response.report;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -228,7 +228,7 @@ export function useAttendanceReport(filters?: ReportFilters) {
     queryKey: [...REPORTS_KEY, 'attendance', filters],
     queryFn: async () => {
       const response = await paylinq.getAttendanceReport(filters);
-      return response.data;
+      return response.report;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -248,7 +248,7 @@ export function usePaycheckReport(filters?: ReportFilters) {
     queryKey: [...REPORTS_KEY, 'paychecks', filters],
     queryFn: async () => {
       const response = await paylinq.getPaycheckReport(filters);
-      return response.data;
+      return response.report;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -268,7 +268,7 @@ export function useAuditLogs(params?: PaginationParams) {
     queryKey: [...AUDIT_LOGS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getAuditLogs(params);
-      return response.data;
+      return response.auditLogs || [];
     },
     staleTime: 2 * 60 * 1000,
   });
@@ -284,7 +284,7 @@ export function useEntityAuditLogs(entityType: string, entityId: string) {
     queryKey: [...AUDIT_LOGS_KEY, entityType, entityId],
     queryFn: async () => {
       const response = await paylinq.getEntityAuditLogs(entityType, entityId);
-      return response.data;
+      return response.auditLogs || [];
     },
     enabled: !!entityType && !!entityId,
   });
@@ -381,7 +381,7 @@ export function useCurrentPayPeriodSummary() {
     queryKey: [...REPORTS_KEY, 'current-period'],
     queryFn: async () => {
       const response = await paylinq.getCurrentPayPeriodSummary();
-      return response.data;
+      return response.summary;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -408,7 +408,7 @@ export function usePendingApprovals() {
     queryKey: [...REPORTS_KEY, 'pending-approvals'],
     queryFn: async () => {
       const response = await paylinq.getPendingApprovals();
-      return response.data;
+      return response.approvals || [];
     },
     staleTime: 1 * 60 * 1000, // 1 minute - check frequently
   });

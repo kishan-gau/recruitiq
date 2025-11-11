@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { History, GitCompare, ArrowUpCircle, Plus } from 'lucide-react';
-import { Badge } from '@/components/ui';
+import Badge from '@/components/ui/Badge';
 import { useTemplateVersions } from '@/hooks/useTemplateVersions';
 import CreateVersionModal from '@/components/modals/CreateVersionModal';
 import VersionComparisonModal from '@/components/modals/VersionComparisonModal';
@@ -14,19 +14,24 @@ interface TemplateVersionHistoryProps {
 }
 
 interface Version {
+  id: string;
   template_id: number;
-  template_code: string;
-  version_major: number;
-  version_minor: number;
-  version_patch: number;
-  versionString: string;
+  templateCode: string;
+  versionMajor: number;
+  versionMinor: number;
+  versionPatch: number;
+  version: string;
+  versionString?: string; // Keep for backwards compatibility
   status: 'draft' | 'active' | 'deprecated';
   effectiveFrom?: string;
   effectiveTo?: string;
   createdAt: string;
   createdBy: string;
-  componentsCount: number;
-  activeWorkersCount: number;
+  createdByName?: string;
+  componentCount?: number;
+  componentsCount?: number; // Keep for backwards compatibility
+  assignedWorkerCount?: number;
+  activeWorkersCount?: number; // Keep for backwards compatibility
 }
 
 export default function TemplateVersionHistory({
@@ -38,7 +43,7 @@ export default function TemplateVersionHistory({
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [createVersionModalOpen, setCreateVersionModalOpen] = useState(false);
-  const [selectedVersions, setSelectedVersions] = useState<{ from?: number; to?: number }>({});
+  const [selectedVersions, setSelectedVersions] = useState<{ from?: string; to?: string }>({});
   const [selectedVersionForUpgrade, setSelectedVersionForUpgrade] = useState<Version | null>(null);
 
   const getStatusVariant = (status: string): 'green' | 'yellow' | 'red' | 'gray' => {
@@ -54,7 +59,7 @@ export default function TemplateVersionHistory({
     }
   };
 
-  const handleCompare = (fromId: number, toId: number) => {
+  const handleCompare = (fromId: string, toId: string) => {
     setSelectedVersions({ from: fromId, to: toId });
     setCompareModalOpen(true);
   };
@@ -139,16 +144,16 @@ export default function TemplateVersionHistory({
             <tbody className="bg-white divide-y divide-gray-200">
               {versions.map((version: Version, index: number) => (
                 <tr
-                  key={version.template_id}
+                  key={version.id || index}
                   className={
-                    version.versionString === currentVersion
+                    (version.version || version.versionString) === currentVersion
                       ? 'bg-blue-50'
                       : 'hover:bg-gray-50'
                   }
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-mono font-medium text-gray-900">
-                      v{version.versionString}
+                      v{version.version || version.versionString}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -157,10 +162,10 @@ export default function TemplateVersionHistory({
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {version.componentsCount}
+                    {version.componentCount || version.componentsCount || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {version.activeWorkersCount}
+                    {version.assignedWorkerCount || version.activeWorkersCount || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {version.effectiveFrom
@@ -171,7 +176,7 @@ export default function TemplateVersionHistory({
                     {format(new Date(version.createdAt), 'MMM dd, yyyy')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {version.createdBy}
+                    {version.createdByName || version.createdBy}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-2">
@@ -179,8 +184,8 @@ export default function TemplateVersionHistory({
                         <button
                           onClick={() =>
                             handleCompare(
-                              versions[index + 1].template_id,
-                              version.template_id
+                              versions[index + 1].id,
+                              version.id
                             )
                           }
                           className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
@@ -189,7 +194,7 @@ export default function TemplateVersionHistory({
                           <GitCompare className="h-4 w-4" />
                         </button>
                       )}
-                      {version.status === 'active' && version.activeWorkersCount > 0 && (
+                      {version.status === 'active' && (version.assignedWorkerCount || version.activeWorkersCount || 0) > 0 && (
                         <button
                           onClick={() => handleUpgrade(version)}
                           className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50 transition-colors"
@@ -220,7 +225,11 @@ export default function TemplateVersionHistory({
         <UpgradeWorkersModal
           isOpen={upgradeModalOpen}
           onClose={() => setUpgradeModalOpen(false)}
-          sourceVersion={selectedVersionForUpgrade}
+          sourceVersion={{
+            template_id: selectedVersionForUpgrade.template_id,
+            versionString: selectedVersionForUpgrade.version || selectedVersionForUpgrade.versionString || '',
+            activeWorkersCount: selectedVersionForUpgrade.assignedWorkerCount || selectedVersionForUpgrade.activeWorkersCount || 0,
+          }}
           onUpgradeComplete={() => {
             refetch();
             setUpgradeModalOpen(false);

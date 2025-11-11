@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, DollarSign, Percent, Clock } from 'lucide-react';
-import { Dialog, FormField, Input, TextArea } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, TextArea } from '@/components/ui/FormField';
 import { usePayComponents } from '@/hooks/usePayComponents';
 import type { PayStructureComponent } from '@/hooks/usePayStructures';
 
@@ -27,6 +28,8 @@ export default function PayStructureComponentModal({
     sequenceOrder: existingComponents.length + 1,
     isOptional: false,
     isVisible: true,
+    allowWorkerOverride: false,
+    overrideAllowedFields: [] as string[],
     fixedAmount: '',
     percentageValue: '',
     percentageBase: '',
@@ -44,21 +47,39 @@ export default function PayStructureComponentModal({
     if (isOpen) {
       if (component) {
         // Edit mode - populate form with component data
+        // Ensure all fields have defined values to prevent controlled/uncontrolled warnings
+        const calcType = component.calculationType === 'external' 
+          ? 'fixed' 
+          : (component.calculationType || 'fixed');
+        
+        // Map backend fields (both new and legacy) to frontend form fields
+        const fixedAmountValue = component.fixedAmount ?? component.defaultAmount;
+        const percentageValueRaw = component.percentageValue ?? (component.percentageRate ? component.percentageRate * 100 : null);
+        const percentageBaseValue = component.percentageBase ?? component.percentageOf;
+        const formulaValue = component.formula ?? component.formulaExpression;
+        const hourlyRateValue = component.hourlyRate ?? component.rateMultiplier;
+        
         setFormData({
-          componentCode: component.componentCode,
-          componentName: component.componentName,
-          componentType: component.componentType,
-          calculationType: component.calculationType,
-          sequenceOrder: component.sequenceOrder,
-          isOptional: component.isOptional,
-          isVisible: component.isVisible,
-          fixedAmount: component.fixedAmount?.toString() || '',
-          percentageValue: component.percentageValue?.toString() || '',
-          percentageBase: component.percentageBase || '',
-          formula: component.formula || '',
-          hourlyRate: component.hourlyRate?.toString() || '',
-          conditions: JSON.stringify(component.conditions || {}, null, 2),
-          metadata: JSON.stringify(component.metadata || {}, null, 2),
+          componentCode: component.componentCode || '',
+          componentName: component.componentName || '',
+          componentType: component.componentType || 'earnings',
+          calculationType: calcType as 'fixed' | 'percentage' | 'formula' | 'hourly_rate' | 'tiered',
+          sequenceOrder: component.sequenceOrder ?? existingComponents.length + 1,
+          isOptional: component.isOptional ?? false,
+          isVisible: component.isVisible ?? true,
+          allowWorkerOverride: component.allowWorkerOverride ?? false,
+          overrideAllowedFields: component.overrideAllowedFields || [],
+          fixedAmount: fixedAmountValue != null ? fixedAmountValue.toString() : '',
+          percentageValue: percentageValueRaw != null ? percentageValueRaw.toString() : '',
+          percentageBase: percentageBaseValue || '',
+          formula: formulaValue || '',
+          hourlyRate: hourlyRateValue != null ? hourlyRateValue.toString() : '',
+          conditions: component.conditions && Object.keys(component.conditions).length > 0 
+            ? JSON.stringify(component.conditions, null, 2) 
+            : '',
+          metadata: component.metadata && Object.keys(component.metadata).length > 0 
+            ? JSON.stringify(component.metadata, null, 2) 
+            : '',
         });
       } else {
         // Add mode - reset form
@@ -70,6 +91,8 @@ export default function PayStructureComponentModal({
           sequenceOrder: existingComponents.length + 1,
           isOptional: false,
           isVisible: true,
+          allowWorkerOverride: false,
+          overrideAllowedFields: [],
           fixedAmount: '',
           percentageValue: '',
           percentageBase: '',
@@ -153,30 +176,36 @@ export default function PayStructureComponentModal({
       return;
     }
 
+    // Map frontend fields to backend expected fields
     const submitData: any = {
       componentCode: formData.componentCode,
       componentName: formData.componentName,
-      componentType: formData.componentType,
+      componentCategory: formData.componentType === 'earnings' ? 'earning' : 
+                        formData.componentType === 'deductions' ? 'deduction' :
+                        formData.componentType, // Map earnings->earning, deductions->deduction
       calculationType: formData.calculationType,
       sequenceOrder: formData.sequenceOrder,
-      isOptional: formData.isOptional,
-      isVisible: formData.isVisible,
+      isMandatory: !formData.isOptional, // Map isOptional to isMandatory (inverse)
+      displayOnPayslip: formData.isVisible, // Map isVisible to displayOnPayslip
+      allowWorkerOverride: formData.allowWorkerOverride,
+      overrideAllowedFields: formData.overrideAllowedFields,
     };
 
-    // Add calculation-specific fields
+    // Add calculation-specific fields with backend field names
     switch (formData.calculationType) {
       case 'fixed':
-        submitData.fixedAmount = parseFloat(formData.fixedAmount);
+        submitData.defaultAmount = parseFloat(formData.fixedAmount);
+        submitData.defaultCurrency = 'USD'; // TODO: Get from org settings
         break;
       case 'percentage':
-        submitData.percentageValue = parseFloat(formData.percentageValue);
-        submitData.percentageBase = formData.percentageBase;
+        submitData.percentageRate = parseFloat(formData.percentageValue) / 100; // Convert to decimal (0-1)
+        submitData.percentageOf = formData.percentageBase;
         break;
       case 'hourly_rate':
-        submitData.hourlyRate = parseFloat(formData.hourlyRate);
+        submitData.rateMultiplier = parseFloat(formData.hourlyRate);
         break;
       case 'formula':
-        submitData.formula = formData.formula;
+        submitData.formulaExpression = formData.formula;
         break;
     }
 
@@ -202,17 +231,28 @@ export default function PayStructureComponentModal({
   };
 
   const handleSelectExistingComponent = (componentCode: string) => {
-    const selectedComponent = availableComponents?.find((c: any) => c.code === componentCode);
+    const selectedComponent = availableComponents?.find((c: any) => c.code === componentCode) as any;
     if (selectedComponent) {
+      // Map calculation type from PayComponent to PayStructureComponent format
+      let mappedCalculationType: 'fixed' | 'percentage' | 'formula' | 'hourly_rate' | 'tiered' = 'fixed';
+      if (selectedComponent.calculationType === 'percentage') {
+        mappedCalculationType = 'percentage';
+      } else if (selectedComponent.calculationType === 'formula') {
+        mappedCalculationType = 'formula';
+      }
+      
       setFormData({
         ...formData,
         componentCode: selectedComponent.code,
         componentName: selectedComponent.name,
         componentType: selectedComponent.type === 'earning' ? 'earnings' : 'deductions',
-        calculationType: selectedComponent.calculationType === 'fixed' ? 'fixed' : selectedComponent.calculationType === 'percentage' ? 'percentage' : 'formula',
+        calculationType: mappedCalculationType,
         fixedAmount: selectedComponent.defaultValue?.toString() || '',
         percentageValue: selectedComponent.defaultValue?.toString() || '',
         formula: selectedComponent.formula || '',
+        // Reset override fields when copying
+        allowWorkerOverride: false,
+        overrideAllowedFields: [],
       });
     }
   };
@@ -415,6 +455,105 @@ export default function PayStructureComponentModal({
             />
             <span className="text-sm text-gray-900 dark:text-white">Visible on Payslip</span>
           </label>
+        </div>
+
+        {/* Worker Override Configuration */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+          <label className="flex items-center space-x-2 mb-3">
+            <input
+              type="checkbox"
+              checked={formData.allowWorkerOverride}
+              onChange={(e) => setFormData({ ...formData, allowWorkerOverride: e.target.checked })}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+            />
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              Allow Worker-Specific Overrides
+            </span>
+          </label>
+          
+          {formData.allowWorkerOverride && (
+            <div className="ml-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                Select which fields can be overridden for individual workers:
+              </p>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.overrideAllowedFields.includes('amount')}
+                    onChange={(e) => {
+                      const fields = e.target.checked
+                        ? [...formData.overrideAllowedFields, 'amount']
+                        : formData.overrideAllowedFields.filter(f => f !== 'amount');
+                      setFormData({ ...formData, overrideAllowedFields: fields });
+                    }}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Amount (e.g., $500 → $550)</span>
+                </label>
+                
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.overrideAllowedFields.includes('percentage')}
+                    onChange={(e) => {
+                      const fields = e.target.checked
+                        ? [...formData.overrideAllowedFields, 'percentage']
+                        : formData.overrideAllowedFields.filter(f => f !== 'percentage');
+                      setFormData({ ...formData, overrideAllowedFields: fields });
+                    }}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Percentage (e.g., 10% → 12%)</span>
+                </label>
+                
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.overrideAllowedFields.includes('formula')}
+                    onChange={(e) => {
+                      const fields = e.target.checked
+                        ? [...formData.overrideAllowedFields, 'formula']
+                        : formData.overrideAllowedFields.filter(f => f !== 'formula');
+                      setFormData({ ...formData, overrideAllowedFields: fields });
+                    }}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Formula (custom calculation)</span>
+                </label>
+                
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.overrideAllowedFields.includes('rate')}
+                    onChange={(e) => {
+                      const fields = e.target.checked
+                        ? [...formData.overrideAllowedFields, 'rate']
+                        : formData.overrideAllowedFields.filter(f => f !== 'rate');
+                      setFormData({ ...formData, overrideAllowedFields: fields });
+                    }}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Rate (hourly/daily rate)</span>
+                </label>
+                
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.overrideAllowedFields.includes('disabled')}
+                    onChange={(e) => {
+                      const fields = e.target.checked
+                        ? [...formData.overrideAllowedFields, 'disabled']
+                        : formData.overrideAllowedFields.filter(f => f !== 'disabled');
+                      setFormData({ ...formData, overrideAllowedFields: fields });
+                    }}
+                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Can be disabled for specific workers</span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         <FormField label="Conditions (JSON)" error={errors.conditions} hint="Optional - JSON format">

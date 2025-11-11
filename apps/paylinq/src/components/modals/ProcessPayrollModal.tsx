@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Dialog, FormField, Input } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
@@ -35,7 +36,9 @@ export default function ProcessPayrollModal({ isOpen, onClose, payrollRun, onSuc
     setIsLoading(true);
 
     try {
-      const response = await paylinq.processPayrollRun(payrollRun?.id || '');
+      const response = await paylinq.processPayrollRun({
+        payrollRunId: payrollRun?.id || '',
+      });
 
       if (response.success) {
         success(`Payroll for ${payrollRun?.period} processed successfully`);

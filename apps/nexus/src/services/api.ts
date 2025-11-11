@@ -6,6 +6,9 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import { authService } from './auth.service';
 
+// Store CSRF token in memory (safe to store in JS, not secret like access tokens)
+let csrfToken: string | null = null;
+
 // Create axios instance with default config
 const api: AxiosInstance = axios.create({
   baseURL: '/api/nexus',
@@ -15,13 +18,45 @@ const api: AxiosInstance = axios.create({
   timeout: 30000, // 30 seconds
 });
 
-// Request interceptor for adding auth token
+// Request interceptor for adding auth token and CSRF token
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Add CSRF token to POST, PUT, PATCH, DELETE requests
+    const mutatingMethods = ['post', 'put', 'patch', 'delete'];
+    if (config.method && mutatingMethods.includes(config.method.toLowerCase())) {
+      // Lazy fetch CSRF token if not available
+      const isAuthRequest = config.url?.includes('/auth/') || config.headers?.['skip-auth'];
+      if (!csrfToken && !config.url?.includes('/csrf-token') && !isAuthRequest) {
+        console.log('[Nexus API] No CSRF token found, fetching lazily...');
+        try {
+          const csrfResponse = await axios.get('/api/csrf-token');
+          csrfToken = csrfResponse.data?.csrfToken;
+          if (csrfToken) {
+            console.log('[Nexus API] CSRF token fetched and stored');
+          }
+        } catch (err: any) {
+          console.warn('[Nexus API] Failed to fetch CSRF token:', err.response?.status || err.message);
+          // If it's a 401, redirect to login
+          if (err.response?.status === 401) {
+            console.log('[Nexus API] CSRF fetch failed - session expired, redirecting to login');
+            const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`;
+            throw new Error('Authentication required. Please log in again.');
+          }
+        }
+      }
+      
+      // Add CSRF token to request headers if available
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -46,13 +81,27 @@ api.interceptors.response.use(
         // Update the Authorization header
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         
+        // Fetch fresh CSRF token after successful token refresh
+        try {
+          const csrfResponse = await axios.get('/api/csrf-token');
+          csrfToken = csrfResponse.data?.csrfToken;
+          if (csrfToken) {
+            console.log('[Nexus API] CSRF token refreshed after token rotation');
+          }
+        } catch (csrfErr) {
+          console.warn('[Nexus API] Failed to refresh CSRF token after token rotation:', csrfErr);
+        }
+        
         // Retry the original request
         return api(originalRequest);
       } catch (refreshError) {
         // Refresh failed, redirect to login
         localStorage.removeItem('token');
         localStorage.removeItem('accessToken');
-        window.location.href = '/login';
+        csrfToken = null; // Clear CSRF token
+        
+        const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`;
         return Promise.reject(refreshError);
       }
     }

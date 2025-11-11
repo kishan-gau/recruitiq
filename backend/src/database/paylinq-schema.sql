@@ -779,6 +779,12 @@ CREATE TABLE IF NOT EXISTS payroll.paycheck (
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'paid', 'voided')),
   paid_at TIMESTAMPTZ,
   
+  -- Email tracking
+  payslip_sent_at TIMESTAMPTZ,
+  payslip_sent_to VARCHAR(255),
+  payslip_send_status VARCHAR(20) CHECK (payslip_send_status IN ('pending', 'sent', 'failed', 'bounced')),
+  payslip_send_error TEXT,
+  
   -- Audit fields
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ,

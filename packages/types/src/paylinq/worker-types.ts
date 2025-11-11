@@ -135,3 +135,42 @@ export interface WorkerTypeWithCount extends WorkerTypeTemplate {
   assignedEmployees: number;
   activeEmployees: number;
 }
+
+/**
+ * API Response Types for Worker Types
+ * Following API standards: resource-specific keys, not generic "data"
+ */
+
+/** Single worker type template response: { success, workerType: {...} } */
+export interface WorkerTypeResponse {
+  success: boolean;
+  workerType: WorkerTypeTemplate;
+  message?: string;
+}
+
+/** List of worker types response: { success, workerTypes: [...], count } */
+export interface WorkerTypesListResponse {
+  success: boolean;
+  workerTypes: WorkerTypeTemplate[];
+  count: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalCount: number;
+  };
+}
+
+/** Worker type assignment response: { success, assignment: {...} } */
+export interface WorkerTypeAssignmentResponse {
+  success: boolean;
+  assignment: WorkerTypeAssignment;
+  message?: string;
+}
+
+/** List of assignments response: { success, assignments: [...], count } */
+export interface WorkerTypeAssignmentsListResponse {
+  success: boolean;
+  assignments: WorkerTypeAssignment[];
+  count: number;
+}

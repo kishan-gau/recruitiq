@@ -113,15 +113,14 @@ export class APIClient {
     // Auth tokens are in httpOnly cookies, sent automatically by browser
     this.client.interceptors.request.use(
       (config) => {
-        // Remove any skip-auth flags
-        delete config.headers['skip-auth'];
-
-        // Add CSRF token to POST, PUT, PATCH, DELETE requests (if available)
+        // Add CSRF token to POST, PUT, PATCH, DELETE requests
         const mutatingMethods = ['post', 'put', 'patch', 'delete'];
         if (config.method && mutatingMethods.includes(config.method.toLowerCase())) {
           const csrfToken = this.tokenStorage.getCsrfToken();
           
           // Add CSRF token to request headers if available
+          // If token is missing, let the request proceed - server will return 403 if required
+          // The response interceptor will handle fetching a new token and retrying
           if (csrfToken && config.headers) {
             config.headers['X-CSRF-Token'] = csrfToken;
           }
@@ -138,8 +137,62 @@ export class APIClient {
       async (error: AxiosError) => {
         const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
 
-        // Handle 401 errors with token refresh
+        // Handle 403 CSRF token errors - fetch new token and retry ONCE
+        if (error.response?.status === 403 && !originalRequest._retry) {
+          const errorData = error.response?.data as any;
+          
+          // DEBUG: Log error details to diagnose CSRF detection
+          console.log('[APIClient] Got 403 error, checking if CSRF-related:', {
+            errorCode: errorData?.code,
+            errorMessage: errorData?.message,
+            hasRetried: originalRequest._retry,
+          });
+          
+          const isCsrfError = errorData?.code === 'EBADCSRFTOKEN' || 
+                             errorData?.code === 'CSRF_INVALID' ||
+                             errorData?.message?.toLowerCase().includes('csrf');
+          
+          if (isCsrfError) {
+            console.log('[APIClient] CSRF token invalid/expired, fetching new token...');
+            originalRequest._retry = true;
+            
+            try {
+              // Fetch fresh CSRF token from server
+              const csrfResponse = await this.client.get('/csrf-token');
+              const csrfToken = csrfResponse.data?.csrfToken;
+              
+              if (csrfToken) {
+                this.tokenStorage.setCsrfToken(csrfToken);
+                console.log('[APIClient] New CSRF token fetched, retrying original request');
+                
+                // Add new token to original request headers
+                if (!originalRequest.headers) {
+                  originalRequest.headers = {};
+                }
+                originalRequest.headers['X-CSRF-Token'] = csrfToken;
+                
+                // Retry original request with new token
+                return this.client(originalRequest);
+              } else {
+                console.error('[APIClient] No CSRF token in response');
+                return Promise.reject(new Error('Failed to fetch CSRF token'));
+              }
+            } catch (csrfError: any) {
+              console.error('[APIClient] Failed to fetch new CSRF token:', csrfError.response?.status || csrfError.message);
+              
+              // If CSRF fetch returns 401, session is invalid - redirect to login
+              if (csrfError.response?.status === 401) {
+                this.handleSessionExpired();
+              }
+              
+              return Promise.reject(csrfError);
+            }
+          }
+        }
+
+        // Handle 401 errors - attempt token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
+          // Skip refresh for auth endpoints to prevent infinite loops
           const skipRefreshUrls = [
             '/auth/login', 
             '/auth/refresh', 
@@ -153,6 +206,7 @@ export class APIClient {
             '/auth/platform/refresh',
             '/auth/platform/logout'
           ];
+          
           const shouldSkipRefresh = skipRefreshUrls.some((url) =>
             originalRequest.url?.includes(url)
           );
@@ -160,49 +214,55 @@ export class APIClient {
           if (!shouldSkipRefresh) {
             originalRequest._retry = true;
 
+            // Check if this is an initial auth check (no need to log errors)
+            const isInitialAuthCheck = originalRequest.url?.includes('/auth/tenant/me');
+
+            // Use refresh queue to prevent multiple concurrent refresh attempts
             if (!this.isRefreshing) {
               this.isRefreshing = true;
 
               try {
-                await this.refreshAccessToken();
+                await this.refreshAccessToken(isInitialAuthCheck);
                 this.isRefreshing = false;
+                
+                // Notify all queued requests that token is refreshed
                 this.onTokenRefreshed('cookie-auth');
                 this.refreshSubscribers = [];
                 
-                // Retry original request (cookie will be sent automatically)
+                // Fetch fresh CSRF token after successful token refresh
+                // Token rotation invalidates old CSRF tokens
+                try {
+                  const csrfResponse = await this.client.get('/csrf-token');
+                  const csrfToken = csrfResponse.data?.csrfToken;
+                  if (csrfToken) {
+                    this.tokenStorage.setCsrfToken(csrfToken);
+                    console.log('[APIClient] CSRF token refreshed after session renewal');
+                  }
+                } catch (csrfErr) {
+                  console.warn('[APIClient] Failed to refresh CSRF token after session renewal:', csrfErr);
+                  // Non-fatal - will fetch on next mutation if needed
+                }
+                
+                // Retry original request with refreshed session
                 return this.client(originalRequest);
               } catch (refreshError) {
                 this.isRefreshing = false;
                 this.refreshSubscribers = [];
                 this.tokenStorage.clearTokens();
                 
-                // Don't redirect if this is the initial auth check (/auth/tenant/me)
-                // Let the AuthContext handle it gracefully
+                // Only redirect if this is not the initial auth check
+                // Let AuthContext handle initial auth failures gracefully
                 const isInitialAuthCheck = originalRequest.url?.includes('/auth/tenant/me');
                 
-                console.log('[APIClient] Refresh failed:', {
-                  url: originalRequest.url,
-                  isInitialAuthCheck,
-                  pathname: typeof window !== 'undefined' ? window.location.pathname : 'N/A'
-                });
-                
-                // Redirect to login ONLY if not already on login page and NOT initial auth check
-                if (!isInitialAuthCheck && typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-                  const currentPath = window.location.pathname;
-                  const reason = 'session_expired';
-                  if (currentPath !== '/login') {
-                    console.log('[APIClient] Redirecting to login');
-                    window.location.href = `/login?reason=${reason}`;
-                  }
-                } else {
-                  console.log('[APIClient] Skipping redirect - letting AuthContext handle it');
+                if (!isInitialAuthCheck) {
+                  this.handleSessionExpired();
                 }
                 
                 return Promise.reject(refreshError);
               }
             }
 
-            // Queue request while refresh is in progress
+            // Queue this request while refresh is in progress
             return new Promise((resolve) => {
               this.refreshSubscribers.push((token: string) => {
                 if (originalRequest.headers) {
@@ -220,10 +280,23 @@ export class APIClient {
   }
 
   /**
+   * Handle session expiration - redirect to login
+   */
+  private handleSessionExpired(): void {
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+      console.log('[APIClient] Session expired, redirecting to login');
+      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`;
+    }
+  }
+
+  /**
    * Refresh the access token
    * SECURITY: Token is in httpOnly cookie, backend will read it and set new one
+   * 
+   * @param suppressErrors - If true, log errors as info instead of error (for expected failures like initial auth check)
    */
-  private async refreshAccessToken(): Promise<string> {
+  private async refreshAccessToken(suppressErrors: boolean = false): Promise<string> {
     try {
       console.log('[APIClient] Attempting to refresh access token...');
       // Backend reads refreshToken from httpOnly cookie and sets new accessToken cookie
@@ -231,11 +304,16 @@ export class APIClient {
       console.log('[APIClient] Token refresh successful');
       return 'cookie-auth'; // Placeholder since token is in cookie
     } catch (error: any) {
-      console.error('[APIClient] Token refresh failed:', {
-        status: error.response?.status,
-        message: error.message,
-        url: error.config?.url
-      });
+      // For initial auth checks, this is expected - don't log as error
+      if (suppressErrors) {
+        console.log('[APIClient] No refresh token available (expected during initial load)');
+      } else {
+        console.error('[APIClient] Token refresh failed:', {
+          status: error.response?.status,
+          message: error.message,
+          url: error.config?.url
+        });
+      }
       this.tokenStorage.clearTokens();
       throw error;
     }
@@ -300,5 +378,45 @@ export class APIClient {
    */
   public getTokenStorage(): TokenStorage {
     return this.tokenStorage;
+  }
+
+  /**
+   * Fetch CSRF token from server
+   * Should be called after authentication or when CSRF token is needed
+   * 
+   * @returns Promise<string | null> The CSRF token or null if fetch failed
+   */
+  public async fetchCsrfToken(): Promise<string | null> {
+    try {
+      console.log('[APIClient] Fetching CSRF token from server...');
+      const response = await this.client.get('/csrf-token');
+      const csrfToken = response.data?.csrfToken;
+      
+      if (csrfToken) {
+        this.tokenStorage.setCsrfToken(csrfToken);
+        console.log('[APIClient] CSRF token fetched and stored successfully');
+        return csrfToken;
+      } else {
+        console.warn('[APIClient] No CSRF token in server response');
+        return null;
+      }
+    } catch (error: any) {
+      console.error('[APIClient] Failed to fetch CSRF token:', error.response?.status || error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Set CSRF token manually
+   */
+  public setCsrfToken(token: string): void {
+    this.tokenStorage.setCsrfToken(token);
+  }
+
+  /**
+   * Get CSRF token
+   */
+  public getCsrfToken(): string | null {
+    return this.tokenStorage.getCsrfToken();
   }
 }

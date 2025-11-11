@@ -29,8 +29,7 @@ export default function Login() {
     const reason = searchParams.get('reason');
     if (reason === 'session_expired') {
       setSessionMessage('Your session has expired or was ended from another device. Please login again.');
-      // Clear the URL parameter
-      window.history.replaceState({}, '', '/login');
+      // Don't clear returnTo from URL - we need it for redirect after login
     }
   }, [searchParams]);
 
@@ -120,8 +119,17 @@ export default function Login() {
     
     // Normal login success (no MFA)
     if (result) {
-      console.log('Login successful, navigating to /');
-      navigate('/');
+      console.log('Login successful');
+      
+      // Check if there's a return URL (user was redirected here after session expiry)
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        console.log('Redirecting back to:', returnTo);
+        navigate(decodeURIComponent(returnTo));
+      } else {
+        console.log('Navigating to /');
+        navigate('/');
+      }
     }
     // Error is already set by AuthContext, no need to set it again
   };
@@ -137,8 +145,13 @@ export default function Login() {
       // No need to store them in localStorage
       setUser(response.user);
       
-      // Navigate to app
-      navigate('/');
+      // Check if there's a return URL
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        navigate(decodeURIComponent(returnTo));
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       // Error will be caught by MFAVerification component
       throw err;

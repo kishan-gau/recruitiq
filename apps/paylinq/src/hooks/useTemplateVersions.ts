@@ -8,7 +8,7 @@ export const useTemplateVersions = (templateCode: string) => {
     queryKey: ['templateVersions', templateCode],
     queryFn: async () => {
       const response = await api.paylinq.getTemplateVersions(templateCode);
-      return response;
+      return response.versions || [];
     },
     enabled: !!templateCode,
   });

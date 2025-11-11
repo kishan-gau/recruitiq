@@ -13,7 +13,7 @@ export function useWorkers() {
     queryKey: WORKERS_QUERY_KEY,
     queryFn: async () => {
       const response = await paylinq.getWorkers();
-      return response.data || response.employees || [];
+      return response.employees || [];
     },
   });
 }

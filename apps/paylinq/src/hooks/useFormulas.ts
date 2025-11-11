@@ -8,12 +8,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePaylinqAPI } from './usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import type {
-  PayComponentFormula,
-  FormulaVariable,
+  ComponentFormula,
   CreateFormulaRequest,
   UpdateFormulaRequest,
-  TestFormulaRequest,
-  FormulaFilters,
   PaginationParams,
 } from '@recruitiq/types';
 
@@ -35,7 +32,7 @@ export function useFormulas(params?: FormulaFilters & PaginationParams) {
     queryKey: [...FORMULAS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getFormulas(params);
-      return response.data;
+      return response.formulas || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -51,7 +48,7 @@ export function useFormula(id: string) {
     queryKey: [...FORMULAS_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getFormula(id);
-      return response.data;
+      return response.formula;
     },
     enabled: !!id,
   });
@@ -67,7 +64,7 @@ export function usePayComponentFormulas(payComponentId: string) {
     queryKey: [...FORMULAS_KEY, 'pay-component', payComponentId],
     queryFn: async () => {
       const response = await paylinq.getPayComponentFormulas(payComponentId);
-      return response.data;
+      return response.formulas || [];
     },
     enabled: !!payComponentId,
   });
@@ -95,12 +92,14 @@ export function useCreateFormula() {
   return useMutation({
     mutationFn: async (data: CreateFormulaRequest) => {
       const response = await paylinq.createFormula(data);
-      return response.data;
+      return response.formula;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'pay-component', data.payComponentId] });
-      success(`Formula "${data.name}" created successfully`);
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'list'] });
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'pay-component', data.payComponentId] });
+        success(`Formula created successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to create formula');
@@ -119,13 +118,15 @@ export function useUpdateFormula() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateFormulaRequest }) => {
       const response = await paylinq.updateFormula(id, data);
-      return response.data;
+      return response.formula;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'pay-component', data.payComponentId] });
-      success(`Formula "${data.name}" updated successfully`);
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'list'] });
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'pay-component', data.payComponentId] });
+        success(`Formula updated successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to update formula');
@@ -193,12 +194,14 @@ export function useActivateFormula() {
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await paylinq.activateFormula(id);
-      return response.data;
+      return response.formula;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'list'] });
-      success(`Formula "${data.name}" activated successfully`);
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'list'] });
+        success(`Formula activated successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to activate formula');
@@ -217,12 +220,14 @@ export function useDeactivateFormula() {
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await paylinq.deactivateFormula(id);
-      return response.data;
+      return response.formula;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'list'] });
-      success(`Formula "${data.name}" deactivated successfully`);
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...FORMULAS_KEY, 'list'] });
+        success(`Formula deactivated successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to deactivate formula');
@@ -244,7 +249,7 @@ export function useFormulaVariables() {
     queryKey: FORMULA_VARIABLES_KEY,
     queryFn: async () => {
       const response = await paylinq.getFormulaVariables();
-      return response.data;
+      return response.variables || [];
     },
     staleTime: 30 * 60 * 1000, // 30 minutes - variables change rarely
   });
@@ -298,7 +303,7 @@ export function useFormulaExecutionHistory(formulaId: string, params?: Paginatio
     queryKey: [...FORMULAS_KEY, formulaId, 'execution-history', params],
     queryFn: async () => {
       const response = await paylinq.getFormulaExecutionHistory(formulaId, params);
-      return response.data;
+      return response.history || [];
     },
     enabled: !!formulaId,
   });
@@ -314,7 +319,7 @@ export function useFormulaDependencies(formulaId: string) {
     queryKey: [...FORMULAS_KEY, formulaId, 'dependencies'],
     queryFn: async () => {
       const response = await paylinq.getFormulaDependencies(formulaId);
-      return response.data;
+      return response.dependencies || [];
     },
     enabled: !!formulaId,
   });

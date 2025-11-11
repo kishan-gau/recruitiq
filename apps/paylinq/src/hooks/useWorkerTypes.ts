@@ -8,8 +8,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePaylinqAPI } from './usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import type {
-  WorkerTypeTemplate,
-  WorkerTypeAssignment,
   CreateWorkerTypeTemplateRequest,
   UpdateWorkerTypeTemplateRequest,
   CreateWorkerTypeAssignmentRequest,
@@ -32,10 +30,10 @@ export function useWorkerTypeTemplates(params?: PaginationParams & { status?: st
   const { paylinq } = usePaylinqAPI();
 
   return useQuery({
-    queryKey: [...WORKER_TYPE_TEMPLATES_KEY, params],
+    queryKey: [...WORKER_TYPE_TEMPLATES_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getWorkerTypeTemplates(params);
-      return response.data;
+      return response.data || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -70,9 +68,11 @@ export function useCreateWorkerTypeTemplate() {
       const response = await paylinq.createWorkerTypeTemplate(data);
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: WORKER_TYPE_TEMPLATES_KEY });
-      success(`Worker type "${data.name}" created successfully`);
+      if (data) {
+        success(`Worker type "${data.name}" created successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to create worker type template');
@@ -93,10 +93,12 @@ export function useUpdateWorkerTypeTemplate() {
       const response = await paylinq.updateWorkerTypeTemplate(id, data);
       return response.data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: WORKER_TYPE_TEMPLATES_KEY });
-      queryClient.invalidateQueries({ queryKey: [...WORKER_TYPE_TEMPLATES_KEY, data.id] });
-      success(`Worker type "${data.name}" updated successfully`);
+    onSuccess: (data: any) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: WORKER_TYPE_TEMPLATES_KEY });
+        queryClient.invalidateQueries({ queryKey: [...WORKER_TYPE_TEMPLATES_KEY, data.id] });
+        success(`Worker type "${data.name}" updated successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to update worker type template');
@@ -141,7 +143,7 @@ export function useEmployeeWorkerTypes(employeeId: string) {
     queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', employeeId],
     queryFn: async () => {
       const response = await paylinq.getEmployeeWorkerTypes(employeeId);
-      return response.data;
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -173,7 +175,7 @@ export function useWorkerTypeHistory(employeeId: string) {
     queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', employeeId, 'history'],
     queryFn: async () => {
       const response = await paylinq.getWorkerTypeHistory(employeeId);
-      return response.data;
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -194,7 +196,7 @@ export function useAssignWorkerType() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ 
-        queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data.employeeId] 
+        queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data?.employeeId] 
       });
       success('Worker type assigned successfully');
     },
@@ -219,7 +221,7 @@ export function useUpdateWorkerTypeAssignment() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ 
-        queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data.employeeId] 
+        queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data?.employeeId] 
       });
       success('Worker type assignment updated successfully');
     },
@@ -244,7 +246,7 @@ export function useTerminateWorkerTypeAssignment() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ 
-        queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data.employeeId] 
+        queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data?.employeeId] 
       });
       success('Worker type assignment terminated successfully');
     },
@@ -260,3 +262,4 @@ export function useTerminateWorkerTypeAssignment() {
 export function useActiveWorkerTypeTemplates() {
   return useWorkerTypeTemplates({ status: 'active' });
 }
+

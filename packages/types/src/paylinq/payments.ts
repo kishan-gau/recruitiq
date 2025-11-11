@@ -140,21 +140,22 @@ export interface PayrollRunComponent extends BaseEntity {
  * Create Payroll Run Request
  */
 export interface CreatePayrollRunRequest {
-  runNumber: string;
-  runName: string;
-  runType?: string;
-  payPeriodStart: string; // ISO date
-  payPeriodEnd: string; // ISO date
-  paymentDate: string; // ISO date
+  payrollName: string;         // Maps to runName in backend
+  periodStart: string;         // ISO date (YYYY-MM-DD)
+  periodEnd: string;           // ISO date (YYYY-MM-DD)
+  paymentDate: string;         // ISO date (YYYY-MM-DD)
+  status?: 'draft' | 'calculating' | 'calculated' | 'approved' | 'processing' | 'processed' | 'cancelled';
 }
 
 /**
  * Update Payroll Run Request
  */
 export interface UpdatePayrollRunRequest {
-  runName?: string;
-  runType?: string;
-  paymentDate?: string; // ISO date
+  payrollName?: string;        // Maps to runName in backend
+  periodStart?: string;        // ISO date (YYYY-MM-DD)
+  periodEnd?: string;          // ISO date (YYYY-MM-DD)
+  paymentDate?: string;        // ISO date (YYYY-MM-DD)
+  status?: 'draft' | 'calculating' | 'calculated' | 'approved' | 'processing' | 'processed' | 'cancelled';
 }
 
 /**
@@ -264,4 +265,70 @@ export interface PayrollCalculationResult {
     employeeName: string;
     warning: string;
   }>;
+}
+
+// ============================================================================
+// API Response Types
+// ============================================================================
+
+/**
+ * Single payroll run response
+ */
+export interface PayrollRunResponse {
+  success: boolean;
+  payrollRun: PayrollRun;
+  message?: string;
+}
+
+/**
+ * Payroll runs list response
+ */
+export interface PayrollRunsListResponse {
+  success: boolean;
+  payrollRuns: PayrollRun[];
+  count: number;
+  pagination?: {
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+}
+
+/**
+ * Single paycheck response
+ */
+export interface PaycheckResponse {
+  success: boolean;
+  paycheck: Paycheck;
+  message?: string;
+}
+
+/**
+ * Paychecks list response
+ */
+export interface PaychecksListResponse {
+  success: boolean;
+  paychecks: Paycheck[];
+  count: number;
+  pagination?: {
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+}
+
+/**
+ * Paycheck history response
+ */
+export interface PaycheckHistoryResponse {
+  success: boolean;
+  paycheckHistory: PaycheckHistory;
+}
+
+/**
+ * Payroll calculation result response
+ */
+export interface PayrollCalculationResponse {
+  success: boolean;
+  calculationResult: PayrollCalculationResult;
 }

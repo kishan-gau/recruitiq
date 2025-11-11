@@ -8,11 +8,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePaylinqAPI } from './usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import type {
-  Compensation,
   CreateCompensationRequest,
   UpdateCompensationRequest,
-  CompensationHistoryEntry,
-  CompensationSummary,
   CompensationFilters,
   PaginationParams,
 } from '@recruitiq/types';
@@ -34,7 +31,7 @@ export function useCompensation(params?: CompensationFilters & PaginationParams)
     queryKey: [...COMPENSATION_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getCompensation(params);
-      return response.data;
+      return response.data || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -63,10 +60,10 @@ export function useEmployeeCompensation(employeeId: string) {
   const { paylinq } = usePaylinqAPI();
 
   return useQuery({
-    queryKey: [...COMPENSATION_KEY, 'employee', employeeId],
+    queryKey: [...COMPENSATION_KEY, 'active', employeeId],
     queryFn: async () => {
       const response = await paylinq.getEmployeeCompensation(employeeId);
-      return response.data;
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -99,7 +96,7 @@ export function useCompensationHistory(employeeId: string) {
     queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'history'],
     queryFn: async () => {
       const response = await paylinq.getCompensationHistory(employeeId);
-      return response.data;
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -112,7 +109,7 @@ export function useCompensationSummary(employeeId: string) {
   const { paylinq } = usePaylinqAPI();
 
   return useQuery({
-    queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'summary'],
+    queryKey: [...COMPENSATION_KEY, 'summary', employeeId],
     queryFn: async () => {
       const response = await paylinq.getCompensationSummary(employeeId);
       return response.data;
@@ -138,7 +135,7 @@ export function useCreateCompensation() {
       const response = await paylinq.createCompensation(data);
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       // Invalidate all compensation queries for this employee
       queryClient.invalidateQueries({ 
         queryKey: [...COMPENSATION_KEY, 'employee', data.employeeId] 
@@ -165,7 +162,7 @@ export function useUpdateCompensation() {
       const response = await paylinq.updateCompensation(id, data);
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       // Invalidate specific compensation record
       queryClient.invalidateQueries({ queryKey: [...COMPENSATION_KEY, data.id] });
       // Invalidate employee compensation queries

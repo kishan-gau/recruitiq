@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Dialog, FormField } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { AlertCircle } from 'lucide-react';
 
@@ -19,7 +20,7 @@ export default function UpgradeWorkersModal({
   isOpen,
   onClose,
   sourceVersion,
-  onUpgradeComplete,
+  onUpgradeComplete, // Callback for when upgrade completes successfully
 }: UpgradeWorkersModalProps) {
   const toast = useToast();
   const [effectiveDate, setEffectiveDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -27,7 +28,9 @@ export default function UpgradeWorkersModal({
 
   const handleSubmit = () => {
     toast.info('Bulk worker upgrade feature coming soon');
-    // This would call the API when backend endpoint is ready
+    // TODO: Call API when backend endpoint is ready
+    // await paylinq.upgradeWorkers({ effectiveDate, reason, ... });
+    onUpgradeComplete(); // Notify parent of success
     onClose();
   };
 

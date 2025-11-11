@@ -288,3 +288,80 @@ export interface YearToDateSummary {
   ptoHours: number;
   sickHours: number;
 }
+
+// ============================================================================
+// API Response Types
+// ============================================================================
+
+/**
+ * Report generation result response
+ */
+export interface ReportGenerationResponse {
+  success: boolean;
+  report: ReportGenerationResult;
+  message?: string;
+}
+
+/**
+ * Payroll summary report response
+ */
+export interface PayrollSummaryReportResponse {
+  success: boolean;
+  report: PayrollSummaryReport;
+}
+
+/**
+ * Employee earnings report response
+ */
+export interface EmployeeEarningsReportResponse {
+  success: boolean;
+  report: EmployeeEarningsReport;
+}
+
+/**
+ * Tax liability report response
+ */
+export interface TaxLiabilityReportResponse {
+  success: boolean;
+  report: TaxLiabilityReport;
+}
+
+/**
+ * Deductions summary report response
+ */
+export interface DeductionsSummaryReportResponse {
+  success: boolean;
+  report: DeductionsSummaryReport;
+}
+
+/**
+ * Time attendance report response
+ */
+export interface TimeAttendanceReportResponse {
+  success: boolean;
+  report: TimeAttendanceReport;
+}
+
+/**
+ * Labor cost report response
+ */
+export interface LaborCostReportResponse {
+  success: boolean;
+  report: LaborCostReport;
+}
+
+/**
+ * Analytics dashboard response
+ */
+export interface AnalyticsDashboardResponse {
+  success: boolean;
+  dashboard: AnalyticsDashboard;
+}
+
+/**
+ * Year-to-date summary response
+ */
+export interface YearToDateSummaryResponse {
+  success: boolean;
+  summary: YearToDateSummary;
+}

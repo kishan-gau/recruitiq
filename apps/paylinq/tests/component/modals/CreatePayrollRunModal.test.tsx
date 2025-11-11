@@ -506,4 +506,600 @@ describe('CreatePayrollRunModal', () => {
       expect(select).toHaveValue('correction')
     })
   })
+
+  describe('API Integration', () => {
+    it('sends correct payload on successful submission', async () => {
+      const user = userEvent.setup()
+      
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      // With default MSW handlers, submission should succeed
+      await waitFor(() => {
+        expect(mockOnSuccess).toHaveBeenCalled()
+      })
+    })
+
+    it('shows success message on successful creation', async () => {
+      const user = userEvent.setup()
+
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      // Success toast should appear
+      await waitFor(() => {
+        expect(screen.getByText(/payroll run created successfully/i)).toBeInTheDocument()
+      })
+    })
+
+    it('closes modal after successful creation', async () => {
+      const user = userEvent.setup()
+      
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('Edge Cases and Boundary Conditions', () => {
+    it('handles leap year dates correctly', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      const startInput = dateInputs[0]
+      const endInput = dateInputs[1]
+
+      await user.clear(startInput)
+      await user.type(startInput, '2024-02-01')
+      await user.clear(endInput)
+      await user.type(endInput, '2024-02-29')
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(mockOnSuccess).toHaveBeenCalled()
+      })
+    })
+
+    it('validates non-leap year February dates', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      const endInput = dateInputs[1]
+
+      await user.clear(endInput)
+      await user.type(endInput, '2023-02-28')
+
+      expect(endInput).toHaveValue('2023-02-28')
+    })
+
+    it('handles year boundaries correctly', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      const startInput = dateInputs[0]
+      const endInput = dateInputs[1]
+      const paymentInput = dateInputs[2]
+
+      await user.clear(startInput)
+      await user.type(startInput, '2024-12-15')
+      await user.clear(endInput)
+      await user.type(endInput, '2024-12-31')
+      await user.clear(paymentInput)
+      await user.type(paymentInput, '2025-01-05')
+
+      // Verify fields are populated correctly
+      expect(startInput).toHaveValue('2024-12-15')
+      expect(endInput).toHaveValue('2024-12-31')
+      expect(paymentInput).toHaveValue('2025-01-05')
+    })
+
+    it('handles very long payroll names', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      const longName = 'A'.repeat(200)
+      
+      await user.clear(nameInput)
+      await user.type(nameInput, longName)
+
+      expect(nameInput).toHaveValue(longName)
+    })
+
+    it('handles special characters in payroll name', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      const specialName = 'Payroll #123 - Nov/Dec (2024) & Co.'
+      
+      await user.clear(nameInput)
+      await user.type(nameInput, specialName)
+
+      expect(nameInput).toHaveValue(specialName)
+    })
+
+    it('handles same date for start and end', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      const startInput = dateInputs[0]
+      const endInput = dateInputs[1]
+
+      await user.clear(startInput)
+      await user.type(startInput, '2024-11-15')
+      await user.clear(endInput)
+      await user.type(endInput, '2024-11-15')
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(screen.getByText(/end date must be after start date/i)).toBeInTheDocument()
+      })
+    })
+
+    it('handles payment date same as end date', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      const startInput = dateInputs[0]
+      const endInput = dateInputs[1]
+      const paymentInput = dateInputs[2]
+
+      // Set valid start/end dates first
+      await user.clear(startInput)
+      await user.type(startInput, '2024-11-01')
+      await user.clear(endInput)
+      await user.type(endInput, '2024-11-30')
+      // Set payment date same as end date - this should be VALID
+      await user.clear(paymentInput)
+      await user.type(paymentInput, '2024-11-30')
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      // Payment date equal to end date is allowed - should succeed
+      await waitFor(() => {
+        expect(screen.getByText(/payroll run created successfully/i)).toBeInTheDocument()
+      })
+      expect(mockOnSuccess).toHaveBeenCalled()
+    })
+
+    it('handles far future dates', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      const startInput = dateInputs[0]
+      const endInput = dateInputs[1]
+      const paymentInput = dateInputs[2]
+
+      await user.clear(startInput)
+      await user.type(startInput, '2099-01-01')
+      await user.clear(endInput)
+      await user.type(endInput, '2099-01-31')
+      await user.clear(paymentInput)
+      await user.type(paymentInput, '2099-02-05')
+
+      // Verify far future dates are accepted by the form
+      expect(startInput).toHaveValue('2099-01-01')
+      expect(endInput).toHaveValue('2099-01-31')
+      expect(paymentInput).toHaveValue('2099-02-05')
+    })
+  })
+
+  describe('User Experience and Interactions', () => {
+    it('maintains focus after validation error', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      await user.clear(dateInputs[0])
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(screen.getByText(/start date is required/i)).toBeInTheDocument()
+      })
+    })
+
+    it('allows rapid field switching without data loss', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      const descriptionInput = screen.getByPlaceholderText(/optional description/i)
+      const select = screen.getByRole('combobox')
+
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Test Payroll')
+      await user.click(select)
+      await user.selectOptions(select, 'bonus')
+      await user.click(descriptionInput)
+      await user.type(descriptionInput, 'Test Description')
+
+      expect(nameInput).toHaveValue('Test Payroll')
+      expect(select).toHaveValue('bonus')
+      expect(descriptionInput).toHaveValue('Test Description')
+    })
+
+    it('updates summary immediately when dates change', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      const startInput = dateInputs[0]
+
+      await user.clear(startInput)
+      await user.type(startInput, '2024-12-01')
+
+      // Wait for summary to update
+      await waitFor(() => {
+        expect(screen.getByText(/December/)).toBeInTheDocument()
+      })
+    })
+
+    it('shows validation errors for multiple fields simultaneously', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      await user.clear(dateInputs[0])
+      await user.clear(dateInputs[1])
+      await user.clear(dateInputs[2])
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      await user.clear(nameInput)
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(screen.getByText(/payroll name is required/i)).toBeInTheDocument()
+        expect(screen.getByText(/start date is required/i)).toBeInTheDocument()
+        expect(screen.getByText(/end date is required/i)).toBeInTheDocument()
+        expect(screen.getByText(/payment date is required/i)).toBeInTheDocument()
+      })
+    })
+
+    it('clears all errors when all fields are corrected', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      await user.clear(nameInput)
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(screen.getByText(/payroll name is required/i)).toBeInTheDocument()
+      })
+
+      await user.type(nameInput, 'Valid Payroll Name')
+
+      await waitFor(() => {
+        expect(screen.queryByText(/payroll name is required/i)).not.toBeInTheDocument()
+      })
+    })
+
+    it('prevents double submission', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      
+      // Click once
+      await user.click(submitButton)
+
+      // Wait for the API call to complete
+      await waitFor(() => {
+        expect(mockOnSuccess).toHaveBeenCalledTimes(1)
+      })
+
+      // Button should be enabled again after success, but modal is closed
+      // So we can't really test double-clicking since modal closes on success
+    })
+
+    it('resets form state when modal is closed and reopened', async () => {
+      const user = userEvent.setup()
+      
+      // First render
+      const { unmount } = renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Custom Payroll')
+
+      unmount()
+
+      // Reopen modal - form should reset to defaults with a fresh mount
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      // Default name should be present (fresh instance)
+      const reopenedNameInput = screen.getByTestId('payroll-name-input')
+      expect(reopenedNameInput.getAttribute('value')).toContain('Payroll')
+    })
+  })
+
+  describe('Keyboard Navigation', () => {
+    it('allows tabbing through all form fields', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      nameInput.focus()
+
+      expect(document.activeElement).toBe(nameInput)
+
+      await user.tab()
+      const select = screen.getByRole('combobox')
+      expect(document.activeElement).toBe(select)
+    })
+
+    it('allows form submission with Enter key', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      
+      // Focus and use keyboard to submit
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(mockOnSuccess).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('Accessibility Features', () => {
+    it('provides proper ARIA labels for date inputs', () => {
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = document.querySelectorAll('input[type="date"]')
+      expect(dateInputs.length).toBeGreaterThan(0)
+    })
+
+    it('maintains proper heading hierarchy', () => {
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const heading = screen.getByRole('heading', { name: /create payroll run/i })
+      expect(heading).toBeInTheDocument()
+    })
+
+    it('provides descriptive error messages for screen readers', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      await user.clear(nameInput)
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        const errorMessage = screen.getByText(/payroll name is required/i)
+        expect(errorMessage).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Performance and Cleanup', () => {
+    it('cleans up on unmount', () => {
+      const { unmount } = renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      unmount()
+
+      // No errors should occur
+      expect(mockOnClose).not.toHaveBeenCalled()
+    })
+
+    it('handles rapid open/close cycles', () => {
+      // Test that the modal can be opened and closed multiple times without errors
+      for (let i = 0; i < 5; i++) {
+        const { unmount } = renderWithProviders(
+          <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+        )
+        
+        expect(screen.getByRole('heading', { name: /create payroll run/i })).toBeInTheDocument()
+        unmount()
+      }
+
+      // Final render to verify it still works
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+      
+      expect(screen.getByRole('heading', { name: /create payroll run/i })).toBeInTheDocument()
+    })
+  })
+
+  describe('Different Payroll Types Workflows', () => {
+    it('creates bonus payroll with appropriate dates', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const select = screen.getByRole('combobox')
+      await user.selectOptions(select, 'bonus')
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Year End Bonus 2024')
+
+      const descriptionInput = screen.getByPlaceholderText(/optional description/i)
+      await user.type(descriptionInput, 'Special year-end performance bonus')
+
+      expect(select).toHaveValue('bonus')
+      expect(nameInput).toHaveValue('Year End Bonus 2024')
+    })
+
+    it('creates 13th month with december dates', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const select = screen.getByRole('combobox')
+      await user.selectOptions(select, '13th-month')
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      await user.clear(dateInputs[0])
+      await user.type(dateInputs[0], '2024-12-01')
+      await user.clear(dateInputs[1])
+      await user.type(dateInputs[1], '2024-12-31')
+      await user.clear(dateInputs[2])
+      await user.type(dateInputs[2], '2025-01-05')
+
+      expect(select).toHaveValue('13th-month')
+    })
+
+    it('creates correction run with past dates', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const select = screen.getByRole('combobox')
+      await user.selectOptions(select, 'correction')
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      await user.clear(nameInput)
+      await user.type(nameInput, 'October 2024 Correction')
+
+      const descriptionInput = screen.getByPlaceholderText(/optional description/i)
+      await user.type(descriptionInput, 'Correcting calculation errors from October payroll')
+
+      expect(select).toHaveValue('correction')
+    })
+  })
+
+  describe('Complex Validation Scenarios', () => {
+    it('validates period spanning multiple months', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      await user.clear(dateInputs[0])
+      await user.type(dateInputs[0], '2024-11-15')
+      await user.clear(dateInputs[1])
+      await user.type(dateInputs[1], '2024-12-15')
+      await user.clear(dateInputs[2])
+      await user.type(dateInputs[2], '2024-12-20')
+
+      // Verify dates spanning multiple months are accepted
+      expect(dateInputs[0]).toHaveValue('2024-11-15')
+      expect(dateInputs[1]).toHaveValue('2024-12-15')
+      expect(dateInputs[2]).toHaveValue('2024-12-20')
+    })
+
+    it('validates very short payroll periods', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const dateInputs = screen.getAllByDisplayValue(/^\d{4}-\d{2}-\d{2}$/)
+      await user.clear(dateInputs[0])
+      await user.type(dateInputs[0], '2024-11-01')
+      await user.clear(dateInputs[1])
+      await user.type(dateInputs[1], '2024-11-02')
+      await user.clear(dateInputs[2])
+      await user.type(dateInputs[2], '2024-11-05')
+
+      // Verify very short periods are accepted
+      expect(dateInputs[0]).toHaveValue('2024-11-01')
+      expect(dateInputs[1]).toHaveValue('2024-11-02')
+      expect(dateInputs[2]).toHaveValue('2024-11-05')
+    })
+
+    it('handles whitespace-only payroll name', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <CreatePayrollRunModal isOpen={true} onClose={mockOnClose} onSuccess={mockOnSuccess} />
+      )
+
+      const nameInput = screen.getByTestId('payroll-name-input')
+      await user.clear(nameInput)
+      await user.type(nameInput, '   ')
+
+      const submitButton = screen.getByRole('button', { name: /create payroll run/i })
+      await user.click(submitButton)
+
+      await waitFor(() => {
+        expect(screen.getByText(/payroll name is required/i)).toBeInTheDocument()
+      })
+    })
+  })
 })

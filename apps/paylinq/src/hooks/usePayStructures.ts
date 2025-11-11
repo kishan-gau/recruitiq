@@ -35,27 +35,39 @@ export interface PayStructureTemplate {
 
 export interface PayStructureComponent {
   id: string;
-  templateId: string;
+  templateId?: string;
   componentCode: string;
   componentName: string;
-  componentType: 'earnings' | 'deductions' | 'taxes' | 'benefits';
-  calculationType: 'fixed' | 'percentage' | 'formula' | 'hourly_rate' | 'tiered';
+  componentCategory: 'earning' | 'deduction' | 'tax' | 'benefit' | 'employer_cost' | 'reimbursement';
+  componentType?: 'earnings' | 'deductions' | 'taxes' | 'benefits'; // Legacy field
+  calculationType: 'fixed' | 'percentage' | 'formula' | 'hourly_rate' | 'tiered' | 'external';
   sequenceOrder: number;
-  isOptional: boolean;
-  isVisible: boolean;
+  isOptional?: boolean;
+  isVisible?: boolean;
+  
+  // Worker override configuration
+  allowWorkerOverride?: boolean;
+  overrideAllowedFields?: string[];
+  isMandatory?: boolean;
+  isTaxable?: boolean;
   
   // Calculation-specific fields
-  fixedAmount?: number;
-  percentageValue?: number;
-  percentageBase?: string;
-  formula?: string;
-  hourlyRate?: number;
+  defaultAmount?: number; // For fixed and base for hourly_rate
+  fixedAmount?: number; // Legacy
+  percentageRate?: number; // 0.05 = 5%
+  percentageValue?: number; // Legacy
+  percentageOf?: string; // What to calculate percentage of
+  percentageBase?: string; // Legacy
+  formulaExpression?: string;
+  formula?: string; // Legacy
+  rateMultiplier?: number; // For hourly_rate (1.0 = regular, 1.5 = overtime)
+  hourlyRate?: number; // Legacy
   tieredRates?: TieredRate[];
   
   conditions?: any;
   metadata?: any;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TieredRate {
@@ -129,7 +141,7 @@ export function usePayStructureTemplates(params?: Record<string, any>) {
     queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, params],
     queryFn: async () => {
       const response = await paylinq.getPayStructureTemplates(params);
-      return response.data;
+      return response.templates || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -145,7 +157,7 @@ export function usePayStructureTemplate(id: string) {
     queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getPayStructureTemplate(id);
-      return response.data as PayStructureTemplate;
+      return response.template;
     },
     enabled: !!id,
   });
@@ -162,7 +174,7 @@ export function useCreatePayStructureTemplate() {
   return useMutation({
     mutationFn: async (data: CreateTemplateInput) => {
       const response = await paylinq.createPayStructureTemplate(data);
-      return response.data as PayStructureTemplate;
+      return response.template;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: PAY_STRUCTURE_TEMPLATES_QUERY_KEY });
@@ -180,21 +192,19 @@ export function useCreatePayStructureTemplate() {
 export function useUpdatePayStructureTemplate() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const { success } = useToast();
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateTemplateInput }) => {
       const response = await paylinq.updatePayStructureTemplate(id, data);
-      return response.data as PayStructureTemplate;
+      return response.template;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: PAY_STRUCTURE_TEMPLATES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, data.id] });
       success(`Template "${data.templateName}" updated successfully`);
     },
-    onError: (err: any) => {
-      error(err?.message || 'Failed to update pay structure template');
-    },
+    // Error handling is done in the component for better UX
   });
 }
 
@@ -209,7 +219,7 @@ export function usePublishPayStructureTemplate() {
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await paylinq.publishPayStructureTemplate(id);
-      return response.data as PayStructureTemplate;
+      return response.template;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: PAY_STRUCTURE_TEMPLATES_QUERY_KEY });
@@ -233,7 +243,7 @@ export function useDeprecatePayStructureTemplate() {
   return useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
       const response = await paylinq.deprecatePayStructureTemplate(id, { reason });
-      return response.data as PayStructureTemplate;
+      return response.template;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: PAY_STRUCTURE_TEMPLATES_QUERY_KEY });
@@ -257,7 +267,7 @@ export function useCreatePayStructureTemplateVersion() {
   return useMutation({
     mutationFn: async ({ id, versionType, changeSummary }: { id: string; versionType: string; changeSummary: string }) => {
       const response = await paylinq.createPayStructureTemplateVersion(id, { versionType, changeSummary });
-      return response.data as PayStructureTemplate;
+      return response.template;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: PAY_STRUCTURE_TEMPLATES_QUERY_KEY });
@@ -279,7 +289,7 @@ export function usePayStructureTemplateVersions(templateCode: string) {
     queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, 'versions', templateCode],
     queryFn: async () => {
       const response = await paylinq.getPayStructureTemplateVersions(templateCode);
-      return response.data as PayStructureTemplate[];
+      return response.templates || [];
     },
     enabled: !!templateCode,
   });
@@ -295,7 +305,7 @@ export function usePayStructureTemplateChangelog(id: string) {
     queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, id, 'changelog'],
     queryFn: async () => {
       const response = await paylinq.getPayStructureTemplateChangelog(id);
-      return response.data;
+      return response.changelog || [];
     },
     enabled: !!id,
   });
@@ -315,7 +325,7 @@ export function usePayStructureComponents(templateId: string) {
     queryKey: [...PAY_STRUCTURE_COMPONENTS_QUERY_KEY, templateId],
     queryFn: async () => {
       const response = await paylinq.getPayStructureComponents(templateId);
-      return response.data as PayStructureComponent[];
+      return response.components || [];
     },
     enabled: !!templateId,
   });
@@ -332,7 +342,7 @@ export function useAddPayStructureComponent() {
   return useMutation({
     mutationFn: async ({ templateId, data }: { templateId: string; data: CreateComponentInput }) => {
       const response = await paylinq.addPayStructureComponent(templateId, data);
-      return response.data as PayStructureComponent;
+      return response.component;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_COMPONENTS_QUERY_KEY, data.templateId] });
@@ -354,14 +364,14 @@ export function useUpdatePayStructureComponent() {
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async ({ componentId, data }: { componentId: string; data: UpdateComponentInput }) => {
+    mutationFn: async ({ componentId, templateId, data }: { componentId: string; templateId: string; data: UpdateComponentInput }) => {
       const response = await paylinq.updatePayStructureComponent(componentId, data);
-      return response.data as PayStructureComponent;
+      return { component: response.component, templateId };
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_COMPONENTS_QUERY_KEY, data.templateId] });
-      queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, data.templateId] });
-      success(`Component "${data.componentName}" updated successfully`);
+    onSuccess: ({ component, templateId }) => {
+      queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_COMPONENTS_QUERY_KEY, templateId] });
+      queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, templateId] });
+      success(component?.componentName ? `Component "${component.componentName}" updated successfully` : 'Component updated successfully');
     },
     onError: (err: any) => {
       error(err?.message || 'Failed to update component');
@@ -404,7 +414,7 @@ export function useReorderPayStructureComponents() {
   return useMutation({
     mutationFn: async ({ templateId, componentOrders }: { templateId: string; componentOrders: Array<{ componentId: string; sequenceOrder: number }> }) => {
       const response = await paylinq.reorderPayStructureComponents(templateId, { componentOrders });
-      return { templateId, data: response.data };
+      return { templateId, data: response.components || [] };
     },
     onSuccess: ({ templateId }) => {
       queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_COMPONENTS_QUERY_KEY, templateId] });
@@ -429,10 +439,19 @@ export function useCurrentWorkerPayStructure(employeeId: string, asOfDate?: stri
   return useQuery({
     queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, employeeId, 'current', asOfDate],
     queryFn: async () => {
-      // Only pass asOfDate if it's defined to avoid sending "undefined" string
-      const params = asOfDate ? { asOfDate } : undefined;
-      const response = await paylinq.getCurrentWorkerPayStructure(employeeId, params);
-      return response.data as WorkerPayStructure;
+      try {
+        // Only pass asOfDate if it's defined to avoid sending "undefined" string
+        const params = asOfDate ? { asOfDate } : undefined;
+        const response = await paylinq.getCurrentWorkerPayStructure(employeeId, params);
+        // Return null if no structure exists (React Query v5 doesn't allow undefined)
+        return response?.workerPayStructure ?? null;
+      } catch (error: any) {
+        // 404 is expected when worker has no pay structure - return null instead of throwing
+        if (error?.response?.status === 404) {
+          return null;
+        }
+        throw error;
+      }
     },
     enabled: !!employeeId,
   });
@@ -448,7 +467,7 @@ export function useWorkerPayStructureHistory(employeeId: string) {
     queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, employeeId, 'history'],
     queryFn: async () => {
       const response = await paylinq.getWorkerPayStructureHistory(employeeId);
-      return response.data as WorkerPayStructure[];
+      return response.workerPayStructures || [];
     },
     enabled: !!employeeId,
   });
@@ -465,10 +484,11 @@ export function useAssignPayStructureToWorker() {
   return useMutation({
     mutationFn: async ({ employeeId, data }: { employeeId: string; data: any }) => {
       const response = await paylinq.assignPayStructureToWorker(employeeId, data);
-      return response.data as WorkerPayStructure;
+      // Backend returns { success, assignment, message }
+      return { assignment: response.assignment, employeeId };
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, data.employeeId] });
+    onSuccess: ({ employeeId }) => {
+      queryClient.invalidateQueries({ queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, employeeId] });
       success('Pay structure assigned successfully');
     },
     onError: (err: any) => {
@@ -488,7 +508,7 @@ export function useUpgradeWorkerPayStructure() {
   return useMutation({
     mutationFn: async ({ employeeId, newTemplateId, effectiveFrom }: { employeeId: string; newTemplateId: string; effectiveFrom: string }) => {
       const response = await paylinq.upgradeWorkerPayStructure(employeeId, { newTemplateId, effectiveFrom });
-      return response.data as WorkerPayStructure;
+      return response.workerPayStructure;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, data.employeeId] });
@@ -514,7 +534,7 @@ export function usePayStructureOverrides(workerStructureId: string) {
     queryKey: [...PAY_STRUCTURE_OVERRIDES_QUERY_KEY, workerStructureId],
     queryFn: async () => {
       const response = await paylinq.getPayStructureOverrides(workerStructureId);
-      return response.data as ComponentOverride[];
+      return response.overrides || [];
     },
     enabled: !!workerStructureId,
   });
@@ -531,7 +551,7 @@ export function useAddPayStructureOverride() {
   return useMutation({
     mutationFn: async ({ employeeId, data }: { employeeId: string; data: any }) => {
       const response = await paylinq.addPayStructureOverride(employeeId, data);
-      return response.data as ComponentOverride;
+      return response.override;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_OVERRIDES_QUERY_KEY, data.workerStructureId] });
@@ -554,7 +574,7 @@ export function useUpdatePayStructureOverride() {
   return useMutation({
     mutationFn: async ({ overrideId, workerStructureId, data }: { overrideId: string; workerStructureId: string; data: any }) => {
       const response = await paylinq.updatePayStructureOverride(overrideId, data);
-      return { workerStructureId, data: response.data as ComponentOverride };
+      return { workerStructureId, data: response.override };
     },
     onSuccess: ({ workerStructureId }) => {
       queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_OVERRIDES_QUERY_KEY, workerStructureId] });
@@ -599,7 +619,7 @@ export function useWorkers() {
     queryKey: ['workers'],
     queryFn: async () => {
       const response = await paylinq.getWorkers();
-      return response.data || response.employees || [];
+      return response.employees || [];
     },
   });
 }

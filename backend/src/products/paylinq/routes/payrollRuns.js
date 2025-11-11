@@ -65,6 +65,7 @@ router.post('/:id/calculate', validate(idParamSchema, 'params'), validate(calcul
 router.post('/:id/process', validate(idParamSchema, 'params'), payrollRunController.processPayrollRun);
 router.post('/:id/approve', validate(idParamSchema, 'params'), payrollRunController.approvePayrollRun);
 router.post('/:id/cancel', validate(idParamSchema, 'params'), payrollRunController.cancelPayrollRun);
+router.post('/:id/send-payslips', validate(idParamSchema, 'params'), payrollRunController.sendPayslips);
 router.put('/:id', validate(idParamSchema, 'params'), validate(updatePayrollRunSchema, 'body'), payrollRunController.updatePayrollRun);
 router.post('/:id/finalize', validate(idParamSchema, 'params'), payrollRunController.finalizePayrollRun);
 router.delete('/:id', validate(idParamSchema, 'params'), payrollRunController.deletePayrollRun);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Dialog, FormField, Select, Input } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Select, Input } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { FileDown } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';

@@ -72,7 +72,9 @@ export default function Dialog({ isOpen, onClose, title, children, size = 'md', 
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto">{children}</div>
+        <div className="px-6 py-4 max-h-[calc(100vh-200px)] overflow-y-auto overflow-x-hidden">
+          <div className="px-0.5">{children}</div>
+        </div>
 
         {/* Footer */}
         {footer && (

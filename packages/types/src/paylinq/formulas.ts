@@ -234,3 +234,56 @@ export interface PayComponentFilters {
   isRecurring?: boolean;
   status?: Status;
 }
+
+/**
+ * API Response Types for Pay Components
+ * Following API standards: resource-specific keys, not generic "data"
+ */
+
+/** Single pay component response: { success, payComponent: {...} } */
+export interface PayComponentResponse {
+  success: boolean;
+  payComponent: PayComponent;
+  message?: string;
+}
+
+/** List of pay components response: { success, payComponents: [...], count } */
+export interface PayComponentsListResponse {
+  success: boolean;
+  payComponents: PayComponent[];
+  count: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalCount: number;
+  };
+}
+
+/** Single component formula response: { success, formula: {...} } */
+export interface FormulaResponse {
+  success: boolean;
+  formula: ComponentFormula;
+  message?: string;
+}
+
+/** List of formulas response: { success, formulas: [...], count } */
+export interface FormulasListResponse {
+  success: boolean;
+  formulas: ComponentFormula[];
+  count: number;
+}
+
+/** Custom pay component response: { success, customComponent: {...} } */
+export interface CustomPayComponentResponse {
+  success: boolean;
+  customComponent: CustomPayComponent;
+  message?: string;
+}
+
+/** Formula validation result response: { success, validation: {...} } */
+export interface FormulaValidationResponse {
+  success: boolean;
+  validation: FormulaValidationResult;
+}
+

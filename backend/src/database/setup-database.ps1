@@ -260,6 +260,18 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding Suriname tax rules..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-suriname-tax-rules.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding Suriname tax rules" -ForegroundColor Red
+    exit 1
+}
+
 # Clean up environment variable
 Remove-Item Env:\PGPASSWORD
 

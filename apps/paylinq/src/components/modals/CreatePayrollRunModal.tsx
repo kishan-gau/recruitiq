@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Dialog, FormField, Input, Select } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { Calendar } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
@@ -56,8 +57,7 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
         periodStart: formData.payPeriodStart,
         periodEnd: formData.payPeriodEnd,
         paymentDate: formData.paymentDate,
-        // run_type: formData.type,  // Not in API schema
-        // description: formData.description,  // Not in API schema
+        status: 'draft',
       });
 
       if (response.success) {

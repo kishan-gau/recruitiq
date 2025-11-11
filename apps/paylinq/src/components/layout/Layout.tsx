@@ -61,6 +61,7 @@ const payrollItems: NavigationItem[] = [
     href: '/pay-components',
     icon: DollarSign,
     description: 'Configure pay components',
+    matchPaths: ['/pay-structures'], // Also highlight when viewing pay structures
   },
   {
     name: 'Payroll Runs',
@@ -232,7 +233,7 @@ export default function Layout() {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <header className="h-[72px] bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6">
+        <header className="sticky top-0 z-30 h-[72px] bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"

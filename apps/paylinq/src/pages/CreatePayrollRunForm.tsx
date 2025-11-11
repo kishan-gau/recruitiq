@@ -53,15 +53,23 @@ export default function CreatePayrollRunForm() {
   const formData = watch();
 
   const onSubmit = async (data: PayrollRunFormData) => {
-    createPayrollRun.mutate(data as CreatePayrollRunRequest, {
-      onSuccess: (newRun) => {
-        if (newRun?.id) {
-          navigate(`/payroll-runs/${newRun.id}`);
-        } else {
-          navigate('/payroll-runs');
-        }
-      },
-    });
+    try {
+      const requestData: CreatePayrollRunRequest = {
+        payrollName: data.runName,
+        periodStart: data.payPeriodStart,
+        periodEnd: data.payPeriodEnd,
+        paymentDate: data.paymentDate,
+      };
+      const newRun = await createPayrollRun.mutateAsync(requestData);
+      if (newRun?.id) {
+        navigate(`/payroll-runs/${newRun.id}`);
+      } else {
+        navigate('/payroll-runs');
+      }
+    } catch (error) {
+      // Error is handled by the mutation's onError callback
+      console.error('Failed to create payroll run:', error);
+    }
   };
 
   const handleNext = () => {

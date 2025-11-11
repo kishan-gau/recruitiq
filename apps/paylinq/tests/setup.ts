@@ -7,6 +7,39 @@ import { server } from './mocks/server';
 // Extend Vitest matchers
 expect.extend(matchers);
 
+// Mock the usePaylinqAPI hook before tests run
+vi.mock('@/hooks/usePaylinqAPI', () => {
+  const mockPaylinqAPI = {
+    createPayrollRun: vi.fn().mockResolvedValue({
+      success: true,
+      payrollRun: {
+        id: 'PR-TEST-001',
+        run_number: 'PR-2025-11-001',
+        status: 'draft',
+        created_at: new Date().toISOString(),
+      },
+    }),
+    getWorkers: vi.fn().mockResolvedValue({
+      success: true,
+      employees: [],
+    }),
+  };
+
+  return {
+    usePaylinqAPI: () => ({
+      paylinq: mockPaylinqAPI,
+      auth: {},
+      client: {},
+    }),
+    paylinqAPI: mockPaylinqAPI,
+    authAPI: {},
+    default: {
+      paylinq: mockPaylinqAPI,
+      auth: {},
+    },
+  };
+});
+
 // Establish API mocking before all tests
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'warn' });
@@ -16,6 +49,7 @@ beforeAll(() => {
 afterEach(() => {
   cleanup();
   server.resetHandlers();
+  vi.clearAllMocks();
 });
 
 // Clean up after all tests

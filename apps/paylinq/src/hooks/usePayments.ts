@@ -33,7 +33,7 @@ export function usePayments(params?: PaymentTransactionFilters & PaginationParam
     queryKey: [...PAYMENTS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getPaymentTransactions(params);
-      return response.data;
+      return response.paymentTransactions || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -49,7 +49,7 @@ export function usePayment(id: string) {
     queryKey: [...PAYMENTS_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getPaymentTransaction(id);
-      return response.data;
+      return response.paymentTransaction;
     },
     enabled: !!id,
     refetchInterval: (query) => {
@@ -72,7 +72,7 @@ export function usePayrollRunPayments(payrollRunId: string, params?: PaginationP
     queryKey: [...PAYMENTS_KEY, 'payroll-run', payrollRunId, params],
     queryFn: async () => {
       const response = await paylinq.getPaymentTransactions({ ...params, payrollRunId });
-      return response.data;
+      return response.paymentTransactions || [];
     },
     enabled: !!payrollRunId,
   });
@@ -88,7 +88,7 @@ export function useEmployeePayments(employeeId: string, params?: PaginationParam
     queryKey: [...PAYMENTS_KEY, 'employee', employeeId, params],
     queryFn: async () => {
       const response = await paylinq.getPaymentTransactions({ ...params, employeeId });
-      return response.data;
+      return response.paymentTransactions || [];
     },
     enabled: !!employeeId,
   });
@@ -109,7 +109,7 @@ export function useCreatePayment() {
   return useMutation({
     mutationFn: async (data: CreatePaymentTransactionRequest) => {
       const response = await paylinq.createPaymentTransaction(data);
-      return response.data;
+      return response.paymentTransaction;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [...PAYMENTS_KEY, 'list'] });
@@ -135,7 +135,7 @@ export function useUpdatePayment() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdatePaymentTransactionRequest }) => {
       const response = await paylinq.updatePaymentTransaction(id, data);
-      return response.data;
+      return response.paymentTransaction;
     },
     onSuccess: (data) => {
       if (data?.id) {
@@ -161,7 +161,7 @@ export function useCancelPayment() {
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await paylinq.updatePaymentTransaction(id, { paymentStatus: 'cancelled' });
-      return response.data;
+      return response.paymentTransaction;
     },
     onSuccess: (data) => {
       if (data?.id) {
@@ -187,7 +187,7 @@ export function useRetryPayment() {
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await paylinq.retryPayment({ transactionId: id });
-      return response.data;
+      return response.paymentTransaction;
     },
     onSuccess: (data) => {
       if (data?.id) {
@@ -217,11 +217,9 @@ export function useReconciliations(params?: ReconciliationFilters & PaginationPa
     queryFn: async () => {
       try {
         const response = await paylinq.getReconciliations(params);
-        // Backend returns { success, reconciliations, count } wrapped in response.data
-        const backendData = response.data as any;
         return {
-          reconciliations: backendData?.reconciliations || [],
-          count: backendData?.count || 0,
+          reconciliations: response.reconciliations || [],
+          count: response.count || 0,
         };
       } catch (error) {
         console.error('Error fetching reconciliations:', error);
@@ -242,9 +240,7 @@ export function useReconciliation(id: string) {
     queryKey: [...RECONCILIATION_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getReconciliation(id);
-      // Backend returns { success, reconciliation } wrapped in response.data
-      const backendData = response.data as any;
-      return backendData?.reconciliation || null;
+      return response.reconciliation || null;
     },
     enabled: !!id,
   });
@@ -260,7 +256,7 @@ export function useUnreconciledPayments(params?: PaginationParams) {
     queryKey: [...PAYMENTS_KEY, 'unreconciled', params],
     queryFn: async () => {
       const response = await paylinq.getPaymentTransactions({ ...params, paymentStatus: 'processed' });
-      return response.data;
+      return response.paymentTransactions || [];
     },
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -283,7 +279,7 @@ export function useReconcilePayment() {
       const response = await paylinq.updatePaymentTransaction(data.transactionId, { 
         paymentStatus: 'reconciled'
       });
-      return response.data;
+      return response.paymentTransaction;
     },
     onSuccess: (data) => {
       if (data?.id) {
@@ -340,7 +336,7 @@ export function useVoidReconciliation() {
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await paylinq.updateReconciliation(id, { status: 'failed' });
-      return response.data;
+      return response.reconciliation;
     },
     onSuccess: (data) => {
       if (data?.id) {
@@ -367,7 +363,7 @@ export function useCreateReconciliation() {
   return useMutation({
     mutationFn: async (data: any) => {
       const response = await paylinq.createReconciliation(data);
-      return (response as any).reconciliation;
+      return response.reconciliation;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...RECONCILIATION_KEY, 'list'] });
@@ -390,7 +386,7 @@ export function useUpdateReconciliation() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const response = await paylinq.updateReconciliation(id, data);
-      return (response as any).reconciliation;
+      return response.reconciliation;
     },
     onSuccess: (data) => {
       if (data?.id) {
@@ -439,7 +435,7 @@ export function useAddReconciliationItem() {
   return useMutation({
     mutationFn: async ({ reconciliationId, data }: { reconciliationId: string; data: any }) => {
       const response = await paylinq.addReconciliationItem(reconciliationId, data);
-      return (response as any).item;
+      return response.item;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [...RECONCILIATION_KEY, variables.reconciliationId] });
@@ -462,7 +458,7 @@ export function useUpdateReconciliationItem() {
   return useMutation({
     mutationFn: async ({ itemId, data }: { itemId: string; data: any }) => {
       const response = await paylinq.updateReconciliationItem(itemId, data);
-      return (response as any).item;
+      return response.item;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: RECONCILIATION_KEY });
@@ -489,7 +485,7 @@ export function usePaymentStatusSummary(payrollRunId?: string) {
     queryFn: async () => {
       if (!payrollRunId) return null;
       const response = await paylinq.getPaymentSummary(payrollRunId);
-      return response.data;
+      return response.summary;
     },
     enabled: !!payrollRunId,
   });
@@ -507,7 +503,7 @@ export function useReconciliationStatus(startDate?: string, endDate?: string) {
       const response = await paylinq.getReconciliations({
         reconciliationDate: startDate,
       });
-      return response.data;
+      return response.reconciliations || [];
     },
     staleTime: 2 * 60 * 1000,
   });

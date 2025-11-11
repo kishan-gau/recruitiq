@@ -36,6 +36,7 @@ import userManagementRoutes from './routes/userManagement.js';
 import rolesPermissionsRoutes from './routes/rolesPermissions.js';
 import securityRoutes from './routes/security.js';
 import provisioningRoutes from './routes/provisioning.js';
+import emailSettingsRoutes from './routes/emailSettings.js';
 
 // Import Feature Management routes
 import adminFeaturesRoutes from './routes/adminFeatures.js';
@@ -255,13 +256,13 @@ const initializeProducts = async () => {
   }
 };
 
-// CSRF token endpoint (must be before CSRF middleware)
+// CSRF token endpoint (must be accessible without CSRF token)
 apiRouter.get('/csrf-token', getCsrfToken);
 
-// Apply CSRF protection to state-changing operations
+// Apply CSRF protection to state-changing operations on apiRouter
 // This protects against cross-site request forgery attacks
 // Note: Bearer token authenticated requests skip CSRF (see csrf.js)
-app.use('/api', csrfMiddleware);
+apiRouter.use(csrfMiddleware);
 
 // Public routes (no auth)
 apiRouter.use('/auth', authRoutes); // New separated authentication (platform/tenant)
@@ -289,6 +290,9 @@ apiRouter.use('/portal', provisioningRoutes);  // Client & VPS provisioning
 apiRouter.use('/portal', userManagementRoutes);  // User management
 apiRouter.use('/portal', rolesPermissionsRoutes);  // Roles & permissions management
 apiRouter.use('/security', securityRoutes);
+
+// Email Settings routes (shared across all products)
+apiRouter.use('/settings/email', emailSettingsRoutes);
 
 // License Manager routes (uses separate auth middleware)
 apiRouter.use('/admin', licenseAdminRoutes);  // License Manager admin panel

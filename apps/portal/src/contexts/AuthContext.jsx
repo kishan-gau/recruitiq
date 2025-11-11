@@ -9,10 +9,12 @@ export function AuthProvider({ children }) {
   const [mfaWarning, setMfaWarning] = useState(null); // Grace period warning
 
   // Initialize auth state by checking with backend (cookies are sent automatically)
+  // OPTIMIZATION: Only validate session on page load - no CSRF token fetch needed
+  // CSRF tokens are fetched lazily on first mutation by the API client interceptor
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check if user is authenticated via cookies
+        // Validate session via cookies (sent automatically by browser)
         const userData = await apiService.getMe();
         
         // Verify platform access

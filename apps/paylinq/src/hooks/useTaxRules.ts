@@ -41,7 +41,7 @@ export const useTaxRules = (filters?: {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to fetch tax rules');
       }
-      return response.data;
+      return response.taxRules || [];
     },
     staleTime: 10 * 60 * 1000, // 10 minutes - tax rules change infrequently
   });
@@ -65,7 +65,7 @@ export const useTaxRule = (id: string) => {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to fetch tax rule');
       }
-      return response.data;
+      return response.taxRule;
     },
     enabled: !!id,
     staleTime: 10 * 60 * 1000,
@@ -96,7 +96,7 @@ export const useCreateTaxRule = () => {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to create tax rule');
       }
-      return response.data;
+      return response.taxRule;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taxRuleKeys.lists() });
@@ -126,7 +126,7 @@ export const useUpdateTaxRule = (id: string) => {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update tax rule');
       }
-      return response.data;
+      return response.taxRule;
     },
     onSuccess: (data) => {
       queryClient.setQueryData(taxRuleKeys.detail(id), data);
@@ -155,7 +155,7 @@ export const useDeleteTaxRule = () => {
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to delete tax rule');
       }
-      return response.data;
+      return response.taxRule;
     },
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: taxRuleKeys.detail(id) });

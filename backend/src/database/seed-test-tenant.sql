@@ -25,6 +25,7 @@ RETURNING id;
 DO $$
 DECLARE
   org_id UUID;
+  v_user_account_id UUID;
 BEGIN
   -- Get the test organization ID
   SELECT id INTO org_id FROM organizations WHERE slug = 'test-company';
@@ -48,7 +49,45 @@ BEGIN
     true,
     true,
     NOW()
-  ) ON CONFLICT (organization_id, email) DO NOTHING;
+  ) ON CONFLICT (organization_id, email) DO NOTHING
+  RETURNING id INTO v_user_account_id;
+  
+  -- Get the user_account_id if it already exists
+  IF v_user_account_id IS NULL THEN
+    SELECT id INTO v_user_account_id FROM hris.user_account 
+    WHERE organization_id = org_id AND email = 'tenant@testcompany.com';
+  END IF;
+  
+  -- Create employee record for tenant admin
+  INSERT INTO hris.employee (
+    organization_id,
+    user_account_id,
+    employee_number,
+    first_name,
+    last_name,
+    email,
+    employment_status,
+    hire_date,
+    created_at
+  ) VALUES (
+    org_id,
+    v_user_account_id,
+    'EMP001',
+    'Tenant',
+    'Administrator',
+    'tenant@testcompany.com',
+    'active',
+    NOW(),
+    NOW()
+  ) ON CONFLICT (organization_id, employee_number) DO NOTHING;
+  
+  -- Update user_account with employee_id
+  UPDATE hris.user_account ua
+  SET employee_id = e.id
+  FROM hris.employee e
+  WHERE ua.id = v_user_account_id 
+    AND e.user_account_id = v_user_account_id
+    AND ua.employee_id IS NULL;
   
   RAISE NOTICE '[OK] Test organization and tenant user created successfully!';
   RAISE NOTICE '[INFO] Organization: Test Company Ltd (test-company)';
@@ -61,6 +100,7 @@ END $$;
 DO $$
 DECLARE
   org_id UUID;
+  v_user_account_id UUID;
 BEGIN
   -- Get the test organization ID
   SELECT id INTO org_id FROM organizations WHERE slug = 'test-company';
@@ -84,7 +124,45 @@ BEGIN
     true,
     true,
     NOW()
-  ) ON CONFLICT (organization_id, email) DO NOTHING;
+  ) ON CONFLICT (organization_id, email) DO NOTHING
+  RETURNING id INTO v_user_account_id;
+  
+  -- Get the user_account_id if it already exists
+  IF v_user_account_id IS NULL THEN
+    SELECT id INTO v_user_account_id FROM hris.user_account 
+    WHERE organization_id = org_id AND email = 'payroll@testcompany.com';
+  END IF;
+  
+  -- Create employee record for payroll manager
+  INSERT INTO hris.employee (
+    organization_id,
+    user_account_id,
+    employee_number,
+    first_name,
+    last_name,
+    email,
+    employment_status,
+    hire_date,
+    created_at
+  ) VALUES (
+    org_id,
+    v_user_account_id,
+    'EMP002',
+    'Payroll',
+    'Manager',
+    'payroll@testcompany.com',
+    'active',
+    NOW(),
+    NOW()
+  ) ON CONFLICT (organization_id, employee_number) DO NOTHING;
+  
+  -- Update user_account with employee_id
+  UPDATE hris.user_account ua
+  SET employee_id = e.id
+  FROM hris.employee e
+  WHERE ua.id = v_user_account_id 
+    AND e.user_account_id = v_user_account_id
+    AND ua.employee_id IS NULL;
   
   RAISE NOTICE '[INFO] Payroll Manager: payroll@testcompany.com';
   RAISE NOTICE '[INFO] Password: Admin123!';
@@ -94,6 +172,7 @@ END $$;
 DO $$
 DECLARE
   org_id UUID;
+  v_user_account_id UUID;
 BEGIN
   -- Get the test organization ID
   SELECT id INTO org_id FROM organizations WHERE slug = 'test-company';
@@ -117,7 +196,45 @@ BEGIN
     true,
     true,
     NOW()
-  ) ON CONFLICT (organization_id, email) DO NOTHING;
+  ) ON CONFLICT (organization_id, email) DO NOTHING
+  RETURNING id INTO v_user_account_id;
+  
+  -- Get the user_account_id if it already exists
+  IF v_user_account_id IS NULL THEN
+    SELECT id INTO v_user_account_id FROM hris.user_account 
+    WHERE organization_id = org_id AND email = 'employee@testcompany.com';
+  END IF;
+  
+  -- Create employee record for self-service user
+  INSERT INTO hris.employee (
+    organization_id,
+    user_account_id,
+    employee_number,
+    first_name,
+    last_name,
+    email,
+    employment_status,
+    hire_date,
+    created_at
+  ) VALUES (
+    org_id,
+    v_user_account_id,
+    'EMP003',
+    'John',
+    'Employee',
+    'employee@testcompany.com',
+    'active',
+    NOW(),
+    NOW()
+  ) ON CONFLICT (organization_id, employee_number) DO NOTHING;
+  
+  -- Update user_account with employee_id
+  UPDATE hris.user_account ua
+  SET employee_id = e.id
+  FROM hris.employee e
+  WHERE ua.id = v_user_account_id 
+    AND e.user_account_id = v_user_account_id
+    AND ua.employee_id IS NULL;
   
   RAISE NOTICE '[INFO] Employee: employee@testcompany.com';
   RAISE NOTICE '[INFO] Password: Admin123!';

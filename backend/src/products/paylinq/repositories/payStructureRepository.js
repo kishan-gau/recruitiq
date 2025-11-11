@@ -9,6 +9,8 @@
 
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import dtoMapper from '../utils/dtoMapper.js';
+import { mapPayStructureTemplateDbToApi, mapWorkerPayStructureDbToApi } from '../utils/dtoMapper.js';
 
 class PayStructureRepository {
   
@@ -51,7 +53,7 @@ class PayStructureRepository {
       { operation: 'INSERT', table: 'payroll.pay_structure_template', userId }
     );
     
-    return result.rows[0];
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
   }
 
   /**
@@ -61,18 +63,21 @@ class PayStructureRepository {
     const result = await query(
       `SELECT pst.*, version_string,
               COUNT(DISTINCT psc.id) as component_count,
-              COUNT(DISTINCT wps.id) as assigned_worker_count
+              COUNT(DISTINCT wps.id) as assigned_worker_count,
+              COALESCE(e.first_name || ' ' || e.last_name, u.email) as created_by_name
        FROM payroll.pay_structure_template pst
        LEFT JOIN payroll.pay_structure_component psc ON psc.template_id = pst.id AND psc.deleted_at IS NULL
        LEFT JOIN payroll.worker_pay_structure wps ON wps.template_id = pst.id AND wps.is_current = true AND wps.deleted_at IS NULL
+       LEFT JOIN hris.user_account u ON u.id = pst.created_by
+       LEFT JOIN hris.employee e ON e.user_account_id = u.id
        WHERE pst.id = $1 AND pst.organization_id = $2 AND pst.deleted_at IS NULL
-       GROUP BY pst.id`,
+       GROUP BY pst.id, e.first_name, e.last_name, u.email`,
       [templateId, organizationId],
       organizationId,
       { operation: 'SELECT', table: 'payroll.pay_structure_template' }
     );
     
-    return result.rows[0];
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
   }
 
   /**
@@ -125,7 +130,7 @@ class PayStructureRepository {
       { operation: 'SELECT', table: 'payroll.pay_structure_template' }
     );
     
-    return result.rows;
+    return result.rows.map(row => mapPayStructureTemplateDbToApi(row));
   }
 
   /**
@@ -185,7 +190,7 @@ class PayStructureRepository {
       { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId }
     );
     
-    return result.rows[0];
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
   }
 
   /**
@@ -206,7 +211,7 @@ class PayStructureRepository {
       { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId }
     );
     
-    return result.rows[0];
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
   }
 
   /**
@@ -228,7 +233,7 @@ class PayStructureRepository {
       { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId }
     );
     
-    return result.rows[0];
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
   }
 
   /**
@@ -244,7 +249,7 @@ class PayStructureRepository {
       { operation: 'SELECT', table: 'payroll.pay_structure_template' }
     );
     
-    return result.rows[0];
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
   }
 
   // ==================== PAY STRUCTURE COMPONENTS ====================
@@ -326,7 +331,7 @@ class PayStructureRepository {
   async getTemplateComponents(templateId, organizationId) {
     const result = await query(
       `SELECT psc.*,
-              pc.name as pay_component_name
+              pc.component_name as pay_component_name
        FROM payroll.pay_structure_component psc
        LEFT JOIN payroll.pay_component pc ON pc.id = psc.pay_component_id
        WHERE psc.template_id = $1 AND psc.deleted_at IS NULL
@@ -349,6 +354,7 @@ class PayStructureRepository {
     
     // Map camelCase to snake_case
     const fieldMap = {
+      componentCode: 'component_code',
       componentName: 'component_name',
       componentCategory: 'component_category',
       calculationType: 'calculation_type',
@@ -384,7 +390,11 @@ class PayStructureRepository {
       displayName: 'display_name',
       displayOrder: 'display_order',
       displayCategory: 'display_category',
-      isConditional: 'is_conditional'
+      isConditional: 'is_conditional',
+      conditions: 'conditions',
+      description: 'description',
+      notes: 'notes',
+      metadata: 'metadata'
     };
     
     for (const [key, value] of Object.entries(updates)) {
@@ -392,7 +402,7 @@ class PayStructureRepository {
       paramCount++;
       
       // Handle JSON fields
-      if (['formulaVariables', 'formulaAst', 'tierConfiguration', 'conditions'].includes(key)) {
+      if (['formulaVariables', 'formulaAst', 'tierConfiguration', 'conditions', 'metadata'].includes(key)) {
         fields.push(`${dbField} = $${paramCount}`);
         values.push(value ? JSON.stringify(value) : null);
       } else {
@@ -449,6 +459,15 @@ class PayStructureRepository {
    * Assign template to worker
    */
   async assignTemplateToWorker(assignmentData, organizationId, userId) {
+    // Log the assignment data for debugging
+    const logger = (await import('../../../utils/logger.js')).default;
+    logger.info('INSERT worker_pay_structure values', {
+      employeeId: assignmentData.employeeId,
+      effectiveFrom: assignmentData.effectiveFrom,
+      effectiveTo: assignmentData.effectiveTo,
+      isCurrent: assignmentData.isCurrent
+    });
+    
     const result = await query(
       `INSERT INTO payroll.worker_pay_structure
       (organization_id, employee_id, template_id, template_code, template_version,
@@ -485,23 +504,121 @@ class PayStructureRepository {
       { operation: 'INSERT', table: 'payroll.worker_pay_structure', userId }
     );
     
-    return result.rows[0];
+    return dtoMapper.mapWorkerPayStructureDbToApi(result.rows[0]);
   }
 
   /**
-   * Get current worker pay structure
+   * Get overlapping worker pay structures for a date range
+   * Used to find conflicts before assigning a new structure
    */
-  async getCurrentWorkerStructure(employeeId, organizationId, asOfDate = null) {
-    const dateParam = asOfDate || new Date().toISOString().split('T')[0];
+  async getOverlappingWorkerStructures(employeeId, organizationId, effectiveFrom, effectiveTo = null) {
+    const logger = (await import('../../../utils/logger.js')).default;
+    
+    // Build the date range condition to check for overlaps
+    // Two ranges overlap if: start1 <= end2 AND start2 <= end1
+    // For open-ended ranges (effectiveTo IS NULL), treat as '9999-12-31'
+    const effectiveToValue = effectiveTo || '9999-12-31';
     
     const result = await query(
-      `SELECT * FROM payroll.get_current_worker_pay_structure($1, $2)`,
-      [employeeId, dateParam],
+      `SELECT wps.*
+       FROM payroll.worker_pay_structure wps
+       WHERE wps.employee_id = $1 
+         AND wps.organization_id = $2
+         AND wps.deleted_at IS NULL
+         AND (
+           -- Check if date ranges overlap
+           wps.effective_from <= $4::DATE 
+           AND COALESCE(wps.effective_to, '9999-12-31'::DATE) >= $3::DATE
+         )`,
+      [employeeId, organizationId, effectiveFrom, effectiveToValue],
       organizationId,
       { operation: 'SELECT', table: 'payroll.worker_pay_structure' }
     );
     
-    return result.rows[0];
+    logger.info('Found overlapping structures', {
+      employeeId,
+      count: result.rows.length,
+      effectiveFrom,
+      effectiveTo: effectiveToValue
+    });
+    
+    return result.rows.map(row => dtoMapper.mapWorkerPayStructureDbToApi(row));
+  }
+
+  /**
+   * Get current worker pay structure
+   * Returns the most recent structure for the worker with full template details
+   */
+  async getCurrentWorkerStructure(employeeId, organizationId, asOfDate = null) {
+    const dateCondition = asOfDate 
+      ? `AND wps.effective_from <= $3 AND (wps.effective_to IS NULL OR wps.effective_to > $3)`
+      : '';
+    
+    const params = asOfDate 
+      ? [employeeId, organizationId, asOfDate]
+      : [employeeId, organizationId];
+    
+    const result = await query(
+      `SELECT wps.*,
+              pst.template_name,
+              pst.template_code,
+              pst.description,
+              pst.status as template_status,
+              pst.version_major,
+              pst.version_minor,
+              pst.version_patch,
+              pst.version_string,
+              jsonb_build_object(
+                'id', pst.id,
+                'templateName', pst.template_name,
+                'templateCode', pst.template_code,
+                'description', pst.description,
+                'status', pst.status,
+                'version', pst.version_string
+              ) as template,
+              (SELECT jsonb_agg(
+                jsonb_build_object(
+                  'id', psc.id,
+                  'componentCode', psc.component_code,
+                  'componentName', psc.component_name,
+                  'componentCategory', psc.component_category,
+                  'calculationType', psc.calculation_type,
+                  'defaultAmount', psc.default_amount,
+                  'percentageRate', psc.percentage_rate,
+                  'percentageOf', psc.percentage_of,
+                  'rateMultiplier', psc.rate_multiplier,
+                  'formulaExpression', psc.formula_expression,
+                  'sequenceOrder', psc.sequence_order,
+                  'allowWorkerOverride', psc.allow_worker_override,
+                  'isMandatory', psc.is_mandatory,
+                  'isTaxable', psc.is_taxable
+                ) ORDER BY psc.sequence_order
+              )
+              FROM payroll.pay_structure_component psc
+              WHERE psc.template_id = wps.template_id AND psc.deleted_at IS NULL
+              ) as components
+       FROM payroll.worker_pay_structure wps
+       LEFT JOIN payroll.pay_structure_template pst ON pst.id = wps.template_id
+       WHERE wps.employee_id = $1 
+         AND wps.organization_id = $2
+         AND wps.deleted_at IS NULL
+         ${dateCondition}
+       ORDER BY wps.effective_from DESC, wps.created_at DESC
+       LIMIT 1`,
+      params,
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.worker_pay_structure' }
+    );
+    
+    if (!result.rows[0]) {
+      return null;
+    }
+    
+    logger.debug('Raw DB result before DTO mapping:', { data: result.rows[0] });
+    const mapped = mapWorkerPayStructureDbToApi(result.rows[0]);
+    logger.debug('After DTO mapping:', { mapped });
+    
+    return mapped;
   }
 
   /**
@@ -580,6 +697,23 @@ class PayStructureRepository {
     return result.rows[0];
   }
 
+  /**
+   * Delete worker pay structure (soft delete)
+   */
+  async deleteWorkerStructure(structureId, organizationId, userId) {
+    const result = await query(
+      `UPDATE payroll.worker_pay_structure
+       SET deleted_at = NOW(), deleted_by = $2
+       WHERE id = $1 AND organization_id = $3 AND deleted_at IS NULL
+       RETURNING *`,
+      [structureId, userId, organizationId],
+      organizationId,
+      { operation: 'UPDATE', table: 'payroll.worker_pay_structure', userId }
+    );
+    
+    return result.rows[0];
+  }
+
   // ==================== WORKER COMPONENT OVERRIDES ====================
   
   /**
@@ -640,7 +774,40 @@ class PayStructureRepository {
       { operation: 'SELECT', table: 'payroll.worker_pay_structure_component_override' }
     );
     
-    return result.rows;
+    // Map snake_case to camelCase
+    return result.rows.map(row => ({
+      id: row.id,
+      workerStructureId: row.worker_structure_id,
+      componentCode: row.component_code,
+      overrideType: row.override_type,
+      overrideAmount: row.override_amount ? parseFloat(row.override_amount) : null,
+      overridePercentage: row.override_percentage ? parseFloat(row.override_percentage) : null,
+      overrideRate: row.override_rate ? parseFloat(row.override_rate) : null,
+      overrideFormula: row.override_formula,
+      overrideFormulaVariables: row.override_formula_variables,
+      overrideMinAmount: row.override_min_amount ? parseFloat(row.override_min_amount) : null,
+      overrideMaxAmount: row.override_max_amount ? parseFloat(row.override_max_amount) : null,
+      overrideMaxAnnual: row.override_max_annual ? parseFloat(row.override_max_annual) : null,
+      overrideConditions: row.override_conditions,
+      customComponentDefinition: row.custom_component_definition,
+      isDisabled: row.is_disabled,
+      overrideReason: row.override_reason,
+      businessJustification: row.business_justification,
+      requiresApproval: row.requires_approval,
+      approvalStatus: row.approval_status,
+      approvedBy: row.approved_by,
+      approvedAt: row.approved_at,
+      rejectionReason: row.rejection_reason,
+      effectiveFrom: row.effective_from,
+      effectiveTo: row.effective_to,
+      notes: row.notes,
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+      updatedAt: row.updated_at,
+      updatedBy: row.updated_by,
+      deletedAt: row.deleted_at,
+      deletedBy: row.deleted_by
+    }));
   }
 
   /**
@@ -789,20 +956,23 @@ class PayStructureRepository {
               (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
                WHERE wps.template_id = pst.id 
                AND wps.deleted_at IS NULL
-               AND wps.effective_to IS NULL) as active_workers_count
+               AND wps.effective_to IS NULL) as active_workers_count,
+              COALESCE(e.first_name || ' ' || e.last_name, u.email) as created_by_name
        FROM payroll.pay_structure_template pst
        LEFT JOIN payroll.pay_structure_component psc ON psc.template_id = pst.id AND psc.deleted_at IS NULL
+       LEFT JOIN hris.user_account u ON u.id = pst.created_by
+       LEFT JOIN hris.employee e ON e.user_account_id = u.id
        WHERE pst.template_code = $1
        AND pst.organization_id = $2
        AND pst.deleted_at IS NULL
-       GROUP BY pst.id
+       GROUP BY pst.id, e.first_name, e.last_name, u.email
        ORDER BY pst.version_major DESC, pst.version_minor DESC, pst.version_patch DESC`,
       [templateCode, organizationId],
       organizationId,
       { operation: 'SELECT', table: 'payroll.pay_structure_template' }
     );
     
-    return result.rows;
+    return result.rows.map(row => mapPayStructureTemplateDbToApi(row));
   }
 
   /**

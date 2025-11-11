@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Dialog, FormField, Input, Select } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 

@@ -154,8 +154,17 @@ app.delete('/api/paylinq/employees/:employeeId/pay-components/:id', payComponent
 describe('Pay Component Controller - API Contract Tests', () => {
   let testCustomComponentId = null;
 
-  // Create test employee before all tests
+  // Create test organization and employee before all tests
   beforeAll(async () => {
+    // Create test organization first
+    await query(
+      `INSERT INTO organization (id, name, subscription_tier, created_at)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [testOrganizationId, 'Test Organization', 'enterprise']
+    );
+
+    // Create test employee
     const { employee } = await createTestEmployee({
       organizationId: testOrganizationId,
       userId: testUserId,

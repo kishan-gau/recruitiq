@@ -19,15 +19,55 @@ export default defineConfig({
   },
 
   projects: [
+    // Setup project
+    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    
+    // Authenticated tests (most tests)
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
+      testIgnore: ['**/session-management.spec.ts'], // Session tests need fresh state
+    },
+    
+    // Unauthenticated tests (session management)
+    {
+      name: 'chromium-no-auth',
+      use: { 
+        ...devices['Desktop Chrome'],
+        // No storageState - start fresh
+      },
+      testMatch: ['**/session-management.spec.ts'],
     },
   ],
 
-  // Note: webServer not configured - you must manually start:
-  // 1. Backend: cd backend && npm run dev (port 4000)
-  // 2. Dev Gateway: cd dev-gateway && npm start (port 3000)
-  // 3. PayLinq: cd apps/paylinq && pnpm dev (port 5174)
-  // The gateway will proxy requests from :3000 to backend :4000 and frontend :5174
+  webServer: [
+    {
+      command: 'cd ../../backend && npm run dev',
+      url: 'http://localhost:4000',
+      timeout: 120000,
+      reuseExistingServer: !process.env.CI,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+    {
+      command: 'pnpm dev',
+      url: 'http://localhost:5174',
+      timeout: 120000,
+      reuseExistingServer: !process.env.CI,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+    {
+      command: 'cd ../../dev-gateway && npm start',
+      url: 'http://localhost:3000',
+      timeout: 120000,
+      reuseExistingServer: !process.env.CI,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  ],
 });

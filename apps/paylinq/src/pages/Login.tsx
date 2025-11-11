@@ -8,9 +8,9 @@ export default function Login() {
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, error: authError, isLoading: authLoading } = useAuth();
+  const { login, error: authError, isLoading: authLoading, isAuthenticated } = useAuth();
   
-  console.log('[Login] Auth state:', { authError, authLoading });
+  console.log('[Login] Auth state:', { authError, authLoading, isAuthenticated });
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,12 +23,28 @@ export default function Login() {
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
+  // Redirect authenticated users away from login page
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      console.log('[Login] User already authenticated, redirecting...');
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        const decodedUrl = decodeURIComponent(returnTo);
+        console.log('[Login] Redirecting to returnTo:', decodedUrl);
+        navigate(decodedUrl, { replace: true });
+      } else {
+        console.log('[Login] Redirecting to dashboard');
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [isAuthenticated, authLoading, navigate, searchParams]);
+
   // Check for session expiration
   useEffect(() => {
     const reason = searchParams.get('reason');
     if (reason === 'session_expired') {
       setSessionMessage('Your session has expired. Please login again.');
-      window.history.replaceState({}, '', '/login');
+      // Don't clear returnTo from URL - we need it for redirect after login
     }
   }, [searchParams]);
 
@@ -119,8 +135,21 @@ export default function Login() {
       
       // Normal login success
       if (result === true) {
-        console.log('Login successful, navigating to dashboard');
-        navigate('/dashboard');
+        console.log('Login successful');
+        
+        // Check if there's a return URL (user was redirected here after session expiry)
+        const returnTo = searchParams.get('returnTo');
+        console.log('[Login] returnTo parameter:', returnTo);
+        
+        if (returnTo) {
+          const decodedUrl = decodeURIComponent(returnTo);
+          console.log('[Login] Redirecting back to:', decodedUrl);
+          // Use window.location for hard redirect to ensure navigation works
+          window.location.href = decodedUrl;
+        } else {
+          console.log('[Login] No returnTo, navigating to dashboard');
+          navigate('/dashboard');
+        }
       }
     } catch (err: any) {
       console.error('Login error:', err);

@@ -31,7 +31,7 @@ async function createPayComponent(req, res) {
 
     res.status(201).json({
       success: true,
-      data: mapPayComponentDbToApi(component),
+      payComponent: mapPayComponentDbToApi(component),
       message: 'Pay component created successfully',
     });
   } catch (error) {
@@ -79,7 +79,7 @@ async function getPayComponents(req, res) {
 
     res.status(200).json({
       success: true,
-      data: mapPayComponentDbArrayToApi(components),
+      payComponents: mapPayComponentDbArrayToApi(components),
       count: components.length,
     });
   } catch (error) {
@@ -109,7 +109,7 @@ async function getPayComponentById(req, res) {
 
     res.status(200).json({
       success: true,
-      data: mapPayComponentDbToApi(component),
+      payComponent: mapPayComponentDbToApi(component),
     });
   } catch (error) {
     logger.error('Error fetching pay component', {
@@ -154,7 +154,7 @@ async function updatePayComponent(req, res) {
 
     res.status(200).json({
       success: true,
-      data: mapPayComponentDbToApi(component),
+      payComponent: mapPayComponentDbToApi(component),
       message: 'Pay component updated successfully',
     });
   } catch (error) {

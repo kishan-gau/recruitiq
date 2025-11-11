@@ -61,68 +61,73 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Check authentication status on initial mount
    * This runs ONCE when the app loads
+   * 
+   * OPTIMIZATION: Only fetch CSRF token if we don't already have one.
+   * The token persists in memory across page refreshes isn't needed.
+   * We only need to validate the session cookie.
    */
   useEffect(() => {
     let isMounted = true;
     
     const checkAuth = async () => {
       console.log('[AuthContext] === STARTING AUTH CHECK ===');
-      console.log('[AuthContext] isMounted:', isMounted);
       
       try {
-        console.log('[AuthContext] Calling api.auth.getMe()...');
+        console.log('[AuthContext] Validating session...');
         
         // Call /auth/tenant/me - cookies are sent automatically
+        // This single call validates the session and returns user data
         const response = await api.auth.getMe();
         
-        console.log('[AuthContext] getMe() returned successfully');
-        
-        if (!isMounted) {
-          console.log('[AuthContext] Component unmounted, skipping state update');
-          return;
-        }
+        if (!isMounted) return;
         
         // Backend returns { user: {...} }, extract the user object
         const userData = response.user || response;
         
-        console.log('[AuthContext] Auth check successful:', {
-          email: userData.email,
-          enabledProducts: userData.enabledProducts,
-          productRoles: userData.productRoles,
-        });
-        
+        console.log('[AuthContext] Session valid:', userData.email);
         setUser(userData);
-      } catch (err: any) {
-        console.log('[AuthContext] getMe() threw error');
         
-        if (!isMounted) {
-          console.log('[AuthContext] Component unmounted, skipping state update');
-          return;
+        // Fetch CSRF token after successful session validation
+        // This ensures protected routes have CSRF token for mutations
+        try {
+          const csrfToken = await api.fetchCsrfToken();
+          console.log('[AuthContext] CSRF token fetched for existing session:', csrfToken ? 'YES' : 'NO');
+          if (!csrfToken) {
+            console.warn('[AuthContext] CSRF token fetch returned null - mutations may fail');
+          }
+        } catch (csrfErr: any) {
+          console.error('[AuthContext] Failed to fetch CSRF token:', csrfErr.response?.status, csrfErr.message);
+          // Non-fatal - will be fetched automatically on first mutation if needed
         }
         
-        // Not authenticated, session expired, or network error
-        const status = err.response?.status;
-        const message = err.message;
+      } catch (err: any) {
+        if (!isMounted) return;
         
-        console.log('[AuthContext] Auth check failed:', { status, message });
-        console.log('[AuthContext] Full error:', err);
+        // Session invalid or expired - this is expected behavior
+        // Don't log as error since unauthenticated state is normal
+        const status = err.response?.status;
+        
+        if (status === 401) {
+          // Expected: user is not logged in or session expired
+          console.log('[AuthContext] No active session (unauthenticated)');
+        } else {
+          // Unexpected error - could be network issue or server error
+          console.warn('[AuthContext] Session check failed:', status, err.message);
+        }
+        
         setUser(null);
+        
       } finally {
         if (isMounted) {
-          // CRITICAL: Always set loading to false
-          console.log('[AuthContext] === AUTH CHECK COMPLETE - Setting isLoading = false ===');
           setIsLoading(false);
-        } else {
-          console.log('[AuthContext] Component unmounted, not setting isLoading');
+          console.log('[AuthContext] === AUTH CHECK COMPLETE ===');
         }
       }
     };
 
     checkAuth();
     
-    // Cleanup function
     return () => {
-      console.log('[AuthContext] Cleanup: Setting isMounted = false');
       isMounted = false;
     };
   }, []); // Empty dependency array - runs ONCE on mount
@@ -158,6 +163,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       setUser(userData);
+      
+      // Fetch CSRF token after successful login
+      // This ensures we have a fresh token for subsequent mutations
+      try {
+        const csrfToken = await api.fetchCsrfToken();
+        console.log('[AuthContext] CSRF token fetched after login:', csrfToken ? 'YES' : 'NO');
+        if (!csrfToken) {
+          console.error('[AuthContext] CRITICAL: CSRF token fetch returned null after login - mutations will fail!');
+        }
+      } catch (csrfError: any) {
+        console.error('[AuthContext] CRITICAL: Failed to fetch CSRF token after login:', csrfError.response?.status, csrfError.message);
+        // Non-fatal - will be fetched on first mutation if needed
+      }
+      
       setIsLoading(false);
       return true;
     } catch (err: any) {
@@ -176,7 +195,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
    */
   const logout = async (): Promise<void> => {
     try {
-      console.log('[AuthContext] Logging out...');
+      console.log('[AuthContext] ============================================');
+      console.log('[AuthContext] LOGOUT CALLED');
+      console.log('[AuthContext] Stack trace:', new Error().stack);
+      console.log('[AuthContext] ============================================');
       
       // Call logout endpoint to clear cookies
       await api.auth.logout();

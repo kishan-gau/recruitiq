@@ -8,21 +8,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePaylinqAPI } from './usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import type {
-  TimeEntry,
   Timesheet,
-  ShiftType,
-  AttendanceEvent,
   CreateTimeEntryRequest,
   UpdateTimeEntryRequest,
-  CreateTimesheetRequest,
-  UpdateTimesheetRequest,
+  SubmitTimesheetRequest,
+  // CreateTimesheetRequest, // TODO: Add these types to @recruitiq/types
+  // UpdateTimesheetRequest,
   CreateShiftTypeRequest,
   UpdateShiftTypeRequest,
-  CreateAttendanceEventRequest,
+  // CreateAttendanceEventRequest,
   TimeEntryFilters,
   TimesheetFilters,
   PaginationParams,
 } from '@recruitiq/types';
+
+// Temporary type aliases until these are added to @recruitiq/types
+type CreateTimesheetRequest = any;
+type UpdateTimesheetRequest = any;
+type CreateAttendanceEventRequest = any;
 
 // Query keys
 const TIME_ENTRIES_KEY = ['timeEntries'];
@@ -44,7 +47,7 @@ export function useTimeEntries(params?: TimeEntryFilters & PaginationParams) {
     queryKey: [...TIME_ENTRIES_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getTimeEntries(params);
-      return response.data;
+      return response.data || [];
     },
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -75,8 +78,8 @@ export function useEmployeeTimeEntries(employeeId: string, params?: PaginationPa
   return useQuery({
     queryKey: [...TIME_ENTRIES_KEY, 'employee', employeeId, params],
     queryFn: async () => {
-      const response = await paylinq.getEmployeeTimeEntries(employeeId, params);
-      return response.data;
+      const response = await paylinq.getTimeEntries({ ...params, employeeId });
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -99,9 +102,11 @@ export function useCreateTimeEntry() {
       const response = await paylinq.createTimeEntry(data);
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, 'employee', data.employeeId] });
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, 'employee', data.employeeId] });
+      }
       queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY] });
       success('Time entry created successfully');
     },
@@ -124,10 +129,12 @@ export function useUpdateTimeEntry() {
       const response = await paylinq.updateTimeEntry(id, data);
       return response.data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, 'employee', data.employeeId] });
+    onSuccess: (data: any) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, 'list'] });
+        queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, 'employee', data.employeeId] });
+      }
       queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY] });
       success('Time entry updated successfully');
     },
@@ -176,7 +183,7 @@ export function useTimesheets(params?: TimesheetFilters & PaginationParams) {
     queryKey: [...TIMESHEETS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getTimesheets(params);
-      return response.data;
+      return response.data || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -207,8 +214,8 @@ export function useEmployeeTimesheets(employeeId: string, params?: PaginationPar
   return useQuery({
     queryKey: [...TIMESHEETS_KEY, 'employee', employeeId, params],
     queryFn: async () => {
-      const response = await paylinq.getEmployeeTimesheets(employeeId, params);
-      return response.data;
+      const response = await paylinq.getEmployeeTimesheets(employeeId);
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -220,21 +227,23 @@ export function useEmployeeTimesheets(employeeId: string, params?: PaginationPar
 
 /**
  * Hook to create a new timesheet
+ * Note: Timesheets are typically created by submitting time entries, not directly
+ * TODO: Verify if this hook is needed or if submitTimesheet should be used instead
  */
 export function useCreateTimesheet() {
-  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async (data: CreateTimesheetRequest) => {
-      const response = await paylinq.createTimesheet(data);
-      return response.data;
+    mutationFn: async (_data: CreateTimesheetRequest) => {
+      throw new Error('Direct timesheet creation not supported. Use submitTimesheet instead.');
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'employee', data.employeeId] });
-      success('Timesheet created successfully');
+    onSuccess: (data: any) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'list'] });
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'employee', data.employeeId] });
+        success('Timesheet created successfully');
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to create timesheet');
@@ -244,22 +253,26 @@ export function useCreateTimesheet() {
 
 /**
  * Hook to update a timesheet
+ * Note: Timesheets are updated by modifying time entries, not the timesheet directly
+ * TODO: Verify if this hook should update time entries instead
  */
 export function useUpdateTimesheet() {
-  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateTimesheetRequest }) => {
-      const response = await paylinq.updateTimesheet(id, data);
-      return response.data;
+    mutationFn: async (_params: { id: string; data: UpdateTimesheetRequest }) => {
+      throw new Error('Direct timesheet updates not supported. Update time entries instead.');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      return null as any;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'list'] });
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'employee', data.employeeId] });
-      success('Timesheet updated successfully');
+    onSuccess: (data: any) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'list'] });
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'employee', data.employeeId] });
+        success('Timesheet updated successfully');
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to update timesheet');
@@ -276,14 +289,16 @@ export function useSubmitTimesheet() {
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await paylinq.submitTimesheet(id);
+    mutationFn: async (data: SubmitTimesheetRequest) => {
+      const response = await paylinq.submitTimesheet(data);
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'list'] });
-      success('Timesheet submitted successfully');
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'list'] });
+        success('Timesheet submitted successfully');
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to submit timesheet');
@@ -300,14 +315,16 @@ export function useApproveTimesheet() {
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const response = await paylinq.approveTimesheet(id);
+    mutationFn: async ({ id, status, notes }: { id: string; status: 'approved' | 'rejected'; notes?: string }) => {
+      const response = await paylinq.approveRejectTimesheet(id, { status, notes });
       return response.data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'list'] });
-      success('Timesheet approved successfully');
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...TIMESHEETS_KEY, 'list'] });
+        success('Timesheet approved successfully');
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to approve timesheet');
@@ -329,7 +346,7 @@ export function useShiftTypes(params?: PaginationParams) {
     queryKey: [...SHIFT_TYPES_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getShiftTypes(params);
-      return response.data;
+      return response.data || [];
     },
     staleTime: 10 * 60 * 1000, // 10 minutes - shift types change infrequently
   });
@@ -368,9 +385,11 @@ export function useCreateShiftType() {
       const response = await paylinq.createShiftType(data);
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [...SHIFT_TYPES_KEY, 'list'] });
-      success(`Shift type "${data.name}" created successfully`);
+      if (data) {
+        success(`Shift type "${data.shiftName}" created successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to create shift type');
@@ -391,10 +410,12 @@ export function useUpdateShiftType() {
       const response = await paylinq.updateShiftType(id, data);
       return response.data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...SHIFT_TYPES_KEY, data.id] });
-      queryClient.invalidateQueries({ queryKey: [...SHIFT_TYPES_KEY, 'list'] });
-      success(`Shift type "${data.name}" updated successfully`);
+    onSuccess: (data: any) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...SHIFT_TYPES_KEY, data.id] });
+        queryClient.invalidateQueries({ queryKey: [...SHIFT_TYPES_KEY, 'list'] });
+        success(`Shift type "${data.shiftName}" updated successfully`);
+      }
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to update shift type');
@@ -408,6 +429,7 @@ export function useUpdateShiftType() {
 
 /**
  * Hook to fetch attendance events for an employee
+ * TODO: Implement when getAttendanceEvents API method is available
  */
 export function useAttendanceEvents(employeeId: string, params?: PaginationParams) {
   const { paylinq } = usePaylinqAPI();
@@ -415,8 +437,8 @@ export function useAttendanceEvents(employeeId: string, params?: PaginationParam
   return useQuery({
     queryKey: [...ATTENDANCE_KEY, 'employee', employeeId, params],
     queryFn: async () => {
-      const response = await paylinq.getAttendanceEvents(employeeId, params);
-      return response.data;
+      const response = await paylinq.getTimeAttendanceEvents({ employeeId, ...params });
+      return response.data || [];
     },
     enabled: !!employeeId,
   });
@@ -424,24 +446,26 @@ export function useAttendanceEvents(employeeId: string, params?: PaginationParam
 
 /**
  * Hook to create an attendance event (clock in/out)
+ * TODO: Implement when createAttendanceEvent API method is available
  */
 export function useCreateAttendanceEvent() {
-  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async (data: CreateAttendanceEventRequest) => {
-      const response = await paylinq.createAttendanceEvent(data);
-      return response.data;
+    mutationFn: async (_data: CreateAttendanceEventRequest) => {
+      // TODO: API method not yet implemented
+      throw new Error('createTimeAttendanceEvent API method not yet implemented');
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...ATTENDANCE_KEY, 'employee', data.employeeId] });
+    onSuccess: (data: any) => {
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: [...ATTENDANCE_KEY, 'employee', data.employeeId] });
+      }
       queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY] });
-      success(`${data.eventType} recorded successfully`);
+      success('Attendance event recorded successfully');
     },
     onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to record attendance event');
+      error(err?.message || err?.response?.data?.message || 'Failed to record attendance event');
     },
   });
 }
@@ -451,10 +475,10 @@ export function useCreateAttendanceEvent() {
 // ============================================================================
 
 /**
- * Hook to fetch pending timesheets
+ * Hook to fetch pending timesheets (submitted status)
  */
 export function usePendingTimesheets(params?: PaginationParams) {
-  return useTimesheets({ ...params, status: 'pending' });
+  return useTimesheets({ ...params, status: 'submitted' });
 }
 
 /**
@@ -469,7 +493,7 @@ export function useApprovedTimesheets(params?: PaginationParams) {
  */
 export function useHasPendingTimesheets(employeeId: string) {
   const { data, isLoading } = useEmployeeTimesheets(employeeId);
-  const pendingCount = data?.filter((t: Timesheet) => t.status === 'pending').length || 0;
+  const pendingCount = data?.filter((t: Timesheet) => t.status === 'submitted').length || 0;
   
   return {
     hasPending: pendingCount > 0,

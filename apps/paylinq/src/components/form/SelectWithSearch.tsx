@@ -157,7 +157,7 @@ export function SelectWithSearch({
   return (
     <div className={clsx('relative', className)} ref={containerRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
@@ -171,14 +171,15 @@ export function SelectWithSearch({
         className={clsx(
           'w-full px-3 py-2 pr-10 text-left border rounded-lg transition-colors',
           'focus:ring-2 focus:ring-emerald-500 focus:border-transparent',
-          disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400',
-          error ? 'border-red-300' : 'border-gray-300'
+          disabled ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : 'bg-white dark:bg-gray-900 hover:border-gray-400 dark:hover:border-gray-600',
+          error ? 'border-red-300' : 'border-gray-300 dark:border-gray-700',
+          'text-gray-900 dark:text-white'
         )}
       >
         {selectedOption ? (
           <span className="block truncate">{selectedOption.label}</span>
         ) : (
-          <span className="text-gray-400">{placeholder}</span>
+          <span className="text-gray-400 dark:text-gray-500">{placeholder}</span>
         )}
       </button>
 
@@ -187,14 +188,14 @@ export function SelectWithSearch({
           <button
             type="button"
             onClick={handleClear}
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
           >
             <X className="w-4 h-4 text-gray-400" />
           </button>
         )}
         <ChevronDown className={clsx(
           'w-4 h-4 transition-transform',
-          disabled ? 'text-gray-300' : 'text-gray-400',
+          disabled ? 'text-gray-300 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500',
           isOpen && 'rotate-180'
         )} />
       </div>
@@ -205,10 +206,10 @@ export function SelectWithSearch({
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+        <div className="absolute z-50 mt-2 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg">
           {/* Search Input */}
           {searchable && (
-            <div className="p-2 border-b border-gray-200">
+            <div className="p-2 border-b border-gray-200 dark:border-gray-800">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -218,7 +219,7 @@ export function SelectWithSearch({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Search..."
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                 />
               </div>
             </div>
@@ -238,10 +239,11 @@ export function SelectWithSearch({
                   disabled={option.disabled}
                   className={clsx(
                     'w-full px-3 py-2 text-left transition-colors',
-                    highlightedIndex === index && 'bg-blue-50',
-                    option.value === value && 'bg-blue-100',
-                    option.disabled ? 'text-gray-400 cursor-not-allowed' : 'hover:bg-gray-100',
-                    !option.disabled && 'cursor-pointer'
+                    highlightedIndex === index && 'bg-blue-50 dark:bg-blue-900/20',
+                    option.value === value && 'bg-blue-100 dark:bg-blue-900/30',
+                    option.disabled ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-800',
+                    !option.disabled && 'cursor-pointer',
+                    'text-gray-900 dark:text-white'
                   )}
                   onMouseEnter={() => setHighlightedIndex(index)}
                 >

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
 import { useCreateReconciliation } from '@/hooks/usePayments';
 import { usePayrollRuns } from '@/hooks/usePayrollRuns';
 import type { ReconciliationType } from '@recruitiq/types';

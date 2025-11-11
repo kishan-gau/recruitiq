@@ -35,7 +35,7 @@ export function useSettings() {
     queryKey: SETTINGS_KEY,
     queryFn: async () => {
       const response = await paylinq.getSettings();
-      return response.data;
+      return response.settings;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes - settings change infrequently
   });
@@ -51,7 +51,7 @@ export function usePayPeriodConfig() {
     queryKey: PAY_PERIOD_CONFIG_KEY,
     queryFn: async () => {
       const response = await paylinq.getPayPeriodConfig();
-      return response.data;
+      return response.payPeriodConfig;
     },
     staleTime: 10 * 60 * 1000,
   });
@@ -67,7 +67,7 @@ export function useTaxConfig() {
     queryKey: TAX_CONFIG_KEY,
     queryFn: async () => {
       const response = await paylinq.getTaxConfig();
-      return response.data;
+      return response.taxConfig;
     },
     staleTime: 10 * 60 * 1000,
   });
@@ -88,7 +88,7 @@ export function useUpdateSettings() {
   return useMutation({
     mutationFn: async (data: UpdateSettingsRequest) => {
       const response = await paylinq.updateSettings(data);
-      return response.data;
+      return response.settings;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
@@ -111,7 +111,7 @@ export function useUpdatePayPeriodConfig() {
   return useMutation({
     mutationFn: async (data: UpdatePayPeriodConfigRequest) => {
       const response = await paylinq.updatePayPeriodConfig(data);
-      return response.data;
+      return response.payPeriodConfig;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PAY_PERIOD_CONFIG_KEY });
@@ -134,7 +134,7 @@ export function useUpdateTaxConfig() {
   return useMutation({
     mutationFn: async (data: UpdateTaxConfigRequest) => {
       const response = await paylinq.updateTaxConfig(data);
-      return response.data;
+      return response.taxConfig;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: TAX_CONFIG_KEY });
@@ -174,7 +174,7 @@ export function useCurrentPayPeriod() {
     queryKey: [...PAY_PERIOD_CONFIG_KEY, 'current'],
     queryFn: async () => {
       const response = await paylinq.getCurrentPayPeriod();
-      return response.data;
+      return response.payPeriod;
     },
     enabled: !isLoading && !!config,
     staleTime: 5 * 60 * 1000,
@@ -192,7 +192,7 @@ export function useNextPayPeriod() {
     queryKey: [...PAY_PERIOD_CONFIG_KEY, 'next'],
     queryFn: async () => {
       const response = await paylinq.getNextPayPeriod();
-      return response.data;
+      return response.payPeriod;
     },
     enabled: !isLoading && !!config,
     staleTime: 5 * 60 * 1000,

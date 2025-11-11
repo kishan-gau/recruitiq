@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Dialog, FormField } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField from '@/components/ui/FormField';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

@@ -7,7 +7,7 @@
 
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+// import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 // Layout components (Phase 3)
 import AppLayout from './components/layout/AppLayout';
@@ -21,7 +21,7 @@ import Dashboard from './pages/Dashboard';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Payroll pages
-import PayrollRunsPage from './pages/PayrollRunsPage';
+import PayrollRunsList from './pages/payroll/PayrollRunsList';
 import PayrollRunDetailsPage from './pages/PayrollRunDetailsPage';
 import CreatePayrollRunForm from './pages/CreatePayrollRunForm';
 
@@ -92,7 +92,7 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <PayrollRunsPage />,
+            element: <PayrollRunsList />,
           },
           {
             path: 'new',
@@ -185,9 +185,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
       {/* React Query Devtools (only in development) */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={false} />
-      )}
+      )} */}
     </QueryClientProvider>
   );
 }

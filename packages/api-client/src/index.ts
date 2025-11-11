@@ -71,6 +71,48 @@ export class RecruitIQPlatformAPI {
   public getTokenStorage(): TokenStorage {
     return this.apiClient.getTokenStorage();
   }
+
+  /**
+   * Fetch CSRF token from server
+   * Should be called after authentication
+   */
+  public async fetchCsrfToken(): Promise<string | null> {
+    return this.apiClient.fetchCsrfToken();
+  }
+
+  /**
+   * Set CSRF token
+   */
+  public setCsrfToken(token: string): void {
+    this.apiClient.setCsrfToken(token);
+  }
+
+  /**
+   * Get CSRF token
+   */
+  public getCsrfToken(): string | null {
+    return this.apiClient.getCsrfToken();
+  }
+
+  /**
+   * Make a direct request using the API client
+   */
+  public async request<T = any>(method: string, url: string, data?: any, config?: APIClientConfig): Promise<T> {
+    switch (method.toLowerCase()) {
+      case 'get':
+        return this.apiClient.get(url, config as any);
+      case 'post':
+        return this.apiClient.post(url, data, config as any);
+      case 'put':
+        return this.apiClient.put(url, data, config as any);
+      case 'patch':
+        return this.apiClient.patch(url, data, config as any);
+      case 'delete':
+        return this.apiClient.delete(url, config as any);
+      default:
+        throw new Error(`Unsupported HTTP method: ${method}`);
+    }
+  }
 }
 
 // Create and export a default singleton instance

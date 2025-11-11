@@ -69,7 +69,11 @@ export function usePayComponents(params?: Record<string, any>) {
     queryKey: [...PAY_COMPONENTS_QUERY_KEY, params],
     queryFn: async () => {
       const response = await paylinq.getPayComponents(params);
-      return response.data as PayComponent[];
+      // Response type: PayComponentsListResponse = { success, payComponents: [...], count }
+      if (!response) {
+        throw new Error('No data received from server');
+      }
+      return response.payComponents || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -85,7 +89,11 @@ export function usePayComponent(id: string) {
     queryKey: [...PAY_COMPONENTS_QUERY_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getPayComponent(id);
-      return response.data as PayComponent;
+      // Response type: PayComponentResponse = { success, payComponent: {...} }
+      if (!response) {
+        throw new Error('No data received from server');
+      }
+      return response.payComponent;
     },
     enabled: !!id,
   });
@@ -103,12 +111,15 @@ export function useCreatePayComponent() {
     mutationFn: async (data: CreatePayComponentInput) => {
       const apiData = mapPayComponentToApi(data);
       const response = await paylinq.createPayComponent(apiData);
-      return response.data as PayComponent;
+      // Response type: PayComponentResponse = { success, payComponent: {...}, message }
+      if (!response) {
+        throw new Error('No data received from server');
+      }
+      return response.payComponent;
     },
     onSuccess: (data) => {
-      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: PAY_COMPONENTS_QUERY_KEY });
-      success(`Pay component "${data.name}" created successfully`);
+      success(`Pay component "${data.componentName}" created successfully`);
     },
     onError: (err: any) => {
       error(err?.message || 'Failed to create pay component');
@@ -128,13 +139,16 @@ export function useUpdatePayComponent() {
     mutationFn: async ({ id, data }: { id: string; data: UpdatePayComponentInput }) => {
       const apiData = mapPayComponentToApi(data);
       const response = await paylinq.updatePayComponent(id, apiData);
-      return response.data as PayComponent;
+      // Response type: PayComponentResponse = { success, payComponent: {...}, message }
+      if (!response) {
+        throw new Error('No data received from server');
+      }
+      return response.payComponent;
     },
     onSuccess: (data) => {
-      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: PAY_COMPONENTS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [...PAY_COMPONENTS_QUERY_KEY, data.id] });
-      success(`Pay component "${data.name}" updated successfully`);
+      success(`Pay component "${data.componentName}" updated successfully`);
     },
     onError: (err: any) => {
       error(err?.message || 'Failed to update pay component');
@@ -172,7 +186,7 @@ export function useDeletePayComponent() {
 export function usePayComponentsByType(type: 'earning' | 'deduction') {
   const { data, ...rest } = usePayComponents();
   
-  const filteredData = data?.filter((component) => component.type === type) || [];
+  const filteredData = data?.filter((component) => component.componentType === type) || [];
   
   return {
     data: filteredData,

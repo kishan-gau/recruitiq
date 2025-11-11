@@ -121,6 +121,62 @@ COMMENT ON COLUMN organizations.mfa_required IS 'Whether MFA is mandatory for al
 COMMENT ON COLUMN organizations.mfa_enforcement_date IS 'Date when MFA became mandatory. Users without MFA enabled after this date will be prompted to set it up.';
 
 -- ============================================================================
+-- EMAIL_SETTINGS TABLE - Organization-wide email configuration (used by all products)
+-- ============================================================================
+CREATE TABLE email_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Provider configuration
+  provider VARCHAR(20) NOT NULL CHECK (provider IN ('smtp', 'sendgrid', 'ses')),
+  
+  -- Common settings (used by all providers)
+  from_email VARCHAR(255) NOT NULL,
+  from_name VARCHAR(255) NOT NULL,
+  reply_to_email VARCHAR(255),
+  
+  -- SMTP settings (used when provider = 'smtp')
+  smtp_host VARCHAR(255),
+  smtp_port INTEGER,
+  smtp_username VARCHAR(255),
+  smtp_password TEXT, -- Encrypted
+  smtp_secure VARCHAR(10) CHECK (smtp_secure IN ('tls', 'ssl', 'none')),
+  
+  -- SendGrid settings (used when provider = 'sendgrid')
+  sendgrid_api_key TEXT, -- Encrypted
+  
+  -- AWS SES settings (used when provider = 'ses')
+  aws_region VARCHAR(50),
+  aws_access_key_id VARCHAR(255),
+  aws_secret_access_key TEXT, -- Encrypted
+  
+  -- Status tracking
+  is_configured BOOLEAN DEFAULT false,
+  last_tested_at TIMESTAMPTZ,
+  
+  -- Audit fields
+  created_by UUID, -- References users(id)
+  updated_by UUID, -- References users(id)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  
+  -- Constraints
+  CONSTRAINT unique_organization_email_settings UNIQUE(organization_id)
+);
+
+CREATE INDEX idx_email_settings_organization ON email_settings(organization_id);
+CREATE INDEX idx_email_settings_provider ON email_settings(provider);
+CREATE INDEX idx_email_settings_deleted ON email_settings(deleted_at) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE email_settings IS 'Organization-wide email configuration shared across all products (Paylinq, Nexus, RecruitIQ, etc.)';
+COMMENT ON COLUMN email_settings.provider IS 'Email service provider: smtp, sendgrid, or ses';
+COMMENT ON COLUMN email_settings.smtp_password IS 'Encrypted SMTP password';
+COMMENT ON COLUMN email_settings.sendgrid_api_key IS 'Encrypted SendGrid API key';
+COMMENT ON COLUMN email_settings.aws_secret_access_key IS 'Encrypted AWS secret access key';
+COMMENT ON COLUMN email_settings.is_configured IS 'Whether email settings have been configured and tested';
+
+-- ============================================================================
 -- PRODUCTS TABLE - Multi-Product Architecture Registry
 -- ============================================================================
 CREATE TABLE products (

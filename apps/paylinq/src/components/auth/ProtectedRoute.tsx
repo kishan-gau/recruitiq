@@ -34,8 +34,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    console.log('[ProtectedRoute] Redirecting to /login');
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Build return URL including pathname and search params
+    const returnTo = encodeURIComponent(location.pathname + location.search);
+    const loginUrl = `/login?reason=session_expired&returnTo=${returnTo}`;
+    
+    console.log('[ProtectedRoute] Redirecting to login with returnTo:', returnTo);
+    return <Navigate to={loginUrl} state={{ from: location }} replace />;
   }
 
   console.log('[ProtectedRoute] Rendering children');

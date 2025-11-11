@@ -9,6 +9,7 @@ export interface NavigationItem {
   icon: LucideIcon;
   badge?: number | string;
   description?: string;
+  matchPaths?: string[]; // Additional paths that should be considered active
 }
 
 interface NavigationGroupProps {
@@ -32,9 +33,13 @@ export default function NavigationGroup({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   // Check if any item in this group is active
-  const hasActiveItem = items.some((item) =>
-    location.pathname.startsWith(item.href)
-  );
+  const hasActiveItem = items.some((item) => {
+    const matchesHref = location.pathname.startsWith(item.href);
+    const matchesAdditionalPaths = item.matchPaths?.some(path => 
+      location.pathname.startsWith(path)
+    );
+    return matchesHref || matchesAdditionalPaths;
+  });
 
   const toggleOpen = () => {
     if (collapsible) {
@@ -77,7 +82,11 @@ export default function NavigationGroup({
         )}
       >
         {items.map((item) => {
-          const isActive = location.pathname.startsWith(item.href);
+          const matchesHref = location.pathname.startsWith(item.href);
+          const matchesAdditionalPaths = item.matchPaths?.some(path => 
+            location.pathname.startsWith(path)
+          );
+          const isActive = matchesHref || matchesAdditionalPaths;
           const Icon = item.icon;
 
           return (

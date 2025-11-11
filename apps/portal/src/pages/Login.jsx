@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import MFAVerification from '../components/MFAVerification';
@@ -11,18 +11,34 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [sessionMessage, setSessionMessage] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login: authLogin, isAuthenticated, setUser } = useAuth();
   
   // MFA state
   const [showMFA, setShowMFA] = useState(false);
   const [mfaToken, setMfaToken] = useState('');
 
+  // Check for session expiration
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'session_expired') {
+      setSessionMessage('Your session has expired. Please login again.');
+      // Don't clear returnTo from URL - we need it for redirect after login
+    }
+  }, [searchParams]);
+
   // Check if user is already authenticated (SSO via cookies)
   useEffect(() => {
     // If AuthContext shows user is authenticated, redirect immediately
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        navigate(decodeURIComponent(returnTo), { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
       return;
     }
     
@@ -35,8 +51,13 @@ export default function Login() {
         
         // Check if user has platform access
         if (user.user_type === 'platform' && user.permissions?.includes('portal.view')) {
-          // User is authenticated via SSO and has access, redirect to dashboard
-          navigate('/dashboard', { replace: true });
+          // User is authenticated via SSO and has access, redirect
+          const returnTo = searchParams.get('returnTo');
+          if (returnTo) {
+            navigate(decodeURIComponent(returnTo), { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
           return;
         } else {
           // User doesn't have platform access, clear any stale data
@@ -52,7 +73,7 @@ export default function Login() {
     };
     
     checkExistingAuth();
-  }, [navigate, isAuthenticated]);
+  }, [navigate, isAuthenticated, searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,8 +92,13 @@ export default function Login() {
         return;
       }
       
-      // Navigation will happen via the useEffect above when isAuthenticated becomes true
-      navigate('/dashboard', { replace: true });
+      // Navigation will happen to returnTo or dashboard
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        navigate(decodeURIComponent(returnTo), { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(
@@ -97,8 +123,13 @@ export default function Login() {
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
       
-      // Navigate to dashboard
-      navigate('/dashboard', { replace: true });
+      // Navigate to returnTo or dashboard
+      const returnTo = searchParams.get('returnTo');
+      if (returnTo) {
+        navigate(decodeURIComponent(returnTo), { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       // Error will be caught by MFAVerification component
       throw err;
@@ -154,6 +185,13 @@ export default function Login() {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Session Expiration Warning */}
+          {sessionMessage && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-md text-sm">
+              {sessionMessage}
+            </div>
+          )}
+          
           {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">

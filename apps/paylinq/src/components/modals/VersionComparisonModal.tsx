@@ -1,12 +1,13 @@
-import { Dialog, Badge } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import Badge from '@/components/ui/Badge';
 import { useCompareVersions } from '@/hooks/useCompareVersions';
 import { Plus, Minus, Edit } from 'lucide-react';
 
 interface VersionComparisonModalProps {
   isOpen: boolean;
   onClose: () => void;
-  fromId: number;
-  toId: number;
+  fromId: string;
+  toId: string;
 }
 
 interface ComponentChange {

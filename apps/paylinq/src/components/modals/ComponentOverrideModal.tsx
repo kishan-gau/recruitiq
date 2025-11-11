@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, DollarSign, Percent } from 'lucide-react';
-import { Dialog, FormField, Input, TextArea } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, TextArea } from '@/components/ui/FormField';
 import { usePayStructureComponents, useAddPayStructureOverride } from '@/hooks/usePayStructures';
 
 interface ComponentOverrideModalProps {

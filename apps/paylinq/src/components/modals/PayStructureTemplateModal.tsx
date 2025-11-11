@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Dialog, FormField, Input, TextArea } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, TextArea } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import type { PayStructureTemplate } from '@/hooks/usePayStructures';
 
@@ -8,7 +9,7 @@ interface PayStructureTemplateFormData {
   templateName: string;
   description?: string;
   isOrganizationDefault: boolean;
-  effectiveFrom?: string;
+  effectiveFrom: string;  // Required - API requires this field
   effectiveTo?: string;
 }
 
@@ -25,7 +26,7 @@ const initialFormData: PayStructureTemplateFormData = {
   templateName: '',
   description: '',
   isOrganizationDefault: false,
-  effectiveFrom: '',
+  effectiveFrom: new Date().toISOString().split('T')[0], // Default to today's date
   effectiveTo: '',
 };
 
@@ -48,8 +49,8 @@ export default function PayStructureTemplateModal({
         templateName: template.templateName,
         description: template.description || '',
         isOrganizationDefault: template.isOrganizationDefault,
-        effectiveFrom: template.effectiveFrom || '',
-        effectiveTo: template.effectiveTo || '',
+        effectiveFrom: template.effectiveFrom ? new Date(template.effectiveFrom).toISOString().split('T')[0] : '',
+        effectiveTo: template.effectiveTo ? new Date(template.effectiveTo).toISOString().split('T')[0] : '',
       });
     } else {
       setFormData(initialFormData);
@@ -91,10 +92,46 @@ export default function PayStructureTemplateModal({
     setIsLoading(true);
 
     try {
-      await onSubmit(formData);
+      // Transform data before sending to API
+      const submitData: any = {
+        ...formData,
+        // Convert empty strings to null for optional date fields
+        effectiveTo: formData.effectiveTo?.trim() ? formData.effectiveTo : null,
+        description: formData.description?.trim() || null,
+      };
+      
+      await onSubmit(submitData);
       handleClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error submitting template:', err);
+      
+      // Extract error message from API response
+      let errorMessage = err?.response?.data?.message 
+        || err?.response?.data?.error
+        || err?.message 
+        || 'Failed to create template';
+      
+      // Make database constraint errors more user-friendly
+      if (errorMessage.includes('unique_org_default_period')) {
+        errorMessage = 'Cannot set as organization default. Another template is already set as the default for this time period. Please either uncheck "Organization Default" or change the effective dates to avoid overlap.';
+      } else if (errorMessage.includes('duplicate key')) {
+        errorMessage = 'A template with this code already exists. Please use a different template code.';
+      }
+      
+      showError(errorMessage);
+      
+      // If there are field-specific validation errors, show them
+      if (err?.response?.data?.details) {
+        const apiErrors: any = {};
+        err.response.data.details.forEach((detail: any) => {
+          if (detail.path && detail.message) {
+            apiErrors[detail.path[0]] = detail.message;
+          }
+        });
+        if (Object.keys(apiErrors).length > 0) {
+          setErrors(apiErrors);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -130,6 +167,7 @@ export default function PayStructureTemplateModal({
           hint="Unique identifier (e.g., STANDARD_SALARY, HOURLY_WORKER)"
         >
           <Input
+            data-testid="template-code-input"
             value={formData.templateCode}
             onChange={(e) => handleChange('templateCode', e.target.value.toUpperCase())}
             placeholder="e.g., STANDARD_SALARY"
@@ -146,6 +184,7 @@ export default function PayStructureTemplateModal({
           hint="Descriptive name for this template"
         >
           <Input
+            data-testid="template-name-input"
             value={formData.templateName}
             onChange={(e) => handleChange('templateName', e.target.value)}
             placeholder="e.g., Standard Salaried Employee"
@@ -160,6 +199,7 @@ export default function PayStructureTemplateModal({
           hint="Explain when this template should be used"
         >
           <TextArea
+            data-testid="template-description-input"
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             placeholder="Describe the purpose and use case for this template..."
@@ -175,6 +215,7 @@ export default function PayStructureTemplateModal({
         >
           <div className="flex items-center gap-2">
             <input
+              data-testid="organization-default-checkbox"
               type="checkbox"
               id="isOrganizationDefault"
               checked={formData.isOrganizationDefault}
@@ -198,6 +239,7 @@ export default function PayStructureTemplateModal({
             hint="When this template becomes active"
           >
             <Input
+              data-testid="effective-from-input"
               type="date"
               value={formData.effectiveFrom}
               onChange={(e) => handleChange('effectiveFrom', e.target.value)}
@@ -211,6 +253,7 @@ export default function PayStructureTemplateModal({
             hint="When this template expires (optional)"
           >
             <Input
+              data-testid="effective-to-input"
               type="date"
               value={formData.effectiveTo}
               onChange={(e) => handleChange('effectiveTo', e.target.value)}

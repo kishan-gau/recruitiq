@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Dialog, FormField, Input, TextArea, Select } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import FormulaBuilder from './FormulaBuilder';
 
@@ -174,18 +175,19 @@ export default function PayComponentFormModal({
 
   const categoryOptions = {
     earning: [
-      { value: 'Regular Pay', label: 'Regular Pay' },
-      { value: 'Additional Pay', label: 'Additional Pay' },
-      { value: 'Benefits', label: 'Benefits' },
-      { value: 'Bonus', label: 'Bonus' },
-      { value: 'Allowance', label: 'Allowance' },
+      { value: 'regular_pay', label: 'Regular Pay' },
+      { value: 'overtime', label: 'Overtime' },
+      { value: 'bonus', label: 'Bonus' },
+      { value: 'commission', label: 'Commission' },
+      { value: 'allowance', label: 'Allowance' },
+      { value: 'other', label: 'Other' },
     ],
     deduction: [
-      { value: 'Social Security', label: 'Social Security' },
-      { value: 'Insurance', label: 'Insurance' },
-      { value: 'Tax', label: 'Tax' },
-      { value: 'Loan', label: 'Loan' },
-      { value: 'Other', label: 'Other' },
+      { value: 'tax', label: 'Tax' },
+      { value: 'benefit', label: 'Benefit/Insurance' },
+      { value: 'garnishment', label: 'Garnishment' },
+      { value: 'loan', label: 'Loan' },
+      { value: 'other', label: 'Other' },
     ],
   };
 

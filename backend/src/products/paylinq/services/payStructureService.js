@@ -10,6 +10,7 @@
 import Joi from 'joi';
 import PayStructureRepository from '../repositories/payStructureRepository.js';
 import FormulaEngineService from './formulaEngineService.js';
+import dtoMapper from '../utils/dtoMapper.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../../middleware/errorHandler.js';
 
@@ -152,20 +153,18 @@ class PayStructureService {
 
       const template = await this.repository.createTemplate(value, organizationId, userId);
 
-      // Add changelog entry
-      await this.repository.addChangelogEntry({
+    // Add changelog entry
+    await this.repository.addChangelogEntry({
+      templateId: template.id,
+      fromVersion: null,
+      toVersion: template.version,
+      changeType: 'created',
+      changeSummary: 'Initial template creation',
+      changelogEntries: [{ type: 'created', description: 'Template created' }]
+    }, organizationId, userId);      logger.info('Pay structure template created', {
         templateId: template.id,
-        fromVersion: null,
-        toVersion: template.version_string,
-        changeType: 'created',
-        changeSummary: 'Initial template creation',
-        changelogEntries: [{ type: 'created', description: 'Template created' }]
-      }, organizationId, userId);
-
-      logger.info('Pay structure template created', {
-        templateId: template.id,
-        templateCode: template.template_code,
-        version: template.version_string,
+        templateCode: template.templateCode,
+        version: template.version,
         organizationId,
         userId
       });
@@ -240,8 +239,8 @@ class PayStructureService {
 
     logger.info('Pay structure template published', {
       templateId,
-      templateCode: publishedTemplate.template_code,
-      version: publishedTemplate.version_string,
+      templateCode: publishedTemplate.templateCode,
+      version: publishedTemplate.version,
       organizationId,
       userId
     });
@@ -296,16 +295,16 @@ class PayStructureService {
 
     // Create new template with incremented version
     const newTemplateData = {
-      templateCode: sourceTemplate.template_code,
-      templateName: sourceTemplate.template_name,
+      templateCode: sourceTemplate.templateCode,
+      templateName: sourceTemplate.templateName,
       description: sourceTemplate.description,
       versionMajor: newMajor,
       versionMinor: newMinor,
       versionPatch: newPatch,
       status: 'draft',
-      applicableToWorkerTypes: sourceTemplate.applicable_to_worker_types,
-      applicableToJurisdictions: sourceTemplate.applicable_to_jurisdictions,
-      payFrequency: sourceTemplate.pay_frequency,
+      applicableToWorkerTypes: sourceTemplate.applicableToWorkerTypes,
+      applicableToJurisdictions: sourceTemplate.applicableToJurisdictions,
+      payFrequency: sourceTemplate.payFrequency,
       currency: sourceTemplate.currency,
       isOrganizationDefault: false, // New version is not default by default
       effectiveFrom: new Date(),
@@ -367,18 +366,18 @@ class PayStructureService {
     // Add changelog entry
     await this.repository.addChangelogEntry({
       templateId: newTemplate.id,
-      fromVersion: sourceTemplate.version_string,
+      fromVersion: sourceTemplate.version,
       toVersion: `${newMajor}.${newMinor}.${newPatch}`,
       changeType: `${versionType}_update`,
       changeSummary,
       breakingChanges: versionType === 'major',
-      affectedWorkerCount: sourceTemplate.assigned_worker_count || 0
+      affectedWorkerCount: sourceTemplate.assignedWorkerCount || 0
     }, organizationId, userId);
 
     logger.info('New template version created', {
       sourceTemplateId: templateId,
       newTemplateId: newTemplate.id,
-      fromVersion: sourceTemplate.version_string,
+      fromVersion: sourceTemplate.version,
       toVersion: `${newMajor}.${newMinor}.${newPatch}`,
       versionType,
       organizationId,
@@ -419,14 +418,16 @@ class PayStructureService {
       }
     }
 
-    return await this.repository.addComponent(value, templateId, organizationId, userId);
+    const component = await this.repository.addComponent(value, templateId, organizationId, userId);
+    return dtoMapper.mapPayStructureComponentDbToApi(component);
   }
 
   /**
    * Get template components
    */
   async getTemplateComponents(templateId, organizationId) {
-    return await this.repository.getTemplateComponents(templateId, organizationId);
+    const components = await this.repository.getTemplateComponents(templateId, organizationId);
+    return components.map(component => dtoMapper.mapPayStructureComponentDbToApi(component));
   }
 
   /**
@@ -492,7 +493,8 @@ class PayStructureService {
       value.templateId = template.template_id;
       value.assignmentType = 'default';
     } else {
-      template = await this.getTemplateById(value.templateId, organizationId);
+      // Use findTemplateById which returns camelCase after DTO mapping
+      template = await this.repository.findTemplateById(value.templateId, organizationId);
       if (!template) {
         throw new NotFoundError('Template not found');
       }
@@ -502,15 +504,15 @@ class PayStructureService {
       throw new ValidationError('Only active templates can be assigned to workers');
     }
 
-    // Create template snapshot
+    // Create template snapshot - access components with snake_case as they come from raw query
     const components = await this.repository.getTemplateComponents(template.id, organizationId);
     const templateSnapshot = {
       template: {
         id: template.id,
-        code: template.template_code,
-        name: template.template_name,
-        version: template.version_string,
-        payFrequency: template.pay_frequency,
+        code: template.templateCode,
+        name: template.templateName,
+        version: template.version,
+        payFrequency: template.payFrequency,
         currency: template.currency
       },
       components: components.map(c => ({
@@ -539,48 +541,67 @@ class PayStructureService {
       }))
     };
 
-    // End any current assignment
-    const currentStructure = await this.repository.getCurrentWorkerStructure(
+    // Check for any existing assignments that would overlap with the new date range
+    const overlappingStructures = await this.repository.getOverlappingWorkerStructures(
       value.employeeId,
-      organizationId
+      organizationId,
+      value.effectiveFrom,
+      value.effectiveTo
     );
     
-    if (currentStructure) {
-      await this.repository.updateWorkerStructure(
-        currentStructure.structure_id,
+    if (overlappingStructures && overlappingStructures.length > 0) {
+      logger.info('Found overlapping structures to delete', {
+        count: overlappingStructures.length,
+        structureIds: overlappingStructures.map(s => s.id),
+        newEffectiveFrom: value.effectiveFrom,
+        newEffectiveTo: value.effectiveTo
+      });
+      
+      // Soft delete all overlapping structures
+      for (const structure of overlappingStructures) {
+        await this.repository.deleteWorkerStructure(
+          structure.id,
+          organizationId,
+          userId
+        );
+      }
+    }
+
+    try {
+      // Create new assignment
+      const assignment = await this.repository.assignTemplateToWorker(
         {
-          effectiveTo: value.effectiveFrom,
-          isCurrent: false
+          ...value,
+          templateCode: template.templateCode,
+          templateVersion: template.version,
+          templateSnapshot,
+          assignmentSource: value.assignmentType === 'default' ? 'org_default' : 'manual',
+          isCurrent: true
         },
         organizationId,
         userId
       );
+
+      logger.info('Template assigned to worker', {
+        assignmentId: assignment.id,
+        employeeId: value.employeeId,
+        templateId: template.id,
+        templateVersion: template.version,
+        organizationId,
+        userId
+      });
+
+      return assignment;
+    } catch (error) {
+      // Handle constraint violation for overlapping assignments
+      if (error.message && error.message.includes('unique_current_worker_structure')) {
+        throw new ValidationError(
+          'This worker already has a pay structure assigned for this date range. ' +
+          'Please choose a different effective date or the assignment will replace the existing one.'
+        );
+      }
+      throw error;
     }
-
-    // Create new assignment
-    const assignment = await this.repository.assignTemplateToWorker(
-      {
-        ...value,
-        templateCode: template.template_code,
-        templateVersion: template.version_string,
-        templateSnapshot,
-        assignmentSource: value.assignmentType === 'default' ? 'org_default' : 'manual',
-        isCurrent: true
-      },
-      organizationId,
-      userId
-    );
-
-    logger.info('Template assigned to worker', {
-      assignmentId: assignment.id,
-      employeeId: value.employeeId,
-      templateId: template.id,
-      templateVersion: template.version_string,
-      organizationId,
-      userId
-    });
-
-    return assignment;
   }
 
   /**
@@ -592,8 +613,8 @@ class PayStructureService {
       return null;
     }
 
-    // Get overrides
-    const overrides = await this.repository.getWorkerOverrides(structure.structure_id, organizationId);
+    // Get overrides for the worker structure
+    const overrides = await this.repository.getWorkerOverrides(structure.id, organizationId);
 
     return {
       ...structure,
@@ -682,15 +703,26 @@ class PayStructureService {
       throw new NotFoundError('No pay structure found for worker');
     }
 
-    const snapshot = structure.template_snapshot;
+    logger.info('Calculate worker pay - structure retrieved', {
+      employeeId,
+      structureId: structure.id,
+      hasTemplateSnapshot: !!structure.templateSnapshot,
+      templateSnapshotKeys: structure.templateSnapshot ? Object.keys(structure.templateSnapshot) : []
+    });
+
+    const snapshot = structure.templateSnapshot || structure.template_snapshot;
+    if (!snapshot) {
+      throw new Error('No template snapshot found in pay structure');
+    }
+    
     const components = snapshot.components || [];
     const overrides = structure.overrides || [];
 
     // Prepare calculation context
     const context = {
-      baseSalary: structure.base_salary,
-      hourlyRate: structure.hourly_rate,
-      payFrequency: structure.pay_frequency,
+      baseSalary: structure.baseSalary || structure.base_salary,
+      hourlyRate: structure.hourlyRate || structure.hourly_rate,
+      payFrequency: structure.payFrequency || structure.pay_frequency,
       currency: structure.currency,
       ...inputData // hours, overtime_hours, etc.
     };
@@ -703,11 +735,13 @@ class PayStructureService {
 
     for (const component of sortedComponents) {
       try {
-        // Check if component has an override
-        const override = overrides.find(o => o.component_code === component.code);
+        // Check if component has an override (handle both camelCase and snake_case)
+        const override = overrides.find(o => 
+          (o.componentCode === component.code || o.component_code === component.code)
+        );
         
-        // Skip if disabled by override
-        if (override && override.is_disabled) {
+        // Skip if disabled by override (handle both camelCase and snake_case)
+        if (override && (override.isDisabled || override.is_disabled)) {
           continue;
         }
 
@@ -758,8 +792,8 @@ class PayStructureService {
       .reduce((sum, c) => sum + c.amount, 0);
 
     return {
-      structureId: structure.structure_id,
-      templateVersion: structure.template_version,
+      structureId: structure.id || structure.structure_id,
+      templateVersion: structure.templateVersion || structure.template_version,
       calculations,
       summary: {
         totalEarnings,
@@ -774,31 +808,48 @@ class PayStructureService {
    * Calculate individual component value
    */
   async calculateComponent(component, override, context, calculatedValues) {
-    const config = override || component.configuration;
+    const config = component.configuration;
     const calculationType = component.calculationType;
+
+    logger.debug('Calculating component', {
+      componentCode: component.code,
+      calculationType,
+      hasConfiguration: !!component.configuration,
+      hasOverride: !!override,
+      overrideData: override,
+      defaultAmount: component.configuration?.defaultAmount
+    });
 
     let value = 0;
 
     switch (calculationType) {
       case 'fixed':
-        value = override?.overrideAmount || config.defaultAmount || 0;
+        // Use override amount if it exists, otherwise use configuration default amount
+        value = override?.overrideAmount ?? parseFloat(config?.defaultAmount) ?? 0;
+        logger.debug('Fixed calculation', {
+          componentCode: component.code,
+          overrideAmount: override?.overrideAmount,
+          configDefaultAmount: config?.defaultAmount,
+          parsedDefaultAmount: parseFloat(config?.defaultAmount),
+          finalValue: value
+        });
         break;
 
       case 'percentage':
         const baseValue = calculatedValues[config.percentageOf] || context[config.percentageOf] || 0;
-        const rate = override?.overridePercentage || config.percentageRate || 0;
+        const rate = override?.overridePercentage ?? config.percentageRate ?? 0;
         value = baseValue * rate;
         break;
 
       case 'hourly_rate':
         const hours = context.hours || context.regularHours || 0;
-        const hourlyRate = override?.overrideRate || context.hourlyRate || 0;
+        const hourlyRate = override?.overrideRate ?? context.hourlyRate ?? 0;
         const multiplier = config.rateMultiplier || 1.0;
         value = hours * hourlyRate * multiplier;
         break;
 
       case 'formula':
-        const formula = override?.overrideFormula || config.formulaExpression;
+        const formula = override?.overrideFormula ?? config.formulaExpression;
         const variables = { ...context, ...calculatedValues };
         value = await this.formulaEngine.evaluateFormula(formula, variables);
         break;
@@ -881,11 +932,11 @@ class PayStructureService {
 
     // If no compareToId, compare with previous version
     if (!compareToId) {
-      const versions = await this.repository.getTemplateVersions(template.template_code, organizationId);
+      const versions = await this.repository.getTemplateVersions(template.templateCode, organizationId);
       const sortedVersions = versions.sort((a, b) => {
-        if (a.version_major !== b.version_major) return b.version_major - a.version_major;
-        if (a.version_minor !== b.version_minor) return b.version_minor - a.version_minor;
-        return b.version_patch - a.version_patch;
+        if (a.versionMajor !== b.versionMajor) return b.versionMajor - a.versionMajor;
+        if (a.versionMinor !== b.versionMinor) return b.versionMinor - a.versionMinor;
+        return b.versionPatch - a.versionPatch;
       });
 
       const currentIndex = sortedVersions.findIndex(v => v.id === templateId);

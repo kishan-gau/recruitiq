@@ -50,12 +50,12 @@ export default function WorkerDetails() {
           const metadata = w.metadata || {};
           
           setWorker({
-            id: w.id,
+            id: w.employeeId || w.employee_id || w.id, // Use employeeId (from hris.employee), not payroll config id
             employeeNumber: w.employee_number || w.employeeNumber || 'N/A',
             fullName: w.fullName || w.full_name || `${w.firstName || w.first_name || ''} ${w.lastName || w.last_name || ''}`.trim() || 'Unknown',
             email: w.email || w.user_email || 'N/A',
-            status: w.status || 'active',
-            workerType: w.worker_type || w.workerType || w.workerTypeName || metadata.workerType || 'N/A',
+            status: w.status || w.employment_status || w.employmentStatus || 'active',
+            workerType: w.workerTypeName || w.worker_type_name || w.employmentType || w.employment_type || w.worker_type || w.workerType || metadata.workerType || 'N/A',
             hireDate: w.hire_date || w.hireDate || w.start_date || new Date().toISOString(),
             compensation: metadata.compensation || w.compensation || w.current_compensation || w.currentCompensation || 0,
             currency: w.currency || 'SRD',
@@ -397,7 +397,7 @@ export default function WorkerDetails() {
       )}
 
       {/* Pay Structure Tab */}
-      {activeTab === 'pay-structure' && <WorkerPayStructure workerId={workerId!} workerName={worker.fullName} />}
+      {activeTab === 'pay-structure' && worker && <WorkerPayStructure workerId={worker.id} workerName={worker.fullName} />}
 
       {activeTab === 'ytd-summary' && ytdSummary && (
         <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">

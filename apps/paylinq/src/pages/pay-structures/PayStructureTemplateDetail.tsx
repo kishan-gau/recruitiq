@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CardSkeleton from '@/components/ui/CardSkeleton';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import {
   usePayStructureTemplate,
   usePayStructureComponents,
@@ -14,12 +15,10 @@ import {
 } from '@/hooks/usePayStructures';
 import PayStructureComponentModal from '@/components/modals/PayStructureComponentModal';
 import TemplateVersionHistory from '@/components/pay-structures/TemplateVersionHistory';
-import { useToast } from '@/contexts/ToastContext';
 
 export default function PayStructureTemplateDetail() {
   const { templateId } = useParams<{ templateId: string }>();
   const navigate = useNavigate();
-  const { success } = useToast();
   
   const { data: template, isLoading: templateLoading } = usePayStructureTemplate(templateId!);
   const { data: components, isLoading: componentsLoading } = usePayStructureComponents(templateId!);
@@ -31,6 +30,9 @@ export default function PayStructureTemplateDetail() {
 
   const [selectedComponent, setSelectedComponent] = useState<PayStructureComponent | null>(null);
   const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [componentToDelete, setComponentToDelete] = useState<string | null>(null);
 
   const isLoading = templateLoading || componentsLoading;
 
@@ -38,8 +40,12 @@ export default function PayStructureTemplateDetail() {
     navigate('/pay-components');
   };
 
-  const handlePublish = async () => {
-    if (template?.id && window.confirm('Are you sure you want to publish this template? It will become available for assignment to workers.')) {
+  const handlePublish = () => {
+    setShowPublishConfirm(true);
+  };
+
+  const confirmPublish = async () => {
+    if (template?.id) {
       await publishMutation.mutateAsync(template.id);
     }
   };
@@ -54,9 +60,15 @@ export default function PayStructureTemplateDetail() {
     setIsComponentModalOpen(true);
   };
 
-  const handleDeleteComponent = async (componentId: string) => {
-    if (window.confirm('Are you sure you want to delete this component from the template?')) {
-      await deleteComponentMutation.mutateAsync({ templateId: templateId!, componentId });
+  const handleDeleteComponent = (componentId: string) => {
+    setComponentToDelete(componentId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (componentToDelete && templateId) {
+      await deleteComponentMutation.mutateAsync({ templateId, componentId: componentToDelete });
+      setComponentToDelete(null);
     }
   };
 
@@ -65,16 +77,17 @@ export default function PayStructureTemplateDetail() {
       // Update existing component
       await updateComponentMutation.mutateAsync({
         componentId: selectedComponent.id,
+        templateId: templateId!,
         data,
       });
-      success('Component updated successfully');
+      // Toast is shown by the mutation hook
     } else {
       // Add new component
       await addComponentMutation.mutateAsync({
         templateId: templateId!,
         data,
       });
-      success('Component added successfully');
+      // Toast is shown by the mutation hook
     }
   };
 
@@ -107,7 +120,7 @@ export default function PayStructureTemplateDetail() {
     );
   }
 
-  const sortedComponents = components?.sort((a, b) => a.sequenceOrder - b.sequenceOrder) || [];
+  const sortedComponents = components?.sort((a: PayStructureComponent, b: PayStructureComponent) => a.sequenceOrder - b.sequenceOrder) || [];
 
   return (
     <div className="space-y-6">
@@ -225,7 +238,7 @@ export default function PayStructureTemplateDetail() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedComponents.map((component, index) => (
+            {sortedComponents.map((component: PayStructureComponent, index: number) => (
               <ComponentRow
                 key={component.id}
                 component={component}
@@ -257,6 +270,33 @@ export default function PayStructureTemplateDetail() {
         onSubmit={handleComponentSubmit}
         component={selectedComponent}
         existingComponents={components || []}
+      />
+
+      {/* Publish Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showPublishConfirm}
+        onClose={() => setShowPublishConfirm(false)}
+        onConfirm={confirmPublish}
+        title="Publish Template"
+        message="Are you sure you want to publish this template? It will become available for assignment to workers."
+        confirmText="Publish"
+        variant="info"
+        isLoading={publishMutation.isPending}
+      />
+
+      {/* Delete Component Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setComponentToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Component"
+        message="Are you sure you want to delete this component from the template? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deleteComponentMutation.isPending}
       />
     </div>
   );
@@ -320,7 +360,7 @@ function ComponentRow({ component, index, onEdit, onDelete }: ComponentRowProps)
             <h3 className="font-semibold text-gray-900 dark:text-white">
               {component.componentName}
             </h3>
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${getComponentTypeColor(component.componentType)}`}>
+            <span className={`px-2 py-0.5 text-xs font-medium rounded ${getComponentTypeColor(component.componentType || '')}`}>
               {component.componentType}
             </span>
             {!component.isVisible && (

@@ -723,6 +723,7 @@ class TaxCalculationService {
       // Get applicable allowances
       const allowances = await this.taxEngineRepository.findApplicableAllowances(
         country,
+        null, // state - not used for Suriname
         payDate,
         organizationId
       );

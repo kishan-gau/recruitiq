@@ -96,3 +96,41 @@ export interface CompensationFilters {
   effectiveFrom?: string;
   effectiveTo?: string;
 }
+
+/**
+ * API Response Types for Compensation
+ * Following API standards: resource-specific keys, not generic "data"
+ */
+
+/** Single compensation response: { success, compensation: {...} } */
+export interface CompensationResponse {
+  success: boolean;
+  compensation: Compensation;
+  message?: string;
+}
+
+/** List of compensation records response: { success, compensations: [...], count } */
+export interface CompensationsListResponse {
+  success: boolean;
+  compensations: Compensation[];
+  count: number;
+  pagination?: {
+    page: number;
+    limit: number;
+    totalPages: number;
+    totalCount: number;
+  };
+}
+
+/** Compensation summary response: { success, summary: {...} } */
+export interface CompensationSummaryResponse {
+  success: boolean;
+  summary: CompensationSummary;
+}
+
+/** Compensation history response: { success, history: [...] } */
+export interface CompensationHistoryResponse {
+  success: boolean;
+  history: CompensationHistoryEntry[];
+  count: number;
+}

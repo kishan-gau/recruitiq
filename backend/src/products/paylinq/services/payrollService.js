@@ -243,6 +243,35 @@ class PayrollService {
         userId
       );
 
+      // Create a default compensation record if compensation data is in metadata
+      if (value.metadata?.compensation) {
+        try {
+          const compensationData = {
+            employeeId: targetEmployeeId,
+            compensationType: value.metadata.compensationType || 'salary',
+            amount: value.metadata.compensation,
+            currency: payrollData.currency || 'SRD',
+            effectiveFrom: payrollData.startDate || new Date().toISOString().split('T')[0],
+            isCurrent: true,
+            payFrequency: payrollData.payFrequency || 'monthly'
+          };
+
+          await this.payrollRepository.createCompensation(compensationData, organizationId, userId);
+          
+          logger.info('Created default compensation for employee', {
+            employeeId: targetEmployeeId,
+            amount: compensationData.amount,
+            type: compensationData.compensationType
+          });
+        } catch (compErr) {
+          logger.warn('Failed to create default compensation', {
+            employeeId: targetEmployeeId,
+            error: compErr.message
+          });
+          // Don't fail the whole operation if compensation creation fails
+        }
+      }
+
       // Enrich response with original frontend data (firstName, lastName, email)
       // These aren't stored in payroll table but tests expect them
       const enrichedRecord = {
@@ -729,6 +758,18 @@ class PayrollService {
         status: 'active'
       });
 
+      logger.info('Found employees for payroll calculation', { 
+        payrollRunId, 
+        organizationId,
+        employeeCount: employees.length,
+        employeeIds: employees.map(e => ({ 
+          configId: e.id, 
+          employeeId: e.employee_id,
+          number: e.employee_number, 
+          name: `${e.first_name} ${e.last_name}` 
+        }))
+      });
+
       let totalEmployees = 0;
       let totalGrossPay = 0;
       let totalNetPay = 0;
@@ -738,10 +779,13 @@ class PayrollService {
       // Calculate each employee's paycheck
       for (const employee of employees) {
         try {
+          // Use employee_id (the actual employee ID) not id (the payroll config ID)
+          const employeeId = employee.employee_id;
+          
           // Get timesheets for pay period
           const timesheets = await this.payrollRepository.findTimesheets(
             {
-              employeeId: employee.id,
+              employeeId: employeeId,
               periodStart: payrollRun.pay_period_start,
               periodEnd: payrollRun.pay_period_end,
               status: 'approved'
@@ -751,16 +795,20 @@ class PayrollService {
 
           // Get current compensation
           const compensation = await this.payrollRepository.findCurrentCompensation(
-            employee.id,
+            employeeId,
             organizationId
           );
 
           if (!compensation) {
-            logger.warn('No compensation found for employee', {
+            logger.warn('No compensation found for employee, checking pay structure', {
               employeeRecordId: employee.id,
-              payrollRunId
+              employeeId: employeeId,
+              payrollRunId,
+              payPeriodEnd: payrollRun.pay_period_end
             });
-            continue;
+            
+            // Try to get compensation from pay structure instead
+            // This will be used by payStructureService.calculateWorkerPay below
           }
 
           // Calculate hours
@@ -779,7 +827,7 @@ class PayrollService {
           // Try to use pay structure if available
           try {
             const payStructureCalc = await this.payStructureService.calculateWorkerPay(
-              employee.id,
+              employeeId,
               {
                 hours: regularHours,
                 regularHours,
@@ -789,7 +837,7 @@ class PayrollService {
                 payPeriodStart: payrollRun.pay_period_start,
                 payPeriodEnd: payrollRun.pay_period_end,
                 payFrequency: employee.pay_frequency,
-                compensationType: compensation.compensation_type
+                compensationType: compensation?.compensation_type || 'salary'
               },
               organizationId,
               payrollRun.pay_period_end
@@ -809,7 +857,8 @@ class PayrollService {
             overtimePay = overtimePayComp ? overtimePayComp.amount : 0;
 
             logger.info('Using pay structure for calculation', {
-              employeeId: employee.id,
+              employeeId: employeeId,
+              employeeConfigId: employee.id,
               structureId: workerStructureId,
               templateVersion,
               grossPay,
@@ -817,9 +866,25 @@ class PayrollService {
             });
 
           } catch (structureErr) {
-            // Fallback to legacy calculation if pay structure not found
+            // If no pay structure and no compensation, skip this employee
+            if (!compensation) {
+              logger.warn('No pay structure or compensation found for employee, skipping', {
+                employeeId: employeeId,
+                employeeConfigId: employee.id,
+                employeeNumber: employee.employee_number,
+                employeeName: `${employee.first_name} ${employee.last_name}`,
+                payrollRunId,
+                payPeriodStart: payrollRun.pay_period_start,
+                payPeriodEnd: payrollRun.pay_period_end,
+                asOfDate: payrollRun.pay_period_end,
+                error: structureErr.message
+              });
+              continue;
+            }
+
+            // Fallback to legacy calculation if pay structure not found but compensation exists
             logger.warn('Pay structure not found, using fallback calculation', {
-              employeeId: employee.id,
+              employeeId: employeeId,
               error: structureErr.message
             });
 
@@ -847,7 +912,7 @@ class PayrollService {
 
           // Calculate taxes (MVP - simplified)
           const taxCalculation = await this.taxCalculationService.calculateEmployeeTaxes(
-            employee.id,
+            employeeId,
             grossPay,
             payrollRun.pay_period_start,
             organizationId
@@ -860,9 +925,9 @@ class PayrollService {
           const paycheck = await this.payrollRepository.createPaycheck(
             {
               payrollRunId,
-              employeeId: employee.id,
-              periodStart: payrollRun.pay_period_start,
-              periodEnd: payrollRun.pay_period_end,
+              employeeId: employeeId,
+              payPeriodStart: payrollRun.pay_period_start,
+              payPeriodEnd: payrollRun.pay_period_end,
               paymentDate: payrollRun.payment_date,
               grossPay,
               regularPay,
@@ -910,7 +975,8 @@ class PayrollService {
 
         } catch (empErr) {
           logger.error('Error calculating paycheck for employee', {
-            employeeId: employee.id,
+            employeeId: employeeId,
+            employeeConfigId: employee.id,
             error: empErr.message
           });
           // Continue with next employee

@@ -20,6 +20,14 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
       refetchOnWindowFocus: false,
+      retry: (failureCount, error: any) => {
+        // Don't retry on 404s - these are expected when resources don't exist
+        if (error?.response?.status === 404) {
+          return false;
+        }
+        // Retry other errors up to 3 times
+        return failureCount < 3;
+      },
     },
   },
 });

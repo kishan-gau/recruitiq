@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FormField, Input, Select } from '@/components/ui';
+import FormField, { Input, Select } from '@/components/ui/FormField';
 import { usePaylinqAPI } from '../../hooks/usePaylinqAPI';
 
 interface FormulaRule {
@@ -11,6 +11,9 @@ interface FormulaRule {
   combineOperator?: 'add' | 'subtract' | 'none'; // How to combine with next rule
 }
 
+// Conditional rule structure for future IF/THEN/ELSE feature
+// Currently not implemented
+/*
 interface ConditionalRule {
   id: string;
   condition: {
@@ -21,6 +24,7 @@ interface ConditionalRule {
   thenRules: FormulaRule[];
   elseRules: FormulaRule[];
 }
+*/
 
 interface ValidationError {
   type: 'error' | 'warning';
@@ -114,11 +118,12 @@ const COMPARATORS = [
   { value: 'not_equal', label: 'Not equal (≠)', symbol: '!=' },
 ];
 
-const COMBINE_OPERATORS = [
-  { value: 'none', label: 'Replace', symbol: '' },
-  { value: 'add', label: 'Then add (+)', symbol: '+' },
-  { value: 'subtract', label: 'Then subtract (-)', symbol: '-' },
-];
+// Combine operators for chaining rules (not currently used in UI)
+// const COMBINE_OPERATORS = [
+//   { value: 'none', label: 'Replace', symbol: '' },
+//   { value: 'add', label: 'Then add (+)', symbol: '+' },
+//   { value: 'subtract', label: 'Then subtract (-)', symbol: '-' },
+// ];
 
 export default function FormulaBuilder({ value, onChange, disabled }: FormulaBuilderProps) {
   const { client } = usePaylinqAPI();
@@ -133,8 +138,9 @@ export default function FormulaBuilder({ value, onChange, disabled }: FormulaBui
   const [thenRules, setThenRules] = useState<FormulaRule[]>([]);
   const [elseRules, setElseRules] = useState<FormulaRule[]>([]);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
-  const [isValidating, setIsValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
+  // Validation state (used in validateFormula callback)
+  // const [isValidating, setIsValidating] = useState(false);
+  // const [validationResult, setValidationResult] = useState<any>(null);
 
   // Debounce timer ref
   const validationTimerRef = useRef<number | null>(null);
@@ -143,7 +149,7 @@ export default function FormulaBuilder({ value, onChange, disabled }: FormulaBui
   const validateFormula = useCallback((formula: string) => {
     if (!formula || formula.trim() === '') {
       setValidationErrors([]);
-      setValidationResult(null);
+      // setValidationResult(null);
       return;
     }
 
@@ -154,7 +160,7 @@ export default function FormulaBuilder({ value, onChange, disabled }: FormulaBui
 
     // Debounce validation by 500ms
     validationTimerRef.current = window.setTimeout(async () => {
-      setIsValidating(true);
+      // setIsValidating(true);
       setValidationErrors([]);
 
       try {
@@ -162,7 +168,7 @@ export default function FormulaBuilder({ value, onChange, disabled }: FormulaBui
         const data = response.data;
         
         if (data.success && data.data) {
-          setValidationResult(data.data);
+          // setValidationResult(data.data);
           
           if (!data.data.valid) {
             setValidationErrors(
@@ -187,7 +193,7 @@ export default function FormulaBuilder({ value, onChange, disabled }: FormulaBui
         console.error('Formula validation error:', error);
         // Silently fail validation - don't block user
       } finally {
-        setIsValidating(false);
+        // setIsValidating(false);
       }
     }, 500);
   }, [client]);

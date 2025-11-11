@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Edit2, AlertCircle, Trash2, X } from 'lucide-react';
-import { StatusBadge } from '@/components/ui';
+import StatusBadge from '@/components/ui/StatusBadge';
 import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
 import { useTaxRules, useCreateTaxRule, useUpdateTaxRule, useDeleteTaxRule } from '@/hooks/useTaxRules';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
@@ -31,6 +31,12 @@ interface TaxRuleFormData {
   type: 'wage-tax' | 'aov' | 'aww';
   description: string;
   rate?: number;
+  brackets?: Array<{
+    min: number;
+    max: number | null;
+    rate: number;
+    deduction: number;
+  }>;
   employerContribution?: number;
   employeeContribution?: number;
   status: 'active' | 'inactive';
@@ -62,6 +68,7 @@ export default function TaxRulesList() {
       type: rule.type,
       description: rule.description,
       rate: rule.rate,
+      brackets: rule.brackets,
       employerContribution: rule.employerContribution,
       employeeContribution: rule.employeeContribution,
       status: rule.status,
@@ -119,6 +126,32 @@ export default function TaxRulesList() {
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || undefined : value,
+    }));
+  };
+
+  const handleAddBracket = () => {
+    setFormData((prev) => ({
+      ...prev,
+      brackets: [
+        ...(prev.brackets || []),
+        { min: 0, max: null, rate: 0, deduction: 0 },
+      ],
+    }));
+  };
+
+  const handleRemoveBracket = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      brackets: prev.brackets?.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleBracketChange = (index: number, field: string, value: number | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      brackets: prev.brackets?.map((bracket, i) =>
+        i === index ? { ...bracket, [field]: value } : bracket
+      ),
     }));
   };
 
@@ -375,6 +408,121 @@ export default function TaxRulesList() {
                   placeholder="Describe this tax rule..."
                 />
               </div>
+
+              {/* Progressive Tax Brackets (for wage-tax only) */}
+              {formData.type === 'wage-tax' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Tax Brackets
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddBracket}
+                      className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Bracket
+                    </button>
+                  </div>
+
+                  {formData.brackets && formData.brackets.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.brackets.map((bracket, index) => (
+                        <div
+                          key={index}
+                          className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-900"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Bracket {index + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveBracket(index)}
+                              className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Min Income (SRD)
+                              </label>
+                              <input
+                                type="number"
+                                value={bracket.min}
+                                onChange={(e) =>
+                                  handleBracketChange(index, 'min', parseFloat(e.target.value) || 0)
+                                }
+                                min="0"
+                                step="0.01"
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Max Income (SRD, leave empty for unlimited)
+                              </label>
+                              <input
+                                type="number"
+                                value={bracket.max ?? ''}
+                                onChange={(e) =>
+                                  handleBracketChange(
+                                    index,
+                                    'max',
+                                    e.target.value ? parseFloat(e.target.value) : null
+                                  )
+                                }
+                                min="0"
+                                step="0.01"
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                placeholder="Leave empty for no limit"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Tax Rate (%)
+                              </label>
+                              <input
+                                type="number"
+                                value={bracket.rate}
+                                onChange={(e) =>
+                                  handleBracketChange(index, 'rate', parseFloat(e.target.value) || 0)
+                                }
+                                min="0"
+                                max="100"
+                                step="0.1"
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Standard Deduction (SRD)
+                              </label>
+                              <input
+                                type="number"
+                                value={bracket.deduction}
+                                onChange={(e) =>
+                                  handleBracketChange(index, 'deduction', parseFloat(e.target.value) || 0)
+                                }
+                                min="0"
+                                step="0.01"
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 italic p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded">
+                      No tax brackets added. Click "Add Bracket" to define progressive tax rates.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Contributions (for AOV/AWW types) */}
               {(formData.type === 'aov' || formData.type === 'aww') && (

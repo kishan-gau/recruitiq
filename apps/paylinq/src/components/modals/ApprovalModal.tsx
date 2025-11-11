@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Dialog, FormField, TextArea } from '@/components/ui';
+import Dialog from '@/components/ui/Dialog';
+import FormField, { TextArea } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { User } from 'lucide-react';
 

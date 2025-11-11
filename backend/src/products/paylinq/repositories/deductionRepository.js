@@ -239,7 +239,6 @@ class DeductionRepository {
        FROM payroll.employee_deduction
        WHERE employee_id = $1
          AND organization_id = $2
-         AND is_active = true
          AND effective_from <= $3
          AND (effective_to IS NULL OR effective_to >= $3)
          AND deleted_at IS NULL

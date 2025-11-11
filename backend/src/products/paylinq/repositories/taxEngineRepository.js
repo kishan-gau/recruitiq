@@ -75,7 +75,6 @@ class TaxEngineRepository {
          AND ($4::varchar IS NULL OR trs.locality = $4 OR trs.locality IS NULL)
          AND trs.effective_from <= $5
          AND (trs.effective_to IS NULL OR trs.effective_to >= $5)
-         AND trs.is_active = true
          AND trs.deleted_at IS NULL
        GROUP BY trs.id
        ORDER BY trs.tax_type, trs.effective_from DESC`,
@@ -489,7 +488,6 @@ class TaxEngineRepository {
          AND ($3::varchar IS NULL OR state = $3 OR state IS NULL)
          AND effective_from <= $4
          AND (effective_to IS NULL OR effective_to >= $4)
-         AND is_active = true
          AND deleted_at IS NULL
        ORDER BY allowance_type`,
       [organizationId, country, state, effectiveDate],
@@ -590,7 +588,6 @@ class TaxEngineRepository {
          AND ($3::varchar IS NULL OR state = $3 OR state IS NULL)
          AND effective_from <= $4
          AND (effective_to IS NULL OR effective_to >= $4)
-         AND is_active = true
          AND deleted_at IS NULL
        ORDER BY cost_type`,
       [organizationId, country, state, effectiveDate],
@@ -618,7 +615,6 @@ class TaxEngineRepository {
          AND trs.country = 'SR'
          AND trs.tax_type = 'wage_tax'
          AND EXTRACT(YEAR FROM trs.effective_from) = $2
-         AND trs.is_active = true
          AND trs.deleted_at IS NULL
        ORDER BY tb.bracket_order ASC`,
       [organizationId, year],
@@ -643,7 +639,6 @@ class TaxEngineRepository {
          AND tax_type = 'aov'
          AND effective_from <= $2
          AND (effective_to IS NULL OR effective_to >= $2)
-         AND is_active = true
          AND deleted_at IS NULL
        ORDER BY effective_from DESC
        LIMIT 1`,
@@ -669,7 +664,6 @@ class TaxEngineRepository {
          AND tax_type = 'aww'
          AND effective_from <= $2
          AND (effective_to IS NULL OR effective_to >= $2)
-         AND is_active = true
          AND deleted_at IS NULL
        ORDER BY effective_from DESC
        LIMIT 1`,

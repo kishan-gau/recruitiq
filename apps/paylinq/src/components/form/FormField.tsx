@@ -38,12 +38,12 @@ export function FormField({
       {label && (
         <label
           htmlFor={htmlFor}
-          className="block text-sm font-medium text-gray-700"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
         >
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
           {optional && !required && (
-            <span className="text-gray-400 ml-1 font-normal">(optional)</span>
+            <span className="text-gray-400 dark:text-gray-500 ml-1 font-normal">(optional)</span>
           )}
         </label>
       )}
@@ -60,7 +60,7 @@ export function FormField({
       )}
       
       {helpText && !error && (
-        <div className="flex items-start space-x-1 text-gray-500">
+        <div className="flex items-start space-x-1 text-gray-500 dark:text-gray-400">
           <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <p className="text-xs">{helpText}</p>
         </div>
@@ -85,14 +85,14 @@ export function FormSection({
   className,
 }: FormSectionProps) {
   return (
-    <div className={clsx('bg-white border border-gray-200 rounded-lg p-6', className)}>
+    <div className={clsx('bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6', className)}>
       <div className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
           {icon && <span className="mr-2">{icon}</span>}
           {title}
         </h2>
         {description && (
-          <p className="text-sm text-gray-500 mt-1">{description}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</p>
         )}
       </div>
       
@@ -132,7 +132,7 @@ export function FormActions({
 
   return (
     <div className={clsx(
-      'flex items-center space-x-4 pt-6 border-t border-gray-200',
+      'flex items-center space-x-4 pt-6 border-t border-gray-200 dark:border-gray-800',
       alignmentClasses[align],
       className
     )}>
@@ -141,7 +141,7 @@ export function FormActions({
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="px-6 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-6 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {cancelLabel}
         </button>
@@ -222,7 +222,7 @@ export function InputGroup({
   return (
     <div className={clsx('flex items-stretch', className)}>
       {prepend && (
-        <div className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l-lg">
+        <div className="inline-flex items-center px-3 border border-r-0 border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm rounded-l-lg">
           {prepend}
         </div>
       )}
@@ -232,7 +232,7 @@ export function InputGroup({
       </div>
       
       {append && (
-        <div className="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-r-lg">
+        <div className="inline-flex items-center px-3 border border-l-0 border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm rounded-r-lg">
           {append}
         </div>
       )}
@@ -254,12 +254,12 @@ export function Fieldset({
   className,
 }: FieldsetProps) {
   return (
-    <fieldset className={clsx('border border-gray-200 rounded-lg p-6', className)}>
-      <legend className="text-base font-semibold text-gray-900 px-2 -ml-2">
+    <fieldset className={clsx('border border-gray-200 dark:border-gray-800 rounded-lg p-6', className)}>
+      <legend className="text-base font-semibold text-gray-900 dark:text-white px-2 -ml-2">
         {legend}
       </legend>
       {description && (
-        <p className="text-sm text-gray-500 mt-1 mb-4">{description}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">{description}</p>
       )}
       <div className="space-y-4">
         {children}

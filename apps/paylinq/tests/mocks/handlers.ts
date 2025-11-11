@@ -161,6 +161,18 @@ export const handlers = [
   // Payroll runs - POST create
   http.post(`${API_URL}/paylinq/payroll-runs`, async ({ request }) => {
     const body = await request.json() as Record<string, unknown>
+    
+    // Simulate validation errors if needed
+    if (!body.runName || (typeof body.runName === 'string' && body.runName.trim() === '')) {
+      return HttpResponse.json({
+        success: false,
+        message: 'Validation failed',
+        details: [
+          { field: 'payrollName', message: 'Payroll name is required' }
+        ]
+      }, { status: 400 })
+    }
+    
     return HttpResponse.json({
       success: true,
       payrollRun: {
