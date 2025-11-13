@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, CheckCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CardSkeleton from '@/components/ui/CardSkeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -37,7 +37,7 @@ export default function PayStructureTemplateDetail() {
   const isLoading = templateLoading || componentsLoading;
 
   const handleBack = () => {
-    navigate('/pay-components');
+    navigate('/pay-components?tab=templates');
   };
 
   const handlePublish = () => {
@@ -169,7 +169,9 @@ export default function PayStructureTemplateDetail() {
             )}
             <button
               onClick={handleAddComponent}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+              disabled={template.status !== 'draft'}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={template.status !== 'draft' ? 'Create a new version to add components' : 'Add a new component'}
             >
               <Plus className="w-4 h-4" />
               Add Component
@@ -245,6 +247,7 @@ export default function PayStructureTemplateDetail() {
                 index={index}
                 onEdit={() => handleEditComponent(component)}
                 onDelete={() => handleDeleteComponent(component.id)}
+                isDraft={template.status === 'draft'}
               />
             ))}
           </div>
@@ -311,9 +314,12 @@ interface ComponentRowProps {
   index: number;
   onEdit: () => void;
   onDelete: () => void;
+  isDraft: boolean;
 }
 
-function ComponentRow({ component, index, onEdit, onDelete }: ComponentRowProps) {
+function ComponentRow({ component, index, onEdit, onDelete, isDraft }: ComponentRowProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const getComponentTypeColor = (type: string) => {
     switch (type) {
       case 'earnings':
@@ -347,60 +353,335 @@ function ComponentRow({ component, index, onEdit, onDelete }: ComponentRowProps)
   };
 
   return (
-    <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-      <div className="flex items-center gap-4">
-        {/* Order Number */}
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-gray-700 dark:text-gray-300">
-          {index + 1}
-        </div>
+    <div className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+      <div 
+        className="p-4 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-4">
+          {/* Order Number */}
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-gray-700 dark:text-gray-300">
+            {index + 1}
+          </div>
 
-        {/* Component Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-gray-900 dark:text-white">
-              {component.componentName}
-            </h3>
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${getComponentTypeColor(component.componentType || '')}`}>
-              {component.componentType}
-            </span>
-            {!component.isVisible && (
-              <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 rounded flex items-center gap-1">
-                <XCircle className="w-3 h-3" />
-                Hidden
+          {/* Expand/Collapse Icon */}
+          <div
+            className="flex-shrink-0 text-gray-400 transition-colors"
+            title={isExpanded ? "Collapse details" : "Expand details"}
+          >
+            {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+          </div>
+
+          {/* Component Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                {component.componentName}
+              </h3>
+              <span className={`px-2 py-0.5 text-xs font-medium rounded ${getComponentTypeColor(component.componentType || '')}`}>
+                {component.componentType}
               </span>
-            )}
+              {!component.isVisible && (
+                <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 rounded flex items-center gap-1">
+                  <XCircle className="w-3 h-3" />
+                  Hidden
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <span>Code: {component.componentCode}</span>
+              <span>•</span>
+              <span>{getCalculationDisplay(component)}</span>
+              {component.isOptional && (
+                <>
+                  <span>•</span>
+                  <span className="text-blue-600 dark:text-blue-400">Optional</span>
+                </>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-            <span>Code: {component.componentCode}</span>
-            <span>•</span>
-            <span>{getCalculationDisplay(component)}</span>
-            {component.isOptional && (
-              <>
-                <span>•</span>
-                <span className="text-blue-600 dark:text-blue-400">Optional</span>
-              </>
-            )}
-          </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onEdit}
-            className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            title="Edit"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {/* Actions */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              disabled={!isDraft}
+              className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-gray-400"
+              title={isDraft ? "Edit" : "Create a new version to edit components"}
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              disabled={!isDraft}
+              className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-gray-400"
+              title={isDraft ? "Delete" : "Create a new version to delete components"}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="px-4 pb-4 pt-0 ml-12 border-t border-gray-100 dark:border-gray-700/50 mt-2">
+          <ComponentDetails component={component} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Component Details (Expanded View)
+// ============================================================================
+
+interface ComponentDetailsProps {
+  component: PayStructureComponent;
+}
+
+function ComponentDetails({ component }: ComponentDetailsProps) {
+  const DetailRow = ({ label, value }: { label: string; value: React.ReactNode }) => {
+    if (!value && value !== 0 && value !== false) return null;
+    
+    return (
+      <div className="flex items-start py-1.5">
+        <div className="w-40 text-xs font-medium text-gray-600 dark:text-gray-400">
+          {label}
+        </div>
+        <div className="flex-1 text-xs text-gray-900 dark:text-white">
+          {value}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3">
+      {/* Basic Information */}
+      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+        <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">Basic Information</h4>
+        <div className="space-y-0.5">
+          <DetailRow label="Component Code" value={component.componentCode} />
+          <DetailRow label="Component Type" value={component.componentType} />
+          <DetailRow label="Description" value={component.description} />
+          <DetailRow label="Display Order" value={component.sequenceOrder} />
+          <DetailRow label="Visible to Employee" value={component.isVisible ? 'Yes' : 'No'} />
+          <DetailRow label="Optional Component" value={component.isOptional ? 'Yes' : 'No'} />
+          <DetailRow label="Taxable" value={component.isTaxable ? 'Yes' : 'No'} />
+          <DetailRow label="Affects Net Pay" value={component.affectsNetPay ? 'Yes' : 'No'} />
+        </div>
+      </div>
+
+      {/* Calculation Details */}
+      <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+        <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">Calculation Method</h4>
+        <div className="space-y-0.5">
+          <DetailRow label="Calculation Type" value={component.calculationType} />
+          
+          {component.calculationType === 'fixed' && (
+            <DetailRow label="Fixed Amount" value={`${component.fixedAmount || 0} SRD`} />
+          )}
+          
+          {component.calculationType === 'percentage' && (
+            <>
+              <DetailRow label="Percentage Value" value={`${component.percentageValue || 0}%`} />
+              <DetailRow label="Percentage Base" value={component.percentageBase} />
+            </>
+          )}
+          
+          {component.calculationType === 'hourly_rate' && (
+            <DetailRow label="Hourly Rate" value={`${component.hourlyRate || 0} SRD/hr`} />
+          )}
+          
+          {component.calculationType === 'formula' && (
+            <DetailRow 
+              label="Formula" 
+              value={
+                <code className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-900 rounded text-xs font-mono">
+                  {component.formula || 'No formula defined'}
+                </code>
+              } 
+            />
+          )}
+          
+          {component.calculationType === 'tiered' && component.tieredRates && component.tieredRates.length > 0 && (
+            <DetailRow 
+              label="Tiered Rates" 
+              value={
+                <div className="space-y-1">
+                  {component.tieredRates.map((tier: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-1.5 text-xs">
+                      <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-900 rounded font-mono text-xs">
+                        {tier.minValue || 0} - {tier.maxValue || '∞'}
+                      </span>
+                      <span>→</span>
+                      <span className="font-medium">{tier.rate}%</span>
+                    </div>
+                  ))}
+                </div>
+              } 
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Min/Max Constraints */}
+      {(component.minValue !== null || component.maxValue !== null) && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+          <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">Value Constraints</h4>
+          <div className="space-y-0.5">
+            {component.minValue !== null && (
+              <DetailRow label="Minimum Value" value={`${component.minValue} SRD`} />
+            )}
+            {component.maxValue !== null && (
+              <DetailRow label="Maximum Value" value={`${component.maxValue} SRD`} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Overrides & Patterns - Compact badges */}
+      {(component.allowWorkerOverride || component.hasOverrides || component.temporalPatternId) && (
+        <div className="col-span-1 md:col-span-2 xl:col-span-3 flex flex-wrap gap-2">
+          {(component.allowWorkerOverride || component.hasOverrides) && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-xs">
+              <CheckCircle className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="font-medium text-blue-900 dark:text-blue-100">Worker-Specific Overrides Allowed</span>
+              {component.overrideAllowedFields && component.overrideAllowedFields.length > 0 && (
+                <span className="text-blue-700 dark:text-blue-300">
+                  ({component.overrideAllowedFields.join(', ')})
+                </span>
+              )}
+            </div>
+          )}
+          {component.temporalPatternId && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded text-xs">
+              <CheckCircle className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+              <span className="font-medium text-purple-900 dark:text-purple-100">Temporal Pattern: {component.temporalPatternId}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Proration */}
+      {component.prorationMethod && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+          <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">Proration</h4>
+          <div className="space-y-0.5">
+            <DetailRow label="Method" value={component.prorationMethod} />
+          </div>
+        </div>
+      )}
+
+      {/* Rules & Conditions */}
+      {(component.applicabilityRules || component.conditionExpression || component.conditions) && (
+        <div className="col-span-1 md:col-span-2 xl:col-span-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3">
+          <h4 className="text-xs font-semibold text-orange-900 dark:text-orange-100 mb-2 uppercase tracking-wide">Rules & Conditions</h4>
+          <div className="space-y-1.5">
+            {component.applicabilityRules && (
+              <div>
+                <div className="text-xs font-medium text-orange-800 dark:text-orange-200 mb-0.5">
+                  Applicability Rules:
+                </div>
+                <pre className="text-xs bg-white dark:bg-gray-900 p-1.5 rounded border border-orange-200 dark:border-orange-800 overflow-x-auto font-mono">
+                  {typeof component.applicabilityRules === 'string' 
+                    ? component.applicabilityRules 
+                    : JSON.stringify(component.applicabilityRules, null, 2)}
+                </pre>
+              </div>
+            )}
+            {component.conditionExpression && (
+              <div>
+                <div className="text-xs font-medium text-orange-800 dark:text-orange-200 mb-0.5">
+                  Condition Expression:
+                </div>
+                <code className="block text-xs bg-white dark:bg-gray-900 p-1.5 rounded border border-orange-200 dark:border-orange-800 font-mono">
+                  {component.conditionExpression}
+                </code>
+              </div>
+            )}
+            {component.conditions && (
+              <div>
+                <div className="text-xs font-medium text-orange-800 dark:text-orange-200 mb-0.5">
+                  Conditions:
+                </div>
+                <pre className="text-xs bg-white dark:bg-gray-900 p-1.5 rounded border border-orange-200 dark:border-orange-800 overflow-x-auto font-mono">
+                  {typeof component.conditions === 'string' 
+                    ? component.conditions 
+                    : JSON.stringify(component.conditions, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Settings */}
+      {(component.roundingMethod || component.roundingPrecision !== undefined || 
+        component.currency || component.payFrequency || component.compoundingFrequency) && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+          <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">Advanced Settings</h4>
+          <div className="space-y-0.5">
+            {component.roundingMethod && (
+              <DetailRow label="Rounding Method" value={component.roundingMethod} />
+            )}
+            {component.roundingPrecision !== undefined && (
+              <DetailRow label="Rounding Precision" value={component.roundingPrecision} />
+            )}
+            {component.currency && (
+              <DetailRow label="Currency" value={component.currency} />
+            )}
+            {component.payFrequency && (
+              <DetailRow label="Pay Frequency" value={component.payFrequency} />
+            )}
+            {component.compoundingFrequency && (
+              <DetailRow label="Compounding Frequency" value={component.compoundingFrequency} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Additional Metadata */}
+      {(component.metadata || component.notes || component.tags) && (
+        <div className="col-span-1 md:col-span-2 xl:col-span-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+          <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">Additional Information</h4>
+          <div className="space-y-0.5">
+            {component.notes && (
+              <DetailRow label="Notes" value={component.notes} />
+            )}
+            {component.tags && (
+              <DetailRow 
+                label="Tags" 
+                value={
+                  Array.isArray(component.tags) 
+                    ? component.tags.join(', ') 
+                    : component.tags
+                } 
+              />
+            )}
+            {component.metadata && (
+              <DetailRow 
+                label="Metadata" 
+                value={
+                  <pre className="text-xs bg-gray-100 dark:bg-gray-900 p-1.5 rounded overflow-x-auto font-mono">
+                    {typeof component.metadata === 'string' 
+                      ? component.metadata 
+                      : JSON.stringify(component.metadata, null, 2)}
+                  </pre>
+                } 
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

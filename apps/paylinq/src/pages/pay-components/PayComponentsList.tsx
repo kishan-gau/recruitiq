@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, DollarSign, Minus, Edit2, Trash2, Package, FileText, Users } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CardSkeleton from '@/components/ui/CardSkeleton';
@@ -27,7 +27,16 @@ type TabType = 'components' | 'templates';
 
 export default function PayComponentsList() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabType>('components');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabType>((searchParams.get('tab') as TabType) || 'components');
+
+  // Update activeTab when URL changes
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabType;
+    if (tabParam === 'templates' || tabParam === 'components') {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false);
@@ -36,14 +45,14 @@ export default function PayComponentsList() {
   const [selectedTemplate, setSelectedTemplate] = useState<PayStructureTemplate | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
 
-  // React Query hooks - Components
-  const { data: components, isLoading, error } = usePayComponents();
+  // React Query hooks - Components (only fetch when components tab is active)
+  const { data: components, isLoading, error } = usePayComponents({ enabled: activeTab === 'components' });
   const createMutation = useCreatePayComponent();
   const updateMutation = useUpdatePayComponent();
   const deleteMutation = useDeletePayComponent();
 
-  // React Query hooks - Templates
-  const { data: templates, isLoading: templatesLoading, error: templatesError } = usePayStructureTemplates();
+  // React Query hooks - Templates (only fetch when templates tab is active)
+  const { data: templates, isLoading: templatesLoading, error: templatesError } = usePayStructureTemplates({ enabled: activeTab === 'templates' });
   const createTemplateMutation = useCreatePayStructureTemplate();
   const updateTemplateMutation = useUpdatePayStructureTemplate();
   const publishTemplateMutation = usePublishPayStructureTemplate();
@@ -89,10 +98,37 @@ export default function PayComponentsList() {
   const earnings = components?.filter((c) => c.type === 'earning') || [];
   const deductions = components?.filter((c) => c.type === 'deduction') || [];
 
-  // Filter templates by status
-  const draftTemplates = templates?.filter((t: PayStructureTemplate) => t.status === 'draft') || [];
-  const publishedTemplates = templates?.filter((t: PayStructureTemplate) => t.status === 'active') || [];
+  // Filter and deduplicate templates by status
+  // For published: show only the latest active version per template code
+  const publishedTemplatesMap = new Map<string, PayStructureTemplate>();
+  templates?.filter((t: PayStructureTemplate) => t.status === 'active')
+    .forEach((template) => {
+      const existing = publishedTemplatesMap.get(template.templateCode);
+      if (!existing || template.effectiveFrom > existing.effectiveFrom) {
+        publishedTemplatesMap.set(template.templateCode, template);
+      }
+    });
+  const publishedTemplates = Array.from(publishedTemplatesMap.values());
+
+  // For drafts: show only templates that have a draft version
+  const draftTemplatesMap = new Map<string, PayStructureTemplate>();
+  templates?.filter((t: PayStructureTemplate) => t.status === 'draft')
+    .forEach((template) => {
+      const existing = draftTemplatesMap.get(template.templateCode);
+      if (!existing || template.effectiveFrom > existing.effectiveFrom) {
+        draftTemplatesMap.set(template.templateCode, template);
+      }
+    });
+  const draftTemplates = Array.from(draftTemplatesMap.values());
+
+  // For deprecated: show all deprecated versions
   const deprecatedTemplates = templates?.filter((t: PayStructureTemplate) => t.status === 'deprecated') || [];
+
+  // Create map of active versions for draft templates
+  const activeVersionsMap = new Map<string, string>();
+  publishedTemplates.forEach((template) => {
+    activeVersionsMap.set(template.templateCode, `v${template.version}`);
+  });
 
   // Template handlers
   const handleAddTemplate = () => {
@@ -218,6 +254,7 @@ export default function PayComponentsList() {
           draftTemplates={draftTemplates}
           publishedTemplates={publishedTemplates}
           deprecatedTemplates={deprecatedTemplates}
+          activeVersionsMap={activeVersionsMap}
           handleAddTemplate={handleAddTemplate}
           handleEditTemplate={handleEditTemplate}
           handlePublishTemplate={handlePublishTemplate}
@@ -512,6 +549,7 @@ interface TemplatesTabContentProps {
   draftTemplates: PayStructureTemplate[];
   publishedTemplates: PayStructureTemplate[];
   deprecatedTemplates: PayStructureTemplate[];
+  activeVersionsMap: Map<string, string>;
   handleAddTemplate: () => void;
   handleEditTemplate: (template: PayStructureTemplate) => void;
   handlePublishTemplate: (templateId: string) => void;
@@ -525,13 +563,14 @@ function TemplatesTabContent({
   draftTemplates,
   publishedTemplates,
   deprecatedTemplates,
+  activeVersionsMap,
   handleAddTemplate,
   handleEditTemplate,
   handlePublishTemplate,
   handleDeprecateTemplate,
   navigate,
 }: TemplatesTabContentProps) {
-  const TemplateCard = ({ template }: { template: PayStructureTemplate }) => (
+  const TemplateCard = ({ template, activeVersion }: { template: PayStructureTemplate; activeVersion?: string }) => (
     <div 
       className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
       onClick={() => navigate(`/pay-structures/${template.id}`)}
@@ -541,8 +580,8 @@ function TemplatesTabContent({
           <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
             <FileText className="w-5 h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-semibold text-gray-900 dark:text-white">
                 {template.templateName}
               </h3>
@@ -556,6 +595,12 @@ function TemplatesTabContent({
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {template.templateCode} • v{template.version}
             </p>
+            {activeVersion && template.status === 'draft' && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+                <span className="text-gray-400">↳</span>
+                <span>Active: {activeVersion}</span>
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -610,7 +655,7 @@ function TemplatesTabContent({
         <div>
           <span className="text-gray-500 dark:text-gray-400">Components:</span>
           <p className="font-medium text-gray-900 dark:text-white mt-0.5">
-            {template.components?.length || 0}
+            {template.componentCount || template.componentsCount || 0}
           </p>
         </div>
         <div>
@@ -729,7 +774,11 @@ function TemplatesTabContent({
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {draftTemplates.map((template) => (
-                  <TemplateCard key={template.id} template={template} />
+                  <TemplateCard 
+                    key={template.id} 
+                    template={template} 
+                    activeVersion={activeVersionsMap.get(template.templateCode)}
+                  />
                 ))}
               </div>
             </div>

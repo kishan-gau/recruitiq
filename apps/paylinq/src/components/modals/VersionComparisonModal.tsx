@@ -11,9 +11,9 @@ interface VersionComparisonModalProps {
 }
 
 interface ComponentChange {
-  component_code: string;
-  component_name: string;
-  status: 'added' | 'removed' | 'modified';
+  componentCode: string;
+  componentName: string;
+  changeType: 'added' | 'removed' | 'modified';
   differences?: Array<{
     field: string;
     oldValue: any;
@@ -28,9 +28,14 @@ export default function VersionComparisonModal({
   toId,
 }: VersionComparisonModalProps) {
   const { comparison, isLoading, error } = useCompareVersions(fromId, toId);
+  
+  // Debug logging
+  console.log('VersionComparisonModal - comparison data:', comparison);
+  console.log('VersionComparisonModal - isLoading:', isLoading);
+  console.log('VersionComparisonModal - error:', error);
 
-  const getChangeIcon = (status: string) => {
-    switch (status) {
+  const getChangeIcon = (changeType: string) => {
+    switch (changeType) {
       case 'added':
         return <Plus className="h-4 w-4 text-green-600" />;
       case 'removed':
@@ -42,8 +47,8 @@ export default function VersionComparisonModal({
     }
   };
 
-  const getChangeVariant = (status: string): 'green' | 'red' | 'yellow' | 'gray' => {
-    switch (status) {
+  const getChangeVariant = (changeType: string): 'green' | 'red' | 'yellow' | 'gray' => {
+    switch (changeType) {
       case 'added':
         return 'green';
       case 'removed':
@@ -95,51 +100,53 @@ export default function VersionComparisonModal({
         </div>
       )}
 
-      {comparison && (
+      {comparison && (comparison.fromVersion || comparison.from) && (comparison.toVersion || comparison.to) && (
         <div className="space-y-4">
           {/* Version Info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <p className="text-xs text-gray-600 uppercase mb-1">From Version</p>
-              <p className="text-lg font-semibold">v{comparison.fromVersion.versionString}</p>
+              <p className="text-lg font-semibold">v{(comparison.fromVersion || comparison.from).versionString}</p>
               <div className="flex items-center gap-2 mt-2">
-                <Badge variant="gray">{comparison.fromVersion.status.toUpperCase()}</Badge>
+                <Badge variant="gray">{(comparison.fromVersion || comparison.from).status.toUpperCase()}</Badge>
                 <span className="text-sm text-gray-600">
-                  {comparison.fromVersion.componentsCount} components
+                  {(comparison.fromVersion || comparison.from).componentCount || (comparison.fromVersion || comparison.from).componentsCount} components
                 </span>
               </div>
             </div>
 
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <p className="text-xs text-gray-600 uppercase mb-1">To Version</p>
-              <p className="text-lg font-semibold">v{comparison.toVersion.versionString}</p>
+              <p className="text-lg font-semibold">v{(comparison.toVersion || comparison.to).versionString}</p>
               <div className="flex items-center gap-2 mt-2">
-                <Badge variant="gray">{comparison.toVersion.status.toUpperCase()}</Badge>
+                <Badge variant="gray">{(comparison.toVersion || comparison.to).status.toUpperCase()}</Badge>
                 <span className="text-sm text-gray-600">
-                  {comparison.toVersion.componentsCount} components
+                  {(comparison.toVersion || comparison.to).componentCount || (comparison.toVersion || comparison.to).componentsCount} components
                 </span>
               </div>
             </div>
           </div>
 
           {/* Summary */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm font-medium text-gray-900 mb-2">Summary of Changes</p>
-            <div className="flex gap-3">
-              <Badge variant="green">
-                {comparison.summary.addedCount} Added
-              </Badge>
-              <Badge variant="yellow">
-                {comparison.summary.modifiedCount} Modified
-              </Badge>
-              <Badge variant="red">
-                {comparison.summary.removedCount} Removed
-              </Badge>
+          {comparison.summary && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm font-medium text-gray-900 mb-2">Summary of Changes</p>
+              <div className="flex gap-3">
+                <Badge variant="green">
+                  {comparison.summary.addedCount || 0} Added
+                </Badge>
+                <Badge variant="yellow">
+                  {comparison.summary.modifiedCount || 0} Modified
+                </Badge>
+                <Badge variant="red">
+                  {comparison.summary.removedCount || 0} Removed
+                </Badge>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Component Changes */}
-          {comparison.changes && comparison.changes.length > 0 ? (
+          {comparison.changes && Array.isArray(comparison.changes) && comparison.changes.length > 0 ? (
             <div>
               <p className="text-sm font-medium text-gray-900 mb-2">Component Changes</p>
               <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -150,17 +157,17 @@ export default function VersionComparisonModal({
                       className="border-b border-gray-200 last:border-b-0"
                     >
                       <div className="p-3 bg-white hover:bg-gray-50 flex items-start gap-3">
-                        <div className="mt-0.5">{getChangeIcon(change.status)}</div>
+                        <div className="mt-0.5">{getChangeIcon(change.changeType)}</div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-mono text-sm font-medium">
-                              {change.component_code}
+                              {change.componentCode}
                             </span>
-                            <Badge variant={getChangeVariant(change.status)}>
-                              {change.status.toUpperCase()}
+                            <Badge variant={getChangeVariant(change.changeType)}>
+                              {change.changeType.toUpperCase()}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-700">{change.component_name}</p>
+                          <p className="text-sm text-gray-700">{change.componentName}</p>
                           
                           {change.differences && change.differences.length > 0 && (
                             <div className="mt-2 space-y-1 pl-4 border-l-2 border-gray-200">

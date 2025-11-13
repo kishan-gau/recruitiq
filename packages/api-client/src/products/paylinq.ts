@@ -1745,6 +1745,13 @@ export class PaylinqAPI {
   }
 
   /**
+   * Delete pay structure template (draft versions only)
+   */
+  async deletePayStructureTemplate(id: string) {
+    return this.client.delete(`${this.basePath}/pay-structures/templates/${id}`);
+  }
+
+  /**
    * Create new version of template
    */
   async createPayStructureTemplateVersion(id: string, data: { versionType: string; changeSummary: string }) {
@@ -2021,6 +2028,116 @@ export class PaylinqAPI {
   async deletePayslipTemplateAssignment(id: string, assignmentId: string) {
     return this.client.delete<ApiResponse<void>>(
       `${this.basePath}/payslip-templates/${id}/assignments/${assignmentId}`
+    );
+  }
+
+  // ==================== TEMPORAL PATTERNS ====================
+
+  /**
+   * Test temporal pattern against workers
+   * POST /api/paylinq/patterns/test
+   */
+  async testTemporalPattern(data: {
+    pattern: {
+      patternType: 'day_of_week' | 'shift_type' | 'station' | 'role' | 'hours_threshold' | 'combined';
+      dayOfWeek?: 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
+      consecutiveCount: number;
+      lookbackPeriodDays?: number;
+      shiftTypeId?: string;
+      stationId?: string;
+      roleId?: string;
+      hoursThreshold?: number;
+      comparisonOperator?: 'greater_than' | 'less_than' | 'equals' | 'greater_or_equal' | 'less_or_equal';
+      combinedPatterns?: any[];
+      logicalOperator?: 'AND' | 'OR';
+    };
+    employeeIds: string[];
+    asOfDate?: string;
+  }) {
+    return this.client.post<ApiResponse<{
+      totalTested: number;
+      qualifiedCount: number;
+      notQualifiedCount: number;
+      qualifiedWorkers: any[];
+      notQualifiedWorkers: any[];
+      allResults: any[];
+    }>>(
+      `${this.basePath}/patterns/test`,
+      data
+    );
+  }
+
+  /**
+   * Evaluate temporal pattern for single worker
+   * POST /api/paylinq/patterns/evaluate
+   */
+  async evaluateTemporalPattern(data: {
+    pattern: any;
+    employeeId: string;
+    asOfDate?: string;
+  }) {
+    return this.client.post<ApiResponse<{
+      qualified: boolean;
+      patternType: string;
+      metadata: any;
+      executionTime: number;
+      evaluatedAt: string;
+    }>>(
+      `${this.basePath}/patterns/evaluate`,
+      data
+    );
+  }
+
+  /**
+   * Get available shift types for pattern configuration
+   * GET /api/paylinq/patterns/shift-types
+   */
+  async getPatternShiftTypes(params?: PaginationParams) {
+    return this.client.get<PaginatedResponse<any>>(
+      `${this.basePath}/patterns/shift-types`,
+      { params }
+    );
+  }
+
+  /**
+   * Get available stations for pattern configuration
+   * GET /api/paylinq/patterns/stations
+   */
+  async getPatternStations(params?: PaginationParams) {
+    return this.client.get<PaginatedResponse<{
+      id: string;
+      stationName: string;
+      stationCode: string;
+      locationId: string;
+    }>>(
+      `${this.basePath}/patterns/stations`,
+      { params }
+    );
+  }
+
+  /**
+   * Get available roles for pattern configuration
+   * GET /api/paylinq/patterns/roles
+   */
+  async getPatternRoles(params?: PaginationParams) {
+    return this.client.get<PaginatedResponse<{
+      id: string;
+      roleName: string;
+      roleCode: string;
+      skillLevel: string;
+    }>>(
+      `${this.basePath}/patterns/roles`,
+      { params }
+    );
+  }
+
+  /**
+   * Get pattern validation schema
+   * GET /api/paylinq/patterns/validation-schema
+   */
+  async getPatternValidationSchema() {
+    return this.client.get<ApiResponse<{ schema: any }>>(
+      `${this.basePath}/patterns/validation-schema`
     );
   }
 }

@@ -75,10 +75,11 @@ export function TextArea({ error, className, ...props }: TextAreaProps) {
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   error?: boolean;
-  options: { value: string; label: string }[];
+  options?: { value: string; label: string }[];
+  children?: React.ReactNode;
 }
 
-export function Select({ error, options, className, ...props }: SelectProps) {
+export function Select({ error, options = [], className, children, ...props }: SelectProps) {
   return (
     <select
       className={clsx(
@@ -92,7 +93,7 @@ export function Select({ error, options, className, ...props }: SelectProps) {
       )}
       {...props}
     >
-      {options.map((option) => (
+      {children || options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
         </option>

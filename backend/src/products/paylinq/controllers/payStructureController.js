@@ -232,6 +232,42 @@ export async function deprecateTemplate(req, res) {
 }
 
 /**
+ * Delete pay structure template (draft versions only)
+ * DELETE /api/paylinq/pay-structures/templates/:id
+ */
+export async function deleteTemplate(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+    const { id } = req.params;
+
+    await payStructureService.deleteTemplate(id, organizationId, userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Pay structure template deleted successfully'
+    });
+  } catch (error) {
+    logger.error('Error deleting pay structure template', {
+      error: error.message,
+      templateId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 
+      : error.name === 'ValidationError' ? 400 
+      : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
  * Create new version of template
  * POST /api/paylinq/pay-structures/templates/:id/versions
  */
@@ -906,7 +942,7 @@ export async function compareTemplateVersions(req, res) {
 
     res.status(200).json({
       success: true,
-      comparison: comparison
+      ...comparison
     });
   } catch (error) {
     logger.error('Error comparing template versions', {

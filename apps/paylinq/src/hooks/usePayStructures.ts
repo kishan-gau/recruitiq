@@ -134,8 +134,10 @@ const PAY_STRUCTURE_OVERRIDES_QUERY_KEY = ['payStructureOverrides'];
 /**
  * Hook to fetch all pay structure templates
  */
-export function usePayStructureTemplates(params?: Record<string, any>) {
+export function usePayStructureTemplates(options?: { params?: Record<string, any>; enabled?: boolean }) {
   const { paylinq } = usePaylinqAPI();
+  const params = options?.params;
+  const enabled = options?.enabled !== undefined ? options.enabled : true;
 
   return useQuery({
     queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, params],
@@ -143,6 +145,7 @@ export function usePayStructureTemplates(params?: Record<string, any>) {
       const response = await paylinq.getPayStructureTemplates(params);
       return response.templates || [];
     },
+    enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -224,6 +227,10 @@ export function usePublishPayStructureTemplate() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: PAY_STRUCTURE_TEMPLATES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, data.id] });
+      // Invalidate version history to reflect status change
+      if (data.templateCode) {
+        queryClient.invalidateQueries({ queryKey: ['templateVersions', data.templateCode] });
+      }
       success(`Template "${data.templateName}" published successfully`);
     },
     onError: (err: any) => {
@@ -248,10 +255,37 @@ export function useDeprecatePayStructureTemplate() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: PAY_STRUCTURE_TEMPLATES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, data.id] });
+      // Invalidate version history to reflect status change
+      if (data.templateCode) {
+        queryClient.invalidateQueries({ queryKey: ['templateVersions', data.templateCode] });
+      }
       success(`Template "${data.templateName}" deprecated successfully`);
     },
     onError: (err: any) => {
       error(err?.message || 'Failed to deprecate template');
+    },
+  });
+}
+
+/**
+ * Hook to delete pay structure template (draft versions only)
+ */
+export function useDeletePayStructureTemplate() {
+  const { paylinq } = usePaylinqAPI();
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      await paylinq.deletePayStructureTemplate(id);
+      return { id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PAY_STRUCTURE_TEMPLATES_QUERY_KEY });
+      success('Template deleted successfully');
+    },
+    onError: (err: any) => {
+      error(err?.message || 'Failed to delete template');
     },
   });
 }

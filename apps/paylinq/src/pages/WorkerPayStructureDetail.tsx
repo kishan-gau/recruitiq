@@ -18,19 +18,22 @@ export default function WorkerPayStructureDetail() {
     enabled: !!employeeId,
   });
 
-  // Fetch worker details (simplified - you'd integrate with your actual worker/employee API)
+  // Fetch worker details from API
   const { data: worker, isLoading: loadingWorker } = useQuery({
     queryKey: ['worker', employeeId],
     queryFn: async () => {
-      // This would be your actual worker API call
-      // For now, return mock data
-      return {
-        id: employeeId,
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        jobTitle: 'Senior Developer',
-      };
+      const response = await paylinq.getWorker(employeeId!);
+      if (response.success && response.employee) {
+        const emp = response.employee;
+        return {
+          id: emp.employeeId || emp.employee_id || emp.id,
+          firstName: emp.first_name || emp.firstName || '',
+          lastName: emp.last_name || emp.lastName || '',
+          email: emp.email || '',
+          jobTitle: emp.job_title || emp.jobTitle || '',
+        };
+      }
+      return null;
     },
     enabled: !!employeeId,
   });

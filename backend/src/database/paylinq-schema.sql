@@ -1672,8 +1672,7 @@ CREATE TABLE IF NOT EXISTS payroll.pay_structure_template (
   deleted_by UUID REFERENCES hris.user_account(id),
   
   -- Constraints
-  CONSTRAINT unique_template_version 
-    UNIQUE (organization_id, template_code, version_major, version_minor, version_patch),
+  -- Note: unique_template_version is enforced via partial index below to exclude soft-deleted records
   
   -- Ensure only one organization default per time period
   CONSTRAINT unique_org_default_period 
@@ -1688,6 +1687,9 @@ CREATE TABLE IF NOT EXISTS payroll.pay_structure_template (
 CREATE INDEX idx_pay_structure_template_org ON payroll.pay_structure_template(organization_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pay_structure_template_status ON payroll.pay_structure_template(organization_id, status) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pay_structure_template_default ON payroll.pay_structure_template(organization_id, is_organization_default, effective_from, effective_to) WHERE is_organization_default = true AND deleted_at IS NULL;
+
+-- Unique constraint for template versions (excluding soft-deleted records)
+CREATE UNIQUE INDEX unique_template_version_active ON payroll.pay_structure_template(organization_id, template_code, version_major, version_minor, version_patch) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pay_structure_template_code ON payroll.pay_structure_template(organization_id, template_code, version_major DESC, version_minor DESC, version_patch DESC) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pay_structure_template_version ON payroll.pay_structure_template(template_code, version_major, version_minor, version_patch) WHERE deleted_at IS NULL;
 CREATE INDEX idx_pay_structure_template_search ON payroll.pay_structure_template USING gin(tags) WHERE deleted_at IS NULL;

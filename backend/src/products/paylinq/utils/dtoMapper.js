@@ -1088,9 +1088,20 @@ export function mapWorkerOverrideDbArrayToApi(dbDataArray) {
   return dbDataArray.map(item => mapWorkerOverrideDbToApi(item));
 }
 
+/**
+ * Convert a field name using a mapping object
+ * @param {string} fieldName - The field name to convert
+ * @param {Object} mapping - The mapping object (e.g., PAY_STRUCTURE_COMPONENT_DB_TO_API)
+ * @returns {string} Converted field name or original if not found
+ */
+export function convertFieldName(fieldName, mapping) {
+  return mapping[fieldName] || fieldName;
+}
+
 export default {
   mapApiToDb,
   mapDbToApi,
+  convertFieldName,
   mapDbArrayToApi,
   mapDeductionApiToDb,
   mapScheduleApiToDb,

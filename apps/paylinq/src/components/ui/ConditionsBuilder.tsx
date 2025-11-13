@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, ChevronDown } from 'lucide-react';
+import { Plus, X, ChevronDown, Calendar, ListFilter } from 'lucide-react';
 import FormField, { Input, Select } from '@/components/ui/FormField';
+import TemporalPatternBuilder from './TemporalPatternBuilder';
 
 interface Condition {
   id: string;
@@ -15,6 +16,8 @@ interface ConditionsBuilderProps {
   onChange: (jsonString: string) => void;
   disabled?: boolean;
 }
+
+type TabType = 'basic' | 'pattern';
 
 const CONDITION_FIELDS = [
   { value: 'minHours', label: 'Minimum Hours', type: 'number' },
@@ -45,9 +48,12 @@ const WORKER_TYPES = ['full-time', 'part-time', 'contractor', 'temporary', 'inte
 const EMPLOYMENT_TYPES = ['permanent', 'contract', 'temporary', 'seasonal', 'probation'];
 
 export default function ConditionsBuilder({ value, onChange, disabled = false }: ConditionsBuilderProps) {
+  const [activeTab, setActiveTab] = useState<TabType>('basic');
   const [conditions, setConditions] = useState<Condition[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [rawJson, setRawJson] = useState('');
+  const [pattern, setPattern] = useState<any>(null);
+  const [parsedConditions, setParsedConditions] = useState<any>(null);
 
   // Parse incoming JSON string to conditions array
   useEffect(() => {
@@ -55,9 +61,18 @@ export default function ConditionsBuilder({ value, onChange, disabled = false }:
       try {
         const parsed = JSON.parse(value);
         setRawJson(value);
+        setParsedConditions(parsed);
         
-        // Convert object to conditions array
-        const conditionsArray: Condition[] = Object.entries(parsed).map(([key, val], index) => ({
+        // Extract pattern if it exists
+        if (parsed.pattern) {
+          setPattern(parsed.pattern);
+        }
+        
+        // Convert non-pattern fields to conditions array
+        const basicConditions = { ...parsed };
+        delete basicConditions.pattern;
+        
+        const conditionsArray: Condition[] = Object.entries(basicConditions).map(([key, val], index) => ({
           id: `${key}-${index}`,
           field: key,
           operator: 'equals',
@@ -84,6 +99,11 @@ export default function ConditionsBuilder({ value, onChange, disabled = false }:
       }
     });
 
+    // Add pattern if it exists
+    if (pattern) {
+      conditionsObject.pattern = pattern;
+    }
+
     const jsonString = Object.keys(conditionsObject).length > 0 
       ? JSON.stringify(conditionsObject, null, 2)
       : '';
@@ -93,7 +113,12 @@ export default function ConditionsBuilder({ value, onChange, disabled = false }:
       onChange(jsonString);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conditions, showAdvanced]);
+  }, [conditions, pattern, showAdvanced]);
+
+  // Handle pattern changes
+  const handlePatternChange = (newPattern: any) => {
+    setPattern(newPattern);
+  };
 
   const addCondition = () => {
     const newCondition: Condition = {
@@ -200,6 +225,45 @@ export default function ConditionsBuilder({ value, onChange, disabled = false }:
     );
   };
 
+  // Render tab navigation
+  const renderTabs = () => (
+    <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+      <button
+        type="button"
+        onClick={() => setActiveTab('basic')}
+        className={`
+          flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors
+          ${activeTab === 'basic'
+            ? 'border-emerald-600 text-emerald-600'
+            : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+          }
+        `}
+      >
+        <ListFilter className="w-4 h-4" />
+        Basic Conditions
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab('pattern')}
+        className={`
+          flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors
+          ${activeTab === 'pattern'
+            ? 'border-emerald-600 text-emerald-600'
+            : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
+          }
+        `}
+      >
+        <Calendar className="w-4 h-4" />
+        Pattern Conditions
+        {pattern && (
+          <span className="ml-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded">
+            Active
+          </span>
+        )}
+      </button>
+    </div>
+  );
+
   if (showAdvanced) {
     return (
       <div className="space-y-3">
@@ -254,7 +318,17 @@ export default function ConditionsBuilder({ value, onChange, disabled = false }:
         </button>
       </div>
 
-      {conditions.length === 0 ? (
+      {renderTabs()}
+
+      {activeTab === 'pattern' ? (
+        <TemporalPatternBuilder
+          value={pattern}
+          onChange={handlePatternChange}
+          disabled={disabled}
+        />
+      ) : (
+        <div className="space-y-4">
+          {conditions.length === 0 ? (
         <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
             No conditions set. This component will apply to all workers.
@@ -269,9 +343,9 @@ export default function ConditionsBuilder({ value, onChange, disabled = false }:
             Add First Condition
           </button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {conditions.map((condition, index) => (
+          ) : (
+            <div className="space-y-3">
+              {conditions.map((condition, index) => (
             <div
               key={condition.id}
               className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-800/50"
@@ -368,23 +442,25 @@ export default function ConditionsBuilder({ value, onChange, disabled = false }:
             </div>
           ))}
 
-          <button
-            type="button"
-            onClick={addCondition}
-            disabled={disabled}
-            className="w-full py-2 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors disabled:opacity-50"
-          >
-            <Plus className="w-4 h-4 inline mr-2" />
-            Add Another Condition
-          </button>
+            <button
+              type="button"
+              onClick={addCondition}
+              disabled={disabled}
+              className="w-full py-2 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:border-blue-400 hover:text-blue-600 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-colors disabled:opacity-50"
+            >
+              <Plus className="w-4 h-4 inline mr-2" />
+              Add Another Condition
+            </button>
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-xs text-blue-900 dark:text-blue-100">
+              <strong>💡 Tip:</strong> Basic conditions use simple field matching (e.g., "minHours = 40"). For time-based patterns like "3 consecutive Sundays", switch to the Pattern Conditions tab.
+            </p>
+          </div>
         </div>
       )}
-
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-        <p className="text-xs text-blue-900 dark:text-blue-100">
-          <strong>💡 Tip:</strong> Conditions determine when this component applies. For example, "minHours = 40" means this component only applies if the worker has at least 40 hours.
-        </p>
       </div>
+      )}
     </div>
   );
 }

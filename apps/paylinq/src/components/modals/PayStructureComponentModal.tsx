@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, DollarSign, Percent, Clock } from 'lucide-react';
+import { AlertCircle, DollarSign, Percent, Clock, FileText, ListFilter, Settings } from 'lucide-react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea } from '@/components/ui/FormField';
 import AvailableComponentsPicker from '@/components/ui/AvailableComponentsPicker';
@@ -26,6 +26,8 @@ export default function PayStructureComponentModal({
 }: PayStructureComponentModalProps) {
   const { error: showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<'basic' | 'conditions' | 'advanced'>('basic');
   const [formData, setFormData] = useState({
     componentCode: '',
     componentName: '',
@@ -51,6 +53,9 @@ export default function PayStructureComponentModal({
 
   useEffect(() => {
     if (isOpen) {
+      // Increment reset key to force child components to remount
+      setResetKey(prev => prev + 1);
+      
       if (component) {
         // Edit mode - populate form with component data
         // Ensure all fields have defined values to prevent controlled/uncontrolled warnings
@@ -306,38 +311,85 @@ export default function PayStructureComponentModal({
       isOpen={isOpen}
       onClose={onClose}
       title={component ? 'Edit Component' : 'Add Component to Template'}
+      size="xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-        {!component && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <div className="flex items-start space-x-2">
-              <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
-                  Quick Add from Existing Components
-                </p>
-                <select
-                  className="mt-2 w-full px-3 py-2 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-white"
-                  onChange={(e) => handleSelectExistingComponent(e.target.value)}
-                  value=""
-                >
-                  <option value="">Select an existing component to copy...</option>
-                  {isLoadingComponents ? (
-                    <option value="">Loading...</option>
-                  ) : availableComponents && availableComponents.length > 0 ? (
-                    availableComponents.map((comp: any) => (
-                      <option key={comp.id} value={comp.code}>
-                        {comp.name} ({comp.type})
-                      </option>
-                    ))
-                  ) : (
-                    <option value="">No components available</option>
-                  )}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} className="flex flex-col h-full">
+        {/* Tab Navigation */}
+        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4 -mt-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('basic')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'basic'
+                ? 'border-emerald-600 dark:border-blue-400 text-emerald-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Basic Info
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('conditions')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'conditions'
+                ? 'border-emerald-600 dark:border-blue-400 text-emerald-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            <ListFilter className="w-4 h-4" />
+            Rules & Conditions
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('advanced')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'advanced'
+                ? 'border-emerald-600 dark:border-blue-400 text-emerald-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            Advanced
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-4">
+            {/* Basic Info Tab */}
+            {activeTab === 'basic' && (
+              <>
+                {!component && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <div className="flex items-start space-x-2">
+                      <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
+                          Quick Add from Existing Components
+                        </p>
+                        <select
+                          className="mt-2 w-full px-3 py-2 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded-lg text-sm text-gray-900 dark:text-white"
+                          onChange={(e) => handleSelectExistingComponent(e.target.value)}
+                          value=""
+                        >
+                          <option value="">Select an existing component to copy...</option>
+                          {isLoadingComponents ? (
+                            <option value="">Loading...</option>
+                          ) : availableComponents && availableComponents.length > 0 ? (
+                            availableComponents.map((comp: any) => (
+                              <option key={comp.id} value={comp.code}>
+                                {comp.name} ({comp.type})
+                              </option>
+                            ))
+                          ) : (
+                            <option value="">No components available</option>
+                          )}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Component Code" required error={errors.componentCode}>
@@ -519,117 +571,133 @@ export default function PayStructureComponentModal({
             <span className="text-sm text-gray-900 dark:text-white">Visible on Payslip</span>
           </label>
         </div>
+              </>
+            )}
 
-        {/* Worker Override Configuration */}
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-          <label className="flex items-center space-x-2 mb-3">
-            <input
-              type="checkbox"
-              checked={formData.allowWorkerOverride}
-              onChange={(e) => setFormData({ ...formData, allowWorkerOverride: e.target.checked })}
-              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-            />
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
-              Allow Worker-Specific Overrides
-            </span>
-          </label>
-          
-          {formData.allowWorkerOverride && (
-            <div className="ml-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                Select which fields can be overridden for individual workers:
-              </p>
-              <div className="space-y-2">
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.overrideAllowedFields.includes('amount')}
-                    onChange={(e) => {
-                      const fields = e.target.checked
-                        ? [...formData.overrideAllowedFields, 'amount']
-                        : formData.overrideAllowedFields.filter(f => f !== 'amount');
-                      setFormData({ ...formData, overrideAllowedFields: fields });
-                    }}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Amount (e.g., $500 → $550)</span>
-                </label>
-                
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.overrideAllowedFields.includes('percentage')}
-                    onChange={(e) => {
-                      const fields = e.target.checked
-                        ? [...formData.overrideAllowedFields, 'percentage']
-                        : formData.overrideAllowedFields.filter(f => f !== 'percentage');
-                      setFormData({ ...formData, overrideAllowedFields: fields });
-                    }}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Percentage (e.g., 10% → 12%)</span>
-                </label>
-                
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.overrideAllowedFields.includes('formula')}
-                    onChange={(e) => {
-                      const fields = e.target.checked
-                        ? [...formData.overrideAllowedFields, 'formula']
-                        : formData.overrideAllowedFields.filter(f => f !== 'formula');
-                      setFormData({ ...formData, overrideAllowedFields: fields });
-                    }}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Formula (custom calculation)</span>
-                </label>
-                
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.overrideAllowedFields.includes('rate')}
-                    onChange={(e) => {
-                      const fields = e.target.checked
-                        ? [...formData.overrideAllowedFields, 'rate']
-                        : formData.overrideAllowedFields.filter(f => f !== 'rate');
-                      setFormData({ ...formData, overrideAllowedFields: fields });
-                    }}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Rate (hourly/daily rate)</span>
-                </label>
-                
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.overrideAllowedFields.includes('disabled')}
-                    onChange={(e) => {
-                      const fields = e.target.checked
-                        ? [...formData.overrideAllowedFields, 'disabled']
-                        : formData.overrideAllowedFields.filter(f => f !== 'disabled');
-                      setFormData({ ...formData, overrideAllowedFields: fields });
-                    }}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Can be disabled for specific workers</span>
-                </label>
-              </div>
-            </div>
-          )}
+            {/* Rules & Conditions Tab */}
+            {activeTab === 'conditions' && (
+              <ConditionsBuilder
+                key={`conditions-${resetKey}`}
+                value={formData.conditions}
+                onChange={(value) => setFormData({ ...formData, conditions: value })}
+              />
+            )}
+
+            {/* Advanced Tab */}
+            {activeTab === 'advanced' && (
+              <>
+                {/* Worker Override Configuration */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <label className="flex items-center space-x-2 mb-3">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowWorkerOverride}
+                      onChange={(e) => setFormData({ ...formData, allowWorkerOverride: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Allow Worker-Specific Overrides
+                    </span>
+                  </label>
+                  
+                  {formData.allowWorkerOverride && (
+                    <div className="ml-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        Select which fields can be overridden for individual workers:
+                      </p>
+                      <div className="space-y-2">
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.overrideAllowedFields.includes('amount')}
+                            onChange={(e) => {
+                              const fields = e.target.checked
+                                ? [...formData.overrideAllowedFields, 'amount']
+                                : formData.overrideAllowedFields.filter(f => f !== 'amount');
+                              setFormData({ ...formData, overrideAllowedFields: fields });
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Amount (e.g., $500 → $550)</span>
+                        </label>
+                        
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.overrideAllowedFields.includes('percentage')}
+                            onChange={(e) => {
+                              const fields = e.target.checked
+                                ? [...formData.overrideAllowedFields, 'percentage']
+                                : formData.overrideAllowedFields.filter(f => f !== 'percentage');
+                              setFormData({ ...formData, overrideAllowedFields: fields });
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Percentage (e.g., 10% → 12%)</span>
+                        </label>
+                        
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.overrideAllowedFields.includes('formula')}
+                            onChange={(e) => {
+                              const fields = e.target.checked
+                                ? [...formData.overrideAllowedFields, 'formula']
+                                : formData.overrideAllowedFields.filter(f => f !== 'formula');
+                              setFormData({ ...formData, overrideAllowedFields: fields });
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Formula (custom calculation)</span>
+                        </label>
+                        
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.overrideAllowedFields.includes('rate')}
+                            onChange={(e) => {
+                              const fields = e.target.checked
+                                ? [...formData.overrideAllowedFields, 'rate']
+                                : formData.overrideAllowedFields.filter(f => f !== 'rate');
+                              setFormData({ ...formData, overrideAllowedFields: fields });
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Rate (hourly/daily rate)</span>
+                        </label>
+                        
+                        <label className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={formData.overrideAllowedFields.includes('disabled')}
+                            onChange={(e) => {
+                              const fields = e.target.checked
+                                ? [...formData.overrideAllowedFields, 'disabled']
+                                : formData.overrideAllowedFields.filter(f => f !== 'disabled');
+                              setFormData({ ...formData, overrideAllowedFields: fields });
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Can be disabled for specific workers</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <MetadataBuilder
+                  key={`metadata-${resetKey}`}
+                  value={formData.metadata}
+                  onChange={(value) => setFormData({ ...formData, metadata: value })}
+                />
+              </>
+            )}
+          </div>
         </div>
 
-        <ConditionsBuilder
-          value={formData.conditions}
-          onChange={(value) => setFormData({ ...formData, conditions: value })}
-        />
 
-        <MetadataBuilder
-          value={formData.metadata}
-          onChange={(value) => setFormData({ ...formData, metadata: value })}
-        />
-
-        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        {/* Form Actions */}
+        <div className="flex justify-end space-x-3 pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
             onClick={onClose}

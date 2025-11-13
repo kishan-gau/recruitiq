@@ -30,6 +30,7 @@ import paymentRoutes from './payments.js';
 import reportsRoutes from './reports.js';
 import settingsRoutes from './settings.js';
 import payslipTemplateRoutes from './payslipTemplates.js';
+import temporalPatternRoutes from './temporalPatterns.js';
 
 const router = express.Router();
 
@@ -75,5 +76,6 @@ router.use('/payments', paymentRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/payslip-templates', payslipTemplateRoutes);
+router.use('/patterns', temporalPatternRoutes);
 
 export default router;

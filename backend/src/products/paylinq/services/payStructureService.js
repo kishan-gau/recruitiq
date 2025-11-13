@@ -10,6 +10,7 @@
 import Joi from 'joi';
 import PayStructureRepository from '../repositories/payStructureRepository.js';
 import FormulaEngineService from './formulaEngineService.js';
+import temporalPatternService from './temporalPatternService.js';
 import dtoMapper from '../utils/dtoMapper.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../../middleware/errorHandler.js';
@@ -18,6 +19,7 @@ class PayStructureService {
   constructor() {
     this.repository = new PayStructureRepository();
     this.formulaEngine = new FormulaEngineService();
+    this.temporalPatternService = temporalPatternService;
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -265,6 +267,22 @@ class PayStructureService {
   }
 
   /**
+   * Delete pay structure template (draft versions only)
+   */
+  async deleteTemplate(templateId, organizationId, userId) {
+    const template = await this.repository.findTemplateById(templateId, organizationId);
+    if (!template) {
+      throw new NotFoundError('Pay structure template not found');
+    }
+
+    if (template.status !== 'draft') {
+      throw new ValidationError('Only draft templates can be deleted');
+    }
+
+    return await this.repository.deleteTemplate(templateId, organizationId, userId);
+  }
+
+  /**
    * Create new version of template
    */
   async createNewVersion(templateId, versionType, changeSummary, organizationId, userId) {
@@ -427,7 +445,21 @@ class PayStructureService {
    */
   async getTemplateComponents(templateId, organizationId) {
     const components = await this.repository.getTemplateComponents(templateId, organizationId);
-    return components.map(component => dtoMapper.mapPayStructureComponentDbToApi(component));
+    const mapped = components.map(component => {
+      const result = dtoMapper.mapPayStructureComponentDbToApi(component);
+      // Debug log to check override fields
+      if (result.allowWorkerOverride) {
+        logger.debug('Component with overrides', {
+          code: result.componentCode,
+          allowWorkerOverride: result.allowWorkerOverride,
+          overrideAllowedFields: result.overrideAllowedFields,
+          overrideAllowedFieldsType: typeof result.overrideAllowedFields,
+          overrideAllowedFieldsRaw: component.override_allowed_fields
+        });
+      }
+      return result;
+    });
+    return mapped;
   }
 
   /**
@@ -536,7 +568,9 @@ class PayStructureService {
           affectsNetPay: c.affects_net_pay,
           minAmount: c.min_amount,
           maxAmount: c.max_amount,
-          maxAnnual: c.max_annual
+          maxAnnual: c.max_annual,
+          allowWorkerOverride: c.allow_worker_override,
+          overrideAllowedFields: c.override_allowed_fields
         }
       }))
     };
@@ -818,6 +852,51 @@ class PayStructureService {
           continue;
         }
 
+        // NEW: Check temporal pattern conditions if configured
+        // Pattern conditions are stored in component.conditions JSONB field
+        if (component.conditions && component.conditions.pattern) {
+          const patternConfig = component.conditions.pattern;
+          
+          logger.debug('Evaluating temporal pattern condition for component', {
+            componentCode: component.code,
+            patternType: patternConfig.patternType,
+            employeeId,
+          });
+
+          try {
+            const patternResult = await this.temporalPatternService.evaluatePattern(
+              employeeId,
+              patternConfig,
+              organizationId,
+              asOfDate
+            );
+
+            if (!patternResult.qualified) {
+              logger.info('Component skipped - pattern condition not met', {
+                componentCode: component.code,
+                employeeId,
+                patternType: patternConfig.patternType,
+                patternMetadata: patternResult.metadata,
+              });
+              continue; // Skip this component - pattern not qualified
+            }
+
+            logger.info('Component pattern condition met', {
+              componentCode: component.code,
+              employeeId,
+              patternType: patternConfig.patternType,
+            });
+          } catch (patternError) {
+            logger.error('Pattern evaluation failed for component', {
+              componentCode: component.code,
+              employeeId,
+              error: patternError.message,
+            });
+            // Decision: Skip component if pattern evaluation fails (fail-safe)
+            continue;
+          }
+        }
+
         // Calculate component value
         const value = await this.calculateComponent(component, override, context, calculatedValues);
 
@@ -987,8 +1066,7 @@ class PayStructureService {
 
     return versions.map(version => ({
       ...version,
-      versionString: `${version.version_major}.${version.version_minor}.${version.version_patch}`,
-      componentsCount: version.components_count || 0
+      versionString: `${version.versionMajor}.${version.versionMinor}.${version.versionPatch}`
     }));
   }
 
@@ -998,7 +1076,7 @@ class PayStructureService {
   async getTemplateChangelog(templateId, compareToId, organizationId) {
     logger.info('Fetching template changelog', { templateId, compareToId, organizationId });
 
-    const template = await this.repository.getTemplateById(templateId, organizationId);
+    const template = await this.repository.findTemplateById(templateId, organizationId);
     if (!template) {
       throw new NotFoundError('Template not found');
     }
@@ -1029,7 +1107,7 @@ class PayStructureService {
       }
     }
 
-    const previousVersion = await this.repository.getTemplateById(compareToId, organizationId);
+    const previousVersion = await this.repository.findTemplateById(compareToId, organizationId);
     if (!previousVersion) {
       throw new NotFoundError('Comparison template not found');
     }
@@ -1062,15 +1140,31 @@ class PayStructureService {
       throw new ValidationError('versionType must be major, minor, or patch');
     }
 
-    const sourceTemplate = await this.repository.getTemplateById(templateId, organizationId);
-    if (!sourceTemplate) {
+    // First get the template to find its template_code
+    const requestedTemplate = await this.repository.findTemplateById(templateId, organizationId);
+    if (!requestedTemplate) {
       throw new NotFoundError('Source template not found');
     }
 
+    // Always get the latest version by version numbers, not the requested one
+    const allVersions = await this.repository.getTemplateVersions(requestedTemplate.templateCode, organizationId);
+    if (!allVersions || allVersions.length === 0) {
+      throw new NotFoundError('No versions found for this template');
+    }
+
+    // Sort to get the actual latest version (in case frontend sorting changes)
+    const sortedVersions = allVersions.sort((a, b) => {
+      if (a.versionMajor !== b.versionMajor) return b.versionMajor - a.versionMajor;
+      if (a.versionMinor !== b.versionMinor) return b.versionMinor - a.versionMinor;
+      return b.versionPatch - a.versionPatch;
+    });
+
+    const sourceTemplate = sortedVersions[0]; // Latest version
+
     // Calculate new version numbers
-    let newMajor = sourceTemplate.version_major;
-    let newMinor = sourceTemplate.version_minor;
-    let newPatch = sourceTemplate.version_patch;
+    let newMajor = sourceTemplate.versionMajor;
+    let newMinor = sourceTemplate.versionMinor;
+    let newPatch = sourceTemplate.versionPatch;
 
     if (versionType === 'major') {
       newMajor += 1;
@@ -1081,6 +1175,23 @@ class PayStructureService {
       newPatch = 0;
     } else {
       newPatch += 1;
+    }
+
+    // Check if this version already exists
+    const existingVersions = await this.repository.getTemplateVersions(sourceTemplate.templateCode, organizationId);
+    const versionExists = existingVersions.some(v => 
+      v.versionMajor === newMajor && 
+      v.versionMinor === newMinor && 
+      v.versionPatch === newPatch
+    );
+
+    if (versionExists) {
+      const existingVersion = existingVersions.find(v => 
+        v.versionMajor === newMajor && 
+        v.versionMinor === newMinor && 
+        v.versionPatch === newPatch
+      );
+      throw new ValidationError(`Version ${newMajor}.${newMinor}.${newPatch} already exists with status "${existingVersion.status}". Please delete the existing version first or choose a different version type.`);
     }
 
     // Create new template version
@@ -1095,7 +1206,7 @@ class PayStructureService {
       effectiveTo: null,
       publishedAt: null,
       publishedBy: null,
-      notes: changes || `Version ${newMajor}.${newMinor}.${newPatch} created from ${sourceTemplate.version_major}.${sourceTemplate.version_minor}.${sourceTemplate.version_patch}`
+      notes: changes || `Version ${newMajor}.${newMinor}.${newPatch} created from ${sourceTemplate.versionMajor}.${sourceTemplate.versionMinor}.${sourceTemplate.versionPatch}`
     };
 
     delete newTemplateData.id;
@@ -1108,16 +1219,72 @@ class PayStructureService {
     const sourceComponents = await this.repository.getTemplateComponents(templateId, organizationId);
     
     for (const component of sourceComponents) {
-      const componentData = { ...component };
-      delete componentData.id;
-      delete componentData.template_id;
-      delete componentData.created_at;
-      delete componentData.updated_at;
+      // Clean up the component data - keep it in DB format
+      const componentCopy = { ...component };
+      
+      // Remove fields that should not be copied
+      delete componentCopy.id;
+      delete componentCopy.template_id;
+      delete componentCopy.created_at;
+      delete componentCopy.updated_at;
+      delete componentCopy.created_by;
+      delete componentCopy.updated_by;
+      delete componentCopy.deleted_at;
+      delete componentCopy.pay_component_name; // This is from the JOIN
 
-      await this.repository.addComponent(newTemplate.id, componentData, organizationId, userId);
+      // Use the raw DB format directly to avoid double conversion
+      // The addComponent method expects camelCase API format, so we need to map field names
+      const apiFormat = {
+        payComponentId: componentCopy.pay_component_id,
+        componentCode: componentCopy.component_code,
+        componentName: componentCopy.component_name,
+        componentCategory: componentCopy.component_category,
+        calculationType: componentCopy.calculation_type,
+        defaultAmount: componentCopy.default_amount,
+        defaultCurrency: componentCopy.default_currency,
+        percentageOf: componentCopy.percentage_of,
+        percentageRate: componentCopy.percentage_rate,
+        formulaExpression: componentCopy.formula_expression,
+        // Pass arrays directly without double-stringifying
+        formulaVariables: componentCopy.formula_variables,
+        formulaAst: componentCopy.formula_ast,
+        rateMultiplier: componentCopy.rate_multiplier,
+        appliesToHoursType: componentCopy.applies_to_hours_type,
+        tierConfiguration: componentCopy.tier_configuration,
+        tierBasis: componentCopy.tier_basis,
+        sequenceOrder: componentCopy.sequence_order,
+        // Arrays should be passed as-is from DB
+        dependsOnComponents: componentCopy.depends_on_components,
+        isMandatory: componentCopy.is_mandatory,
+        isTaxable: componentCopy.is_taxable,
+        affectsGrossPay: componentCopy.affects_gross_pay,
+        affectsNetPay: componentCopy.affects_net_pay,
+        taxCategory: componentCopy.tax_category,
+        accountingCode: componentCopy.accounting_code,
+        minAmount: componentCopy.min_amount,
+        maxAmount: componentCopy.max_amount,
+        minPercentage: componentCopy.min_percentage,
+        maxPercentage: componentCopy.max_percentage,
+        maxAnnual: componentCopy.max_annual,
+        maxPerPeriod: componentCopy.max_per_period,
+        allowWorkerOverride: componentCopy.allow_worker_override,
+        // Pass array as-is
+        overrideAllowedFields: componentCopy.override_allowed_fields,
+        requiresApproval: componentCopy.requires_approval,
+        displayOnPayslip: componentCopy.display_on_payslip,
+        displayName: componentCopy.display_name,
+        displayOrder: componentCopy.display_order,
+        displayCategory: componentCopy.display_category,
+        conditions: componentCopy.conditions,
+        isConditional: componentCopy.is_conditional,
+        description: componentCopy.description,
+        notes: componentCopy.notes
+      };
+
+      await this.repository.addComponent(apiFormat, newTemplate.id, organizationId, userId);
     }
 
-    return await this.repository.getTemplateById(newTemplate.id, organizationId);
+    return await this.repository.findTemplateById(newTemplate.id, organizationId);
   }
 
   /**
@@ -1126,8 +1293,8 @@ class PayStructureService {
   async compareTemplateVersions(fromId, toId, organizationId) {
     logger.info('Comparing template versions', { fromId, toId, organizationId });
 
-    const fromTemplate = await this.repository.getTemplateById(fromId, organizationId);
-    const toTemplate = await this.repository.getTemplateById(toId, organizationId);
+    const fromTemplate = await this.repository.findTemplateById(fromId, organizationId);
+    const toTemplate = await this.repository.findTemplateById(toId, organizationId);
 
     if (!fromTemplate || !toTemplate) {
       throw new NotFoundError('One or both templates not found');
@@ -1138,18 +1305,52 @@ class PayStructureService {
 
     const changes = this.compareComponents(toComponents, fromComponents);
 
+    // Map templates to API format
+    const fromMapped = dtoMapper.mapPayStructureTemplateDbToApi(fromTemplate);
+    const toMapped = dtoMapper.mapPayStructureTemplateDbToApi(toTemplate);
+
+    // Map components to API format
+    const fromComponentsMapped = fromComponents.map(c => dtoMapper.mapPayStructureComponentDbToApi(c));
+    const toComponentsMapped = toComponents.map(c => dtoMapper.mapPayStructureComponentDbToApi(c));
+
+    // Transform changes structure for frontend
+    const changesArray = [
+      ...changes.added.map(c => ({
+        ...dtoMapper.mapPayStructureComponentDbToApi(c),
+        changeType: 'added'
+      })),
+      ...changes.modified.map(m => ({
+        ...dtoMapper.mapPayStructureComponentDbToApi(m.component),
+        changeType: 'modified',
+        differences: m.differences.map(d => ({
+          field: dtoMapper.convertFieldName(d.field, dtoMapper.PAY_STRUCTURE_COMPONENT_DB_TO_API),
+          oldValue: d.oldValue,
+          newValue: d.newValue
+        }))
+      })),
+      ...changes.removed.map(c => ({
+        ...dtoMapper.mapPayStructureComponentDbToApi(c),
+        changeType: 'removed'
+      }))
+    ];
+
     return {
-      from: {
-        ...fromTemplate,
-        versionString: `${fromTemplate.version_major}.${fromTemplate.version_minor}.${fromTemplate.version_patch}`,
-        components: fromComponents
+      fromVersion: {
+        ...fromMapped,
+        versionString: `${fromMapped.versionMajor}.${fromMapped.versionMinor}.${fromMapped.versionPatch}`,
+        components: fromComponentsMapped
       },
-      to: {
-        ...toTemplate,
-        versionString: `${toTemplate.version_major}.${toTemplate.version_minor}.${toTemplate.version_patch}`,
-        components: toComponents
+      toVersion: {
+        ...toMapped,
+        versionString: `${toMapped.versionMajor}.${toMapped.versionMinor}.${toMapped.versionPatch}`,
+        components: toComponentsMapped
       },
-      changes
+      changes: changesArray,
+      summary: {
+        addedCount: changes.added.length,
+        modifiedCount: changes.modified.length,
+        removedCount: changes.removed.length
+      }
     };
   }
 
@@ -1163,7 +1364,7 @@ class PayStructureService {
       organizationId 
     });
 
-    const template = await this.repository.getTemplateById(templateId, organizationId);
+    const template = await this.repository.findTemplateById(templateId, organizationId);
     if (!template) {
       throw new NotFoundError('Template not found');
     }

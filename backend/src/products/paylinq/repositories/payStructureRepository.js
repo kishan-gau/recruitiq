@@ -61,17 +61,19 @@ class PayStructureRepository {
    */
   async findTemplateById(templateId, organizationId) {
     const result = await query(
-      `SELECT pst.*, version_string,
-              COUNT(DISTINCT psc.id) as component_count,
-              COUNT(DISTINCT wps.id) as assigned_worker_count,
+      `SELECT pst.*,
+              (SELECT COUNT(*) FROM payroll.pay_structure_component psc 
+               WHERE psc.template_id = pst.id 
+               AND psc.deleted_at IS NULL) as component_count,
+              (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
+               WHERE wps.template_id = pst.id 
+               AND wps.is_current = true 
+               AND wps.deleted_at IS NULL) as assigned_worker_count,
               COALESCE(e.first_name || ' ' || e.last_name, u.email) as created_by_name
        FROM payroll.pay_structure_template pst
-       LEFT JOIN payroll.pay_structure_component psc ON psc.template_id = pst.id AND psc.deleted_at IS NULL
-       LEFT JOIN payroll.worker_pay_structure wps ON wps.template_id = pst.id AND wps.is_current = true AND wps.deleted_at IS NULL
        LEFT JOIN hris.user_account u ON u.id = pst.created_by
        LEFT JOIN hris.employee e ON e.user_account_id = u.id
-       WHERE pst.id = $1 AND pst.organization_id = $2 AND pst.deleted_at IS NULL
-       GROUP BY pst.id, e.first_name, e.last_name, u.email`,
+       WHERE pst.id = $1 AND pst.organization_id = $2 AND pst.deleted_at IS NULL`,
       [templateId, organizationId],
       organizationId,
       { operation: 'SELECT', table: 'payroll.pay_structure_template' }
@@ -116,14 +118,16 @@ class PayStructureRepository {
     const sortOrder = filters.sortOrder || 'DESC';
     
     const result = await query(
-      `SELECT pst.*, version_string,
-              COUNT(DISTINCT psc.id) as component_count,
-              COUNT(DISTINCT wps.id) as assigned_worker_count
+      `SELECT pst.*,
+              (SELECT COUNT(*) FROM payroll.pay_structure_component psc 
+               WHERE psc.template_id = pst.id 
+               AND psc.deleted_at IS NULL) as component_count,
+              (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
+               WHERE wps.template_id = pst.id 
+               AND wps.is_current = true 
+               AND wps.deleted_at IS NULL) as assigned_worker_count
        FROM payroll.pay_structure_template pst
-       LEFT JOIN payroll.pay_structure_component psc ON psc.template_id = pst.id AND psc.deleted_at IS NULL
-       LEFT JOIN payroll.worker_pay_structure wps ON wps.template_id = pst.id AND wps.is_current = true AND wps.deleted_at IS NULL
        ${whereClause}
-       GROUP BY pst.id
        ORDER BY pst.${sortField} ${sortOrder}`,
       params,
       organizationId,
@@ -237,6 +241,30 @@ class PayStructureRepository {
   }
 
   /**
+   * Delete pay structure template (draft versions only - soft delete)
+   */
+  async deleteTemplate(templateId, organizationId, userId) {
+    const result = await query(
+      `UPDATE payroll.pay_structure_template
+       SET deleted_at = NOW(),
+           deleted_by = $3,
+           updated_at = NOW(),
+           updated_by = $3
+       WHERE id = $1 AND organization_id = $2 AND status = 'draft' AND deleted_at IS NULL
+       RETURNING *, version_string`,
+      [templateId, organizationId, userId],
+      organizationId,
+      { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId }
+    );
+    
+    if (result.rows.length === 0) {
+      throw new Error('Template not found or not eligible for deletion');
+    }
+    
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
+  }
+
+  /**
    * Get organization default template
    */
   async getOrganizationDefault(organizationId, asOfDate = null) {
@@ -280,19 +308,19 @@ class PayStructureRepository {
         componentData.componentName,
         componentData.componentCategory,
         componentData.calculationType,
-        componentData.defaultAmount,
+        componentData.fixedAmount || componentData.defaultAmount,
         componentData.defaultCurrency,
-        componentData.percentageOf,
-        componentData.percentageRate,
-        componentData.formulaExpression,
-        componentData.formulaVariables ? JSON.stringify(componentData.formulaVariables) : null,
-        componentData.formulaAst ? JSON.stringify(componentData.formulaAst) : null,
-        componentData.rateMultiplier,
+        componentData.percentageBase || componentData.percentageOf,
+        componentData.percentageValue || componentData.percentageRate,
+        componentData.formula || componentData.formulaExpression,
+        componentData.formulaVariables && componentData.formulaVariables.length > 0 ? (Array.isArray(componentData.formulaVariables) ? componentData.formulaVariables : componentData.formulaVariables) : null,
+        componentData.formulaAst ? (typeof componentData.formulaAst === 'string' ? componentData.formulaAst : JSON.stringify(componentData.formulaAst)) : null,
+        componentData.hourlyRate || componentData.rateMultiplier,
         componentData.appliesToHoursType,
-        componentData.tierConfiguration ? JSON.stringify(componentData.tierConfiguration) : null,
+        componentData.tieredRates ? (typeof componentData.tieredRates === 'string' ? componentData.tieredRates : JSON.stringify(componentData.tieredRates)) : (componentData.tierConfiguration ? (typeof componentData.tierConfiguration === 'string' ? componentData.tierConfiguration : JSON.stringify(componentData.tierConfiguration)) : null),
         componentData.tierBasis,
         componentData.sequenceOrder,
-        componentData.dependsOnComponents || null,
+        componentData.dependsOnComponents && componentData.dependsOnComponents.length > 0 ? (Array.isArray(componentData.dependsOnComponents) ? componentData.dependsOnComponents : componentData.dependsOnComponents) : null,
         componentData.isMandatory || false,
         componentData.isTaxable !== undefined ? componentData.isTaxable : true,
         componentData.affectsGrossPay !== undefined ? componentData.affectsGrossPay : true,
@@ -306,13 +334,13 @@ class PayStructureRepository {
         componentData.maxAnnual,
         componentData.maxPerPeriod,
         componentData.allowWorkerOverride || false,
-        componentData.overrideAllowedFields || null,
+        componentData.overrideAllowedFields && componentData.overrideAllowedFields.length > 0 ? (Array.isArray(componentData.overrideAllowedFields) ? componentData.overrideAllowedFields : componentData.overrideAllowedFields) : null,
         componentData.requiresApproval || false,
-        componentData.displayOnPayslip !== undefined ? componentData.displayOnPayslip : true,
+        componentData.isVisible !== undefined ? componentData.isVisible : (componentData.displayOnPayslip !== undefined ? componentData.displayOnPayslip : true),
         componentData.displayName,
         componentData.displayOrder,
         componentData.displayCategory,
-        componentData.conditions ? JSON.stringify(componentData.conditions) : null,
+        componentData.conditions ? (typeof componentData.conditions === 'string' ? componentData.conditions : JSON.stringify(componentData.conditions)) : null,
         componentData.isConditional || false,
         componentData.description,
         componentData.notes,
@@ -333,10 +361,13 @@ class PayStructureRepository {
       `SELECT psc.*,
               pc.component_name as pay_component_name
        FROM payroll.pay_structure_component psc
+       INNER JOIN payroll.pay_structure_template pst ON pst.id = psc.template_id
        LEFT JOIN payroll.pay_component pc ON pc.id = psc.pay_component_id
-       WHERE psc.template_id = $1 AND psc.deleted_at IS NULL
+       WHERE psc.template_id = $1 
+       AND pst.organization_id = $2
+       AND psc.deleted_at IS NULL
        ORDER BY psc.sequence_order ASC`,
-      [templateId],
+      [templateId, organizationId],
       organizationId,
       { operation: 'SELECT', table: 'payroll.pay_structure_component' }
     );
@@ -949,20 +980,20 @@ class PayStructureRepository {
   async getTemplateVersions(templateCode, organizationId) {
     const result = await query(
       `SELECT pst.*,
-              COUNT(psc.id) as components_count,
+              (SELECT COUNT(*) FROM payroll.pay_structure_component psc 
+               WHERE psc.template_id = pst.id 
+               AND psc.deleted_at IS NULL) as component_count,
               (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
                WHERE wps.template_id = pst.id 
                AND wps.deleted_at IS NULL
-               AND wps.effective_to IS NULL) as active_workers_count,
+               AND wps.effective_to IS NULL) as assigned_worker_count,
               COALESCE(e.first_name || ' ' || e.last_name, u.email) as created_by_name
        FROM payroll.pay_structure_template pst
-       LEFT JOIN payroll.pay_structure_component psc ON psc.template_id = pst.id AND psc.deleted_at IS NULL
        LEFT JOIN hris.user_account u ON u.id = pst.created_by
        LEFT JOIN hris.employee e ON e.user_account_id = u.id
        WHERE pst.template_code = $1
        AND pst.organization_id = $2
        AND pst.deleted_at IS NULL
-       GROUP BY pst.id, e.first_name, e.last_name, u.email
        ORDER BY pst.version_major DESC, pst.version_minor DESC, pst.version_patch DESC`,
       [templateCode, organizationId],
       organizationId,

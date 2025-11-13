@@ -36,8 +36,15 @@ export default function AssignPayStructureModal({
     formData.templateId || ''
   );
 
-  // Get only published templates (status = 'active' means published)
-  const publishedTemplates = templates?.filter((t: any) => t.status === 'active' || t.status === 'published') || [];
+  // Get only published templates (status = 'active' means published) and sort by name then version
+  const publishedTemplates = templates?.filter((t: any) => t.status === 'active' || t.status === 'published')
+    .sort((a: any, b: any) => {
+      // First sort by template name
+      const nameCompare = a.templateName.localeCompare(b.templateName);
+      if (nameCompare !== 0) return nameCompare;
+      // Then by version (descending - newest first)
+      return b.version.localeCompare(a.version, undefined, { numeric: true, sensitivity: 'base' });
+    }) || [];
 
   const selectedTemplate = templates?.find((t: any) => t.id === formData.templateId);
 
@@ -163,8 +170,9 @@ export default function AssignPayStructureModal({
             ) : publishedTemplates.length > 0 ? (
               publishedTemplates.map((template: any) => (
                 <option key={template.id} value={template.id}>
-                  {template.templateName} ({template.templateCode})
-                  {template.isOrganizationDefault && ' - Default'}
+                  {template.templateName} (v{template.version})
+                  {template.effectiveFrom && ` - Effective: ${new Date(template.effectiveFrom).toLocaleDateString()}`}
+                  {template.isOrganizationDefault && ' [Default]'}
                 </option>
               ))
             ) : (

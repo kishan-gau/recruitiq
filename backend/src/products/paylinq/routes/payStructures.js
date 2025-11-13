@@ -18,6 +18,9 @@ router.post('/templates', payStructureController.createTemplate);
 // Get all templates for organization
 router.get('/templates', payStructureController.getTemplates);
 
+// Compare two template versions (must be before :id route)
+router.get('/templates/compare', payStructureController.compareTemplateVersions);
+
 // Get template by ID with components
 router.get('/templates/:id', payStructureController.getTemplateById);
 
@@ -33,14 +36,14 @@ router.post('/templates/:id/deprecate', payStructureController.deprecateTemplate
 // Create new version of template
 router.post('/templates/:id/versions', payStructureController.createTemplateVersion);
 
+// Delete template (draft versions only)
+router.delete('/templates/:id', payStructureController.deleteTemplate);
+
 // Get template version history
 router.get('/templates/versions/:templateCode', payStructureController.getTemplateVersions);
 
 // Get template changelog
 router.get('/templates/:id/changelog', payStructureController.getTemplateChangelog);
-
-// Compare two template versions
-router.get('/templates/compare', payStructureController.compareTemplateVersions);
 
 // Upgrade workers to new template version
 router.post('/templates/:id/upgrade-workers', payStructureController.upgradeWorkersToVersion);

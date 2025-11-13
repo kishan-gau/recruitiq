@@ -53,6 +53,20 @@ export default function Dashboard() {
   }
 
   const { summary, recentActivity, pendingApprovals } = dashboardData;
+  
+  // Format next payroll date
+  const formatNextPayrollDate = (upcomingPayrolls: any[]) => {
+    if (!upcomingPayrolls || upcomingPayrolls.length === 0) return 'Not scheduled';
+    const nextPayroll = upcomingPayrolls[0];
+    if (!nextPayroll.payment_date) return 'Not scheduled';
+    return new Date(nextPayroll.payment_date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+  
+  const nextPayrollDate = formatNextPayrollDate(dashboardData.upcomingPayrolls || []);
 
   // Timeline data for payroll runs
   const timelineRuns: TimelineRun[] = [
@@ -209,7 +223,7 @@ export default function Dashboard() {
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">
-              Next Payroll: {summary.nextPayrollDate}
+              Next Payroll: {nextPayrollDate}
             </h3>
             <p className="mt-2 text-blue-700 dark:text-blue-300 text-sm">
               Due in <span className="font-medium">{summary.daysUntilPayroll} days</span> • Employees:{' '}

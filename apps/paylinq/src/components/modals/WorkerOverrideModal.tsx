@@ -174,9 +174,18 @@ export default function WorkerOverrideModal({
 
   // Check if component allows this override type
   const isOverrideTypeAllowed = (type: string) => {
+    // Component must have overrides enabled
     if (!component.allowWorkerOverride) return false;
-    if (!component.overrideAllowedFields || component.overrideAllowedFields.length === 0) return true;
-    return component.overrideAllowedFields.includes(type);
+    
+    // If specific fields are defined, only allow those
+    // Handle null, undefined, and empty array
+    const allowedFields = component.overrideAllowedFields;
+    if (allowedFields && Array.isArray(allowedFields) && allowedFields.length > 0) {
+      return allowedFields.includes(type);
+    }
+    
+    // If allowWorkerOverride is true but no fields specified, allow all types (backward compatibility)
+    return true;
   };
 
   return (

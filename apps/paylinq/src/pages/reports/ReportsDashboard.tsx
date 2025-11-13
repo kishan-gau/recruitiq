@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   Download,
@@ -35,6 +35,40 @@ export default function ReportsDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('current-month');
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [reportStats, setReportStats] = useState<any>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // Fetch report statistics from dashboard
+  useEffect(() => {
+    const fetchReportStats = async () => {
+      try {
+        setIsLoadingStats(true);
+        const response = await paylinq.getDashboard();
+        if (response.success && response.data) {
+          // Use dashboard data for report stats
+          setReportStats({
+            reportsGenerated: response.data.summary?.payrollRuns || 0,
+            scheduledReports: 8, // This could come from a separate endpoint
+            exportFormats: 5,
+            storageUsed: '2.4 GB', // This could come from a separate endpoint
+          });
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch report stats:', err);
+        // Set default values on error
+        setReportStats({
+          reportsGenerated: 0,
+          scheduledReports: 0,
+          exportFormats: 5,
+          storageUsed: '0 GB',
+        });
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    fetchReportStats();
+  }, [paylinq]);
 
   const reports: ReportCard[] = [
     {
@@ -293,26 +327,40 @@ export default function ReportsDashboard() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Reports Generated</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">127</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">This month</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Scheduled Reports</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">8</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Automated</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Export Formats</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">5</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF, Excel, CSV, JSON, XML</p>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Storage Used</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">2.4 GB</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Last 12 months</p>
-        </div>
+        {isLoadingStats ? (
+          <>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 animate-pulse">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-3"></div>
+                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+              </div>
+            ))}
+          </>
+        ) : reportStats ? (
+          <>
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Reports Generated</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{reportStats.reportsGenerated}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">This month</p>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Scheduled Reports</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{reportStats.scheduledReports}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Automated</p>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Export Formats</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{reportStats.exportFormats}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF, Excel, CSV, JSON, XML</p>
+            </div>
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Storage Used</p>
+              <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{reportStats.storageUsed}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Last 12 months</p>
+            </div>
+          </>
+        ) : null}
       </div>
 
       {/* Info Note */}

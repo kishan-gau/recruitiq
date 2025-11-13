@@ -11,7 +11,7 @@
  */
 
 import { useState } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
 import {
   Menu,
   X,
@@ -24,34 +24,38 @@ import {
 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Breadcrumbs from './Breadcrumbs';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AppLayoutProps {
   children?: React.ReactNode;
 }
 
 const AppLayout = ({ children }: AppLayoutProps) => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [orgMenuOpen, setOrgMenuOpen] = useState(false);
 
-  // Mock user data
+  // Get user data from auth context
   const currentUser = {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    role: 'Administrator',
+    name: user?.firstName && user?.lastName 
+      ? `${user.firstName} ${user.lastName}` 
+      : user?.email?.split('@')[0] || 'User',
+    email: user?.email || '',
+    role: user?.productRoles?.paylinq || 'User',
     avatar: null,
   };
 
-  // Mock organization data
+  // Get organization data from auth context
   const currentOrg = {
-    id: '1',
-    name: 'Acme Corporation',
+    id: user?.organizationId || '',
+    name: user?.organizationName || 'Organization',
   };
 
+  // For now, single organization (multi-org support can be added later)
   const organizations = [
-    { id: '1', name: 'Acme Corporation' },
-    { id: '2', name: 'Tech Startup Inc' },
-    { id: '3', name: 'Global Enterprises' },
+    { id: currentOrg.id, name: currentOrg.name },
   ];
 
   // Toggle sidebar
@@ -221,9 +225,10 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                         <div className="border-t border-gray-200"></div>
 
                         <button
-                          onClick={() => {
-                            console.log('Logout');
+                          onClick={async () => {
                             setUserMenuOpen(false);
+                            await logout();
+                            navigate('/login');
                           }}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
                         >

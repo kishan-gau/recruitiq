@@ -62,8 +62,10 @@ function mapPayComponentToApi(data: CreatePayComponentInput | UpdatePayComponent
 /**
  * Hook to fetch all pay components
  */
-export function usePayComponents(params?: Record<string, any>) {
+export function usePayComponents(options?: { params?: Record<string, any>; enabled?: boolean }) {
   const { paylinq } = usePaylinqAPI();
+  const params = options?.params;
+  const enabled = options?.enabled !== undefined ? options.enabled : true;
 
   return useQuery({
     queryKey: [...PAY_COMPONENTS_QUERY_KEY, params],
@@ -75,6 +77,7 @@ export function usePayComponents(params?: Record<string, any>) {
       }
       return response.payComponents || [];
     },
+    enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
