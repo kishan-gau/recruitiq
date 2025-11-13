@@ -371,3 +371,175 @@ CREATE INDEX idx_communications_created_at ON communications(created_at);
 COMMENT ON TABLE communications IS 'Messages and communications related to applications';
 COMMENT ON COLUMN communications.from_user_id IS 'Tenant user sending message (from hris.user_account), NULL for candidate messages';
 COMMENT ON COLUMN communications.is_public IS 'Whether message is visible to candidate on public tracking page';
+
+-- ================================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- Multi-Tenant Data Isolation at Database Level
+-- ================================================================
+
+-- Helper function to get current organization from session variable
+CREATE OR REPLACE FUNCTION get_current_organization_id()
+RETURNS UUID AS $$
+DECLARE
+  org_id TEXT;
+BEGIN
+  org_id := current_setting('app.current_organization_id', true);
+  
+  IF org_id IS NULL OR org_id = '' THEN
+    RAISE EXCEPTION 'No organization context set. Authentication required.';
+  END IF;
+  
+  RETURN org_id::UUID;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Invalid organization context: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+COMMENT ON FUNCTION get_current_organization_id IS 'Returns current organization UUID from session variable set by auth middleware. Throws error if not set.';
+
+-- ================================================================
+-- RLS: WORKSPACES
+-- ================================================================
+
+ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY workspaces_tenant_isolation ON workspaces
+  USING (organization_id = get_current_organization_id());
+
+CREATE POLICY workspaces_tenant_isolation_insert ON workspaces
+  FOR INSERT
+  WITH CHECK (organization_id = get_current_organization_id());
+
+-- ================================================================
+-- RLS: FLOW TEMPLATES
+-- ================================================================
+
+ALTER TABLE flow_templates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY flow_templates_tenant_isolation ON flow_templates
+  USING (organization_id = get_current_organization_id());
+
+CREATE POLICY flow_templates_tenant_isolation_insert ON flow_templates
+  FOR INSERT
+  WITH CHECK (organization_id = get_current_organization_id());
+
+-- ================================================================
+-- RLS: JOBS
+-- ================================================================
+
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY jobs_tenant_isolation ON jobs
+  USING (organization_id = get_current_organization_id());
+
+CREATE POLICY jobs_tenant_isolation_insert ON jobs
+  FOR INSERT
+  WITH CHECK (organization_id = get_current_organization_id());
+
+-- ================================================================
+-- RLS: CANDIDATES
+-- ================================================================
+
+ALTER TABLE candidates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY candidates_tenant_isolation ON candidates
+  USING (organization_id = get_current_organization_id());
+
+CREATE POLICY candidates_tenant_isolation_insert ON candidates
+  FOR INSERT
+  WITH CHECK (organization_id = get_current_organization_id());
+
+-- ================================================================
+-- RLS: APPLICATIONS
+-- ================================================================
+
+ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY applications_tenant_isolation ON applications
+  USING (organization_id = get_current_organization_id());
+
+CREATE POLICY applications_tenant_isolation_insert ON applications
+  FOR INSERT
+  WITH CHECK (organization_id = get_current_organization_id());
+
+-- ================================================================
+-- RLS: INTERVIEWS (via applications relationship)
+-- ================================================================
+
+ALTER TABLE interviews ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY interviews_tenant_isolation ON interviews
+  USING (
+    EXISTS (
+      SELECT 1 FROM applications a
+      WHERE a.id = interviews.application_id
+      AND a.organization_id = get_current_organization_id()
+    )
+  );
+
+CREATE POLICY interviews_tenant_isolation_insert ON interviews
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM applications a
+      WHERE a.id = interviews.application_id
+      AND a.organization_id = get_current_organization_id()
+    )
+  );
+
+-- ================================================================
+-- RLS: INTERVIEW INTERVIEWERS (via interviews relationship)
+-- ================================================================
+
+ALTER TABLE interview_interviewers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY interview_interviewers_tenant_isolation ON interview_interviewers
+  USING (
+    EXISTS (
+      SELECT 1 FROM interviews i
+      JOIN applications a ON a.id = i.application_id
+      WHERE i.id = interview_interviewers.interview_id
+      AND a.organization_id = get_current_organization_id()
+    )
+  );
+
+CREATE POLICY interview_interviewers_tenant_isolation_insert ON interview_interviewers
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM interviews i
+      JOIN applications a ON a.id = i.application_id
+      WHERE i.id = interview_interviewers.interview_id
+      AND a.organization_id = get_current_organization_id()
+    )
+  );
+
+-- ================================================================
+-- RLS: COMMUNICATIONS (via applications relationship)
+-- ================================================================
+
+ALTER TABLE communications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY communications_tenant_isolation ON communications
+  USING (
+    EXISTS (
+      SELECT 1 FROM applications a
+      WHERE a.id = communications.application_id
+      AND a.organization_id = get_current_organization_id()
+    )
+  );
+
+CREATE POLICY communications_tenant_isolation_insert ON communications
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM applications a
+      WHERE a.id = communications.application_id
+      AND a.organization_id = get_current_organization_id()
+    )
+  );
+
+-- ================================================================
+-- END OF RECRUITIQ SCHEMA
+-- ================================================================

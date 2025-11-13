@@ -38,6 +38,11 @@ export const useTaxRules = (filters?: {
     queryKey: taxRuleKeys.list(filters || {}),
     queryFn: async () => {
       const response = await paylinq.getTaxRules(filters);
+      console.log('🔍 Tax Rules API Response:', response);
+      console.log('🔍 Tax Rules count:', response.taxRules?.length);
+      if (response.taxRules?.length > 0) {
+        console.log('🔍 First tax rule:', response.taxRules[0]);
+      }
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to fetch tax rules');
       }

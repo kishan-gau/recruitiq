@@ -24,6 +24,7 @@ import {
 import {
   usePayrollRun,
   useCalculatePayroll,
+  useMarkPayrollRunForReview,
   useApprovePayrollRun,
   useProcessPayrollRun,
   useCancelPayrollRun,
@@ -41,6 +42,7 @@ export default function PayrollRunDetailsPage() {
   const navigate = useNavigate();
   
   const [showCalculateDialog, setShowCalculateDialog] = useState(false);
+  const [showMarkForReviewDialog, setShowMarkForReviewDialog] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showProcessDialog, setShowProcessDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -51,6 +53,7 @@ export default function PayrollRunDetailsPage() {
 
   // Mutations
   const calculatePayroll = useCalculatePayroll();
+  const markForReview = useMarkPayrollRunForReview();
   const approvePayroll = useApprovePayrollRun();
   const processPayroll = useProcessPayrollRun();
   const cancelPayroll = useCancelPayrollRun();
@@ -66,6 +69,15 @@ export default function PayrollRunDetailsPage() {
         },
       }
     );
+  };
+
+  const handleMarkForReview = () => {
+    if (!id) return;
+    markForReview.mutate(id, {
+      onSuccess: () => {
+        setShowMarkForReviewDialog(false);
+      },
+    });
   };
 
   const handleApprove = () => {
@@ -103,10 +115,16 @@ export default function PayrollRunDetailsPage() {
   };
 
   // Determine available actions based on status
-  const canCalculate = run?.status === 'draft';
+  const canCalculate = run?.status === 'draft' || run?.status === 'calculating';
+  const canMarkForReview = run?.status === 'calculating';
   const canApprove = run?.status === 'calculated';
   const canProcess = run?.status === 'approved';
-  const canCancel = run?.status === 'draft' || run?.status === 'calculated' || run?.status === 'approved';
+  const canCancel = run?.status === 'draft' || run?.status === 'calculating' || run?.status === 'calculated' || run?.status === 'approved';
+
+  // Debug logging
+  console.log('Payroll Run Status:', run?.status);
+  console.log('Can Calculate:', canCalculate);
+  console.log('Can Mark for Review:', canMarkForReview);
 
   // Paycheck table columns
   const paycheckColumns: Column<Paycheck>[] = [
@@ -253,7 +271,17 @@ export default function PayrollRunDetailsPage() {
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700"
             >
               <Calculator className="w-4 h-4 mr-2" />
-              Calculate
+              {run.status === 'calculating' ? 'Recalculate' : 'Calculate'}
+            </button>
+          )}
+          
+          {canMarkForReview && (
+            <button
+              onClick={() => setShowMarkForReviewDialog(true)}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Mark for Review
             </button>
           )}
           
@@ -426,10 +454,25 @@ export default function PayrollRunDetailsPage() {
         isOpen={showCalculateDialog}
         onClose={() => setShowCalculateDialog(false)}
         onConfirm={handleCalculate}
-        title="Calculate Payroll"
-        message={`Are you sure you want to calculate payroll for ${run.runName}? This will create paychecks for all employees in the pay period.`}
-        confirmText="Calculate"
+        title={run.status === 'calculating' ? 'Recalculate Payroll' : 'Calculate Payroll'}
+        message={
+          run.status === 'calculating'
+            ? `Are you sure you want to recalculate payroll for ${run.runName}? This will delete existing paychecks and create new ones.`
+            : `Are you sure you want to calculate payroll for ${run.runName}? This will create paychecks for all employees in the pay period.`
+        }
+        confirmText={run.status === 'calculating' ? 'Recalculate' : 'Calculate'}
         isLoading={calculatePayroll.isPending}
+      />
+
+      <ConfirmDialog
+        isOpen={showMarkForReviewDialog}
+        onClose={() => setShowMarkForReviewDialog(false)}
+        onConfirm={handleMarkForReview}
+        title="Mark for Review"
+        message={`Are you sure you want to mark ${run.runName} for review? This will signal that the payroll is ready for manager approval.`}
+        confirmText="Mark for Review"
+        variant="info"
+        isLoading={markForReview.isPending}
       />
 
       <ConfirmDialog

@@ -30,6 +30,9 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
     notes: '',
   });
 
+  // Debug logging
+  console.log('ShiftModal props:', { employeeId, date, dateType: typeof date, dateValue: date });
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -81,6 +84,8 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
         notes: formData.notes,
         status: 'scheduled',
       };
+
+      console.log('About to send schedule data:', JSON.stringify(scheduleData, null, 2));
 
       if (existingShift) {
         await paylinq.updateSchedule(existingShift.id, scheduleData);

@@ -594,6 +594,7 @@ export function mapPayrollRunApiToDb(apiData) {
   if (apiData.periodStart) mapped.payPeriodStart = apiData.periodStart;
   if (apiData.periodEnd) mapped.payPeriodEnd = apiData.periodEnd;
   if (apiData.paymentDate) mapped.paymentDate = apiData.paymentDate;
+  if (apiData.runType) mapped.runType = apiData.runType;
   if (apiData.status) mapped.status = apiData.status;
   
   // Generate runNumber if not provided (required by service)
@@ -636,6 +637,7 @@ export function mapPayrollRunDbToApi(dbData) {
     organizationId: dbData.organization_id,
     runNumber: dbData.run_number,
     payrollName: dbData.run_name,
+    runType: dbData.run_type,
     payPeriodStart: dbData.pay_period_start instanceof Date 
       ? dbData.pay_period_start.toISOString().split('T')[0]
       : (typeof dbData.pay_period_start === 'string' ? dbData.pay_period_start.split('T')[0] : dbData.pay_period_start),
@@ -652,6 +654,7 @@ export function mapPayrollRunDbToApi(dbData) {
     totalTaxes: parseFloat(dbData.total_taxes) || 0,
     totalDeductions: parseFloat(dbData.total_deductions) || 0,
     employeeCount: parseInt(dbData.employee_count, 10) || 0,
+    totalEmployees: parseInt(dbData.total_employees || dbData.employee_count, 10) || 0,
     paycheckCount: parseInt(dbData.paycheck_count, 10) || 0,
     description: dbData.description,
     metadata: dbData.metadata,

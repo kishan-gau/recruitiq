@@ -13,9 +13,9 @@ const router = express.Router();
 // Accept both individual shift format and bulk schedule format
 const createScheduleSchema = Joi.object({
   employeeId: Joi.string().uuid().required(),
-  // Bulk schedule fields
-  startDate: Joi.date().iso(),
-  endDate: Joi.date().iso(),
+  // Bulk schedule fields - validate as ISO date strings, keep as strings (no conversion)
+  startDate: Joi.date().iso().raw(),
+  endDate: Joi.date().iso().raw(),
   scheduleType: Joi.string().valid('regular', 'flexible', 'rotating', 'on_call', 'shift').allow(null, ''),
   shifts: Joi.array().items(Joi.object({
     dayOfWeek: Joi.number().min(0).max(6),
@@ -24,7 +24,8 @@ const createScheduleSchema = Joi.object({
     breakMinutes: Joi.number().min(0),
   })),
   // Single shift fields - scheduleDate is required when not using bulk format
-  scheduleDate: Joi.date().iso().when('startDate', {
+  // .raw() prevents Joi from converting the string to a Date object
+  scheduleDate: Joi.date().iso().raw().when('startDate', {
     is: Joi.exist(),
     then: Joi.optional(),
     otherwise: Joi.required()
@@ -39,9 +40,9 @@ const createScheduleSchema = Joi.object({
 });
 
 const updateScheduleSchema = Joi.object({
-  // Bulk schedule fields
-  startDate: Joi.date().iso(),
-  endDate: Joi.date().iso(),
+  // Bulk schedule fields - validate as ISO date strings, keep as strings (no conversion)
+  startDate: Joi.date().iso().raw(),
+  endDate: Joi.date().iso().raw(),
   scheduleType: Joi.string().valid('regular', 'flexible', 'rotating', 'on_call', 'shift'),
   shifts: Joi.array().items(Joi.object({
     dayOfWeek: Joi.number().min(0).max(6),
@@ -49,8 +50,8 @@ const updateScheduleSchema = Joi.object({
     endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
     breakMinutes: Joi.number().min(0),
   })),
-  // Single shift fields
-  scheduleDate: Joi.date().iso(),
+  // Single shift fields - .raw() prevents Joi from converting the string to a Date object
+  scheduleDate: Joi.date().iso().raw(),
   startTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   breakMinutes: Joi.number().min(0),
@@ -65,9 +66,10 @@ const createChangeRequestSchema = Joi.object({
   employeeId: Joi.string().uuid().allow(null), // Added for compatibility
   requestType: Joi.string().valid('cancel', 'change', 'swap', 'time_off').required(),
   requestReason: Joi.string().max(500).required(),
-  proposedDate: Joi.date().iso().allow(null),
-  proposedStartDate: Joi.date().iso().allow(null), // Added for compatibility
-  proposedEndDate: Joi.date().iso().allow(null), // Added for compatibility
+  // .raw() prevents Joi from converting date strings to Date objects
+  proposedDate: Joi.date().iso().raw().allow(null),
+  proposedStartDate: Joi.date().iso().raw().allow(null), // Added for compatibility
+  proposedEndDate: Joi.date().iso().raw().allow(null), // Added for compatibility
   proposedStartTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).allow(null),
   proposedEndTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).allow(null),
   swapWithEmployeeId: Joi.string().uuid().allow(null),
@@ -83,14 +85,9 @@ const idParamSchema = Joi.object({
   id: Joi.string().uuid().required(),
 });
 
-const employeeIdParamSchema = Joi.object({
-  employeeId: Joi.string().uuid().required(),
-});
-
 // Routes
 router.post('/', validate(createScheduleSchema, 'body'), schedulingController.createSchedule);
-router.get('/', schedulingController.getSchedules);
-router.get('/employees/:employeeId/schedules', validate(employeeIdParamSchema, 'params'), schedulingController.getEmployeeSchedules);
+router.get('/', schedulingController.getSchedules); // Supports ?employeeId=xxx query parameter
 router.get('/:id', validate(idParamSchema, 'params'), schedulingController.getScheduleById);
 router.put('/:id', validate(idParamSchema, 'params'), validate(updateScheduleSchema, 'body'), schedulingController.updateSchedule);
 router.delete('/:id', validate(idParamSchema, 'params'), schedulingController.deleteSchedule);

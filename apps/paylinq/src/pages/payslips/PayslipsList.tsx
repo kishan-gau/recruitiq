@@ -5,6 +5,8 @@ import Pagination from '@/components/ui/Pagination';
 import WorkerAvatar from '@/components/ui/WorkerAvatar';
 import FilterPanel from '@/components/ui/FilterPanel';
 import TableSkeleton from '@/components/ui/TableSkeleton';
+import PayslipViewer from '@/components/payslips/PayslipViewer';
+import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
 import type { FilterConfig } from '@/components/ui/FilterPanel';
 import { formatDate } from '@/utils/helpers';
 import { useToast } from '@/contexts/ToastContext';
@@ -39,44 +41,52 @@ export default function PayslipsList() {
   const [appliedFilters, setAppliedFilters] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [selectedPayslipId, setSelectedPayslipId] = useState<string | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
   const perPage = 10;
 
   // Fetch payslips data
-  useEffect(() => {
-    const fetchPayslips = async () => {
-      try {
-        setIsLoading(true);
-        const response = await paylinq.getPaychecks();
-        
-        if (response.data) {
-          const apiData = response.data as any;
-          // Transform API data to match UI format
-          const transformedPayslips = (Array.isArray(apiData) ? apiData : []).map((paycheck: any) => ({
+  const fetchPayslips = async () => {
+    try {
+      setIsLoading(true);
+      const response: any = await paylinq.getPaychecks();
+      
+      // API returns { success: true, paychecks: [...] } per API standards
+      if (response.paychecks) {
+        const apiData = response.paychecks;
+        // Transform API data to match UI format
+        const transformedPayslips = (Array.isArray(apiData) ? apiData : []).map((paycheck: any) => {
+          // Construct full name from firstName and lastName
+          const fullName = [paycheck.firstName, paycheck.lastName].filter(Boolean).join(' ') || 'Unknown';
+          
+          return {
             id: paycheck.id,
             worker: {
-              id: paycheck.employee?.id || paycheck.employeeId,
-              fullName: paycheck.employee?.fullName || 'Unknown',
-              employeeNumber: paycheck.employee?.employeeNumber || 'N/A',
+              id: paycheck.employeeId,
+              fullName: fullName,
+              employeeNumber: paycheck.employeeNumber || 'N/A',
             },
             payrollRun: {
-              period: paycheck.payrollRun?.period || `${formatDate(paycheck.payPeriodStart)} - ${formatDate(paycheck.payPeriodEnd)}`,
-              payDate: formatDate(paycheck.payDate),
+              period: paycheck.runName || `${formatDate(paycheck.payPeriodStart)} - ${formatDate(paycheck.payPeriodEnd)}`,
+              payDate: formatDate(paycheck.paymentDate || paycheck.payDate),
             },
-            grossPay: paycheck.grossPay || 0,
-            netPay: paycheck.netPay || 0,
+            grossPay: parseFloat(paycheck.grossPay) || 0,
+            netPay: parseFloat(paycheck.netPay) || 0,
             status: (paycheck.status === 'paid' ? 'sent' : paycheck.status === 'draft' ? 'generated' : 'generated') as 'generated' | 'sent' | 'viewed',
-          }));
-          setPayslips(transformedPayslips);
-        }
-      } catch (err: any) {
-        console.error('Failed to fetch payslips:', err);
-        showError(err.message || 'Failed to load payslips');
-        setPayslips([]);
-      } finally {
-        setIsLoading(false);
+          };
+        });
+        setPayslips(transformedPayslips);
       }
-    };
+    } catch (err: any) {
+      console.error('Failed to fetch payslips:', err);
+      showError(err.message || 'Failed to load payslips');
+      setPayslips([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchPayslips();
   }, [paylinq, showError]);
 
@@ -149,19 +159,49 @@ export default function PayslipsList() {
     setCurrentPage(1);
   };
 
-  const handleView = (_payslipId: string) => {
-    success('Payslip opened in viewer');
-    // TODO: Open PDF viewer modal
+  const handleView = (payslipId: string) => {
+    setSelectedPayslipId(payslipId);
+    setIsViewerOpen(true);
   };
 
-  const handleDownload = (_payslipId: string) => {
-    success('Payslip downloaded successfully');
-    // TODO: Download PDF
+  const handleDownload = async (payslipId: string) => {
+    try {
+      const response = await paylinq.downloadPayslipPdf(payslipId);
+      
+      // Create blob and download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `payslip_${payslipId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      success('Payslip downloaded successfully');
+    } catch (err: any) {
+      console.error('Failed to download payslip:', err);
+      showError(err.message || 'Failed to download payslip');
+    }
   };
 
-  const handleSend = (_payslipId: string) => {
-    success('Payslip sent to employee email');
-    // TODO: Send email
+  const handleSend = async (payslipId: string) => {
+    try {
+      await paylinq.sendPayslip(payslipId);
+      success('Payslip sent to employee email');
+      
+      // Refresh the list to update status
+      fetchPayslips();
+    } catch (err: any) {
+      console.error('Failed to send payslip:', err);
+      showError(err.message || 'Failed to send payslip');
+    }
+  };
+
+  const handleCloseViewer = () => {
+    setIsViewerOpen(false);
+    setSelectedPayslipId(null);
   };
 
   const handleFilterChange = (filterId: string, value: any) => {
@@ -348,10 +388,10 @@ export default function PayslipsList() {
                   {payslip.payrollRun.payDate}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                  SRD {payslip.grossPay.toLocaleString()}
+                  <CurrencyDisplay amount={payslip.grossPay} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-green-600 dark:text-green-400">
-                  SRD {payslip.netPay.toLocaleString()}
+                  <CurrencyDisplay amount={payslip.netPay} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <StatusBadge status={payslip.status} />
@@ -413,6 +453,15 @@ export default function PayslipsList() {
         onReset={handleResetFilters}
         onApply={handleApplyFilters}
       />
+
+      {/* Payslip Viewer Modal */}
+      {selectedPayslipId && (
+        <PayslipViewer
+          paycheckId={selectedPayslipId}
+          isOpen={isViewerOpen}
+          onClose={handleCloseViewer}
+        />
+      )}
     </div>
   );
 }

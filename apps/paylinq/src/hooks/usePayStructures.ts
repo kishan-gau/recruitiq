@@ -350,7 +350,9 @@ export function useAddPayStructureComponent() {
       success(`Component "${data.componentName}" added successfully`);
     },
     onError: (err: any) => {
-      error(err?.message || 'Failed to add component');
+      console.error('Failed to add component:', err);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to add component';
+      error(errorMessage);
     },
   });
 }

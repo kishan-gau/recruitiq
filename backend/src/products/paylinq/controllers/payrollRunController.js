@@ -5,6 +5,7 @@
 
 import payrollService from '../services/payrollService.js';
 import { mapPayrollRunApiToDb, mapPayrollRunUpdateApiToDb, mapPayrollRunDbToApi } from '../utils/dtoMapper.js';
+import { mapPaychecksToDto } from '../dto/paycheckDto.js';
 import logger from '../../../utils/logger.js';
 import emailService from '../../../services/emailService.js';
 import { initializeEmailService } from '../../../controllers/emailSettingsController.js';
@@ -139,7 +140,33 @@ async function getPayrollRunById(req, res) {
       });
     }
 
+    // Fetch paychecks for this payroll run to include employee breakdown
+    const paychecks = await payrollService.getPaychecksByPayrollRun(id, organizationId);
+    
+    // Use DTO mapper to convert paychecks to API format (snake_case to camelCase)
+    const formattedPaychecks = mapPaychecksToDto(paychecks);
+
     const apiData = mapPayrollRunDbToApi(payrollRun);
+    
+    // Add employee breakdown to the response with snake_case for frontend compatibility
+    apiData.employee_breakdown = formattedPaychecks.map(paycheck => ({
+      worker_id: paycheck.employeeId,
+      employee_id: paycheck.employeeId,
+      full_name: paycheck.fullName,
+      employee_number: paycheck.employeeNumber,
+      gross_pay: paycheck.grossPay,
+      wage_tax: paycheck.wageTax,
+      aov: paycheck.aovTax,
+      aww: paycheck.awwTax,
+      total_deductions: (
+        parseFloat(paycheck.wageTax || 0) +
+        parseFloat(paycheck.aovTax || 0) +
+        parseFloat(paycheck.awwTax || 0) +
+        parseFloat(paycheck.otherDeductions || 0)
+      ).toFixed(2),
+      net_pay: paycheck.netPay,
+      status: paycheck.status || 'calculated',
+    }));
     
     // Debug log the data being returned
     logger.debug('Payroll run data before sending to UI', {
@@ -154,15 +181,14 @@ async function getPayrollRunById(req, res) {
         employeeCount: apiData.employeeCount,
         totalAmount: apiData.totalAmount,
         totalGrossPay: apiData.totalGrossPay,
-        totalNetPay: apiData.totalNetPay
+        totalNetPay: apiData.totalNetPay,
+        employeeBreakdownCount: apiData.employee_breakdown?.length
       }
     });
 
     res.status(200).json({
       success: true,
-      data: {
-        payroll_run: apiData,
-      },
+      payrollRun: apiData,
     });
   } catch (error) {
     logger.error('Error fetching payroll run', {
@@ -425,29 +451,27 @@ async function getPayrollRunPaychecks(req, res) {
 
     const paychecks = await payrollService.getPaychecksByPayrollRun(id, organizationId);
 
+    // Use DTO mapper to convert snake_case to camelCase
+    const formattedPaychecks = mapPaychecksToDto(paychecks);
+
     // Add calculated fields to each paycheck
-    const enrichedPaychecks = paychecks.map(paycheck => {
+    const enrichedPaychecks = formattedPaychecks.map(paycheck => {
       // Calculate total_deductions as sum of all deduction fields
       const totalDeductions = (
-        parseFloat(paycheck.wage_tax || 0) +
-        parseFloat(paycheck.aov_tax || 0) +
-        parseFloat(paycheck.aww_tax || 0) +
-        parseFloat(paycheck.federal_tax || 0) +
-        parseFloat(paycheck.state_tax || 0) +
-        parseFloat(paycheck.local_tax || 0) +
-        parseFloat(paycheck.social_security || 0) +
+        parseFloat(paycheck.wageTax || 0) +
+        parseFloat(paycheck.aovTax || 0) +
+        parseFloat(paycheck.awwTax || 0) +
+        parseFloat(paycheck.federalTax || 0) +
+        parseFloat(paycheck.stateTax || 0) +
+        parseFloat(paycheck.localTax || 0) +
+        parseFloat(paycheck.socialSecurity || 0) +
         parseFloat(paycheck.medicare || 0) +
-        parseFloat(paycheck.pre_tax_deductions || 0) +
-        parseFloat(paycheck.post_tax_deductions || 0) +
-        parseFloat(paycheck.other_deductions || 0)
+        parseFloat(paycheck.otherDeductions || 0)
       ).toFixed(2);
 
-      // Add aliases for Suriname tax fields (for backward compatibility with tests)
       return {
         ...paycheck,
-        total_deductions: totalDeductions,
-        aov_contribution: paycheck.aov_tax,
-        aww_contribution: paycheck.aww_tax,
+        totalDeductions,
       };
     });
 
@@ -467,6 +491,52 @@ async function getPayrollRunPaychecks(req, res) {
       success: false,
       error: 'Internal Server Error',
       message: 'Failed to fetch paychecks',
+    });
+  }
+}
+
+/**
+ * Mark payroll run for review (calculating -> calculated)
+ * POST /api/paylinq/payroll-runs/:id/mark-for-review
+ */
+async function markPayrollRunForReview(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+
+    const payrollRun = await payrollService.markPayrollRunForReview(id, organizationId, userId);
+
+    logger.info('Payroll run marked for review', {
+      organizationId,
+      payrollRunId: id,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      payrollRun: mapPayrollRunDbToApi(payrollRun),
+      message: 'Payroll run marked for review successfully',
+    });
+  } catch (error) {
+    logger.error('Error marking payroll run for review', {
+      error: error.message,
+      payrollRunId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('status') || error.message.includes('not found') || error.message.includes('paychecks')) {
+      return res.status(409).json({
+        success: false,
+        error: 'Conflict',
+        message: error.message,
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      error: 'Bad Request',
+      message: error.message,
     });
   }
 }
@@ -1066,6 +1136,7 @@ export default {
   getPayrollRunById,
   calculatePayroll,
   updatePayrollRun,
+  markPayrollRunForReview,
   finalizePayrollRun,
   processPayrollRun,
   approvePayrollRun,

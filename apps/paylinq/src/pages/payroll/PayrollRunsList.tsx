@@ -19,8 +19,8 @@ export default function PayrollRunsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPayroll, setSelectedPayroll] = useState<any>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [sortField, setSortField] = useState<'period' | 'endDate' | 'employeeCount' | 'totalAmount'>('endDate');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField, _setSortField] = useState<'period' | 'endDate' | 'employeeCount' | 'totalAmount'>('endDate');
+  const [sortDirection, _setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [isLoading, setIsLoading] = useState(true);
   const [allPayrollRuns, setAllPayrollRuns] = useState<PayrollRun[]>([]);
   const runsPerPage = 6;
@@ -38,16 +38,22 @@ export default function PayrollRunsList() {
 
         if (response.data) {
           const apiData = response.data as any;
-          const runs: PayrollRun[] = (apiData.payroll_runs || apiData).map((r: any) => ({
-            id: r.id,
-            period: r.payrollName || r.runNumber,
-            startDate: r.payPeriodStart,
-            endDate: r.payPeriodEnd,
-            status: r.status,
-            employeeCount: r.employeeCount || 0,
-            totalAmount: r.totalNetPay || 0,
-            type: r.runType,
-          }));
+          console.log('API Response:', apiData); // Debug log
+          const runsArray = apiData.payroll_runs || apiData.payrollRuns || (Array.isArray(apiData) ? apiData : []);
+          const runs: PayrollRun[] = runsArray.map((r: any) => {
+            console.log('Mapping run:', r); // Debug log for each run
+            return {
+              id: r.id,
+              period: r.payrollName || r.run_name || r.runNumber || r.run_number || 'Unnamed Run',
+              startDate: r.payPeriodStart || r.pay_period_start,
+              endDate: r.payPeriodEnd || r.pay_period_end,
+              status: r.status,
+              employeeCount: r.employeeCount || r.employee_count || r.totalEmployees || r.total_employees || 0,
+              totalAmount: r.totalNetPay || r.total_net_pay || r.totalAmount || r.total_amount || 0,
+              type: r.runType || r.run_type,
+            };
+          });
+          console.log('Mapped runs:', runs); // Debug log
           setAllPayrollRuns(runs);
         }
       } catch (err: any) {

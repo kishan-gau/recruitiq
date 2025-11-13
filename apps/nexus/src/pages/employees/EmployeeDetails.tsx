@@ -14,13 +14,15 @@ import {
   Award,
   Clock,
   Shield,
+  History,
+  UserPlus,
 } from 'lucide-react';
-import { useEmployee, useTerminateEmployee } from '@/hooks/useEmployees';
+import { useEmployee, useTerminateEmployee, useRehireEmployee, useEmploymentHistory, useRehireEligibility } from '@/hooks/useEmployees';
 import { useToast } from '@/contexts/ToastContext';
 import { format } from 'date-fns';
 import SystemAccessPanel from '@/components/employee/SystemAccessPanel';
 
-type TabType = 'overview' | 'personal' | 'employment' | 'contracts' | 'performance' | 'time-off' | 'system-access';
+type TabType = 'overview' | 'personal' | 'employment' | 'contracts' | 'performance' | 'time-off' | 'system-access' | 'history';
 
 export default function EmployeeDetails() {
   const { id } = useParams<{ id: string }>();
@@ -28,9 +30,24 @@ export default function EmployeeDetails() {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [showRehireModal, setShowRehireModal] = useState(false);
+  const [terminationData, setTerminationData] = useState({
+    terminationDate: new Date().toISOString().split('T')[0],
+    terminationReason: 'resignation',
+    terminationNotes: '',
+    isRehireEligible: true,
+  });
+  const [rehireData, setRehireData] = useState({
+    rehireDate: new Date().toISOString().split('T')[0],
+    employmentStatus: 'active',
+    rehireNotes: '',
+  });
 
   const { data: employee, isLoading, error } = useEmployee(id!);
   const { mutate: terminateEmployee, isPending: isTerminating } = useTerminateEmployee();
+  const { mutate: rehireEmployee, isPending: isRehiring } = useRehireEmployee();
+  const { data: employmentHistory = [], isLoading: isLoadingHistory } = useEmploymentHistory(id!);
+  const { data: rehireEligibility } = useRehireEligibility(id!);
 
   if (isLoading) {
     return (
@@ -70,17 +87,44 @@ export default function EmployeeDetails() {
     terminateEmployee(
       {
         id: employee.id,
-        data: {
-          terminationDate: new Date().toISOString().split('T')[0],
-        },
+        data: terminationData,
       },
       {
         onSuccess: () => {
           toast.success('Employee terminated successfully');
           setShowTerminateModal(false);
+          setTerminationData({
+            terminationDate: new Date().toISOString().split('T')[0],
+            terminationReason: 'resignation',
+            terminationNotes: '',
+            isRehireEligible: true,
+          });
         },
         onError: (error) => {
           toast.error(error.message || 'Failed to terminate employee');
+        },
+      }
+    );
+  };
+
+  const handleRehire = () => {
+    rehireEmployee(
+      {
+        id: employee.id,
+        data: rehireData,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Employee rehired successfully');
+          setShowRehireModal(false);
+          setRehireData({
+            rehireDate: new Date().toISOString().split('T')[0],
+            employmentStatus: 'active',
+            rehireNotes: '',
+          });
+        },
+        onError: (error) => {
+          toast.error(error.message || 'Failed to rehire employee');
         },
       }
     );
@@ -109,6 +153,7 @@ export default function EmployeeDetails() {
     { id: 'performance', label: 'Performance', icon: Award },
     { id: 'time-off', label: 'Time Off', icon: Clock },
     { id: 'system-access', label: 'System Access', icon: Shield },
+    { id: 'history', label: 'Employment History', icon: History },
   ];
 
   return (
@@ -182,14 +227,25 @@ export default function EmployeeDetails() {
                 </div>
               </div>
             </div>
-            {employee.employmentStatus === 'active' && (
-              <button
-                onClick={() => setShowTerminateModal(true)}
-                className="px-4 py-2 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              >
-                Terminate
-              </button>
-            )}
+            <div className="flex gap-2">
+              {employee.employmentStatus === 'active' && (
+                <button
+                  onClick={() => setShowTerminateModal(true)}
+                  className="px-4 py-2 border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  Terminate
+                </button>
+              )}
+              {employee.employmentStatus === 'terminated' && rehireEligibility?.eligible && (
+                <button
+                  onClick={() => setShowRehireModal(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-colors flex items-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Rehire
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -563,6 +619,135 @@ export default function EmployeeDetails() {
             employeeEmail={employee.email}
           />
         )}
+
+        {activeTab === 'history' && (
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Employment History
+            </h3>
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 spinner" aria-label="Loading history"></div>
+              </div>
+            ) : employmentHistory.length === 0 ? (
+              <p className="text-slate-500 dark:text-slate-400 text-center py-8">
+                No employment history records found.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {employmentHistory.map((record: any, index: number) => (
+                  <div
+                    key={record.id}
+                    className={`border rounded-lg p-4 ${
+                      record.is_current
+                        ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20'
+                        : 'border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">
+                            {record.is_rehire ? '🔄 Rehired' : '✨ Original Hire'}
+                          </h4>
+                          {record.is_current && (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-400 text-xs font-medium rounded">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                          {record.job_title || 'No title'} • {record.department_name || 'No department'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-slate-900 dark:text-white">
+                          {format(new Date(record.start_date), 'MMM d, yyyy')}
+                        </div>
+                        {record.end_date && (
+                          <div className="text-sm text-slate-600 dark:text-slate-400">
+                            to {format(new Date(record.end_date), 'MMM d, yyyy')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-slate-500 dark:text-slate-400">Status:</span>{' '}
+                        <span className="font-medium text-slate-900 dark:text-white">
+                          {record.employment_status}
+                        </span>
+                      </div>
+                      {record.employment_type && (
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400">Type:</span>{' '}
+                          <span className="font-medium text-slate-900 dark:text-white">
+                            {record.employment_type}
+                          </span>
+                        </div>
+                      )}
+                      {record.location_name && (
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400">Location:</span>{' '}
+                          <span className="font-medium text-slate-900 dark:text-white">
+                            {record.location_name}
+                          </span>
+                        </div>
+                      )}
+                      {record.manager_name && (
+                        <div>
+                          <span className="text-slate-500 dark:text-slate-400">Manager:</span>{' '}
+                          <span className="font-medium text-slate-900 dark:text-white">
+                            {record.manager_name}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {record.termination_reason && (
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex items-start gap-2">
+                          <span className="text-sm text-slate-500 dark:text-slate-400">
+                            Termination:
+                          </span>
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">
+                              {record.termination_reason.replace(/_/g, ' ')}
+                            </span>
+                            {record.is_rehire_eligible !== undefined && (
+                              <span
+                                className={`ml-2 text-xs ${
+                                  record.is_rehire_eligible
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-red-600 dark:text-red-400'
+                                }`}
+                              >
+                                ({record.is_rehire_eligible ? 'Rehire Eligible' : 'Not Rehire Eligible'})
+                              </span>
+                            )}
+                            {record.termination_notes && (
+                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                {record.termination_notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {record.rehire_notes && (
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Rehire Notes: </span>
+                        <span className="text-sm text-slate-900 dark:text-white">{record.rehire_notes}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Terminate Modal */}
@@ -572,13 +757,85 @@ export default function EmployeeDetails() {
             <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">
               Terminate Employee
             </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
-              Are you sure you want to terminate {employee.firstName} {employee.lastName}? This
-              action will set their status to terminated as of today.
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Terminate {employee.firstName} {employee.lastName}'s employment.
             </p>
+            
+            <div className="space-y-4 mb-6">
+              {/* Termination Date */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Termination Date
+                </label>
+                <input
+                  type="date"
+                  value={terminationData.terminationDate}
+                  onChange={(e) => setTerminationData({ ...terminationData, terminationDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* Termination Reason */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Termination Reason
+                </label>
+                <select
+                  value={terminationData.terminationReason}
+                  onChange={(e) => setTerminationData({ ...terminationData, terminationReason: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                  <option value="resignation">Resignation</option>
+                  <option value="layoff">Layoff</option>
+                  <option value="termination_with_cause">Termination With Cause</option>
+                  <option value="termination_without_cause">Termination Without Cause</option>
+                  <option value="mutual_agreement">Mutual Agreement</option>
+                  <option value="retirement">Retirement</option>
+                  <option value="contract_expiry">Contract Expiry</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Termination Notes */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={terminationData.terminationNotes}
+                  onChange={(e) => setTerminationData({ ...terminationData, terminationNotes: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  placeholder="Additional termination details..."
+                />
+              </div>
+
+              {/* Rehire Eligibility */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="rehireEligible"
+                  checked={terminationData.isRehireEligible}
+                  onChange={(e) => setTerminationData({ ...terminationData, isRehireEligible: e.target.checked })}
+                  className="w-4 h-4 text-blue-600 rounded border-slate-300 dark:border-slate-700"
+                />
+                <label htmlFor="rehireEligible" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Eligible for Rehire
+                </label>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowTerminateModal(false)}
+                onClick={() => {
+                  setShowTerminateModal(false);
+                  setTerminationData({
+                    terminationDate: new Date().toISOString().split('T')[0],
+                    terminationReason: 'resignation',
+                    terminationNotes: '',
+                    isRehireEligible: true,
+                  });
+                }}
                 disabled={isTerminating}
                 className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
@@ -590,6 +847,98 @@ export default function EmployeeDetails() {
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {isTerminating ? 'Terminating...' : 'Terminate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rehire Modal */}
+      {showRehireModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">
+              Rehire Employee
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Rehire {employee.firstName} {employee.lastName} and reactivate their employment.
+            </p>
+            
+            <div className="space-y-4 mb-6">
+              {/* Rehire Date */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Rehire Date
+                </label>
+                <input
+                  type="date"
+                  value={rehireData.rehireDate}
+                  onChange={(e) => setRehireData({ ...rehireData, rehireDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* Employment Status */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Employment Status
+                </label>
+                <select
+                  value={rehireData.employmentStatus}
+                  onChange={(e) => setRehireData({ ...rehireData, employmentStatus: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                  <option value="active">Active</option>
+                  <option value="probation">Probation</option>
+                  <option value="on_leave">On Leave</option>
+                </select>
+              </div>
+
+              {/* Rehire Notes */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={rehireData.rehireNotes}
+                  onChange={(e) => setRehireData({ ...rehireData, rehireNotes: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  placeholder="Reason for rehire, changes in role, etc..."
+                />
+              </div>
+
+              {rehireEligibility && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-900 dark:text-blue-300">
+                    <strong>Previous Termination:</strong> {rehireEligibility.terminationReason?.replace(/_/g, ' ')} on{' '}
+                    {rehireEligibility.terminationDate && format(new Date(rehireEligibility.terminationDate), 'MMM d, yyyy')}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowRehireModal(false);
+                  setRehireData({
+                    rehireDate: new Date().toISOString().split('T')[0],
+                    employmentStatus: 'active',
+                    rehireNotes: '',
+                  });
+                }}
+                disabled={isRehiring}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRehire}
+                disabled={isRehiring}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition-colors disabled:opacity-50"
+              >
+                {isRehiring ? 'Rehiring...' : 'Rehire Employee'}
               </button>
             </div>
           </div>

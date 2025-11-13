@@ -40,7 +40,7 @@ class SchedulingService {
   workScheduleSchema = Joi.object({
     employee_id: Joi.string().uuid().required(),
     shift_type_id: Joi.string().uuid().allow(null),
-    schedule_date: Joi.date().required(),
+    schedule_date: Joi.date().iso().raw().required(), // .raw() keeps it as string, no conversion
     start_time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
     end_time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
     duration_hours: Joi.number().min(0).max(24).allow(null),
@@ -56,8 +56,8 @@ class SchedulingService {
     workScheduleId: Joi.string().uuid().required(),
     requestedBy: Joi.string().uuid().required(),
     requestType: Joi.string().valid('swap', 'change', 'cancel').required(),
-    originalDate: Joi.date().required(),
-    proposedDate: Joi.date().allow(null),
+    originalDate: Joi.date().raw().required(), // .raw() keeps it as string, no conversion
+    proposedDate: Joi.date().raw().allow(null),
     originalShiftTypeId: Joi.string().uuid().allow(null),
     proposedShiftTypeId: Joi.string().uuid().allow(null),
     reason: Joi.string().min(5).max(500).required()
@@ -154,8 +154,27 @@ class SchedulingService {
    * @returns {Promise<Object>} Created work schedule
    */
   async createWorkSchedule(scheduleData, organizationId, userId) {
+    logger.debug('Creating work schedule - received data', { 
+      scheduleData,
+      schedule_date: scheduleData.schedule_date,
+      schedule_date_type: typeof scheduleData.schedule_date 
+    });
+    
+    // Calculate duration_hours if not provided
+    if (!scheduleData.duration_hours && scheduleData.start_time && scheduleData.end_time) {
+      scheduleData.duration_hours = calculateDuration(
+        scheduleData.start_time,
+        scheduleData.end_time,
+        scheduleData.break_minutes || 0
+      );
+    }
+    
     const { error, value } = this.workScheduleSchema.validate(scheduleData);
     if (error) {
+      logger.error('Schedule validation failed', { 
+        error: error.details[0].message,
+        scheduleData 
+      });
       throw new ValidationError(error.details[0].message);
     }
 
@@ -211,11 +230,37 @@ class SchedulingService {
   /**
    * Get schedules by organization (alias for API compatibility)
    * @param {string} organizationId - Organization UUID
-   * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Work schedules
+   * @param {Object} filters - Optional filters (includes pagination)
+   * @returns {Promise<Object>} Work schedules with pagination if requested
    */
   async getSchedulesByOrganization(organizationId, filters = {}) {
-    return this.getWorkSchedules(organizationId, filters);
+    try {
+      // Check if pagination is requested
+      if (filters.page && filters.limit) {
+        const page = Math.max(1, parseInt(filters.page) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(filters.limit) || 20));
+        
+        // Get paginated results
+        const result = await this.schedulingRepository.findWorkSchedulesPaginated(
+          filters,
+          organizationId,
+          page,
+          limit
+        );
+        
+        return result;
+      }
+      
+      // No pagination - return all matching schedules
+      const schedules = await this.getWorkSchedules(organizationId, filters);
+      return schedules;
+    } catch (err) {
+      logger.error('Error fetching schedules by organization', { 
+        error: err.message, 
+        organizationId 
+      });
+      throw err;
+    }
   }
 
   /**
@@ -452,12 +497,30 @@ class SchedulingService {
   /**
    * Get schedule change requests
    * @param {string} organizationId - Organization UUID
-   * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Schedule change requests
+   * @param {Object} filters - Optional filters (includes pagination)
+   * @returns {Promise<Object|Array>} Schedule change requests with pagination if requested
    */
   async getScheduleChangeRequests(organizationId, filters = {}) {
     try {
-      return await this.schedulingRepository.findScheduleChangeRequests(filters, organizationId);
+      // Check if pagination is requested
+      if (filters.page && filters.limit) {
+        const page = Math.max(1, parseInt(filters.page) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(filters.limit) || 20));
+        
+        // Get paginated results
+        const result = await this.schedulingRepository.findScheduleChangeRequestsPaginated(
+          filters,
+          organizationId,
+          page,
+          limit
+        );
+        
+        return result;
+      }
+      
+      // No pagination - return all matching requests
+      const requests = await this.schedulingRepository.findScheduleChangeRequests(filters, organizationId);
+      return requests;
     } catch (err) {
       logger.error('Error fetching schedule change requests', { error: err.message, organizationId });
       throw err;

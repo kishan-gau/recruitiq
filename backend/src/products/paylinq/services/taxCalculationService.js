@@ -13,6 +13,7 @@
 import Joi from 'joi';
 import TaxEngineRepository from '../repositories/taxEngineRepository.js';
 import DeductionRepository from '../repositories/deductionRepository.js';
+import AllowanceService from './AllowanceService.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 
@@ -20,6 +21,7 @@ class TaxCalculationService {
   constructor() {
     this.taxEngineRepository = new TaxEngineRepository();
     this.deductionRepository = new DeductionRepository();
+    this.allowanceService = new AllowanceService();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -617,15 +619,35 @@ class TaxCalculationService {
    * @param {string} employeeRecordId - Employee record UUID
    * @param {number} grossPay - Gross pay amount
    * @param {Date} payDate - Pay date
+   * @param {string} payPeriod - Pay period (monthly, biweekly, etc.)
    * @param {string} organizationId - Organization UUID
-   * @returns {Promise<Object>} Tax calculation results
+   * @returns {Promise<Object>} Tax calculation results including taxFreeAllowance and taxableIncome
    */
-  async calculateEmployeeTaxes(employeeRecordId, grossPay, payDate, organizationId) {
+  async calculateEmployeeTaxes(employeeRecordId, grossPay, payDate, payPeriod, organizationId) {
     try {
       logger.info('Starting tax calculation', {
         employeeRecordId,
         grossPay,
         payDate,
+        payPeriod,
+        organizationId
+      });
+
+      // PHASE 1: Calculate tax-free allowance using AllowanceService
+      const taxFreeAllowance = await this.allowanceService.calculateTaxFreeAllowance(
+        grossPay,
+        payDate,
+        payPeriod,
+        organizationId
+      );
+
+      // Calculate taxable income (gross pay minus tax-free allowance)
+      const taxableIncome = Math.max(0, grossPay - taxFreeAllowance);
+
+      logger.info('Tax-free allowance calculated', {
+        grossPay,
+        taxFreeAllowance,
+        taxableIncome,
         organizationId
       });
 
@@ -644,7 +666,7 @@ class TaxCalculationService {
       let socialSecurity = 0; // AOV (Old Age Provision)
       let medicare = 0; // AWW (General Widow and Orphan Provision)
 
-      // Calculate Surinamese Wage Tax (progressive brackets)
+      // Calculate Surinamese Wage Tax (progressive brackets) on TAXABLE INCOME
       const wageTaxRuleSet = taxRuleSets.find(rs => rs.tax_type === 'wage' || rs.tax_type === 'income');
       
       if (wageTaxRuleSet) {
@@ -655,7 +677,7 @@ class TaxCalculationService {
 
         if (brackets.length > 0) {
           federalTax = await this.taxEngineRepository.calculateBracketTax(
-            grossPay,
+            taxableIncome, // Use taxableIncome instead of grossPay
             brackets,
             organizationId
           );
@@ -669,7 +691,7 @@ class TaxCalculationService {
 
         if (defaultBrackets.length > 0) {
           federalTax = await this.taxEngineRepository.calculateBracketTax(
-            grossPay,
+            taxableIncome, // Use taxableIncome instead of grossPay
             defaultBrackets,
             organizationId
           );
@@ -690,7 +712,7 @@ class TaxCalculationService {
 
         if (aovBrackets.length > 0) {
           socialSecurity = await this.taxEngineRepository.calculateFlatRateTax(
-            grossPay,
+            taxableIncome, // Use taxableIncome instead of grossPay
             aovBrackets[0].rate_percentage,
             aovRuleSet.annual_cap,
             organizationId
@@ -712,28 +734,11 @@ class TaxCalculationService {
 
         if (awwBrackets.length > 0) {
           medicare = await this.taxEngineRepository.calculateFlatRateTax(
-            grossPay,
+            taxableIncome, // Use taxableIncome instead of grossPay
             awwBrackets[0].rate_percentage,
             awwRuleSet.annual_cap,
             organizationId
           );
-        }
-      }
-
-      // Get applicable allowances
-      const allowances = await this.taxEngineRepository.findApplicableAllowances(
-        country,
-        null, // state - not used for Suriname
-        payDate,
-        organizationId
-      );
-
-      let totalAllowances = 0;
-      for (const allowance of allowances) {
-        if (allowance.is_percentage) {
-          totalAllowances += grossPay * (parseFloat(allowance.amount) / 100);
-        } else {
-          totalAllowances += parseFloat(allowance.amount);
         }
       }
 
@@ -754,18 +759,17 @@ class TaxCalculationService {
       }
 
       const totalTaxes = federalTax + stateTax + socialSecurity + medicare;
-      const taxableIncome = grossPay - totalAllowances - preTaxDeductionAmount;
 
       const result = {
         employeeRecordId,
         grossPay,
-        taxableIncome,
+        taxFreeAllowance, // PHASE 1: Return tax-free allowance
+        taxableIncome,    // PHASE 1: Return taxable income
         federalTax,
         stateTax,
         socialSecurity,
         medicare,
         totalTaxes,
-        totalAllowances,
         preTaxDeductions: preTaxDeductionAmount,
         effectiveRate: grossPay > 0 ? (totalTaxes / grossPay) * 100 : 0
       };
@@ -784,6 +788,386 @@ class TaxCalculationService {
         error: err.message, 
         employeeRecordId,
         organizationId 
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Resolve tax calculation mode for a tax rule set
+   * 
+   * Determines which calculation mode to use based on explicit configuration
+   * or smart defaults based on calculation method.
+   * 
+   * @param {Object|null} taxRuleSet - Tax rule set with calculation_mode
+   * @returns {string} Calculation mode: 'aggregated', 'component_based', or 'proportional_distribution'
+   * @private
+   */
+  _resolveTaxCalculationMode(taxRuleSet) {
+    if (!taxRuleSet) {
+      return 'proportional_distribution'; // System default
+    }
+
+    // Use explicit mode if set
+    if (taxRuleSet.calculation_mode) {
+      return taxRuleSet.calculation_mode;
+    }
+
+    // Smart defaults based on calculation method
+    if (taxRuleSet.calculation_method === 'bracket') {
+      // Progressive taxes should use proportional distribution
+      return 'proportional_distribution';
+    } else if (taxRuleSet.calculation_method === 'flat_rate') {
+      // Flat-rate taxes can use component-based
+      return 'component_based';
+    }
+
+    // Fallback
+    return 'proportional_distribution';
+  }
+
+  /**
+   * Calculate taxes for employee with component-based approach (PHASE 2/2B)
+   * 
+   * Phase 2: Each earning component is taxed separately with component-specific allowances.
+   * Phase 2B: Tax calculation mode configurable per tax type (proportional_distribution, component_based, aggregated).
+   * 
+   * Example: Regular salary uses monthly tax-free sum, Holiday allowance uses holiday cap.
+   * 
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {Array<Object>} components - Earning components with metadata
+   *   @param {string} components[].componentCode - e.g., 'REGULAR_SALARY', 'VAKANTIEGELD'
+   *   @param {string} components[].componentName - Display name
+   *   @param {number} components[].amount - Component amount
+   *   @param {boolean} components[].isTaxable - Whether this component is taxable
+   *   @param {string} components[].allowanceType - 'tax_free_sum_monthly', 'holiday_allowance', 'bonus_gratuity', null
+   * @param {Date} payDate - Pay date
+   * @param {string} payPeriod - 'monthly', 'biweekly', etc.
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Component-based tax calculation result
+   *   @returns {Object} result.summary - Aggregate totals with calculation modes
+   *   @returns {Array<Object>} result.componentTaxes - Tax breakdown per component
+   */
+  async calculateEmployeeTaxesWithComponents(employeeRecordId, components, payDate, payPeriod, organizationId) {
+    try {
+      logger.info('Starting component-based tax calculation', {
+        employeeRecordId,
+        componentCount: components.length,
+        payDate,
+        payPeriod,
+        organizationId
+      });
+
+      // Validate inputs
+      if (!components || components.length === 0) {
+        throw new ValidationError('At least one component required for tax calculation');
+      }
+
+      if (!organizationId) {
+        throw new ValidationError('organizationId is required for tax calculation');
+      }
+
+      const componentTaxes = [];
+      let totalGrossPay = 0;
+      let totalTaxFreeAllowance = 0;
+      let totalTaxableIncome = 0;
+
+      // Get tax rule sets once (reused for all components)
+      const country = 'SR';
+      const taxRuleSets = await this.taxEngineRepository.findApplicableTaxRuleSets(
+        country,
+        payDate,
+        organizationId
+      );
+
+      const wageTaxRuleSet = taxRuleSets.find(rs => rs.tax_type === 'wage' || rs.tax_type === 'income');
+      const aovRuleSet = await this.taxEngineRepository.getSurinameseAOVRate(payDate, organizationId);
+      const awwRuleSet = await this.taxEngineRepository.getSurinameseAWWRate(payDate, organizationId);
+
+      // Determine calculation modes for each tax type
+      const wageTaxMode = this._resolveTaxCalculationMode(wageTaxRuleSet);
+      const aovMode = this._resolveTaxCalculationMode(aovRuleSet);
+      const awwMode = this._resolveTaxCalculationMode(awwRuleSet);
+
+      // Get tax brackets once
+      let wageTaxBrackets = [];
+      if (wageTaxRuleSet) {
+        wageTaxBrackets = await this.taxEngineRepository.findTaxBrackets(wageTaxRuleSet.id, organizationId);
+      } else {
+        wageTaxBrackets = await this.taxEngineRepository.getSurinameseWageTaxBrackets(
+          new Date().getFullYear(),
+          organizationId
+        );
+      }
+
+      const aovBrackets = aovRuleSet ? await this.taxEngineRepository.findTaxBrackets(aovRuleSet.id, organizationId) : [];
+      const awwBrackets = awwRuleSet ? await this.taxEngineRepository.findTaxBrackets(awwRuleSet.id, organizationId) : [];
+
+      // STEP 1: Calculate allowances and taxable income per component
+      for (const component of components) {
+        const componentAmount = parseFloat(component.amount) || 0;
+        totalGrossPay += componentAmount;
+
+        // Skip non-taxable components
+        if (!component.isTaxable) {
+          componentTaxes.push({
+            componentCode: component.componentCode,
+            componentName: component.componentName,
+            amount: componentAmount,
+            isTaxable: false,
+            taxFreeAllowance: 0,
+            taxableIncome: 0,
+            wageTax: 0,
+            aovTax: 0,
+            awwTax: 0,
+            totalTax: 0,
+            calculationMetadata: {
+              note: 'Component marked as non-taxable'
+            }
+          });
+          continue;
+        }
+
+        // Apply component-specific tax-free allowance
+        let taxFreeAllowance = 0;
+
+        if (component.allowanceType) {
+          // Use AllowanceService for allowance lookup and application
+          if (component.allowanceType === 'tax_free_sum_monthly' || component.allowanceType === 'tax_free_sum_annual') {
+            taxFreeAllowance = await this.allowanceService.calculateTaxFreeAllowance(
+              componentAmount,
+              payDate,
+              payPeriod,
+              organizationId
+            );
+          } else if (component.allowanceType === 'holiday_allowance') {
+            // Holiday allowance: Apply yearly cap via AllowanceService
+            const year = new Date(payDate).getFullYear();
+            const holidayResult = await this.allowanceService.applyHolidayAllowance(
+              employeeRecordId,
+              componentAmount,
+              year,
+              organizationId
+            );
+            taxFreeAllowance = holidayResult.appliedAmount;
+          } else if (component.allowanceType === 'bonus_gratuity') {
+            // Bonus allowance: Apply yearly cap via AllowanceService
+            const year = new Date(payDate).getFullYear();
+            const bonusResult = await this.allowanceService.applyBonusAllowance(
+              employeeRecordId,
+              componentAmount,
+              year,
+              organizationId
+            );
+            taxFreeAllowance = bonusResult.appliedAmount;
+          }
+        }
+
+        const taxableIncome = Math.max(0, componentAmount - taxFreeAllowance);
+
+        totalTaxFreeAllowance += taxFreeAllowance;
+        totalTaxableIncome += taxableIncome;
+
+        // Store component with allowance info (taxes calculated in next step)
+        componentTaxes.push({
+          componentCode: component.componentCode,
+          componentName: component.componentName,
+          amount: componentAmount,
+          isTaxable: true,
+          taxFreeAllowance,
+          taxableIncome,
+          wageTax: 0, // Calculated in step 2
+          aovTax: 0,  // Calculated in step 2
+          awwTax: 0,  // Calculated in step 2
+          totalTax: 0,
+          calculationMetadata: {
+            allowanceType: component.allowanceType || null
+          }
+        });
+      }
+
+      // STEP 2: Calculate taxes based on mode
+      let totalWageTax = 0;
+      let totalAovTax = 0;
+      let totalAwwTax = 0;
+
+      // 2A: Wage Tax Calculation
+      if (wageTaxMode === 'proportional_distribution' || wageTaxMode === 'aggregated') {
+        // Calculate wage tax on TOTAL taxable income (correct for progressive)
+        if (totalTaxableIncome > 0 && wageTaxBrackets.length > 0) {
+          totalWageTax = await this.taxEngineRepository.calculateBracketTax(
+            totalTaxableIncome,
+            wageTaxBrackets,
+            organizationId
+          );
+
+          // Distribute proportionally to components
+          if (wageTaxMode === 'proportional_distribution') {
+            for (const componentTax of componentTaxes.filter(c => c.isTaxable && c.taxableIncome > 0)) {
+              const proportion = componentTax.taxableIncome / totalTaxableIncome;
+              componentTax.wageTax = Math.round(totalWageTax * proportion * 100) / 100;
+              componentTax.calculationMetadata.wageTaxProportion = proportion;
+              componentTax.calculationMetadata.wageTaxCalculationMode = 'proportional_distribution';
+            }
+          }
+        }
+      } else if (wageTaxMode === 'component_based') {
+        // Calculate wage tax per component (ONLY valid for flat-rate!)
+        logger.warn('Component-based wage tax calculation used for progressive tax', {
+          taxRuleSetId: wageTaxRuleSet?.id,
+          organizationId
+        });
+
+        for (const componentTax of componentTaxes.filter(c => c.isTaxable && c.taxableIncome > 0)) {
+          if (wageTaxBrackets.length > 0) {
+            componentTax.wageTax = await this.taxEngineRepository.calculateBracketTax(
+              componentTax.taxableIncome,
+              wageTaxBrackets,
+              organizationId
+            );
+            componentTax.calculationMetadata.wageTaxCalculationMode = 'component_based';
+            totalWageTax += componentTax.wageTax;
+          }
+        }
+      }
+
+      // 2B: AOV Tax Calculation
+      if (aovMode === 'component_based') {
+        // Calculate per component (mathematically valid for flat-rate)
+        if (aovBrackets.length > 0 && aovBrackets[0].rate_percentage) {
+          for (const componentTax of componentTaxes.filter(c => c.isTaxable && c.taxableIncome > 0)) {
+            componentTax.aovTax = await this.taxEngineRepository.calculateFlatRateTax(
+              componentTax.taxableIncome,
+              aovBrackets[0].rate_percentage,
+              aovRuleSet?.annual_cap || null,
+              organizationId
+            );
+            componentTax.calculationMetadata.aovCalculationMode = 'component_based';
+            totalAovTax += componentTax.aovTax;
+          }
+        }
+      } else if (aovMode === 'proportional_distribution' || aovMode === 'aggregated') {
+        // Calculate on total, distribute proportionally
+        if (totalTaxableIncome > 0 && aovBrackets.length > 0 && aovBrackets[0].rate_percentage) {
+          totalAovTax = await this.taxEngineRepository.calculateFlatRateTax(
+            totalTaxableIncome,
+            aovBrackets[0].rate_percentage,
+            aovRuleSet?.annual_cap || null,
+            organizationId
+          );
+
+          if (aovMode === 'proportional_distribution') {
+            for (const componentTax of componentTaxes.filter(c => c.isTaxable && c.taxableIncome > 0)) {
+              const proportion = componentTax.taxableIncome / totalTaxableIncome;
+              componentTax.aovTax = Math.round(totalAovTax * proportion * 100) / 100;
+              componentTax.calculationMetadata.aovCalculationMode = 'proportional_distribution';
+            }
+          }
+        }
+      }
+
+      // 2C: AWW Tax Calculation (same logic as AOV)
+      if (awwMode === 'component_based') {
+        if (awwBrackets.length > 0 && awwBrackets[0].rate_percentage) {
+          for (const componentTax of componentTaxes.filter(c => c.isTaxable && c.taxableIncome > 0)) {
+            componentTax.awwTax = await this.taxEngineRepository.calculateFlatRateTax(
+              componentTax.taxableIncome,
+              awwBrackets[0].rate_percentage,
+              awwRuleSet?.annual_cap || null,
+              organizationId
+            );
+            componentTax.calculationMetadata.awwCalculationMode = 'component_based';
+            totalAwwTax += componentTax.awwTax;
+          }
+        }
+      } else if (awwMode === 'proportional_distribution' || awwMode === 'aggregated') {
+        if (totalTaxableIncome > 0 && awwBrackets.length > 0 && awwBrackets[0].rate_percentage) {
+          totalAwwTax = await this.taxEngineRepository.calculateFlatRateTax(
+            totalTaxableIncome,
+            awwBrackets[0].rate_percentage,
+            awwRuleSet?.annual_cap || null,
+            organizationId
+          );
+
+          if (awwMode === 'proportional_distribution') {
+            for (const componentTax of componentTaxes.filter(c => c.isTaxable && c.taxableIncome > 0)) {
+              const proportion = componentTax.taxableIncome / totalTaxableIncome;
+              componentTax.awwTax = Math.round(totalAwwTax * proportion * 100) / 100;
+              componentTax.calculationMetadata.awwCalculationMode = 'proportional_distribution';
+            }
+          }
+        }
+      }
+
+      // STEP 3: Calculate component totals and enrich metadata
+      for (const componentTax of componentTaxes.filter(c => c.isTaxable)) {
+        componentTax.totalTax = componentTax.wageTax + componentTax.aovTax + componentTax.awwTax;
+        componentTax.calculationMetadata.payDate = payDate.toISOString();
+        componentTax.calculationMetadata.taxRulesApplied = {
+          wageTaxRuleSet: wageTaxRuleSet?.tax_name || 'Default Surinamese Wage Tax',
+          wageTaxMode,
+          aovRate: aovBrackets[0]?.rate_percentage || null,
+          aovMode,
+          awwRate: awwBrackets[0]?.rate_percentage || null,
+          awwMode
+        };
+
+        logger.debug('Component tax calculated', {
+          componentCode: componentTax.componentCode,
+          amount: componentTax.amount,
+          taxFreeAllowance: componentTax.taxFreeAllowance,
+          taxableIncome: componentTax.taxableIncome,
+          totalTax: componentTax.totalTax,
+          organizationId
+        });
+      }
+
+      // STEP 4: Build result with calculation modes
+      const totalTaxes = totalWageTax + totalAovTax + totalAwwTax;
+      const effectiveRate = totalGrossPay > 0 ? (totalTaxes / totalGrossPay) * 100 : 0;
+
+      const result = {
+        employeeRecordId,
+        payDate,
+        payPeriod,
+        summary: {
+          totalGrossPay,
+          totalTaxFreeAllowance,
+          totalTaxableIncome,
+          totalWageTax,
+          totalAovTax,
+          totalAwwTax,
+          totalTaxes,
+          effectiveRate,
+          componentCount: components.length,
+          calculationModes: {
+            wageTax: wageTaxMode,
+            aov: aovMode,
+            aww: awwMode
+          }
+        },
+        componentTaxes,
+        calculatedAt: new Date().toISOString()
+      };
+
+      logger.info('Component-based tax calculation completed', {
+        employeeRecordId,
+        totalGrossPay,
+        totalTaxes,
+        effectiveRate: effectiveRate.toFixed(2) + '%',
+        componentCount: components.length,
+        calculationModes: result.summary.calculationModes,
+        organizationId
+      });
+
+      return result;
+
+    } catch (err) {
+      logger.error('Error in component-based tax calculation', {
+        error: err.message,
+        stack: err.stack,
+        employeeRecordId,
+        organizationId
       });
       throw err;
     }
@@ -830,6 +1214,46 @@ class TaxCalculationService {
   }
 
   /**
+   * Setup monthly tax-free allowance (€9,000 until Dec 31, 2025)
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User setting up the allowance
+   * @returns {Promise<Object>} Created allowance
+   */
+  async setupMonthlyTaxFreeAllowance(organizationId, userId) {
+    try {
+      logger.info('Setting up monthly tax-free allowance (€9,000 until Dec 31, 2025)', { organizationId });
+
+      const allowance = await this.createAllowance(
+        {
+          allowanceType: 'standard',
+          allowanceName: 'Monthly Tax-Free Allowance',
+          country: 'SR',
+          amount: 9000,
+          isPercentage: false,
+          effectiveFrom: new Date('2025-01-01'),
+          effectiveTo: new Date('2025-12-31'),
+          isActive: true,
+          description: 'Monthly tax-free allowance of €9,000 valid until December 31, 2025'
+        },
+        organizationId,
+        userId
+      );
+
+      logger.info('Monthly tax-free allowance created', {
+        allowanceId: allowance.id,
+        amount: 9000,
+        validUntil: '2025-12-31',
+        organizationId
+      });
+
+      return allowance;
+    } catch (err) {
+      logger.error('Error setting up monthly tax-free allowance', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
    * Setup default Surinamese tax rules for organization
    * @param {string} organizationId - Organization UUID
    * @param {string} userId - User setting up the rules
@@ -843,7 +1267,8 @@ class TaxCalculationService {
         wageTaxRuleSet: null,
         aovRuleSet: null,
         awwRuleSet: null,
-        brackets: []
+        brackets: [],
+        monthlyTaxFreeAllowance: null
       };
 
       // Create Wage Tax rule set
@@ -952,5 +1377,6 @@ class TaxCalculationService {
   }
 }
 
-// Export singleton instance
+// Export both class and singleton instance
+export { TaxCalculationService };
 export default new TaxCalculationService();

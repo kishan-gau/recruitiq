@@ -21,6 +21,7 @@ import timeAttendanceRoutes from './timeAttendance.js';
 import timesheetRoutes from './timesheets.js';
 import schedulingRoutes from './scheduling.js';
 import payrollRunRoutes from './payrollRuns.js';
+import payrollRunTypeRoutes from './payrollRunTypes.js';
 import paycheckRoutes from './paychecks.js';
 import deductionRoutes from './deductions.js';
 import reconciliationRoutes from './reconciliation.js';
@@ -28,6 +29,7 @@ import taxRateRoutes from './taxRates.js';
 import paymentRoutes from './payments.js';
 import reportsRoutes from './reports.js';
 import settingsRoutes from './settings.js';
+import payslipTemplateRoutes from './payslipTemplates.js';
 
 const router = express.Router();
 
@@ -64,6 +66,7 @@ router.use('/time-attendance', timeAttendanceRoutes);
 router.use('/timesheets', timesheetRoutes);
 router.use('/schedules', schedulingRoutes);
 router.use('/payroll-runs', payrollRunRoutes);
+router.use('/payroll-run-types', payrollRunTypeRoutes);
 router.use('/paychecks', paycheckRoutes);
 router.use('/deductions', deductionRoutes);
 router.use('/reconciliations', reconciliationRoutes);
@@ -71,5 +74,6 @@ router.use('/tax-rules', taxRateRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/payslip-templates', payslipTemplateRoutes);
 
 export default router;

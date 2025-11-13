@@ -22,6 +22,7 @@ import {
   Info,
   Send,
   Settings,
+  FileText,
 } from 'lucide-react';
 import { FormSection, FormGrid, FormField } from '@/components/form/FormField';
 import { SelectWithSearch } from '@/components/form/SelectWithSearch';
@@ -30,6 +31,7 @@ import Tabs from '@/components/ui/Tabs';
 import type { Tab } from '@/components/ui/Tabs';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import PayslipTemplates from '@/pages/settings/payslip-templates/PayslipTemplates';
 
 type Currency = 'SRD' | 'USD' | 'EUR';
 type DateFormat = 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD';
@@ -384,6 +386,7 @@ const SystemPreferencesPage = () => {
     { id: 'email', label: 'Email', icon: <Send className="h-4 w-4" /> },
     { id: 'payroll', label: 'Payroll Defaults', icon: <DollarSign className="h-4 w-4" /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell className="h-4 w-4" /> },
+    { id: 'payslip-templates', label: 'Payslip Templates', icon: <FileText className="h-4 w-4" /> },
   ];
 
   return (
@@ -882,6 +885,11 @@ const SystemPreferencesPage = () => {
               </div>
             </FormSection>
           </>
+        )}
+
+        {/* Payslip Templates Tab */}
+        {activeTab === 'payslip-templates' && (
+          <PayslipTemplates />
         )}
       </div>
     </div>

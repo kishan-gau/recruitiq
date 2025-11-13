@@ -372,19 +372,15 @@ class PayrollRepository {
     const result = await query(
       `INSERT INTO payroll.compensation 
       (organization_id, employee_id, compensation_type, amount,
-       hourly_rate, overtime_rate, pay_period_amount, annual_amount,
-       effective_from, is_current, currency, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       overtime_rate, effective_from, is_current, currency, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *`,
       [
         organizationId,
         compensationData.employeeId,
         compensationData.compensationType,
         compensationData.amount,
-        compensationData.hourlyRate,
         compensationData.overtimeRate,
-        compensationData.payPeriodAmount,
-        compensationData.annualAmount,
         compensationData.effectiveFrom,
         compensationData.isCurrent !== false,
         compensationData.currency || 'SRD',
@@ -482,10 +478,7 @@ class PayrollRepository {
     const fieldMap = {
       amount: 'amount',
       compensationType: 'compensation_type',
-      hourlyRate: 'hourly_rate',
       overtimeRate: 'overtime_rate',
-      payPeriodAmount: 'pay_period_amount',
-      annualAmount: 'annual_amount',
       effectiveFrom: 'effective_from',
       effectiveTo: 'effective_to',
       isCurrent: 'is_current',
@@ -542,6 +535,74 @@ class PayrollRepository {
     return result.rowCount > 0;
   }
 
+  // ==================== WORKER TYPES ====================
+
+  /**
+   * Create or update worker type assignment for employee
+   * @param {string} employeeId - Employee UUID
+   * @param {string} workerTypeName - Worker type template name (e.g., 'Full-Time', 'Part-Time')
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User creating/updating the assignment
+   * @returns {Promise<Object>} Worker type assignment
+   */
+  async createOrUpdateWorkerType(employeeId, workerTypeName, organizationId, userId) {
+    // First, find the worker type template by name
+    const templateResult = await query(
+      `SELECT id FROM payroll.worker_type_template 
+       WHERE name = $1 AND is_active = true`,
+      [workerTypeName],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.worker_type_template' }
+    );
+
+    if (templateResult.rows.length === 0) {
+      throw new Error(`Worker type template '${workerTypeName}' not found`);
+    }
+
+    const templateId = templateResult.rows[0].id;
+
+    // Check if assignment already exists
+    const existingResult = await query(
+      `SELECT * FROM payroll.worker_type 
+       WHERE organization_id = $1 
+         AND employee_id = $2 
+         AND worker_type_template_id = $3`,
+      [organizationId, employeeId, templateId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.worker_type' }
+    );
+
+    if (existingResult.rows.length > 0) {
+      // Update existing assignment to be current
+      const result = await query(
+        `UPDATE payroll.worker_type 
+         SET is_current = true, updated_by = $4, updated_at = NOW()
+         WHERE organization_id = $1 
+           AND employee_id = $2 
+           AND worker_type_template_id = $3
+         RETURNING *`,
+        [organizationId, employeeId, templateId, userId],
+        organizationId,
+        { operation: 'UPDATE', table: 'payroll.worker_type', userId }
+      );
+      return result.rows[0];
+    } else {
+      // Create new assignment
+      const result = await query(
+        `INSERT INTO payroll.worker_type (
+           organization_id, employee_id, worker_type_template_id,
+           is_current, effective_from, created_by, created_at
+         )
+         VALUES ($1, $2, $3, true, CURRENT_DATE, $4, NOW())
+         RETURNING *`,
+        [organizationId, employeeId, templateId, userId],
+        organizationId,
+        { operation: 'INSERT', table: 'payroll.worker_type', userId }
+      );
+      return result.rows[0];
+    }
+  }
+
   // ==================== PAYROLL RUNS ====================
   
   /**
@@ -554,14 +615,15 @@ class PayrollRepository {
   async createPayrollRun(runData, organizationId, userId) {
     const result = await query(
       `INSERT INTO payroll.payroll_run 
-      (organization_id, run_number, run_name, pay_period_start, 
+      (organization_id, run_number, run_name, run_type, pay_period_start, 
        pay_period_end, payment_date, status, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *`,
       [
         organizationId,
         runData.runNumber,
         runData.runName,
+        runData.runType || 'REGULAR',
         runData.payPeriodStart,
         runData.payPeriodEnd,
         runData.paymentDate,
@@ -833,9 +895,10 @@ class PayrollRepository {
       `INSERT INTO payroll.paycheck 
       (organization_id, payroll_run_id, employee_id, payment_date,
        pay_period_start, pay_period_end, gross_pay, regular_pay, overtime_pay,
-       federal_tax, state_tax, social_security, medicare, other_deductions,
+       taxable_income, tax_free_allowance,
+       wage_tax, aov_tax, aww_tax, federal_tax, state_tax, social_security, medicare, other_deductions,
        net_pay, payment_method, status, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       RETURNING *`,
       [
         organizationId,
@@ -847,6 +910,11 @@ class PayrollRepository {
         paycheckData.grossPay,
         paycheckData.regularPay || 0,
         paycheckData.overtimePay || 0,
+        paycheckData.taxableIncome || 0,        // PHASE 1: Tax-free allowance support
+        paycheckData.taxFreeAllowance || 0,     // PHASE 1: Tax-free allowance support
+        paycheckData.wageTax || 0,
+        paycheckData.aovTax || 0,
+        paycheckData.awwTax || 0,
         paycheckData.federalTax || 0,
         paycheckData.stateTax || 0,
         paycheckData.socialSecurity || 0,
@@ -1095,6 +1163,24 @@ class PayrollRepository {
     return result.rowCount > 0;
   }
 
+  /**
+   * Delete all paychecks for a payroll run (for recalculation)
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<number>} Number of paychecks deleted
+   */
+  async deletePaychecksByPayrollRun(payrollRunId, organizationId) {
+    const result = await query(
+      `DELETE FROM payroll.paycheck 
+       WHERE payroll_run_id = $1 AND organization_id = $2`,
+      [payrollRunId, organizationId],
+      organizationId,
+      { operation: 'DELETE', table: 'payroll.paycheck' }
+    );
+    
+    return result.rowCount;
+  }
+
   // ==================== TIMESHEETS ====================
   
   /**
@@ -1291,6 +1377,52 @@ class PayrollRepository {
     );
     
     return result.rows[0];
+  }
+
+  /**
+   * Get payroll run components for a specific paycheck
+   * @param {string} paycheckId - Paycheck UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array>} Array of components
+   */
+  async getPaycheckComponents(paycheckId, organizationId) {
+    const result = await query(
+      `SELECT 
+        id,
+        organization_id,
+        payroll_run_id,
+        paycheck_id,
+        component_type,
+        component_code,
+        component_name,
+        units,
+        rate,
+        amount,
+        is_taxable,
+        tax_category,
+        worker_structure_id,
+        structure_template_version,
+        component_config_snapshot,
+        calculation_metadata,
+        created_at,
+        created_by
+       FROM payroll.payroll_run_component
+       WHERE paycheck_id = $1
+         AND organization_id = $2
+       ORDER BY 
+         CASE component_type
+           WHEN 'earning' THEN 1
+           WHEN 'tax' THEN 2
+           WHEN 'deduction' THEN 3
+           ELSE 4
+         END,
+         component_code`,
+      [paycheckId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.payroll_run_component' }
+    );
+
+    return result.rows;
   }
 }
 

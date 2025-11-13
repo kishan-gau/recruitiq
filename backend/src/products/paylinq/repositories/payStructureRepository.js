@@ -473,9 +473,8 @@ class PayStructureRepository {
       (organization_id, employee_id, template_id, template_code, template_version,
        assignment_type, assignment_source, assigned_by, assignment_reason,
        effective_from, effective_to, is_current, template_snapshot,
-       base_salary, hourly_rate, pay_frequency, currency,
-       approval_status, tags, notes, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+       pay_frequency, currency, approval_status, tags, notes, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *`,
       [
         organizationId,
@@ -491,8 +490,6 @@ class PayStructureRepository {
         assignmentData.effectiveTo,
         assignmentData.isCurrent !== undefined ? assignmentData.isCurrent : true,
         JSON.stringify(assignmentData.templateSnapshot),
-        assignmentData.baseSalary,
-        assignmentData.hourlyRate,
         assignmentData.payFrequency,
         assignmentData.currency,
         assignmentData.approvalStatus || 'approved',

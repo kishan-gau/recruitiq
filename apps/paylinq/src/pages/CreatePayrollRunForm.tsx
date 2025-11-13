@@ -13,29 +13,38 @@ import { useForm } from 'react-hook-form';
 import { Calendar, ChevronRight, ChevronLeft, Check, X } from 'lucide-react';
 import { useCreatePayrollRun } from '@/hooks/usePayrollRuns';
 import { formatDate } from '@/utils/dateFormat';
+import { RunTypeSelector } from '@/components/common/RunTypeSelector';
 import type { CreatePayrollRunRequest } from '@recruitiq/types';
+
+// PayrollRunType interface (matches API response)
+interface PayrollRunType {
+  id: string;
+  organizationId: string;
+  typeCode: string;
+  typeName: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  isActive: boolean;
+  isSystemDefault: boolean;
+  componentOverrideMode: 'template' | 'explicit' | 'hybrid';
+  allowedComponents?: string[];
+  excludedComponents?: string[];
+}
 
 interface PayrollRunFormData {
   runNumber: string;
   runName: string;
-  runType?: string;
+  runType?: PayrollRunType | null;
   payPeriodStart: string;
   payPeriodEnd: string;
   paymentDate: string;
 }
 
-const RUN_TYPES = [
-  'Regular',
-  'Bonus',
-  'Correction',
-  'Off-Cycle',
-  'Termination',
-  'Retro',
-];
-
 export default function CreatePayrollRunForm() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [selectedRunType, setSelectedRunType] = useState<PayrollRunType | null>(null);
   const createPayrollRun = useCreatePayrollRun();
 
   const {
@@ -46,7 +55,7 @@ export default function CreatePayrollRunForm() {
   } = useForm<PayrollRunFormData>({
     mode: 'onChange',
     defaultValues: {
-      runType: 'Regular',
+      runType: null,
     },
   });
 
@@ -59,6 +68,8 @@ export default function CreatePayrollRunForm() {
         periodStart: data.payPeriodStart,
         periodEnd: data.payPeriodEnd,
         paymentDate: data.paymentDate,
+        // Include run type if selected
+        ...(selectedRunType && { runTypeCode: selectedRunType.typeCode }),
       };
       const newRun = await createPayrollRun.mutateAsync(requestData);
       if (newRun?.id) {
@@ -178,22 +189,11 @@ export default function CreatePayrollRunForm() {
               </div>
 
               {/* Run Type */}
-              <div>
-                <label htmlFor="runType" className="block text-sm font-medium text-gray-700 mb-1">
-                  Run Type
-                </label>
-                <select
-                  {...register('runType')}
-                  id="runType"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                >
-                  {RUN_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <RunTypeSelector
+                value={selectedRunType}
+                onChange={setSelectedRunType}
+                disabled={createPayrollRun.isPending}
+              />
 
               {/* Date Range */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -287,7 +287,9 @@ export default function CreatePayrollRunForm() {
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500 mb-1">Run Type</dt>
-                    <dd className="text-sm text-gray-900">{formData.runType || 'Regular'}</dd>
+                    <dd className="text-sm text-gray-900">
+                      {selectedRunType ? selectedRunType.typeName : 'Not selected'}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500 mb-1">Payment Date</dt>

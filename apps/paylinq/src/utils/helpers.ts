@@ -21,8 +21,10 @@ export function formatCurrency(amount: number | null | undefined, showSymbol: bo
 /**
  * Format date to readable string
  */
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return 'N/A';
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Invalid Date';
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',

@@ -167,6 +167,46 @@ export function useTerminateEmployee() {
 }
 
 /**
+ * Rehire employee
+ */
+export function useRehireEmployee() {
+  const queryClient = useQueryClient();
+
+  return useMutation<any, ApiError, { id: string; data: any }>({
+    mutationFn: ({ id, data }) => employeesService.rehire(id, data),
+    onSuccess: (data, { id }) => {
+      queryClient.setQueryData(employeeKeys.detail(id), data.employee);
+      queryClient.invalidateQueries({ queryKey: employeeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: employeeKeys.orgChart() });
+    },
+  });
+}
+
+/**
+ * Get employment history for employee
+ */
+export function useEmploymentHistory(id: string) {
+  return useQuery<any[], ApiError>({
+    queryKey: [...employeeKeys.detail(id), 'employment-history'],
+    queryFn: () => employeesService.getEmploymentHistory(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Check if employee can be rehired
+ */
+export function useRehireEligibility(id: string) {
+  return useQuery<any, ApiError>({
+    queryKey: [...employeeKeys.detail(id), 'rehire-eligibility'],
+    queryFn: () => employeesService.checkRehireEligibility(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
  * Delete employee (soft delete)
  */
 export function useDeleteEmployee() {

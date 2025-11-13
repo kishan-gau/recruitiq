@@ -10,6 +10,9 @@
 -- Create HRIS schema
 CREATE SCHEMA IF NOT EXISTS hris;
 
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS btree_gist; -- Required for GIST indexes on UUID/date ranges
+
 -- =====================================================
 -- SECTION 1: USER ACCOUNTS
 -- Separate user accounts from employee records
@@ -262,6 +265,76 @@ CREATE INDEX idx_employee_email ON hris.employee(email);
 ALTER TABLE hris.user_account
 ADD CONSTRAINT fk_user_account_employee
 FOREIGN KEY (employee_id) REFERENCES hris.employee(id) ON DELETE SET NULL;
+
+-- Employment History (Track all employment periods including rehires)
+CREATE TABLE hris.employment_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    employee_id UUID NOT NULL REFERENCES hris.employee(id) ON DELETE CASCADE,
+    
+    -- Employment Period
+    start_date DATE NOT NULL,
+    end_date DATE,
+    is_current BOOLEAN DEFAULT true,
+    
+    -- Rehire Information
+    is_rehire BOOLEAN DEFAULT false,
+    rehire_notes TEXT,
+    
+    -- Employment Details (snapshot at time of employment)
+    employment_status VARCHAR(50) NOT NULL,
+    employment_type VARCHAR(50),
+    department_id UUID REFERENCES hris.department(id) ON DELETE SET NULL,
+    department_name VARCHAR(255), -- Denormalized for history
+    location_id UUID REFERENCES hris.location(id) ON DELETE SET NULL,
+    location_name VARCHAR(255), -- Denormalized for history
+    manager_id UUID REFERENCES hris.employee(id) ON DELETE SET NULL,
+    manager_name VARCHAR(255), -- Denormalized for history
+    job_title VARCHAR(255),
+    
+    -- Termination Details
+    termination_date DATE,
+    termination_reason VARCHAR(100) CHECK (termination_reason IN (
+        'resignation',
+        'layoff',
+        'termination_with_cause',
+        'termination_without_cause',
+        'mutual_agreement',
+        'retirement',
+        'contract_expiry',
+        'other'
+    )),
+    termination_notes TEXT,
+    is_rehire_eligible BOOLEAN DEFAULT true,
+    
+    -- Metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by UUID,
+    
+    -- Ensure only one current employment period per employee
+    CONSTRAINT unique_current_employment UNIQUE (employee_id, is_current) 
+        DEFERRABLE INITIALLY DEFERRED,
+    
+    -- Prevent overlapping employment periods
+    CONSTRAINT check_no_overlap EXCLUDE USING gist (
+        employee_id WITH =,
+        daterange(start_date, COALESCE(end_date, 'infinity'::date), '[]') WITH &&
+    )
+);
+
+CREATE INDEX idx_employment_history_org ON hris.employment_history(organization_id);
+CREATE INDEX idx_employment_history_employee ON hris.employment_history(employee_id);
+CREATE INDEX idx_employment_history_current ON hris.employment_history(employee_id, is_current) WHERE is_current = true;
+CREATE INDEX idx_employment_history_dates ON hris.employment_history(start_date, end_date);
+CREATE INDEX idx_employment_history_rehire ON hris.employment_history(is_rehire) WHERE is_rehire = true;
+
+COMMENT ON TABLE hris.employment_history IS 'Complete employment history for each employee, supporting multiple employment periods (rehires). Each record represents one continuous employment period.';
+COMMENT ON COLUMN hris.employment_history.is_current IS 'Only ONE record per employee can be current. Enforced by unique constraint.';
+COMMENT ON COLUMN hris.employment_history.is_rehire IS 'TRUE if this is not the original employment (employee was rehired)';
+COMMENT ON COLUMN hris.employment_history.is_rehire_eligible IS 'Whether employee can be rehired. Set during termination.';
+COMMENT ON COLUMN hris.employment_history.termination_reason IS 'Reason for employment end. Helps determine rehire eligibility.';
 
 -- =====================================================
 -- SECTION 4: CONTRACT MANAGEMENT
@@ -1092,6 +1165,296 @@ COMMENT ON TABLE hris.employee IS 'Core employee records with personal and emplo
 COMMENT ON TABLE hris.contract IS 'Employment contracts with sequence-based lifecycle management';
 COMMENT ON TABLE hris.time_off_type IS 'Time off policy definitions with flexible JSON-based accrual rules';
 COMMENT ON TABLE hris.rule_definition IS 'Policy automation rules - MVP uses JSON storage, Phase 2 will add advanced execution engine';
+
+-- =====================================================
+-- SECTION 15: ROW LEVEL SECURITY (RLS) POLICIES
+-- Multi-Tenant Data Isolation at Database Level
+-- =====================================================
+
+-- Helper function to get current organization from session variable
+CREATE OR REPLACE FUNCTION hris.get_current_organization_id()
+RETURNS UUID AS $$
+DECLARE
+  org_id TEXT;
+BEGIN
+  org_id := current_setting('app.current_organization_id', true);
+  
+  IF org_id IS NULL OR org_id = '' THEN
+    RAISE EXCEPTION 'No organization context set. Authentication required.';
+  END IF;
+  
+  RETURN org_id::UUID;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Invalid organization context: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+COMMENT ON FUNCTION hris.get_current_organization_id IS 'Returns current organization UUID from session variable set by auth middleware. Throws error if not set.';
+
+-- =====================================================
+-- RLS POLICIES: USER ACCOUNTS
+-- =====================================================
+
+ALTER TABLE hris.user_account ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY user_account_tenant_isolation ON hris.user_account
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY user_account_tenant_isolation_insert ON hris.user_account
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: TENANT REFRESH TOKENS
+-- =====================================================
+
+ALTER TABLE hris.tenant_refresh_tokens ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_refresh_tokens_isolation ON hris.tenant_refresh_tokens
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY tenant_refresh_tokens_isolation_insert ON hris.tenant_refresh_tokens
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: ORGANIZATIONAL STRUCTURE
+-- =====================================================
+
+ALTER TABLE hris.department ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY department_tenant_isolation ON hris.department
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY department_tenant_isolation_insert ON hris.department
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.location ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY location_tenant_isolation ON hris.location
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY location_tenant_isolation_insert ON hris.location
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: EMPLOYEE CORE
+-- =====================================================
+
+ALTER TABLE hris.employee ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY employee_tenant_isolation ON hris.employee
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY employee_tenant_isolation_insert ON hris.employee
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.employment_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY employment_history_tenant_isolation ON hris.employment_history
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY employment_history_tenant_isolation_insert ON hris.employment_history
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: CONTRACT MANAGEMENT
+-- =====================================================
+
+ALTER TABLE hris.contract_sequence_policy ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY contract_sequence_policy_tenant_isolation ON hris.contract_sequence_policy
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY contract_sequence_policy_tenant_isolation_insert ON hris.contract_sequence_policy
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.contract ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY contract_tenant_isolation ON hris.contract
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY contract_tenant_isolation_insert ON hris.contract
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: PERFORMANCE MANAGEMENT
+-- =====================================================
+
+ALTER TABLE hris.review_template ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY review_template_tenant_isolation ON hris.review_template
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY review_template_tenant_isolation_insert ON hris.review_template
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.performance_review ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY performance_review_tenant_isolation ON hris.performance_review
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY performance_review_tenant_isolation_insert ON hris.performance_review
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.performance_goal ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY performance_goal_tenant_isolation ON hris.performance_goal
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY performance_goal_tenant_isolation_insert ON hris.performance_goal
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.feedback ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY feedback_tenant_isolation ON hris.feedback
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY feedback_tenant_isolation_insert ON hris.feedback
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: BENEFITS MANAGEMENT
+-- =====================================================
+
+ALTER TABLE hris.benefits_plan ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY benefits_plan_tenant_isolation ON hris.benefits_plan
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY benefits_plan_tenant_isolation_insert ON hris.benefits_plan
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.employee_benefit_enrollment ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY employee_benefit_enrollment_tenant_isolation ON hris.employee_benefit_enrollment
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY employee_benefit_enrollment_tenant_isolation_insert ON hris.employee_benefit_enrollment
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: TIME OFF MANAGEMENT
+-- =====================================================
+
+ALTER TABLE hris.time_off_type ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY time_off_type_tenant_isolation ON hris.time_off_type
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY time_off_type_tenant_isolation_insert ON hris.time_off_type
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.employee_time_off_balance ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY employee_time_off_balance_tenant_isolation ON hris.employee_time_off_balance
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY employee_time_off_balance_tenant_isolation_insert ON hris.employee_time_off_balance
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.time_off_request ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY time_off_request_tenant_isolation ON hris.time_off_request
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY time_off_request_tenant_isolation_insert ON hris.time_off_request
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.time_off_accrual_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY time_off_accrual_history_tenant_isolation ON hris.time_off_accrual_history
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY time_off_accrual_history_tenant_isolation_insert ON hris.time_off_accrual_history
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: ATTENDANCE MANAGEMENT
+-- =====================================================
+
+ALTER TABLE hris.attendance_record ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY attendance_record_tenant_isolation ON hris.attendance_record
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY attendance_record_tenant_isolation_insert ON hris.attendance_record
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: RULE ENGINE
+-- =====================================================
+
+ALTER TABLE hris.rule_definition ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY rule_definition_tenant_isolation ON hris.rule_definition
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY rule_definition_tenant_isolation_insert ON hris.rule_definition
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.rule_execution_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY rule_execution_history_tenant_isolation ON hris.rule_execution_history
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY rule_execution_history_tenant_isolation_insert ON hris.rule_execution_history
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: DOCUMENT MANAGEMENT
+-- =====================================================
+
+ALTER TABLE hris.document_category ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY document_category_tenant_isolation ON hris.document_category
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY document_category_tenant_isolation_insert ON hris.document_category
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+ALTER TABLE hris.employee_document ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY employee_document_tenant_isolation ON hris.employee_document
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY employee_document_tenant_isolation_insert ON hris.employee_document
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
+
+-- =====================================================
+-- RLS POLICIES: AUDIT & COMPLIANCE
+-- =====================================================
+
+ALTER TABLE hris.audit_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY audit_log_tenant_isolation ON hris.audit_log
+  USING (organization_id = hris.get_current_organization_id());
+
+CREATE POLICY audit_log_tenant_isolation_insert ON hris.audit_log
+  FOR INSERT
+  WITH CHECK (organization_id = hris.get_current_organization_id());
 
 -- =====================================================
 -- END OF NEXUS HRIS SCHEMA

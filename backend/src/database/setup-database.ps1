@@ -272,6 +272,42 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding payroll run types..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-payroll-run-types.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding payroll run types" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding worker type templates..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-worker-types.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding worker types" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding tax-free allowances..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-allowances.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding allowances" -ForegroundColor Red
+    exit 1
+}
+
 # Clean up environment variable
 Remove-Item Env:\PGPASSWORD
 
@@ -304,11 +340,13 @@ Write-Host "   - Benefits administration" -ForegroundColor Gray
 Write-Host "   - Time-off & attendance" -ForegroundColor Gray
 Write-Host "   - Document management" -ForegroundColor Gray
 Write-Host ""
-Write-Host "[INFO] Paylinq: 26 payroll tables created" -ForegroundColor Cyan
+Write-Host "[INFO] Paylinq: 27 payroll tables created" -ForegroundColor Cyan
 Write-Host "   - Employee records & compensation" -ForegroundColor Gray
 Write-Host "   - Time & attendance tracking" -ForegroundColor Gray
 Write-Host "   - Payroll processing & paychecks" -ForegroundColor Gray
-Write-Host "   - Tax calculation & compliance" -ForegroundColor Gray
+Write-Host "   - Tax calculation & compliance (Surinamese law)" -ForegroundColor Gray
+Write-Host "   - Component-based payroll architecture" -ForegroundColor Gray
+Write-Host "   - Tax-free allowances & run types" -ForegroundColor Gray
 Write-Host "   - Payment processing & reconciliation" -ForegroundColor Gray
 Write-Host "   - Formula engine & template library" -ForegroundColor Gray
 Write-Host ""
@@ -339,6 +377,30 @@ Write-Host "   - TransIP VPS inventory tracking" -ForegroundColor Gray
 Write-Host "   - Approver management & permissions" -ForegroundColor Gray
 Write-Host "   - Request comments & collaboration" -ForegroundColor Gray
 Write-Host "   - Comprehensive audit logging" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Payroll Run Types: 7 default types seeded" -ForegroundColor Cyan
+Write-Host "   - REGULAR: Standard monthly payroll" -ForegroundColor Gray
+Write-Host "   - VAKANTIEGELD: Holiday allowance (8% semi-annual)" -ForegroundColor Gray
+Write-Host "   - BONUS: Performance bonuses & gratuities" -ForegroundColor Gray
+Write-Host "   - THIRTEENTH_MONTH: 13th month salary" -ForegroundColor Gray
+Write-Host "   - ADJUSTMENT: Corrections & back pay" -ForegroundColor Gray
+Write-Host "   - FINAL_PAY: Termination settlements" -ForegroundColor Gray
+Write-Host "   - COMMISSION: Sales commissions" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Worker Type Templates: 7 employment types seeded" -ForegroundColor Cyan
+Write-Host "   - Full-Time: Standard 40 hours/week employees" -ForegroundColor Gray
+Write-Host "   - Part-Time: Reduced hours employees" -ForegroundColor Gray
+Write-Host "   - Contractor: Independent contractors" -ForegroundColor Gray
+Write-Host "   - Temporary: Fixed-term workers" -ForegroundColor Gray
+Write-Host "   - Intern: Training program participants" -ForegroundColor Gray
+Write-Host "   - Seasonal: Peak period workers" -ForegroundColor Gray
+Write-Host "   - Freelance: Project-based workers" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Tax-Free Allowances: Surinamese law caps seeded" -ForegroundColor Cyan
+Write-Host "   - Holiday allowance: SRD 10,016/year (Article 10i)" -ForegroundColor Gray
+Write-Host "   - Bonus/gratuity: SRD 10,016/year (Article 10j)" -ForegroundColor Gray
+Write-Host "   - Monthly tax-free sum: SRD 9,000/month (Article 13)" -ForegroundColor Gray
+Write-Host "   - Yearly usage tracked per employee" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[WARNING] IMPORTANT:" -ForegroundColor Yellow
 Write-Host "   1. Change default passwords immediately" -ForegroundColor Yellow

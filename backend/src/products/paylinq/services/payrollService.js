@@ -9,6 +9,7 @@
 
 import Joi from 'joi';
 import PayrollRepository from '../repositories/payrollRepository.js';
+import DeductionRepository from '../repositories/deductionRepository.js';
 import taxCalculationService from './taxCalculationService.js';
 import PayStructureService from './payStructureService.js';
 import logger from '../../../utils/logger.js';
@@ -19,6 +20,7 @@ import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from 
 class PayrollService {
   constructor() {
     this.payrollRepository = new PayrollRepository();
+    this.deductionRepository = new DeductionRepository();
     this.taxCalculationService = taxCalculationService;
     this.payStructureService = new PayStructureService();
   }
@@ -91,6 +93,7 @@ class PayrollService {
     payPeriodStart: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
     payPeriodEnd: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
     paymentDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    runType: Joi.string().optional().default('REGULAR'),
     status: Joi.string().valid('draft', 'calculated', 'approved', 'paid', 'cancelled').default('draft')
   });
 
@@ -269,6 +272,30 @@ class PayrollService {
             error: compErr.message
           });
           // Don't fail the whole operation if compensation creation fails
+        }
+      }
+
+      // Create worker type assignment if workerType is in metadata
+      if (value.metadata?.workerType) {
+        try {
+          await this.payrollRepository.createOrUpdateWorkerType(
+            targetEmployeeId,
+            value.metadata.workerType,
+            organizationId,
+            userId
+          );
+          
+          logger.info('Created worker type assignment for employee', {
+            employeeId: targetEmployeeId,
+            workerType: value.metadata.workerType
+          });
+        } catch (workerTypeErr) {
+          logger.warn('Failed to create worker type assignment', {
+            employeeId: targetEmployeeId,
+            workerType: value.metadata.workerType,
+            error: workerTypeErr.message
+          });
+          // Don't fail the whole operation if worker type assignment fails
         }
       }
 
@@ -527,6 +554,116 @@ class PayrollService {
         userId
       );
 
+      // Check if compensation was updated in metadata - if so, sync to compensation table
+      const metadata = updatedRecord.metadata || {};
+      
+      logger.debug('Checking for compensation sync', {
+        employeeRecordId,
+        hasMetadata: !!metadata,
+        hasCompensationInMetadata: !!metadata.compensation,
+        compensationValue: metadata.compensation,
+        compensationType: typeof metadata.compensation
+      });
+
+      // Check if metadata has compensation (could be a number or an object)
+      if (metadata.compensation !== undefined && metadata.compensation !== null) {
+        // Check if compensation record exists
+        const existingCompensation = await this.payrollRepository.findCurrentCompensation(
+          employeeRecordId,
+          organizationId
+        );
+
+        // Determine if compensation is a simple number or an object with details
+        let compensationAmount;
+        let compensationType = 'salary';
+        let overtimeRate = null;
+
+        if (typeof metadata.compensation === 'object') {
+          // Structured compensation object
+          compensationAmount = parseFloat(metadata.compensation.amount || metadata.compensation.compensation || 0);
+          compensationType = metadata.compensation.compensationType || 'salary';
+          overtimeRate = metadata.compensation.overtimeRate ? parseFloat(metadata.compensation.overtimeRate) : null;
+        } else {
+          // Simple number
+          compensationAmount = parseFloat(metadata.compensation);
+        }
+
+        if (!existingCompensation && compensationAmount > 0) {
+          // Create compensation record from metadata
+          const newCompensation = {
+            employeeId: employeeRecordId,
+            compensationType,
+            amount: compensationAmount,
+            currency: metadata.currency || 'SRD',
+            effectiveFrom: new Date().toISOString().split('T')[0],
+            payFrequency: dbUpdates.pay_frequency || currentRecord.pay_frequency || 'monthly',
+            isCurrent: true
+          };
+
+          // Add overtime rate if provided
+          if (overtimeRate) {
+            newCompensation.overtimeRate = overtimeRate;
+          }
+
+          await this.payrollRepository.createCompensation(
+            newCompensation,
+            organizationId,
+            userId
+          );
+
+          logger.info('Created compensation record from metadata during update', {
+            employeeRecordId,
+            organizationId,
+            compensationType,
+            amount: newCompensation.amount
+          });
+        } else if (existingCompensation && compensationAmount > 0 && 
+                   compensationAmount !== parseFloat(existingCompensation.amount)) {
+          // Update existing compensation if amount changed
+          await this.payrollRepository.updateCompensation(
+            existingCompensation.id,
+            {
+              amount: compensationAmount,
+              overtimeRate: overtimeRate || existingCompensation.overtime_rate
+            },
+            organizationId,
+            userId
+          );
+
+          logger.info('Updated compensation record from metadata during update', {
+            employeeRecordId,
+            organizationId,
+            previousAmount: parseFloat(existingCompensation.amount),
+            newAmount: compensationAmount
+          });
+        }
+      }
+
+      // Check if worker type was updated in metadata - if so, sync to worker_type table
+      if (metadata.workerType) {
+        try {
+          await this.payrollRepository.createOrUpdateWorkerType(
+            employeeRecordId,
+            metadata.workerType,
+            organizationId,
+            userId
+          );
+          
+          logger.info('Updated worker type assignment from metadata during update', {
+            employeeRecordId,
+            organizationId,
+            workerType: metadata.workerType
+          });
+        } catch (workerTypeErr) {
+          logger.warn('Failed to update worker type assignment', {
+            employeeRecordId,
+            workerType: metadata.workerType,
+            error: workerTypeErr.message
+          });
+          // Don't fail the whole operation
+        }
+      }
+
       logger.info('Employee record updated', {
         employeeRecordId,
         organizationId,
@@ -747,9 +884,23 @@ class PayrollService {
         throw new NotFoundError('Payroll run not found');
       }
 
-      if (payrollRun.status !== 'draft') {
-        throw new Error(`Cannot calculate payroll with status: ${payrollRun.status}`);
+      // Allow calculation from draft or calculating status (for recalculation)
+      if (!['draft', 'calculating'].includes(payrollRun.status)) {
+        throw new Error(`Cannot calculate payroll with status: ${payrollRun.status}. Must be draft or calculating.`);
       }
+
+      // If recalculating, delete existing paychecks first
+      if (payrollRun.status === 'calculating') {
+        logger.info('Recalculating payroll - deleting existing paychecks', { payrollRunId, organizationId });
+        await this.payrollRepository.deletePaychecksByPayrollRun(payrollRunId, organizationId);
+      }
+
+      // Set status to calculating (work in progress)
+      await this.payrollRepository.updatePayrollRun(
+        payrollRunId,
+        { status: 'calculating' },
+        organizationId
+      );
 
       logger.info('Starting payroll calculation', { payrollRunId, organizationId });
 
@@ -800,15 +951,12 @@ class PayrollService {
           );
 
           if (!compensation) {
-            logger.warn('No compensation found for employee, checking pay structure', {
+            logger.warn('No compensation found for employee, will check if pay structure has base salary', {
               employeeRecordId: employee.id,
               employeeId: employeeId,
               payrollRunId,
               payPeriodEnd: payrollRun.pay_period_end
             });
-            
-            // Try to get compensation from pay structure instead
-            // This will be used by payStructureService.calculateWorkerPay below
           }
 
           // Calculate hours
@@ -824,11 +972,49 @@ class PayrollService {
           let workerStructureId = null;
           let templateVersion = null;
 
+          // NEW ARCHITECTURE: Always pass compensation data to pay structure
+          // This makes compensation the single source of truth
+          // Prepare compensation data for pay structure calculation
+          let baseSalary = null;
+          let hourlyRate = null;
+          
+          if (compensation) {
+            logger.info('Compensation data retrieved', {
+              employeeId,
+              compensationType: compensation.compensation_type,
+              amount: compensation.amount,
+              overtimeRate: compensation.overtime_rate
+            });
+            
+            if (compensation.compensation_type === 'hourly') {
+              hourlyRate = parseFloat(compensation.amount);
+              logger.info('Set hourlyRate from compensation', { hourlyRate });
+            } else if (compensation.compensation_type === 'salary') {
+              // Use amount as the primary source (single source of truth)
+              baseSalary = parseFloat(compensation.amount);
+              logger.info('Set baseSalary from compensation', { baseSalary, payFrequency: employee.pay_frequency });
+            }
+          } else {
+            logger.warn('No compensation found for employee', { employeeId });
+          }
+
           // Try to use pay structure if available
           try {
+            logger.info('Calling calculateWorkerPay with inputs', {
+              employeeId,
+              baseSalary,
+              hourlyRate,
+              payFrequency: employee.pay_frequency,
+              compensationType: compensation?.compensation_type
+            });
+            
             const payStructureCalc = await this.payStructureService.calculateWorkerPay(
               employeeId,
               {
+                // Pass compensation data as input (NEW ARCHITECTURE)
+                baseSalary,
+                hourlyRate,
+                // Other calculation inputs
                 hours: regularHours,
                 regularHours,
                 overtimeHours,
@@ -888,37 +1074,118 @@ class PayrollService {
               error: structureErr.message
             });
 
-            // Legacy calculation logic (keep for backward compatibility)
+            // Legacy calculation logic (simplified to use amount as single source)
             if (compensation.compensation_type === 'hourly') {
-              const hourlyRate = parseFloat(compensation.pay_rate);
+              const hourlyRate = parseFloat(compensation.amount);
               regularPay = regularHours * hourlyRate;
               overtimePay = overtimeHours * hourlyRate * 1.5; // 1.5x for overtime
               grossPay = regularPay + overtimePay;
             } else if (compensation.compensation_type === 'salary') {
-              // Calculate based on pay frequency
-              const annualSalary = parseFloat(compensation.pay_rate);
-              if (employee.pay_frequency === 'weekly') {
-                grossPay = annualSalary / 52;
+              // Use amount directly based on pay frequency
+              const amountValue = parseFloat(compensation.amount);
+              if (employee.pay_frequency === 'monthly') {
+                // Amount is the monthly salary
+                grossPay = amountValue;
+              } else if (employee.pay_frequency === 'weekly') {
+                // Amount is annual, divide by 52
+                grossPay = amountValue / 52;
               } else if (employee.pay_frequency === 'bi-weekly') {
-                grossPay = annualSalary / 26;
+                grossPay = amountValue / 26;
               } else if (employee.pay_frequency === 'semi-monthly') {
-                grossPay = annualSalary / 24;
-              } else if (employee.pay_frequency === 'monthly') {
-                grossPay = annualSalary / 12;
+                grossPay = amountValue / 24;
+              } else {
+                // Default to monthly
+                grossPay = amountValue;
               }
               regularPay = grossPay;
             }
           }
 
-          // Calculate taxes (MVP - simplified)
-          const taxCalculation = await this.taxCalculationService.calculateEmployeeTaxes(
-            employeeId,
-            grossPay,
-            payrollRun.pay_period_start,
-            organizationId
-          );
+          // PHASE 2: Build earning components array for component-based tax calculation
+          const payPeriod = employee.pay_frequency || 'monthly'; // Default to monthly
+          const earningComponents = [];
 
-          const totalTaxAmount = taxCalculation.totalTaxes;
+          if (paycheckComponents.length > 0) {
+            // Use components from pay structure
+            for (const comp of paycheckComponents) {
+              if (comp.componentCategory === 'earning') {
+                // Determine allowance type based on component code
+                let allowanceType = null;
+                if (comp.componentCode === 'REGULAR_SALARY' || comp.componentCode === 'BASE_SALARY' || comp.componentCode === 'REGULAR_PAY') {
+                  allowanceType = 'tax_free_sum_monthly';
+                } else if (comp.componentCode === 'VAKANTIEGELD' || comp.componentCode === 'HOLIDAY_ALLOWANCE') {
+                  allowanceType = 'holiday_allowance';
+                } else if (comp.componentCode === 'BONUS' || comp.componentCode === 'THIRTEENTH_MONTH') {
+                  allowanceType = 'bonus_gratuity';
+                }
+
+                earningComponents.push({
+                  componentCode: comp.componentCode,
+                  componentName: comp.componentName,
+                  amount: comp.amount,
+                  isTaxable: true, // Most earnings are taxable
+                  allowanceType
+                });
+              }
+            }
+          } else {
+            // Fallback: Build components from gross pay breakdown
+            if (regularPay > 0) {
+              earningComponents.push({
+                componentCode: 'REGULAR_PAY',
+                componentName: 'Regular Pay',
+                amount: regularPay,
+                isTaxable: true,
+                allowanceType: 'tax_free_sum_monthly'
+              });
+            }
+
+            if (overtimePay > 0) {
+              earningComponents.push({
+                componentCode: 'OVERTIME',
+                componentName: 'Overtime Pay',
+                amount: overtimePay,
+                isTaxable: true,
+                allowanceType: null // Overtime doesn't get special allowance
+              });
+            }
+          }
+
+          // Calculate taxes using component-based approach (Phase 2)
+          let taxCalculation;
+          if (earningComponents.length > 0) {
+            taxCalculation = await this.taxCalculationService.calculateEmployeeTaxesWithComponents(
+              employeeId,
+              earningComponents,
+              payrollRun.pay_period_start,
+              payPeriod,
+              organizationId
+            );
+          } else {
+            // Fallback to Phase 1 method if no components
+            taxCalculation = await this.taxCalculationService.calculateEmployeeTaxes(
+              employeeId,
+              grossPay,
+              payrollRun.pay_period_start,
+              payPeriod,
+              organizationId
+            );
+            // Wrap in Phase 2 format
+            taxCalculation = {
+              summary: {
+                totalGrossPay: grossPay,
+                totalTaxFreeAllowance: taxCalculation.taxFreeAllowance || 0,
+                totalTaxableIncome: taxCalculation.taxableIncome || 0,
+                totalWageTax: taxCalculation.federalTax || 0,
+                totalAovTax: taxCalculation.socialSecurity || 0,
+                totalAwwTax: taxCalculation.medicare || 0,
+                totalTaxes: taxCalculation.totalTaxes
+              },
+              componentTaxes: []
+            };
+          }
+
+          const totalTaxAmount = taxCalculation.summary.totalTaxes;
           const netPay = grossPay - totalTaxAmount;
 
           // Create paycheck
@@ -932,10 +1199,18 @@ class PayrollService {
               grossPay,
               regularPay,
               overtimePay,
-              federalTax: taxCalculation.federalTax || 0,
-              stateTax: taxCalculation.stateTax || 0,
-              socialSecurity: taxCalculation.socialSecurity || 0,
-              medicare: taxCalculation.medicare || 0,
+              // PHASE 2: Use component-based totals
+              taxFreeAllowance: taxCalculation.summary.totalTaxFreeAllowance || 0,
+              taxableIncome: taxCalculation.summary.totalTaxableIncome || 0,
+              // Surinamese taxes (primary)
+              wageTax: taxCalculation.summary.totalWageTax || 0,
+              aovTax: taxCalculation.summary.totalAovTax || 0,
+              awwTax: taxCalculation.summary.totalAwwTax || 0,
+              // US taxes (for backward compatibility, set to 0)
+              federalTax: 0,
+              stateTax: 0,
+              socialSecurity: 0,
+              medicare: 0,
               otherDeductions: 0,
               netPay,
               paymentMethod: employee.payment_method,
@@ -945,9 +1220,20 @@ class PayrollService {
             userId
           );
 
-          // Store pay structure component details if available
+          // PHASE 2: Store earning components with calculation metadata
           if (paycheckComponents.length > 0) {
             for (const component of paycheckComponents) {
+              // Find matching tax calculation for this component
+              const componentTax = taxCalculation.componentTaxes?.find(
+                ct => ct.componentCode === component.componentCode
+              );
+
+              // Merge tax calculation into component metadata
+              const enhancedMetadata = {
+                ...component.calculationMetadata,
+                taxCalculation: componentTax || null
+              };
+
               await this.payrollRepository.createPayrollRunComponent(
                 {
                   payrollRunId,
@@ -959,12 +1245,161 @@ class PayrollService {
                   workerStructureId,
                   structureTemplateVersion: templateVersion,
                   componentConfigSnapshot: component.configSnapshot,
-                  calculationMetadata: component.calculationMetadata
+                  calculationMetadata: enhancedMetadata // PHASE 2: Include tax calculation
                 },
                 organizationId,
                 userId
               );
             }
+          } else if (taxCalculation.componentTaxes && taxCalculation.componentTaxes.length > 0) {
+            // Store tax components even if no pay structure components
+            for (const compTax of taxCalculation.componentTaxes) {
+              await this.payrollRepository.createPayrollRunComponent(
+                {
+                  payrollRunId,
+                  paycheckId: paycheck.id,
+                  componentType: 'earning',
+                  componentCode: compTax.componentCode,
+                  componentName: compTax.componentName,
+                  amount: compTax.amount,
+                  workerStructureId: null,
+                  structureTemplateVersion: null,
+                  componentConfigSnapshot: null,
+                  calculationMetadata: {
+                    taxCalculation: compTax
+                  }
+                },
+                organizationId,
+                userId
+              );
+            }
+          }
+
+          // Store tax components
+          if (taxCalculation.summary.totalWageTax > 0) {
+            logger.debug('Creating wage tax component', {
+              employeeId,
+              paycheckId: paycheck.id,
+              amount: taxCalculation.summary.totalWageTax
+            });
+            await this.payrollRepository.createPayrollRunComponent(
+              {
+                payrollRunId,
+                paycheckId: paycheck.id,
+                componentType: 'tax',
+                componentCode: 'WAGE_TAX',
+                componentName: 'Wage Tax (Loonbelasting)',
+                amount: taxCalculation.summary.totalWageTax,
+                workerStructureId: null,
+                structureTemplateVersion: null,
+                componentConfigSnapshot: null,
+                calculationMetadata: {
+                  taxType: 'wage_tax',
+                  taxableIncome: taxCalculation.summary.totalTaxableIncome,
+                  taxRate: taxCalculation.summary.totalWageTax / taxCalculation.summary.totalTaxableIncome
+                }
+              },
+              organizationId,
+              userId
+            );
+          }
+
+          if (taxCalculation.summary.totalAovTax > 0) {
+            await this.payrollRepository.createPayrollRunComponent(
+              {
+                payrollRunId,
+                paycheckId: paycheck.id,
+                componentType: 'tax',
+                componentCode: 'AOV',
+                componentName: 'AOV (Old Age Pension)',
+                amount: taxCalculation.summary.totalAovTax,
+                workerStructureId: null,
+                structureTemplateVersion: null,
+                componentConfigSnapshot: null,
+                calculationMetadata: {
+                  taxType: 'aov',
+                  taxableIncome: taxCalculation.summary.totalTaxableIncome
+                }
+              },
+              organizationId,
+              userId
+            );
+          }
+
+          if (taxCalculation.summary.totalAwwTax > 0) {
+            await this.payrollRepository.createPayrollRunComponent(
+              {
+                payrollRunId,
+                paycheckId: paycheck.id,
+                componentType: 'tax',
+                componentCode: 'AWW',
+                componentName: 'AWW (Widow/Orphan Insurance)',
+                amount: taxCalculation.summary.totalAwwTax,
+                workerStructureId: null,
+                structureTemplateVersion: null,
+                componentConfigSnapshot: null,
+                calculationMetadata: {
+                  taxType: 'aww',
+                  taxableIncome: taxCalculation.summary.totalTaxableIncome
+                }
+              },
+              organizationId,
+              userId
+            );
+          }
+
+          // Store deduction components (if any exist)
+          try {
+            logger.debug('Fetching deductions for employee', {
+              employeeId: employeeId,
+              payPeriodEnd: payrollRun.pay_period_end
+            });
+            const deductions = await this.deductionRepository.findActiveDeductionsForPayroll(
+              employeeId,
+              payrollRun.pay_period_end,
+              organizationId
+            );
+
+            logger.debug('Deductions fetched', { count: deductions.length });
+
+            for (const deduction of deductions) {
+              let deductionAmount = 0;
+              if (deduction.calculation_type === 'fixed_amount') {
+                deductionAmount = parseFloat(deduction.deduction_amount || 0);
+              } else if (deduction.calculation_type === 'percentage') {
+                deductionAmount = grossPay * (parseFloat(deduction.deduction_percentage || 0) / 100);
+              }
+
+              if (deductionAmount > 0) {
+                await this.payrollRepository.createPayrollRunComponent(
+                  {
+                    payrollRunId,
+                    paycheckId: paycheck.id,
+                    componentType: 'deduction',
+                    componentCode: deduction.deduction_code,
+                    componentName: deduction.deduction_name,
+                    amount: deductionAmount,
+                    workerStructureId: null,
+                    structureTemplateVersion: null,
+                    componentConfigSnapshot: null,
+                    calculationMetadata: {
+                      deductionType: deduction.deduction_type,
+                      isPreTax: deduction.is_pre_tax,
+                      calculationType: deduction.calculation_type
+                    }
+                  },
+                  organizationId,
+                  userId
+                );
+              }
+            }
+          } catch (deductionErr) {
+            logger.error('Error processing deductions', {
+              error: deductionErr.message,
+              stack: deductionErr.stack,
+              employeeId: employeeId
+            });
+            throw deductionErr;
           }
 
           paychecks.push(paycheck);
@@ -983,7 +1418,7 @@ class PayrollService {
         }
       }
 
-      // Update payroll run summary
+      // Update payroll run summary (keep status as 'calculating' until user marks it for review)
       await this.payrollRepository.updatePayrollRunSummary(
         payrollRunId,
         {
@@ -991,7 +1426,7 @@ class PayrollService {
           totalGrossPay,
           totalNetPay,
           totalTaxes,
-          status: 'calculated',
+          status: 'calculating',
           calculatedAt: nowUTC()
         },
         organizationId,
@@ -1247,6 +1682,48 @@ class PayrollService {
       return payrollRun;
     } catch (err) {
       logger.error('Error updating payroll run', { error: err.message, payrollRunId, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Mark payroll run as ready for review (calculating -> calculated)
+   * @param {string} payrollRunId - Payroll run UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User marking for review
+   * @returns {Promise<Object>} Updated payroll run
+   */
+  async markPayrollRunForReview(payrollRunId, organizationId, userId) {
+    try {
+      const payrollRun = await this.payrollRepository.findPayrollRunById(payrollRunId, organizationId);
+      
+      if (!payrollRun) {
+        throw new NotFoundError('Payroll run not found');
+      }
+
+      if (payrollRun.status !== 'calculating') {
+        throw new ValidationError('Payroll run must be in calculating status to mark for review');
+      }
+
+      // Verify that paychecks exist
+      const paychecks = await this.payrollRepository.findPaychecksByRun(payrollRunId, organizationId);
+      if (!paychecks || paychecks.length === 0) {
+        throw new ValidationError('Cannot mark for review: No paychecks have been calculated yet');
+      }
+
+      const updated = await this.payrollRepository.updatePayrollRun(
+        payrollRunId,
+        { 
+          status: 'calculated',
+          updated_by: userId
+        },
+        organizationId
+      );
+
+      logger.info('Payroll run marked for review', { payrollRunId, organizationId, userId });
+      return updated;
+    } catch (err) {
+      logger.error('Error marking payroll run for review', { error: err.message, payrollRunId, organizationId });
       throw err;
     }
   }
@@ -1521,6 +1998,9 @@ class PayrollService {
         grossPay: adjustments.grossPay !== undefined ? adjustments.grossPay : originalPaycheck.gross_pay,
         regularPay: adjustments.regularPay !== undefined ? adjustments.regularPay : originalPaycheck.regular_pay,
         overtimePay: adjustments.overtimePay !== undefined ? adjustments.overtimePay : originalPaycheck.overtime_pay,
+        // PHASE 1: Preserve tax-free allowance and taxable income
+        taxFreeAllowance: adjustments.taxFreeAllowance !== undefined ? adjustments.taxFreeAllowance : originalPaycheck.tax_free_allowance,
+        taxableIncome: adjustments.taxableIncome !== undefined ? adjustments.taxableIncome : originalPaycheck.taxable_income,
         federalTax: adjustments.federalTax !== undefined ? adjustments.federalTax : originalPaycheck.federal_tax,
         stateTax: adjustments.stateTax !== undefined ? adjustments.stateTax : originalPaycheck.state_tax,
         socialSecurity: adjustments.socialSecurity !== undefined ? adjustments.socialSecurity : originalPaycheck.social_security,

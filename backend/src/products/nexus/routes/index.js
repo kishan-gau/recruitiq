@@ -47,6 +47,9 @@ router.get('/employees', employeeController.listEmployees);
 router.post('/employees', employeeController.createEmployee);
 router.patch('/employees/:id', employeeController.updateEmployee);
 router.post('/employees/:id/terminate', employeeController.terminateEmployee);
+router.post('/employees/:id/rehire', employeeController.rehireEmployee);
+router.get('/employees/:id/employment-history', employeeController.getEmploymentHistory);
+router.get('/employees/:id/rehire-eligibility', employeeController.checkRehireEligibility);
 router.delete('/employees/:id', employeeController.deleteEmployee);
 
 // ========== EMPLOYEE USER ACCESS ROUTES ==========

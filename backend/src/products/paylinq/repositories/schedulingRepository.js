@@ -112,6 +112,116 @@ class SchedulingRepository {
   }
 
   /**
+   * Find work schedules with pagination
+   * @param {Object} criteria - Search criteria
+   * @param {string} organizationId - Organization UUID
+   * @param {number} page - Page number (1-indexed)
+   * @param {number} limit - Items per page
+   * @returns {Promise<Object>} Paginated schedules with metadata
+   */
+  async findWorkSchedulesPaginated(criteria, organizationId, page, limit) {
+    let whereClause = 'WHERE ws.organization_id = $1 AND ws.deleted_at IS NULL';
+    const params = [organizationId];
+    let paramCount = 1;
+    
+    // Build filter conditions
+    if (criteria.employeeId) {
+      paramCount++;
+      whereClause += ` AND ws.employee_id = $${paramCount}`;
+      params.push(criteria.employeeId);
+    }
+    
+    if (criteria.startDate) {
+      paramCount++;
+      whereClause += ` AND ws.schedule_date >= $${paramCount}`;
+      params.push(criteria.startDate);
+    }
+    
+    if (criteria.endDate) {
+      paramCount++;
+      whereClause += ` AND ws.schedule_date <= $${paramCount}`;
+      params.push(criteria.endDate);
+    }
+    
+    if (criteria.status) {
+      paramCount++;
+      whereClause += ` AND ws.status = $${paramCount}`;
+      params.push(criteria.status);
+    }
+    
+    if (criteria.shiftTypeId) {
+      paramCount++;
+      whereClause += ` AND ws.shift_type_id = $${paramCount}`;
+      params.push(criteria.shiftTypeId);
+    }
+    
+    // Build sort clause
+    const allowedSortFields = {
+      scheduleDate: 'ws.schedule_date',
+      startTime: 'ws.start_time',
+      endTime: 'ws.end_time',
+      status: 'ws.status',
+      employeeName: 'e.last_name',
+      createdAt: 'ws.created_at'
+    };
+    
+    const sortField = allowedSortFields[criteria.sortBy] || 'ws.schedule_date';
+    const sortOrder = criteria.sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const orderClause = `ORDER BY ${sortField} ${sortOrder}, ws.start_time ASC`;
+    
+    // Get total count
+    const countResult = await query(
+      `SELECT COUNT(*) as total
+       FROM payroll.work_schedule ws
+       INNER JOIN hris.employee e ON e.id = ws.employee_id
+       ${whereClause}`,
+      params,
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.work_schedule' }
+    );
+    
+    const total = parseInt(countResult.rows[0].total);
+    const offset = (page - 1) * limit;
+    
+    // Get paginated results
+    paramCount++;
+    const limitParam = paramCount;
+    paramCount++;
+    const offsetParam = paramCount;
+    
+    const result = await query(
+      `SELECT ws.*,
+              e.employee_number,
+              e.id as employee_id,
+              e.first_name,
+              e.last_name,
+              st.shift_name,
+              st.shift_code
+       FROM payroll.work_schedule ws
+       INNER JOIN hris.employee e ON e.id = ws.employee_id
+       LEFT JOIN payroll.shift_type st ON st.id = ws.shift_type_id
+       ${whereClause}
+       ${orderClause}
+       LIMIT $${limitParam} OFFSET $${offsetParam}`,
+      [...params, limit, offset],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.work_schedule' }
+    );
+    
+    return {
+      schedules: result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: offset + limit < total,
+        hasPrev: page > 1
+      }
+    };
+  }
+
+  /**
    * Find work schedule by ID
    * @param {string} scheduleId - Work schedule UUID
    * @param {string} organizationId - Organization UUID
@@ -322,6 +432,101 @@ class SchedulingRepository {
     );
     
     return result.rows;
+  }
+
+  /**
+   * Find schedule change requests with pagination
+   * @param {Object} criteria - Search criteria
+   * @param {string} organizationId - Organization UUID
+   * @param {number} page - Page number (1-indexed)
+   * @param {number} limit - Items per page
+   * @returns {Promise<Object>} Paginated change requests with metadata
+   */
+  async findScheduleChangeRequestsPaginated(criteria, organizationId, page, limit) {
+    let whereClause = 'WHERE scr.organization_id = $1 AND scr.deleted_at IS NULL';
+    const params = [organizationId];
+    let paramCount = 1;
+    
+    // Build filter conditions
+    if (criteria.status) {
+      paramCount++;
+      whereClause += ` AND scr.status = $${paramCount}`;
+      params.push(criteria.status);
+    }
+    
+    if (criteria.employeeId || criteria.requestedBy) {
+      paramCount++;
+      whereClause += ` AND scr.requested_by = $${paramCount}`;
+      params.push(criteria.employeeId || criteria.requestedBy);
+    }
+    
+    if (criteria.requestType) {
+      paramCount++;
+      whereClause += ` AND scr.request_type = $${paramCount}`;
+      params.push(criteria.requestType);
+    }
+    
+    // Build sort clause
+    const allowedSortFields = {
+      createdAt: 'scr.created_at',
+      status: 'scr.status',
+      requestType: 'scr.request_type',
+      employeeName: 'e.last_name'
+    };
+    
+    const sortField = allowedSortFields[criteria.sortBy] || 'scr.created_at';
+    const sortOrder = criteria.sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    const orderClause = `ORDER BY ${sortField} ${sortOrder}`;
+    
+    // Get total count
+    const countResult = await query(
+      `SELECT COUNT(*) as total
+       FROM payroll.schedule_change_request scr
+       LEFT JOIN hris.employee e ON e.id = scr.requested_by
+       ${whereClause}`,
+      params,
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.schedule_change_request' }
+    );
+    
+    const total = parseInt(countResult.rows[0].total);
+    const offset = (page - 1) * limit;
+    
+    // Get paginated results
+    paramCount++;
+    const limitParam = paramCount;
+    paramCount++;
+    const offsetParam = paramCount;
+    
+    const result = await query(
+      `SELECT scr.*,
+              ws.schedule_date as original_schedule_date,
+              e.employee_number,
+              e.id as employee_id,
+              e.first_name,
+              e.last_name
+       FROM payroll.schedule_change_request scr
+       LEFT JOIN payroll.work_schedule ws ON ws.id = scr.work_schedule_id
+       LEFT JOIN hris.employee e ON e.id = scr.requested_by
+       ${whereClause}
+       ${orderClause}
+       LIMIT $${limitParam} OFFSET $${offsetParam}`,
+      [...params, limit, offset],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.schedule_change_request' }
+    );
+    
+    return {
+      requests: result.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: offset + limit < total,
+        hasPrev: page > 1
+      }
+    };
   }
 
   /**
