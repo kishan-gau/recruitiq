@@ -27,6 +27,8 @@ const Payslips = lazy(() => import('@/pages/payslips/PayslipsList'));
 const Reconciliation = lazy(() => import('@/pages/reconciliation/ReconciliationDashboard'));
 const Reports = lazy(() => import('@/pages/reports/ReportsDashboard'));
 const SystemPreferences = lazy(() => import('@/pages/SystemPreferencesPage'));
+const PayslipTemplates = lazy(() => import('@/pages/settings/payslip-templates/PayslipTemplates'));
+const PayslipTemplateEditor = lazy(() => import('@/pages/settings/payslip-templates/PayslipTemplateEditor'));
 
 function App() {
   return (
@@ -82,6 +84,8 @@ function App() {
             
             {/* Settings */}
             <Route path="settings" element={<SystemPreferences />} />
+            <Route path="settings/payslip-templates" element={<PayslipTemplates />} />
+            <Route path="settings/payslip-templates/:id" element={<PayslipTemplateEditor />} />
             
             {/* 404 */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

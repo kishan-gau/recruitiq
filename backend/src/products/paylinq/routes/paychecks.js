@@ -38,6 +38,9 @@ const employeeIdParamSchema = Joi.object({
 // Routes
 router.get('/', paycheckController.getPaychecks);
 router.get('/:id', validate(idParamSchema, 'params'), paycheckController.getPaycheckById);
+router.get('/:id/components', validate(idParamSchema, 'params'), paycheckController.getPaycheckComponents); // PHASE 2: Component breakdown
+router.get('/:id/pdf', validate(idParamSchema, 'params'), paycheckController.downloadPayslipPdf);
+router.post('/:id/send', validate(idParamSchema, 'params'), paycheckController.sendPayslip);
 router.get('/employees/:employeeId/paychecks', validate(employeeIdParamSchema, 'params'), paycheckController.getEmployeePaychecks);
 router.put('/:id', validate(idParamSchema, 'params'), validate(updatePaycheckSchema, 'body'), paycheckController.updatePaycheck);
 router.post('/:id/void', validate(idParamSchema, 'params'), validate(voidPaycheckSchema, 'body'), paycheckController.voidPaycheck);

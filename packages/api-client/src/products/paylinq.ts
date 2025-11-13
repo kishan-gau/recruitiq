@@ -56,8 +56,8 @@ import type {
   PayComponentFilters,
   // Payments
   PayrollRun,
+  PayrollRunResponse,
   Paycheck,
-  PayrollRunComponent,
   CreatePayrollRunRequest,
   UpdatePayrollRunRequest,
   CalculatePayrollRequest,
@@ -829,7 +829,7 @@ export class PaylinqAPI {
    * Get payroll run by ID
    */
   async getPayrollRun(id: string) {
-    return this.client.get<ApiResponse<PayrollRun>>(
+    return this.client.get<PayrollRunResponse>(
       `${this.basePath}/payroll-runs/${id}`
     );
   }
@@ -865,10 +865,19 @@ export class PaylinqAPI {
   }
 
   /**
+   * Mark payroll run for review (calculating -> calculated)
+   */
+  async markPayrollRunForReview(payrollRunId: string) {
+    return this.client.post<PayrollRunResponse>(
+      `${this.basePath}/payroll-runs/${payrollRunId}/mark-for-review`
+    );
+  }
+
+  /**
    * Approve payroll run
    */
   async approvePayrollRun(data: ApprovePayrollRequest) {
-    return this.client.post<ApiResponse<PayrollRun>>(
+    return this.client.post<PayrollRunResponse>(
       `${this.basePath}/payroll-runs/${data.payrollRunId}/approve`,
       data
     );
@@ -878,7 +887,7 @@ export class PaylinqAPI {
    * Process payroll run
    */
   async processPayrollRun(data: ProcessPayrollRequest) {
-    return this.client.post<ApiResponse<PayrollRun>>(
+    return this.client.post<PayrollRunResponse>(
       `${this.basePath}/payroll-runs/${data.payrollRunId}/process`,
       data
     );
@@ -888,7 +897,7 @@ export class PaylinqAPI {
    * Cancel payroll run
    */
   async cancelPayrollRun(id: string) {
-    return this.client.post<ApiResponse<PayrollRun>>(
+    return this.client.post<PayrollRunResponse>(
       `${this.basePath}/payroll-runs/${id}/cancel`
     );
   }
@@ -993,10 +1002,61 @@ export class PaylinqAPI {
   }
 
   /**
-   * Get paycheck components
+   * Download payslip PDF
+   */
+  async downloadPayslipPdf(id: string) {
+    try {
+      // Use fetch directly for blob downloads to avoid axios response transformation issues
+      const baseUrl = this.client.getClient().defaults.baseURL || '/api';
+      const url = `${baseUrl}${this.basePath}/paychecks/${id}/pdf`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include', // Include cookies for authentication
+        headers: {
+          'Accept': 'application/pdf',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      
+      console.log('[PaylinqAPI] PDF downloaded via fetch:', {
+        status: response.status,
+        blobSize: blob.size,
+        blobType: blob.type,
+        isBlob: blob instanceof Blob
+      });
+      
+      // Return in axios-like format for compatibility
+      return {
+        data: blob,
+        status: response.status,
+        headers: response.headers,
+      };
+    } catch (error) {
+      console.error('[PaylinqAPI] PDF download error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send individual payslip via email
+   */
+  async sendPayslip(id: string) {
+    return this.client.post<ApiResponse<{ paycheckId: string; sentTo: string; sentAt: string }>>(
+      `${this.basePath}/paychecks/${id}/send`
+    );
+  }
+
+  /**
+   * Get paycheck components breakdown (Phase 2: Component-based tax calculation)
    */
   async getPaycheckComponents(paycheckId: string) {
-    return this.client.get<ApiResponse<PayrollRunComponent[]>>(
+    return this.client.get<any>(
       `${this.basePath}/paychecks/${paycheckId}/components`
     );
   }
@@ -1563,7 +1623,33 @@ export class PaylinqAPI {
    * Create schedule
    */
   async createSchedule(data: any) {
-    return this.client.post(`${this.basePath}/schedules`, data);
+    console.warn('🚀 [API Client] createSchedule called');
+    console.warn('📅 scheduleDate value:', data.scheduleDate);
+    console.warn('📅 scheduleDate type:', typeof data.scheduleDate);
+    console.warn('📅 Is Date object?:', data.scheduleDate instanceof Date);
+    console.warn('📦 Full data:', data);
+    
+    // Ensure scheduleDate stays as string (prevent axios date transformation)
+    const payload = {
+      ...data,
+      scheduleDate: typeof data.scheduleDate === 'string' ? data.scheduleDate : String(data.scheduleDate)
+    };
+    
+    console.warn('✅ Final payload before sending:', JSON.stringify(payload, null, 2));
+    
+    return this.client.post(`${this.basePath}/schedules`, payload, {
+      transformRequest: [(requestData, headers) => {
+        // Custom transform to ensure dates stay as strings
+        console.warn('🔄 transformRequest called');
+        console.warn('🔄 requestData:', requestData);
+        if (headers) {
+          headers['Content-Type'] = 'application/json';
+        }
+        const jsonString = JSON.stringify(requestData);
+        console.warn('🔄 JSON string to send:', jsonString);
+        return jsonString;
+      }]
+    });
   }
 
   /**
@@ -1582,9 +1668,11 @@ export class PaylinqAPI {
 
   /**
    * Get employee schedules
+   * Uses query parameter to filter schedules by employee
    */
-  async getEmployeeSchedules(employeeId: string) {
-    return this.client.get(`${this.basePath}/schedules/employees/${employeeId}/schedules`);
+  async getEmployeeSchedules(employeeId: string, params: Record<string, any> = {}) {
+    const query = new URLSearchParams({ ...params, employeeId }).toString();
+    return this.client.get(`${this.basePath}/schedules?${query}`);
   }
 
   /**
@@ -1806,5 +1894,133 @@ export class PaylinqAPI {
    */
   async deletePayStructureOverride(overrideId: string) {
     return this.client.delete(`${this.basePath}/pay-structures/overrides/${overrideId}`);
+  }
+
+  // ============================================================================
+  // Payslip Templates
+  // ============================================================================
+
+  /**
+   * Get all payslip templates
+   */
+  async getPayslipTemplates(params?: { status?: string; layoutType?: string; isDefault?: boolean }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.client.get<ApiResponse<any[]>>(
+      `${this.basePath}/payslip-templates${query ? '?' + query : ''}`
+    );
+  }
+
+  /**
+   * Get payslip template by ID
+   */
+  async getPayslipTemplate(id: string) {
+    return this.client.get<ApiResponse<any>>(
+      `${this.basePath}/payslip-templates/${id}`
+    );
+  }
+
+  /**
+   * Create payslip template
+   */
+  async createPayslipTemplate(data: any) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/payslip-templates`,
+      data
+    );
+  }
+
+  /**
+   * Update payslip template
+   */
+  async updatePayslipTemplate(id: string, data: any) {
+    return this.client.put<ApiResponse<any>>(
+      `${this.basePath}/payslip-templates/${id}`,
+      data
+    );
+  }
+
+  /**
+   * Delete payslip template
+   */
+  async deletePayslipTemplate(id: string) {
+    return this.client.delete<ApiResponse<void>>(
+      `${this.basePath}/payslip-templates/${id}`
+    );
+  }
+
+  /**
+   * Duplicate payslip template
+   */
+  async duplicatePayslipTemplate(id: string) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/payslip-templates/${id}/duplicate`
+    );
+  }
+
+  /**
+   * Activate payslip template
+   */
+  async activatePayslipTemplate(id: string) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/payslip-templates/${id}/activate`
+    );
+  }
+
+  /**
+   * Archive payslip template
+   */
+  async archivePayslipTemplate(id: string) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/payslip-templates/${id}/archive`
+    );
+  }
+
+  /**
+   * Generate preview PDF for template
+   */
+  async previewPayslipTemplate(id: string, paycheckId?: string) {
+    return this.client.post(
+      `${this.basePath}/payslip-templates/${id}/preview`,
+      { paycheckId },
+      { responseType: 'blob' }
+    );
+  }
+
+  /**
+   * Get template assignments
+   */
+  async getPayslipTemplateAssignments(id: string) {
+    return this.client.get<ApiResponse<any[]>>(
+      `${this.basePath}/payslip-templates/${id}/assignments`
+    );
+  }
+
+  /**
+   * Create template assignment
+   */
+  async createPayslipTemplateAssignment(id: string, data: any) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/payslip-templates/${id}/assignments`,
+      data
+    );
+  }
+
+  /**
+   * Update template assignment
+   */
+  async updatePayslipTemplateAssignment(id: string, assignmentId: string, data: any) {
+    return this.client.put<ApiResponse<any>>(
+      `${this.basePath}/payslip-templates/${id}/assignments/${assignmentId}`,
+      data
+    );
+  }
+
+  /**
+   * Delete template assignment
+   */
+  async deletePayslipTemplateAssignment(id: string, assignmentId: string) {
+    return this.client.delete<ApiResponse<void>>(
+      `${this.basePath}/payslip-templates/${id}/assignments/${assignmentId}`
+    );
   }
 }

@@ -81,6 +81,10 @@ export interface Paycheck extends BaseEntity {
   bonusPay: number;
   commissionPay: number;
   
+  // Phase 1: Tax-free allowances and taxable income
+  taxFreeAllowance: number; // Total tax-free allowances applied (e.g., SRD 9,000/month)
+  taxableIncome: number;    // Gross pay minus tax-free allowances (used for tax calculation)
+  
   // Taxes
   federalTax: number;
   stateTax: number;
@@ -144,6 +148,7 @@ export interface CreatePayrollRunRequest {
   periodStart: string;         // ISO date (YYYY-MM-DD)
   periodEnd: string;           // ISO date (YYYY-MM-DD)
   paymentDate: string;         // ISO date (YYYY-MM-DD)
+  runType?: string;            // Payroll run type code (e.g., 'REGULAR', 'VAKANTIEGELD', 'BONUS')
   status?: 'draft' | 'calculating' | 'calculated' | 'approved' | 'processing' | 'processed' | 'cancelled';
 }
 
@@ -265,6 +270,85 @@ export interface PayrollCalculationResult {
     employeeName: string;
     warning: string;
   }>;
+}
+
+// ============================================================================
+// PHASE 2: Component-Level Tax Breakdown Types
+// ============================================================================
+
+/**
+ * Component Tax Breakdown
+ * Individual component with its associated taxes
+ */
+export interface ComponentTaxBreakdown {
+  componentId: string;
+  componentCode: string;
+  componentName: string;
+  componentType: PayrollComponentType;
+  
+  // Amounts
+  amount: number;
+  taxFreeAmount: number;
+  taxableAmount: number;
+  
+  // Associated taxes for this component
+  wageTax: number;
+  aovTax: number;
+  awwTax: number;
+  totalTax: number;
+  
+  // Metadata
+  allowanceType?: 'tax_free_sum_monthly' | 'holiday_allowance' | 'bonus_gratuity';
+  allowanceApplied: number;
+  effectiveTaxRate: number;
+}
+
+/**
+ * Component Breakdown Summary
+ * Aggregated totals across all components
+ */
+export interface ComponentBreakdownSummary {
+  totalEarnings: number;
+  totalTaxFree: number;
+  totalTaxable: number;
+  
+  totalWageTax: number;
+  totalAovTax: number;
+  totalAwwTax: number;
+  totalTaxes: number;
+  
+  totalDeductions: number;
+  netPay: number;
+  
+  calculationModes?: {
+    wageTax: string;
+    aov: string;
+    aww: string;
+  };
+}
+
+/**
+ * Complete Component Breakdown Response
+ * All earnings, taxes, and benefits grouped by type
+ */
+export interface ComponentBreakdownResponse {
+  // Grouped components
+  earnings: ComponentTaxBreakdown[];
+  taxes: ComponentTaxBreakdown[];
+  deductions: ComponentTaxBreakdown[];
+  benefits: ComponentTaxBreakdown[];
+  
+  // Summary
+  summary: ComponentBreakdownSummary;
+}
+
+/**
+ * Paycheck Component Breakdown API Response
+ */
+export interface PaycheckComponentsResponse {
+  success: boolean;
+  components: ComponentBreakdownResponse;
+  message?: string;
 }
 
 // ============================================================================

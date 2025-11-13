@@ -14,6 +14,15 @@ import { mapScheduleApiToDb, mapScheduleChangeRequestApiToDb, mapScheduleDbToApi
  */
 async function createSchedule(req, res) {
   try {
+    // RAW BODY LOGGING - before any processing
+    console.log('=== RAW REQ.BODY ===');
+    console.log('scheduleDate value:', req.body.scheduleDate);
+    console.log('scheduleDate type:', typeof req.body.scheduleDate);
+    console.log('scheduleDate constructor:', req.body.scheduleDate?.constructor?.name);
+    console.log('Is Date object?:', req.body.scheduleDate instanceof Date);
+    console.log('Full body:', JSON.stringify(req.body, null, 2));
+    console.log('===================');
+    
     const { organization_id: organizationId, id: userId } = req.user;
     
     // Validate required employeeId field
@@ -21,6 +30,7 @@ async function createSchedule(req, res) {
       return res.status(400).json({
         success: false,
         error: 'Bad Request',
+        errorCode: 'VALIDATION_ERROR',
         message: '"employeeId" is required',
       });
     }
@@ -66,11 +76,24 @@ async function createSchedule(req, res) {
       return res.status(400).json({
         success: false,
         error: 'Bad Request',
+        errorCode: 'VALIDATION_ERROR',
         message: '"scheduleDate" is required for single schedule creation',
       });
     }
     
+    logger.debug('Request body before mapping', { 
+      body: req.body,
+      scheduleDate: req.body.scheduleDate,
+      scheduleDate_type: typeof req.body.scheduleDate 
+    });
+    
     const scheduleData = mapScheduleApiToDb(req.body);
+    
+    logger.debug('Schedule data after mapping', { 
+      scheduleData,
+      schedule_date: scheduleData.schedule_date,
+      schedule_date_type: typeof scheduleData.schedule_date 
+    });
 
     const schedule = await schedulingService.createWorkSchedule(
       scheduleData,
@@ -101,6 +124,7 @@ async function createSchedule(req, res) {
       return res.status(409).json({
         success: false,
         error: 'Conflict',
+        errorCode: 'SCHEDULE_CONFLICT',
         message: error.message,
       });
     }
@@ -108,6 +132,7 @@ async function createSchedule(req, res) {
     res.status(400).json({
       success: false,
       error: 'Bad Request',
+      errorCode: 'VALIDATION_ERROR',
       message: error.message,
     });
   }
@@ -120,21 +145,35 @@ async function createSchedule(req, res) {
 async function getSchedules(req, res) {
   try {
     const { organization_id: organizationId } = req.user;
-    const { employeeId, startDate, endDate, status } = req.query;
+    const { 
+      employeeId, 
+      startDate, 
+      endDate, 
+      status,
+      page = 1,
+      limit = 20,
+      sortBy = 'scheduleDate',
+      sortOrder = 'desc'
+    } = req.query;
 
     const filters = {
       employeeId,
       startDate,
       endDate,
       status,
+      page: parseInt(page, 10),
+      limit: Math.min(100, Math.max(1, parseInt(limit, 10))),
+      sortBy,
+      sortOrder: sortOrder.toLowerCase(),
     };
 
-    const schedules = await schedulingService.getSchedulesByOrganization(organizationId, filters);
+    const result = await schedulingService.getSchedulesByOrganization(organizationId, filters);
 
     res.status(200).json({
       success: true,
-      schedules: mapScheduleDbArrayToApi(schedules),
-      count: schedules.length,
+      schedules: mapScheduleDbArrayToApi(result.schedules || result),
+      pagination: result.pagination,
+      count: result.schedules ? result.schedules.length : result.length,
     });
   } catch (error) {
     logger.error('Error fetching schedules', {
@@ -145,6 +184,7 @@ async function getSchedules(req, res) {
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',
+      errorCode: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to fetch schedules',
     });
   }
@@ -152,7 +192,10 @@ async function getSchedules(req, res) {
 
 /**
  * Get schedules for an employee
- * GET /api/paylinq/employees/:employeeId/schedules
+ * @deprecated Use GET /api/paylinq/schedules?employeeId=xxx instead
+ * 
+ * This method is kept for backward compatibility but the route is removed.
+ * The recommended approach is to use the main schedules endpoint with employeeId query parameter.
  */
 async function getEmployeeSchedules(req, res) {
   try {
@@ -160,7 +203,7 @@ async function getEmployeeSchedules(req, res) {
     const { employeeId } = req.params;
     const { startDate, endDate } = req.query;
 
-    const filters = { startDate, endDate };
+    const filters = { employeeId, startDate, endDate };
     const schedules = await schedulingService.getSchedulesByEmployee(
       employeeId,
       organizationId,
@@ -182,6 +225,7 @@ async function getEmployeeSchedules(req, res) {
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',
+      errorCode: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to fetch employee schedules',
     });
   }
@@ -202,6 +246,7 @@ async function getScheduleById(req, res) {
       return res.status(404).json({
         success: false,
         error: 'Not Found',
+        errorCode: 'SCHEDULE_NOT_FOUND',
         message: 'Schedule not found',
       });
     }
@@ -216,6 +261,7 @@ async function getScheduleById(req, res) {
       return res.status(404).json({
         success: false,
         error: 'Not Found',
+        errorCode: 'SCHEDULE_NOT_FOUND',
         message: error.message || 'Schedule not found',
       });
     }
@@ -229,6 +275,7 @@ async function getScheduleById(req, res) {
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',
+      errorCode: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to fetch schedule',
     });
   }
@@ -257,6 +304,7 @@ async function updateSchedule(req, res) {
       return res.status(404).json({
         success: false,
         error: 'Not Found',
+        errorCode: 'SCHEDULE_NOT_FOUND',
         message: 'Schedule not found',
       });
     }
@@ -284,6 +332,7 @@ async function updateSchedule(req, res) {
       return res.status(409).json({
         success: false,
         error: 'Conflict',
+        errorCode: 'SCHEDULE_CONFLICT',
         message: error.message,
       });
     }
@@ -291,6 +340,7 @@ async function updateSchedule(req, res) {
     res.status(400).json({
       success: false,
       error: 'Bad Request',
+      errorCode: 'VALIDATION_ERROR',
       message: error.message,
     });
   }
@@ -311,6 +361,7 @@ async function deleteSchedule(req, res) {
       return res.status(404).json({
         success: false,
         error: 'Not Found',
+        errorCode: 'SCHEDULE_NOT_FOUND',
         message: 'Schedule not found',
       });
     }
@@ -336,6 +387,7 @@ async function deleteSchedule(req, res) {
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',
+      errorCode: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to delete schedule',
     });
   }
@@ -359,6 +411,7 @@ async function createChangeRequest(req, res) {
       return res.status(400).json({
         success: false,
         error: 'Bad Request',
+        errorCode: 'SCHEDULE_NOT_FOUND',
         message: 'Work schedule not found',
       });
     }
@@ -392,6 +445,7 @@ async function createChangeRequest(req, res) {
     res.status(400).json({
       success: false,
       error: 'Bad Request',
+      errorCode: 'VALIDATION_ERROR',
       message: error.message,
     });
   }
@@ -404,15 +458,31 @@ async function createChangeRequest(req, res) {
 async function getChangeRequests(req, res) {
   try {
     const { organization_id: organizationId } = req.user;
-    const { status, employeeId } = req.query;
+    const { 
+      status, 
+      employeeId,
+      page = 1,
+      limit = 20,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
 
-    const filters = { status, employeeId };
-    const requests = await schedulingService.getScheduleChangeRequests(organizationId, filters);
+    const filters = { 
+      status, 
+      employeeId,
+      page: parseInt(page, 10),
+      limit: Math.min(100, Math.max(1, parseInt(limit, 10))),
+      sortBy,
+      sortOrder: sortOrder.toLowerCase(),
+    };
+    
+    const result = await schedulingService.getScheduleChangeRequests(organizationId, filters);
 
     res.status(200).json({
       success: true,
-      requests: requests,
-      count: requests.length,
+      requests: result.requests || result,
+      pagination: result.pagination,
+      count: result.requests ? result.requests.length : result.length,
     });
   } catch (error) {
     logger.error('Error fetching schedule change requests', {
@@ -423,6 +493,7 @@ async function getChangeRequests(req, res) {
     res.status(500).json({
       success: false,
       error: 'Internal Server Error',
+      errorCode: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to fetch change requests',
     });
   }
@@ -442,6 +513,7 @@ async function reviewChangeRequest(req, res) {
       return res.status(400).json({
         success: false,
         error: 'Bad Request',
+        errorCode: 'VALIDATION_ERROR',
         message: 'action must be either "approve" or "reject"',
       });
     }
@@ -475,6 +547,7 @@ async function reviewChangeRequest(req, res) {
       return res.status(409).json({
         success: false,
         error: 'Conflict',
+        errorCode: 'INVALID_STATE',
         message: error.message,
       });
     }
@@ -482,6 +555,7 @@ async function reviewChangeRequest(req, res) {
     res.status(400).json({
       success: false,
       error: 'Bad Request',
+      errorCode: 'VALIDATION_ERROR',
       message: error.message,
     });
   }

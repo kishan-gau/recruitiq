@@ -4,11 +4,13 @@
  */
 
 import EmployeeService from '../services/employeeService.js';
+import EmploymentHistoryService from '../services/employmentHistoryService.js';
 import logger from '../../../utils/logger.js';
 
 class EmployeeController {
   constructor() {
     this.service = new EmployeeService();
+    this.employmentHistoryService = new EmploymentHistoryService();
     this.logger = logger;
   }
 
@@ -105,7 +107,7 @@ class EmployeeController {
   };
 
   /**
-   * Terminate employee
+   * Terminate employee (DEPRECATED - use employmentHistory controller)
    * POST /api/nexus/employees/:id/terminate
    */
   terminateEmployee = async (req, res) => {
@@ -118,6 +120,68 @@ class EmployeeController {
       this.logger.error('Error in terminateEmployee controller', { error: error.message });
       const status = error.message === 'Employee not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
+    }
+  };
+
+  /**
+   * Rehire employee
+   * POST /api/nexus/employees/:id/rehire
+   */
+  rehireEmployee = async (req, res) => {
+    try {
+      const { organization_id: organizationId, id: userId } = req.user;
+      const { id } = req.params;
+      const result = await this.employmentHistoryService.rehireEmployee(
+        id, 
+        req.body, 
+        organizationId, 
+        userId
+      );
+      res.json({ success: true, data: result });
+    } catch (error) {
+      this.logger.error('Error in rehireEmployee controller', { error: error.message });
+      const status = error.message === 'Employee not found' ? 404 : 
+                     error.message.includes('not terminated') ? 400 :
+                     error.message.includes('not eligible') ? 403 : 500;
+      res.status(status).json({ success: false, error: error.message });
+    }
+  };
+
+  /**
+   * Get employment history for employee
+   * GET /api/nexus/employees/:id/employment-history
+   */
+  getEmploymentHistory = async (req, res) => {
+    try {
+      const { organization_id: organizationId } = req.user;
+      const { id } = req.params;
+      const history = await this.employmentHistoryService.getEmploymentHistory(
+        id, 
+        organizationId
+      );
+      res.json({ success: true, data: history });
+    } catch (error) {
+      this.logger.error('Error in getEmploymentHistory controller', { error: error.message });
+      res.status(500).json({ success: false, error: error.message });
+    }
+  };
+
+  /**
+   * Check if employee can be rehired
+   * GET /api/nexus/employees/:id/rehire-eligibility
+   */
+  checkRehireEligibility = async (req, res) => {
+    try {
+      const { organization_id: organizationId } = req.user;
+      const { id } = req.params;
+      const eligibility = await this.employmentHistoryService.checkRehireEligibility(
+        id, 
+        organizationId
+      );
+      res.json({ success: true, data: eligibility });
+    } catch (error) {
+      this.logger.error('Error in checkRehireEligibility controller', { error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   };
 

@@ -52,7 +52,7 @@ export function usePayrollRun(id: string) {
     queryKey: [...PAYROLL_RUNS_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getPayrollRun(id);
-      return response.data;
+      return response.payrollRun;
     },
     enabled: !!id,
     refetchInterval: (query) => {
@@ -164,6 +164,32 @@ export function useCalculatePayroll() {
 }
 
 /**
+ * Hook to mark payroll run for review (calculating -> calculated)
+ */
+export function useMarkPayrollRunForReview() {
+  const { paylinq } = usePaylinqAPI();
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async (payrollRunId: string) => {
+      const response = await paylinq.markPayrollRunForReview(payrollRunId);
+      return response.payrollRun; // Extract payrollRun from response following API standards
+    },
+    onSuccess: (payrollRun) => {
+      if (payrollRun?.id) {
+        queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, payrollRun.id] });
+      }
+      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
+      success(`Payroll run "${payrollRun?.runName || 'untitled'}" marked for review`);
+    },
+    onError: (err: any) => {
+      error(err?.response?.data?.message || 'Failed to mark payroll run for review');
+    },
+  });
+}
+
+/**
  * Hook to approve a payroll run
  */
 export function useApprovePayrollRun() {
@@ -174,12 +200,12 @@ export function useApprovePayrollRun() {
   return useMutation({
     mutationFn: async (data: ApprovePayrollRequest) => {
       const response = await paylinq.approvePayrollRun(data);
-      return response.data;
+      return response.payrollRun;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
+    onSuccess: (payrollRun) => {
+      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, payrollRun?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
-      success(`Payroll run "${data?.runName}" approved successfully`);
+      success(`Payroll run "${payrollRun?.runName}" approved successfully`);
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to approve payroll run');
@@ -198,13 +224,13 @@ export function useProcessPayrollRun() {
   return useMutation({
     mutationFn: async (data: ProcessPayrollRequest) => {
       const response = await paylinq.processPayrollRun(data);
-      return response.data;
+      return response.payrollRun;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
+    onSuccess: (payrollRun) => {
+      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, payrollRun?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
       queryClient.invalidateQueries({ queryKey: PAYCHECKS_KEY });
-      success(`Payroll run "${data?.runName}" processed successfully`);
+      success(`Payroll run "${payrollRun?.runName}" processed successfully`);
     },
     onError: (err: any) => {
       error(err?.response?.data?.message || 'Failed to process payroll run');
@@ -223,10 +249,10 @@ export function useCancelPayrollRun() {
   return useMutation({
     mutationFn: async (id: string) => {
       const response = await paylinq.cancelPayrollRun(id);
-      return response.data;
+      return response.payrollRun;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
+    onSuccess: (payrollRun) => {
+      queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, payrollRun?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
       success('Payroll run cancelled successfully');
     },

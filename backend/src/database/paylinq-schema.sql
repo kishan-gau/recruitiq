@@ -87,11 +87,8 @@ CREATE TABLE IF NOT EXISTS payroll.compensation (
   
   -- Compensation details
   compensation_type VARCHAR(20) NOT NULL CHECK (compensation_type IN ('hourly', 'salary', 'commission', 'bonus')),
-  amount NUMERIC(12, 2) NOT NULL, -- Primary amount
-  hourly_rate NUMERIC(12, 2), -- For hourly workers
+  amount NUMERIC(12, 2) NOT NULL, -- Primary amount (single source of truth)
   overtime_rate NUMERIC(12, 2), -- Overtime rate (e.g., 1.5x)
-  pay_period_amount NUMERIC(12, 2), -- Amount per pay period
-  annual_amount NUMERIC(12, 2), -- Annual salary equivalent
   
   -- Effective dates
   effective_from DATE NOT NULL,
@@ -112,8 +109,10 @@ CREATE TABLE IF NOT EXISTS payroll.compensation (
   FOREIGN KEY (employee_id) REFERENCES hris.employee(id) ON DELETE CASCADE
 );
 
-COMMENT ON TABLE payroll.compensation IS 'Compensation history for employees - references hris.employee as source of truth';
+COMMENT ON TABLE payroll.compensation IS 'Compensation history for employees - SINGLE SOURCE OF TRUTH for base salary/hourly rate. Pay structures (worker_pay_structure) reference this data for calculations.';
 COMMENT ON COLUMN payroll.compensation.employee_id IS 'References hris.employee(id) - the single source of truth';
+COMMENT ON COLUMN payroll.compensation.amount IS 'Primary compensation amount - interpreted based on compensation_type and pay_frequency. For monthly salary, this is the monthly amount. For hourly, this is typically the hourly rate (or use hourly_rate field).';
+
 
 -- ================================================================
 -- WORKER TYPE MANAGEMENT
@@ -152,6 +151,7 @@ CREATE TABLE IF NOT EXISTS payroll.worker_type_template (
   deleted_by UUID REFERENCES hris.user_account(id),
   
   UNIQUE(organization_id, code),
+  UNIQUE(organization_id, name),
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
 
@@ -179,6 +179,7 @@ CREATE TABLE IF NOT EXISTS payroll.worker_type (
   updated_by UUID REFERENCES hris.user_account(id),
   deleted_by UUID REFERENCES hris.user_account(id),
   
+  UNIQUE(organization_id, employee_id, worker_type_template_id, effective_from),
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
   FOREIGN KEY (worker_type_template_id) REFERENCES payroll.worker_type_template(id)
 );
@@ -579,6 +580,7 @@ CREATE TABLE IF NOT EXISTS payroll.tax_rule_set (
   -- Calculation method
   annual_cap NUMERIC(12, 2), -- Maximum tax per year
   calculation_method VARCHAR(20) DEFAULT 'bracket' CHECK (calculation_method IN ('bracket', 'flat_rate', 'graduated')),
+  calculation_mode VARCHAR(30) DEFAULT 'proportional_distribution' CHECK (calculation_mode IN ('aggregated', 'component_based', 'proportional_distribution')),
   
   description TEXT,
   
@@ -624,7 +626,7 @@ CREATE TABLE IF NOT EXISTS payroll.allowance (
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   
   -- Allowance details
-  allowance_type VARCHAR(50) NOT NULL, -- 'personal', 'dependent', 'disability', 'veteran', etc.
+  allowance_type VARCHAR(50) NOT NULL, -- 'personal', 'dependent', 'disability', 'veteran', 'tax_free_sum_monthly', 'holiday_allowance', 'bonus_gratuity'
   allowance_name VARCHAR(100) NOT NULL,
   
   -- Jurisdiction
@@ -652,6 +654,108 @@ CREATE TABLE IF NOT EXISTS payroll.allowance (
   
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
+
+-- ================================================================
+-- COMPONENT-BASED PAYROLL ARCHITECTURE ADDITIONS
+-- Added: November 12, 2025
+-- ================================================================
+
+-- Payroll run types (defines different types of payroll runs)
+CREATE TABLE IF NOT EXISTS payroll.payroll_run_type (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Type identification
+  type_code VARCHAR(50) NOT NULL,              -- 'VAKANTIEGELD', 'BONUS', 'REGULAR'
+  type_name VARCHAR(100) NOT NULL,             -- 'Holiday Allowance', 'Bonus Payment'
+  description TEXT,
+  
+  -- HYBRID APPROACH: Template OR Explicit
+  default_template_id UUID,  -- FK added later after pay_structure_template is created
+  component_override_mode VARCHAR(20) DEFAULT 'template' 
+    CHECK (component_override_mode IN ('template', 'explicit', 'hybrid')),
+  
+  -- Explicit component specification (used when mode = 'explicit' or 'hybrid')
+  allowed_components JSONB,   -- ["VAKANTIEGELD"] or ["BONUS", "GRATUITY"]
+  excluded_components JSONB,  -- ["REGULAR_SALARY", "OVERTIME"]
+  
+  -- Configuration
+  is_system_default BOOLEAN DEFAULT false,
+  is_active BOOLEAN DEFAULT true,
+  display_order INTEGER DEFAULT 0,
+  icon VARCHAR(50),            -- UI icon name
+  color VARCHAR(7),            -- Hex color for badges
+  
+  -- Audit fields
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  created_by UUID,  -- FK added later after user_account is created
+  updated_by UUID,
+  deleted_by UUID,
+  
+  UNIQUE(organization_id, type_code),
+  CONSTRAINT valid_mode_config CHECK (
+    (component_override_mode = 'template' AND default_template_id IS NOT NULL) OR
+    (component_override_mode = 'explicit' AND allowed_components IS NOT NULL) OR
+    (component_override_mode = 'hybrid' AND default_template_id IS NOT NULL)
+  )
+);
+
+CREATE INDEX idx_payroll_run_type_org 
+  ON payroll.payroll_run_type(organization_id) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_payroll_run_type_active 
+  ON payroll.payroll_run_type(is_active) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_payroll_run_type_code
+  ON payroll.payroll_run_type(organization_id, type_code)
+  WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE payroll.payroll_run_type IS 
+  'Run type definitions with hybrid template/explicit component support. MULTI-TENANT: Each organization has its own run types (tenant isolation via organization_id).';
+COMMENT ON COLUMN payroll.payroll_run_type.component_override_mode IS 
+  'template: use template components | explicit: use allowed_components | hybrid: template + overrides';
+COMMENT ON COLUMN payroll.payroll_run_type.organization_id IS 
+  'REQUIRED: Every run type belongs to a specific organization (tenant isolation). No NULL values allowed for multi-tenant security.';
+
+-- Employee allowance usage tracking (yearly caps enforcement)
+CREATE TABLE IF NOT EXISTS payroll.employee_allowance_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id),
+  employee_id UUID NOT NULL REFERENCES hris.employee(id),
+  allowance_type VARCHAR(50) NOT NULL,  -- 'holiday_allowance', 'bonus_gratuity'
+  
+  -- Usage tracking
+  calendar_year INTEGER NOT NULL,
+  amount_used NUMERIC(12, 2) DEFAULT 0,
+  amount_remaining NUMERIC(12, 2),      -- Cached for performance
+  last_updated TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- Audit
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ,
+  
+  UNIQUE(employee_id, allowance_type, calendar_year),
+  CONSTRAINT valid_year CHECK (calendar_year >= 2020 AND calendar_year <= 2100)
+);
+
+CREATE INDEX idx_employee_allowance_usage_emp_year 
+  ON payroll.employee_allowance_usage(employee_id, calendar_year);
+
+CREATE INDEX idx_employee_allowance_usage_type 
+  ON payroll.employee_allowance_usage(allowance_type);
+
+COMMENT ON TABLE payroll.employee_allowance_usage IS 
+  'Tracks yearly allowance usage per employee for cap enforcement';
+
+-- ================================================================
+-- NOTE: Vakantiegeld calculation rules are stored in pay_component.calculation_metadata
+-- Tax-free caps are defined in payroll.allowance table per Surinamese Wage Tax Law
+-- This provides maximum flexibility for different organization practices
+-- ================================================================
 
 -- Deductible cost rules (allowable cost deductions from gross income)
 CREATE TABLE IF NOT EXISTS payroll.deductible_cost_rule (
@@ -753,6 +857,10 @@ CREATE TABLE IF NOT EXISTS payroll.paycheck (
   bonus_pay NUMERIC(12, 2) DEFAULT 0,
   commission_pay NUMERIC(12, 2) DEFAULT 0,
   
+  -- Allowances (Component-Based Payroll Architecture)
+  taxable_income NUMERIC(12, 2) DEFAULT 0,      -- Income after tax-free allowance deduction
+  tax_free_allowance NUMERIC(12, 2) DEFAULT 0,  -- Total tax-free allowance applied
+  
   -- Taxes
   federal_tax NUMERIC(12, 2) DEFAULT 0,
   state_tax NUMERIC(12, 2) DEFAULT 0,
@@ -785,6 +893,10 @@ CREATE TABLE IF NOT EXISTS payroll.paycheck (
   payslip_send_status VARCHAR(20) CHECK (payslip_send_status IN ('pending', 'sent', 'failed', 'bounced')),
   payslip_send_error TEXT,
   
+  -- Payslip template used for PDF generation
+  payslip_template_id UUID, -- FK added later to avoid circular dependency
+  payslip_template_snapshot JSONB, -- Frozen template config at time of generation
+  
   -- Audit fields
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ,
@@ -797,6 +909,11 @@ CREATE TABLE IF NOT EXISTS payroll.paycheck (
   FOREIGN KEY (payroll_run_id) REFERENCES payroll.payroll_run(id) ON DELETE CASCADE,
   FOREIGN KEY (employee_id) REFERENCES hris.employee(id)
 );
+
+COMMENT ON COLUMN payroll.paycheck.taxable_income IS 
+  'Income after tax-free allowance deduction (gross - allowances)';
+COMMENT ON COLUMN payroll.paycheck.tax_free_allowance IS 
+  'Total tax-free allowance amount applied to this paycheck';
 
 -- Payroll run components (detailed breakdown of earnings, taxes, deductions per paycheck)
 CREATE TABLE IF NOT EXISTS payroll.payroll_run_component (
@@ -829,6 +946,131 @@ CREATE TABLE IF NOT EXISTS payroll.payroll_run_component (
   FOREIGN KEY (payroll_run_id) REFERENCES payroll.payroll_run(id) ON DELETE CASCADE,
   FOREIGN KEY (paycheck_id) REFERENCES payroll.paycheck(id) ON DELETE CASCADE
 );
+
+-- ================================================================
+-- PAYSLIP TEMPLATES
+-- ================================================================
+
+-- Payslip templates for customizable payslip design
+CREATE TABLE IF NOT EXISTS payroll.payslip_template (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Template identification
+  template_name VARCHAR(100) NOT NULL,
+  template_code VARCHAR(50) NOT NULL,
+  description TEXT,
+  
+  -- Status and defaults
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'archived')),
+  is_default BOOLEAN DEFAULT false,
+  
+  -- Design configuration
+  layout_type VARCHAR(50) DEFAULT 'standard' CHECK (layout_type IN ('standard', 'compact', 'detailed', 'custom')),
+  
+  -- Header configuration
+  show_company_logo BOOLEAN DEFAULT true,
+  company_logo_url TEXT,
+  header_text TEXT,
+  header_color VARCHAR(7) DEFAULT '#10b981', -- Hex color code
+  
+  -- Section visibility
+  show_employee_info BOOLEAN DEFAULT true,
+  show_payment_details BOOLEAN DEFAULT true,
+  show_earnings_section BOOLEAN DEFAULT true,
+  show_deductions_section BOOLEAN DEFAULT true,
+  show_taxes_section BOOLEAN DEFAULT true,
+  show_leave_balances BOOLEAN DEFAULT false,
+  show_ytd_totals BOOLEAN DEFAULT true,
+  show_qr_code BOOLEAN DEFAULT false, -- For digital verification
+  
+  -- Custom sections (JSONB array for flexibility)
+  custom_sections JSONB, -- [{ "title": "Notes", "content": "...", "order": 1 }]
+  
+  -- Field configuration (which fields to show/hide)
+  field_configuration JSONB, -- { "earnings": { "regular_pay": true, "overtime": true }, ... }
+  
+  -- Styling
+  font_family VARCHAR(50) DEFAULT 'Arial',
+  font_size INTEGER DEFAULT 10,
+  primary_color VARCHAR(7) DEFAULT '#10b981',
+  secondary_color VARCHAR(7) DEFAULT '#6b7280',
+  
+  -- Footer configuration
+  footer_text TEXT,
+  show_confidentiality_notice BOOLEAN DEFAULT true,
+  confidentiality_text TEXT,
+  
+  -- Page settings
+  page_size VARCHAR(20) DEFAULT 'A4' CHECK (page_size IN ('A4', 'Letter', 'Legal')),
+  page_orientation VARCHAR(20) DEFAULT 'portrait' CHECK (page_orientation IN ('portrait', 'landscape')),
+  
+  -- Localization
+  language VARCHAR(10) DEFAULT 'en',
+  currency_display_format VARCHAR(50) DEFAULT 'SRD #,##0.00',
+  date_format VARCHAR(50) DEFAULT 'MMM dd, yyyy',
+  
+  -- Conditional display rules
+  display_rules JSONB, -- { "show_overtime_if_zero": false, "group_taxes": true, ... }
+  
+  -- Audit fields
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  created_by UUID REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  deleted_by UUID REFERENCES hris.user_account(id),
+  
+  UNIQUE(organization_id, template_code),
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_payslip_template_org ON payroll.payslip_template(organization_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_payslip_template_status ON payroll.payslip_template(status) WHERE deleted_at IS NULL;
+CREATE INDEX idx_payslip_template_default ON payroll.payslip_template(organization_id, is_default) WHERE is_default = true AND deleted_at IS NULL;
+
+COMMENT ON TABLE payroll.payslip_template IS 'Customizable payslip templates for PDF generation with branding and layout options';
+
+-- Payslip template assignments (link templates to worker types, departments, or individuals)
+CREATE TABLE IF NOT EXISTS payroll.payslip_template_assignment (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  template_id UUID NOT NULL REFERENCES payroll.payslip_template(id) ON DELETE CASCADE,
+  
+  -- Assignment scope
+  assignment_type VARCHAR(50) NOT NULL CHECK (assignment_type IN ('organization', 'worker_type', 'department', 'employee', 'pay_structure')),
+  
+  -- Target references (only one should be set based on assignment_type)
+  worker_type_id UUID REFERENCES payroll.worker_type(id),
+  department_id UUID, -- Reference to hris.department if needed
+  employee_id UUID REFERENCES hris.employee(id),
+  pay_structure_template_id UUID, -- FK added later to avoid circular dependency
+  
+  -- Priority (higher number = higher priority when multiple templates match)
+  priority INTEGER DEFAULT 0,
+  
+  -- Effective dates
+  effective_from DATE NOT NULL,
+  effective_to DATE,
+  
+  -- Audit fields
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  created_by UUID REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  deleted_by UUID REFERENCES hris.user_account(id),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (template_id) REFERENCES payroll.payslip_template(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_payslip_template_assignment_org ON payroll.payslip_template_assignment(organization_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_payslip_template_assignment_type ON payroll.payslip_template_assignment(assignment_type) WHERE deleted_at IS NULL;
+CREATE INDEX idx_payslip_template_assignment_employee ON payroll.payslip_template_assignment(employee_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_payslip_template_assignment_worker_type ON payroll.payslip_template_assignment(worker_type_id) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE payroll.payslip_template_assignment IS 'Assigns payslip templates to specific scopes (org-wide, worker types, departments, individuals)';
 
 -- ================================================================
 -- PAYMENT PROCESSING
@@ -1088,6 +1330,7 @@ CREATE INDEX IF NOT EXISTS idx_employee_deduction_dates ON payroll.employee_dedu
 CREATE INDEX IF NOT EXISTS idx_tax_rule_set_org ON payroll.tax_rule_set(organization_id);
 CREATE INDEX IF NOT EXISTS idx_tax_rule_set_jurisdiction ON payroll.tax_rule_set(country, state, locality);
 CREATE INDEX IF NOT EXISTS idx_tax_rule_set_active ON payroll.tax_rule_set(effective_from, effective_to) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tax_rule_set_calculation_mode ON payroll.tax_rule_set(calculation_mode) WHERE deleted_at IS NULL;
 
 -- Tax bracket indexes
 CREATE INDEX IF NOT EXISTS idx_tax_bracket_rule_set ON payroll.tax_bracket(tax_rule_set_id);
@@ -1098,6 +1341,21 @@ CREATE INDEX IF NOT EXISTS idx_payroll_run_org ON payroll.payroll_run(organizati
 CREATE INDEX IF NOT EXISTS idx_payroll_run_status ON payroll.payroll_run(status) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_payroll_run_period ON payroll.payroll_run(pay_period_start, pay_period_end);
 CREATE INDEX IF NOT EXISTS idx_payroll_run_payment_date ON payroll.payroll_run(payment_date);
+CREATE INDEX IF NOT EXISTS idx_payroll_run_type ON payroll.payroll_run(run_type);
+
+-- Add FK constraint for run_type (links to payroll_run_type.type_code)
+-- Note: This is optional - allows both predefined types and custom types
+ALTER TABLE payroll.payroll_run
+  DROP CONSTRAINT IF EXISTS fk_payroll_run_type;
+
+-- Comment out FK for now to allow flexibility with custom run types
+-- ALTER TABLE payroll.payroll_run
+--   ADD CONSTRAINT fk_payroll_run_type 
+--   FOREIGN KEY (run_type) 
+--   REFERENCES payroll.payroll_run_type(type_code);
+
+COMMENT ON COLUMN payroll.payroll_run.run_type IS 
+  'Run type code - should match payroll_run_type.type_code when using predefined types';
 
 -- Paycheck indexes
 CREATE INDEX IF NOT EXISTS idx_paycheck_run ON payroll.paycheck(payroll_run_id);
@@ -1151,6 +1409,44 @@ CREATE INDEX IF NOT EXISTS idx_pay_component_metadata ON payroll.pay_component U
 -- FOREIGN KEY CONSTRAINTS (Added after table creation to avoid circular dependencies)
 -- ================================================================
 
+-- Add payslip_template_id foreign key to paycheck
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_paycheck_payslip_template_id'
+    AND table_schema = 'payroll'
+    AND table_name = 'paycheck'
+  ) THEN
+    ALTER TABLE payroll.paycheck 
+      ADD CONSTRAINT fk_paycheck_payslip_template_id 
+      FOREIGN KEY (payslip_template_id) 
+      REFERENCES payroll.payslip_template(id) 
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- Add run_type foreign key to payroll_run (Component-Based Payroll Architecture)
+-- Note: FK references both organization_id and type_code since they form the unique constraint
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_payroll_run_type'
+    AND table_schema = 'payroll'
+    AND table_name = 'payroll_run'
+  ) THEN
+    ALTER TABLE payroll.payroll_run
+      ADD CONSTRAINT fk_payroll_run_type 
+      FOREIGN KEY (organization_id, run_type) 
+      REFERENCES payroll.payroll_run_type(organization_id, type_code)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
+COMMENT ON COLUMN payroll.payroll_run.run_type IS 
+  'Run type code (FK to payroll_run_type.type_code with organization_id)';
+
 -- Add formula_id foreign key to pay_component
 DO $$ 
 BEGIN
@@ -1202,6 +1498,70 @@ BEGIN
   END IF;
 END $$;
 
+-- Add foreign keys for payroll_run_type (deferred to avoid circular dependencies)
+DO $$ 
+BEGIN
+  -- Add default_template_id foreign key (only if pay_structure_template table exists)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'payroll' 
+    AND table_name = 'pay_structure_template'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_payroll_run_type_template'
+    AND table_schema = 'payroll'
+    AND table_name = 'payroll_run_type'
+  ) THEN
+    ALTER TABLE payroll.payroll_run_type
+      ADD CONSTRAINT fk_payroll_run_type_template
+      FOREIGN KEY (default_template_id)
+      REFERENCES payroll.pay_structure_template(id)
+      ON DELETE SET NULL;
+  END IF;
+
+  -- Add created_by foreign key
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_payroll_run_type_created_by'
+    AND table_schema = 'payroll'
+    AND table_name = 'payroll_run_type'
+  ) THEN
+    ALTER TABLE payroll.payroll_run_type
+      ADD CONSTRAINT fk_payroll_run_type_created_by
+      FOREIGN KEY (created_by)
+      REFERENCES hris.user_account(id)
+      ON DELETE SET NULL;
+  END IF;
+
+  -- Add updated_by foreign key
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_payroll_run_type_updated_by'
+    AND table_schema = 'payroll'
+    AND table_name = 'payroll_run_type'
+  ) THEN
+    ALTER TABLE payroll.payroll_run_type
+      ADD CONSTRAINT fk_payroll_run_type_updated_by
+      FOREIGN KEY (updated_by)
+      REFERENCES hris.user_account(id)
+      ON DELETE SET NULL;
+  END IF;
+
+  -- Add deleted_by foreign key
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_payroll_run_type_deleted_by'
+    AND table_schema = 'payroll'
+    AND table_name = 'payroll_run_type'
+  ) THEN
+    ALTER TABLE payroll.payroll_run_type
+      ADD CONSTRAINT fk_payroll_run_type_deleted_by
+      FOREIGN KEY (deleted_by)
+      REFERENCES hris.user_account(id)
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
 -- ================================================================
 -- GRANT PERMISSIONS
 -- ================================================================
@@ -1235,6 +1595,7 @@ COMMENT ON TABLE payroll.custom_pay_component IS 'Employee-specific pay componen
 COMMENT ON TABLE payroll.rated_time_line IS 'Time entries broken down by pay rates';
 COMMENT ON TABLE payroll.employee_deduction IS 'Employee-specific deductions (benefits, garnishments, etc.)';
 COMMENT ON TABLE payroll.tax_rule_set IS 'Tax calculation rules by jurisdiction';
+COMMENT ON COLUMN payroll.tax_rule_set.calculation_mode IS 'Tax calculation mode: aggregated (tax on total only, no breakdown), component_based (tax per component, ONLY for flat-rate taxes), proportional_distribution (tax on total, distribute proportionally - correct for progressive taxes)';
 COMMENT ON TABLE payroll.tax_bracket IS 'Progressive tax brackets';
 COMMENT ON TABLE payroll.allowance IS 'Tax-free allowances';
 COMMENT ON TABLE payroll.deductible_cost_rule IS 'Allowable cost deductions from gross income';
@@ -1460,10 +1821,8 @@ CREATE TABLE IF NOT EXISTS payroll.worker_pay_structure (
   -- Frozen Template Snapshot (for historical accuracy)
   template_snapshot JSONB NOT NULL, -- Complete template + components configuration at assignment time
   
-  -- Worker-Specific Base Values (used in calculations)
-  base_salary NUMERIC(12,4), -- Worker's base salary for this structure
-  hourly_rate NUMERIC(12,4), -- Worker's hourly rate for this structure
-  pay_frequency VARCHAR(20), -- Can override template default
+  -- Metadata
+  pay_frequency VARCHAR(20), -- Can reference payroll.employee_payroll_config.pay_frequency
   currency VARCHAR(3), -- Can override template default
   
   -- Approval Workflow
@@ -1612,6 +1971,23 @@ CREATE INDEX idx_template_changelog_version ON payroll.pay_structure_template_ch
 
 COMMENT ON TABLE payroll.pay_structure_template_changelog IS 'Complete history of changes to pay structure templates. Enables audit trail and version comparison.';
 
+-- Add pay_structure_template_id foreign key to payslip_template_assignment (after pay_structure_template is created)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_payslip_assignment_pay_structure_template_id'
+    AND table_schema = 'payroll'
+    AND table_name = 'payslip_template_assignment'
+  ) THEN
+    ALTER TABLE payroll.payslip_template_assignment 
+      ADD CONSTRAINT fk_payslip_assignment_pay_structure_template_id 
+      FOREIGN KEY (pay_structure_template_id) 
+      REFERENCES payroll.pay_structure_template(id) 
+      ON DELETE SET NULL;
+  END IF;
+END $$;
+
 -- Extend payroll_run_component table for structure tracking
 DO $$ 
 BEGIN
@@ -1749,16 +2125,15 @@ SELECT
   wps.effective_from,
   wps.effective_to,
   wps.is_current,
-  wps.base_salary,
-  wps.hourly_rate,
   wps.currency,
+  wps.pay_frequency,
   COUNT(DISTINCT wpco.id) as override_count
 FROM payroll.worker_pay_structure wps
 INNER JOIN hris.employee e ON e.id = wps.employee_id
 LEFT JOIN payroll.pay_structure_template pst ON pst.id = wps.template_id
 LEFT JOIN payroll.worker_pay_structure_component_override wpco ON wpco.worker_structure_id = wps.id AND wpco.deleted_at IS NULL
 WHERE wps.deleted_at IS NULL
-GROUP BY wps.id, e.employee_number, e.first_name, e.last_name, pst.template_name;
+GROUP BY wps.id, e.employee_number, e.first_name, e.last_name, pst.template_name, wps.currency, wps.pay_frequency;
 
 COMMENT ON VIEW payroll.v_worker_pay_structure_summary IS 'Summary view of worker pay structure assignments with override counts.';
 
@@ -1767,6 +2142,435 @@ COMMENT ON TABLE payroll.pay_structure_component IS 'Individual pay components w
 COMMENT ON TABLE payroll.worker_pay_structure IS 'Worker-specific pay structure assignments with frozen snapshots';
 COMMENT ON TABLE payroll.worker_pay_structure_component_override IS 'Worker-specific overrides to template components';
 COMMENT ON TABLE payroll.pay_structure_template_changelog IS 'Version history and change tracking for templates';
+
+-- ================================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- Multi-Tenant Data Isolation at Database Level
+-- ================================================================
+
+-- Helper function to get current organization from session variable
+CREATE OR REPLACE FUNCTION payroll.get_current_organization_id()
+RETURNS UUID AS $$
+DECLARE
+  org_id TEXT;
+BEGIN
+  org_id := current_setting('app.current_organization_id', true);
+  
+  IF org_id IS NULL OR org_id = '' THEN
+    RAISE EXCEPTION 'No organization context set. Authentication required.';
+  END IF;
+  
+  RETURN org_id::UUID;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Invalid organization context: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+COMMENT ON FUNCTION payroll.get_current_organization_id IS 'Returns current organization UUID from session variable set by auth middleware. Throws error if not set.';
+
+-- ================================================================
+-- RLS: EMPLOYEE PAYROLL CONFIGURATION
+-- ================================================================
+
+ALTER TABLE payroll.employee_payroll_config ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY employee_payroll_config_tenant_isolation ON payroll.employee_payroll_config
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY employee_payroll_config_tenant_isolation_insert ON payroll.employee_payroll_config
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.compensation ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY compensation_tenant_isolation ON payroll.compensation
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY compensation_tenant_isolation_insert ON payroll.compensation
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: WORKER TYPE MANAGEMENT
+-- ================================================================
+
+ALTER TABLE payroll.worker_type_template ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY worker_type_template_tenant_isolation ON payroll.worker_type_template
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY worker_type_template_tenant_isolation_insert ON payroll.worker_type_template
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.worker_type ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY worker_type_tenant_isolation ON payroll.worker_type
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY worker_type_tenant_isolation_insert ON payroll.worker_type
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: TIME & ATTENDANCE
+-- ================================================================
+
+ALTER TABLE payroll.shift_type ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY shift_type_tenant_isolation ON payroll.shift_type
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY shift_type_tenant_isolation_insert ON payroll.shift_type
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.time_attendance_event ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY time_attendance_event_tenant_isolation ON payroll.time_attendance_event
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY time_attendance_event_tenant_isolation_insert ON payroll.time_attendance_event
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.time_entry ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY time_entry_tenant_isolation ON payroll.time_entry
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY time_entry_tenant_isolation_insert ON payroll.time_entry
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.timesheet ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY timesheet_tenant_isolation ON payroll.timesheet
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY timesheet_tenant_isolation_insert ON payroll.timesheet
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: PAY COMPONENTS
+-- ================================================================
+
+ALTER TABLE payroll.pay_component ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY pay_component_tenant_isolation ON payroll.pay_component
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY pay_component_tenant_isolation_insert ON payroll.pay_component
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.component_formula ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY component_formula_tenant_isolation ON payroll.component_formula
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY component_formula_tenant_isolation_insert ON payroll.component_formula
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.custom_pay_component ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY custom_pay_component_tenant_isolation ON payroll.custom_pay_component
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY custom_pay_component_tenant_isolation_insert ON payroll.custom_pay_component
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.formula_execution_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY formula_execution_log_tenant_isolation ON payroll.formula_execution_log
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY formula_execution_log_tenant_isolation_insert ON payroll.formula_execution_log
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.rated_time_line ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY rated_time_line_tenant_isolation ON payroll.rated_time_line
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY rated_time_line_tenant_isolation_insert ON payroll.rated_time_line
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: DEDUCTIONS
+-- ================================================================
+
+ALTER TABLE payroll.employee_deduction ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY employee_deduction_tenant_isolation ON payroll.employee_deduction
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY employee_deduction_tenant_isolation_insert ON payroll.employee_deduction
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: TAX CALCULATION ENGINE
+-- ================================================================
+
+ALTER TABLE payroll.tax_rule_set ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tax_rule_set_tenant_isolation ON payroll.tax_rule_set
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY tax_rule_set_tenant_isolation_insert ON payroll.tax_rule_set
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.tax_bracket ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tax_bracket_tenant_isolation ON payroll.tax_bracket
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY tax_bracket_tenant_isolation_insert ON payroll.tax_bracket
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.allowance ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY allowance_tenant_isolation ON payroll.allowance
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY allowance_tenant_isolation_insert ON payroll.allowance
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.deductible_cost_rule ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY deductible_cost_rule_tenant_isolation ON payroll.deductible_cost_rule
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY deductible_cost_rule_tenant_isolation_insert ON payroll.deductible_cost_rule
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: COMPONENT-BASED PAYROLL ARCHITECTURE
+-- ================================================================
+
+ALTER TABLE payroll.payroll_run_type ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY payroll_run_type_tenant_isolation ON payroll.payroll_run_type
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY payroll_run_type_tenant_isolation_insert ON payroll.payroll_run_type
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.employee_allowance_usage ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY employee_allowance_usage_tenant_isolation ON payroll.employee_allowance_usage
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY employee_allowance_usage_tenant_isolation_insert ON payroll.employee_allowance_usage
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: PAYROLL RUNS & PAYCHECKS
+-- ================================================================
+
+ALTER TABLE payroll.payroll_run ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY payroll_run_tenant_isolation ON payroll.payroll_run
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY payroll_run_tenant_isolation_insert ON payroll.payroll_run
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.paycheck ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY paycheck_tenant_isolation ON payroll.paycheck
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY paycheck_tenant_isolation_insert ON payroll.paycheck
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.payroll_run_component ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY payroll_run_component_tenant_isolation ON payroll.payroll_run_component
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY payroll_run_component_tenant_isolation_insert ON payroll.payroll_run_component
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: PAYSLIP TEMPLATES
+-- ================================================================
+
+ALTER TABLE payroll.payslip_template ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY payslip_template_tenant_isolation ON payroll.payslip_template
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY payslip_template_tenant_isolation_insert ON payroll.payslip_template
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.payslip_template_assignment ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY payslip_template_assignment_tenant_isolation ON payroll.payslip_template_assignment
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY payslip_template_assignment_tenant_isolation_insert ON payroll.payslip_template_assignment
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: PAYMENT PROCESSING
+-- ================================================================
+
+ALTER TABLE payroll.payment_transaction ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY payment_transaction_tenant_isolation ON payroll.payment_transaction
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY payment_transaction_tenant_isolation_insert ON payroll.payment_transaction
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: RECONCILIATION & ADJUSTMENTS
+-- ================================================================
+
+ALTER TABLE payroll.reconciliation ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY reconciliation_tenant_isolation ON payroll.reconciliation
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY reconciliation_tenant_isolation_insert ON payroll.reconciliation
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.reconciliation_item ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY reconciliation_item_tenant_isolation ON payroll.reconciliation_item
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY reconciliation_item_tenant_isolation_insert ON payroll.reconciliation_item
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: SCHEDULING
+-- ================================================================
+
+ALTER TABLE payroll.work_schedule ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY work_schedule_tenant_isolation ON payroll.work_schedule
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY work_schedule_tenant_isolation_insert ON payroll.work_schedule
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.schedule_change_request ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY schedule_change_request_tenant_isolation ON payroll.schedule_change_request
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY schedule_change_request_tenant_isolation_insert ON payroll.schedule_change_request
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- RLS: PAY STRUCTURE TEMPLATES (Versioned)
+-- ================================================================
+
+ALTER TABLE payroll.pay_structure_template ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY pay_structure_template_tenant_isolation ON payroll.pay_structure_template
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY pay_structure_template_tenant_isolation_insert ON payroll.pay_structure_template
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.pay_structure_component ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY pay_structure_component_tenant_isolation ON payroll.pay_structure_component
+  USING (
+    EXISTS (
+      SELECT 1 FROM payroll.pay_structure_template pst
+      WHERE pst.id = pay_structure_component.template_id
+      AND pst.organization_id = payroll.get_current_organization_id()
+    )
+  );
+
+CREATE POLICY pay_structure_component_tenant_isolation_insert ON payroll.pay_structure_component
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM payroll.pay_structure_template pst
+      WHERE pst.id = pay_structure_component.template_id
+      AND pst.organization_id = payroll.get_current_organization_id()
+    )
+  );
+
+ALTER TABLE payroll.worker_pay_structure ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY worker_pay_structure_tenant_isolation ON payroll.worker_pay_structure
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY worker_pay_structure_tenant_isolation_insert ON payroll.worker_pay_structure
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.worker_pay_structure_component_override ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY worker_pay_structure_component_override_tenant_isolation ON payroll.worker_pay_structure_component_override
+  USING (
+    EXISTS (
+      SELECT 1 FROM payroll.worker_pay_structure wps
+      WHERE wps.id = worker_pay_structure_component_override.worker_structure_id
+      AND wps.organization_id = payroll.get_current_organization_id()
+    )
+  );
+
+CREATE POLICY worker_pay_structure_component_override_tenant_isolation_insert ON payroll.worker_pay_structure_component_override
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM payroll.worker_pay_structure wps
+      WHERE wps.id = worker_pay_structure_component_override.worker_structure_id
+      AND wps.organization_id = payroll.get_current_organization_id()
+    )
+  );
+
+ALTER TABLE payroll.pay_structure_template_changelog ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY pay_structure_template_changelog_tenant_isolation ON payroll.pay_structure_template_changelog
+  USING (
+    EXISTS (
+      SELECT 1 FROM payroll.pay_structure_template pst
+      WHERE pst.id = pay_structure_template_changelog.template_id
+      AND pst.organization_id = payroll.get_current_organization_id()
+    )
+  );
+
+CREATE POLICY pay_structure_template_changelog_tenant_isolation_insert ON payroll.pay_structure_template_changelog
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM payroll.pay_structure_template pst
+      WHERE pst.id = pay_structure_template_changelog.template_id
+      AND pst.organization_id = payroll.get_current_organization_id()
+    )
+  );
 
 -- ================================================================
 -- END OF PAYLINQ SCHEMA

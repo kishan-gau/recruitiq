@@ -28,9 +28,9 @@ class TaxEngineRepository {
     const result = await query(
       `INSERT INTO payroll.tax_rule_set 
       (organization_id, tax_type, tax_name, country, state, locality,
-       effective_from, effective_to, is_active, annual_cap, 
+       effective_from, effective_to, annual_cap, 
        calculation_method, description, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
         organizationId,
@@ -41,7 +41,6 @@ class TaxEngineRepository {
         ruleSetData.locality,
         ruleSetData.effectiveFrom,
         ruleSetData.effectiveTo,
-        ruleSetData.isActive !== false,
         ruleSetData.annualCap,
         ruleSetData.calculationMethod || 'bracket',
         ruleSetData.description,
@@ -127,10 +126,9 @@ class TaxEngineRepository {
       params.push(filters.country);
     }
     
-    if (filters.isActive !== undefined) {
-      paramCount++;
-      whereClause += ` AND is_active = $${paramCount}`;
-      params.push(filters.isActive);
+    // Note: Active status is determined by effective_from/effective_to dates, not an is_active column
+    if (filters.includeInactive === false) {
+      whereClause += ` AND effective_from <= CURRENT_DATE AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`;
     }
     
     const result = await query(
@@ -159,7 +157,7 @@ class TaxEngineRepository {
 
     const allowedFields = [
       'tax_type', 'tax_name', 'country', 'state', 'locality',
-      'effective_from', 'effective_to', 'is_active', 'annual_cap',
+      'effective_from', 'effective_to', 'annual_cap',
       'calculation_method', 'description', 'updated_by'
     ];
 
@@ -633,7 +631,10 @@ class TaxEngineRepository {
    */
   async getSurinameseAOVRate(effectiveDate, organizationId) {
     const result = await query(
-      `SELECT * FROM payroll.tax_rule_set
+      `SELECT id, organization_id, tax_type, tax_name, country, state, locality,
+              effective_from, effective_to, annual_cap, 
+              calculation_method, calculation_mode, description, created_at
+       FROM payroll.tax_rule_set
        WHERE organization_id = $1
          AND country = 'SR'
          AND tax_type = 'aov'
@@ -658,7 +659,10 @@ class TaxEngineRepository {
    */
   async getSurinameseAWWRate(effectiveDate, organizationId) {
     const result = await query(
-      `SELECT * FROM payroll.tax_rule_set
+      `SELECT id, organization_id, tax_type, tax_name, country, state, locality,
+              effective_from, effective_to, annual_cap, 
+              calculation_method, calculation_mode, description, created_at
+       FROM payroll.tax_rule_set
        WHERE organization_id = $1
          AND country = 'SR'
          AND tax_type = 'aww'

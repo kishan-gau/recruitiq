@@ -23,6 +23,15 @@ export function validate(schema, source = 'body') {
     try {
       // Get data from the specified source
       const data = req[source];
+      
+      // Debug logging for payroll-runs endpoint
+      if (req.path === '/payroll-runs' || req.path.includes('/payroll-runs')) {
+        console.log('=== VALIDATION DEBUG ===');
+        console.log('Path:', req.path);
+        console.log('Source:', source);
+        console.log('Data received:', JSON.stringify(data, null, 2));
+        console.log('Schema keys:', Object.keys(schema.describe().keys));
+      }
 
       // Validate and sanitize
       const { error, value } = schema.validate(data, {

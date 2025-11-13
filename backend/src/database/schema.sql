@@ -100,6 +100,13 @@ CREATE TABLE organizations (
   -- Timezone Configuration
   timezone VARCHAR(100) NOT NULL DEFAULT 'UTC',
   
+  -- Organization Contact Information
+  address TEXT,
+  phone VARCHAR(50),
+  email VARCHAR(255),
+  website VARCHAR(255),
+  logo_url TEXT,
+  
   -- Settings
   settings JSONB DEFAULT '{}',
   branding JSONB DEFAULT '{}',
@@ -1689,6 +1696,44 @@ FROM customers c
 LEFT JOIN instances i ON c.instance_key = i.instance_key
 LEFT JOIN licenses l ON c.id = l.customer_id AND l.status = 'active'
 WHERE c.status = 'active';
+
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- Multi-Tenant Data Isolation at Database Level
+-- ============================================================================
+
+-- Helper function to get current organization from session variable
+CREATE OR REPLACE FUNCTION get_current_organization_id()
+RETURNS UUID AS $$
+DECLARE
+  org_id UUID;
+BEGIN
+  -- Get from session variable set by application
+  org_id := current_setting('app.current_organization_id', true)::UUID;
+  
+  -- If not set, return NULL (will deny access in RLS policies)
+  RETURN org_id;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+COMMENT ON FUNCTION get_current_organization_id() IS 
+  'Returns the current organization_id from session variable for RLS policies';
+
+-- ================================================================
+-- RLS: EMAIL SETTINGS
+-- ================================================================
+
+ALTER TABLE email_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY email_settings_tenant_isolation ON email_settings
+  USING (organization_id = get_current_organization_id());
+
+CREATE POLICY email_settings_tenant_isolation_insert ON email_settings
+  FOR INSERT
+  WITH CHECK (organization_id = get_current_organization_id());
 
 -- ============================================================================
 -- GRANT PERMISSIONS

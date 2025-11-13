@@ -315,11 +315,8 @@ async function createCompensationRecords(client, organizationId, employeeRecords
       organizationId,
       employeeRecordId: empRecord.id,
       compensationType: 'salary',
-      amount: biweeklyAmount,
-      hourlyRate: null,
+      amount: biweeklyAmount, // Single source of truth
       overtimeRate: null,
-      payPeriodAmount: biweeklyAmount,
-      annualAmount: annualSalary,
       effectiveFrom: new Date('2024-01-15'),
       effectiveTo: null,
       isCurrent: true,
@@ -329,15 +326,13 @@ async function createCompensationRecords(client, organizationId, employeeRecords
     await client.query(
       `INSERT INTO payroll.compensation (
         id, organization_id, employee_id, compensation_type,
-        amount, hourly_rate, overtime_rate, pay_period_amount,
-        annual_amount, effective_from, effective_to, is_current,
+        amount, overtime_rate, effective_from, effective_to, is_current,
         currency, created_by, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())`,
       [
         compensation.id, compensation.organizationId, compensation.employeeRecordId,
-        compensation.compensationType, compensation.amount, compensation.hourlyRate,
-        compensation.overtimeRate, compensation.payPeriodAmount,
-        compensation.annualAmount, compensation.effectiveFrom,
+        compensation.compensationType, compensation.amount,
+        compensation.overtimeRate, compensation.effectiveFrom,
         compensation.effectiveTo, compensation.isCurrent, compensation.currency,
         adminUser.id
       ]

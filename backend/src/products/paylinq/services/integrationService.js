@@ -168,11 +168,7 @@ class PaylinqIntegrationService {
 
       // Determine compensation type based on employment type and salary frequency
       const compensationType = this.determineCompensationType(employmentType, salaryFrequency);
-      const hourlyRate = compensationType === 'hourly' 
-        ? this.calculateHourlyRate(salary, salaryFrequency)
-        : null;
-      const annualAmount = this.calculateAnnualAmount(salary, salaryFrequency);
-      const payPeriodAmount = this.calculatePayPeriodAmount(salary, salaryFrequency);
+      const overtimeRate = 1.5; // Standard overtime multiplier
 
       const compensationResult = await client.query(
         `INSERT INTO payroll.compensation (
@@ -180,26 +176,20 @@ class PaylinqIntegrationService {
           employee_id,
           compensation_type,
           amount,
-          hourly_rate,
           overtime_rate,
-          pay_period_amount,
-          annual_amount,
           effective_from,
           is_current,
           currency,
           created_at,
           created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10, NOW(), $11)
+        ) VALUES ($1, $2, $3, $4, $5, $6, true, $7, NOW(), $8)
         RETURNING *`,
         [
           organizationId,
           employeeId,
           compensationType,
-          salary,
-          hourlyRate,
-          hourlyRate ? hourlyRate * 1.5 : null, // 1.5x for overtime
-          payPeriodAmount,
-          annualAmount,
+          salary, // amount is the single source of truth
+          overtimeRate,
           startDate,
           currency || 'USD',
           createdBy

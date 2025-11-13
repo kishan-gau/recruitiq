@@ -89,6 +89,85 @@ BEGIN
     AND e.user_account_id = v_user_account_id
     AND ua.employee_id IS NULL;
   
+  -- Create payroll configuration for tenant admin
+  INSERT INTO payroll.employee_payroll_config (
+    organization_id,
+    employee_id,
+    pay_frequency,
+    payment_method,
+    currency,
+    payroll_status,
+    payroll_start_date,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    'monthly',
+    'direct_deposit',
+    'SRD',
+    'active',
+    NOW(),
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP001'
+  ON CONFLICT (organization_id, employee_id) DO NOTHING;
+  
+  -- Create compensation record for tenant admin
+  INSERT INTO payroll.compensation (
+    organization_id,
+    employee_id,
+    compensation_type,
+    amount,
+    currency,
+    effective_from,
+    is_current,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    'salary',
+    15000.00,
+    'SRD',
+    NOW()::date,
+    true,
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP001'
+  ON CONFLICT DO NOTHING;
+  
+  -- Assign worker type for tenant admin (Full-Time)
+  INSERT INTO payroll.worker_type (
+    organization_id,
+    employee_id,
+    worker_type_template_id,
+    is_current,
+    effective_from,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    wtt.id,
+    true,
+    NOW()::date,
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  CROSS JOIN payroll.worker_type_template wtt
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP001'
+    AND wtt.name = 'Full-Time'
+  ON CONFLICT (organization_id, employee_id, worker_type_template_id, effective_from) DO NOTHING;
+  
   RAISE NOTICE '[OK] Test organization and tenant user created successfully!';
   RAISE NOTICE '[INFO] Organization: Test Company Ltd (test-company)';
   RAISE NOTICE '[INFO] Tenant User: tenant@testcompany.com';
@@ -164,6 +243,85 @@ BEGIN
     AND e.user_account_id = v_user_account_id
     AND ua.employee_id IS NULL;
   
+  -- Create payroll configuration for payroll manager
+  INSERT INTO payroll.employee_payroll_config (
+    organization_id,
+    employee_id,
+    pay_frequency,
+    payment_method,
+    currency,
+    payroll_status,
+    payroll_start_date,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    'monthly',
+    'direct_deposit',
+    'SRD',
+    'active',
+    NOW(),
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP002'
+  ON CONFLICT (organization_id, employee_id) DO NOTHING;
+  
+  -- Create compensation record for payroll manager
+  INSERT INTO payroll.compensation (
+    organization_id,
+    employee_id,
+    compensation_type,
+    amount,
+    currency,
+    effective_from,
+    is_current,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    'salary',
+    26000.00,
+    'SRD',
+    NOW()::date,
+    true,
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP002'
+  ON CONFLICT DO NOTHING;
+  
+  -- Assign worker type for payroll manager (Full-Time)
+  INSERT INTO payroll.worker_type (
+    organization_id,
+    employee_id,
+    worker_type_template_id,
+    is_current,
+    effective_from,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    wtt.id,
+    true,
+    NOW()::date,
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  CROSS JOIN payroll.worker_type_template wtt
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP002'
+    AND wtt.name = 'Full-Time'
+  ON CONFLICT (organization_id, employee_id, worker_type_template_id, effective_from) DO NOTHING;
+  
   RAISE NOTICE '[INFO] Payroll Manager: payroll@testcompany.com';
   RAISE NOTICE '[INFO] Password: Admin123!';
 END $$;
@@ -235,6 +393,87 @@ BEGIN
   WHERE ua.id = v_user_account_id 
     AND e.user_account_id = v_user_account_id
     AND ua.employee_id IS NULL;
+  
+  -- Create payroll configuration for employee
+  INSERT INTO payroll.employee_payroll_config (
+    organization_id,
+    employee_id,
+    pay_frequency,
+    payment_method,
+    currency,
+    payroll_status,
+    payroll_start_date,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    'biweekly',
+    'direct_deposit',
+    'SRD',
+    'active',
+    NOW(),
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP003'
+  ON CONFLICT (organization_id, employee_id) DO NOTHING;
+  
+  -- Create compensation record for employee (hourly worker)
+  INSERT INTO payroll.compensation (
+    organization_id,
+    employee_id,
+    compensation_type,
+    amount,
+    currency,
+    effective_from,
+    is_current,
+    overtime_rate,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    'hourly',
+    125.00,
+    'SRD',
+    NOW()::date,
+    true,
+    187.50, -- 1.5x overtime rate
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP003'
+  ON CONFLICT DO NOTHING;
+  
+  -- Assign worker type for employee (Part-Time hourly)
+  INSERT INTO payroll.worker_type (
+    organization_id,
+    employee_id,
+    worker_type_template_id,
+    is_current,
+    effective_from,
+    created_by,
+    created_at
+  )
+  SELECT
+    org_id,
+    e.id,
+    wtt.id,
+    true,
+    NOW()::date,
+    v_user_account_id,
+    NOW()
+  FROM hris.employee e
+  CROSS JOIN payroll.worker_type_template wtt
+  WHERE e.organization_id = org_id 
+    AND e.employee_number = 'EMP003'
+    AND wtt.name = 'Part-Time'
+  ON CONFLICT (organization_id, employee_id, worker_type_template_id, effective_from) DO NOTHING;
   
   RAISE NOTICE '[INFO] Employee: employee@testcompany.com';
   RAISE NOTICE '[INFO] Password: Admin123!';

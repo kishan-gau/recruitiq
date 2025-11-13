@@ -38,9 +38,9 @@ export default function ScheduleCalendar() {
         
         // Fetch workers
         const workersResponse = await paylinq.getWorkers({ status: 'active' });
-        if (workersResponse.success && workersResponse.data) {
-          const transformedEmployees: Employee[] = workersResponse.data.map((w: any) => ({
-            id: w.id,
+        if (workersResponse.success && workersResponse.employees) {
+          const transformedEmployees: Employee[] = workersResponse.employees.map((w: any) => ({
+            id: w.employeeId || w.id, // Use employeeId (hris.employee.id) not payroll config id
             fullName: w.fullName,
             employeeNumber: w.employeeNumber,
           }));
@@ -58,7 +58,7 @@ export default function ScheduleCalendar() {
           endDate: endDateStr 
         });
         
-        if (schedulesResponse.success && schedulesResponse.data) {
+        if (schedulesResponse.success && schedulesResponse.schedules) {
           // Generate daysForGrid inside useEffect to match the current week
           const dayLabels = dayNames.map((name, i) => {
             const date = weekDays[i];
@@ -66,8 +66,8 @@ export default function ScheduleCalendar() {
           });
           
           // Transform API schedules to UI format
-          const transformedSchedules: Schedule[] = schedulesResponse.data.map((s: any) => {
-            const scheduleDate = new Date(s.date);
+          const transformedSchedules: Schedule[] = schedulesResponse.schedules.map((s: any) => {
+            const scheduleDate = new Date(s.scheduleDate);
             const dayIndex = (scheduleDate.getDay() + 6) % 7; // Convert to Monday=0 format
             return {
               id: s.id,
@@ -145,9 +145,9 @@ export default function ScheduleCalendar() {
           endDate: endDateStr 
         });
         
-        if (schedulesResponse.success && schedulesResponse.data) {
-          const transformedSchedules: Schedule[] = schedulesResponse.data.map((s: any) => {
-            const scheduleDate = new Date(s.date);
+        if (schedulesResponse.success && schedulesResponse.schedules) {
+          const transformedSchedules: Schedule[] = schedulesResponse.schedules.map((s: any) => {
+            const scheduleDate = new Date(s.scheduleDate);
             const dayIndex = (scheduleDate.getDay() + 6) % 7;
             return {
               id: s.id,
@@ -316,7 +316,7 @@ export default function ScheduleCalendar() {
       {/* Shift Modal */}
       <ShiftModal
         isOpen={shiftModal.isOpen}
-        onClose={() => setShiftModal({ isOpen: false })}
+        onClose={() => setShiftModal({ ...shiftModal, isOpen: false })}
         employeeId={shiftModal.employeeId}
         date={shiftModal.date}
         onSuccess={handleShiftSuccess}

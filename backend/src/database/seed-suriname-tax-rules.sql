@@ -14,18 +14,9 @@
 -- - Benefits in kind valuations
 -- ============================================================================
 
--- Create default Suriname organization for tax rules if needed
-INSERT INTO organizations (
-  name,
-  slug,
-  subscription_status,
-  created_at
-) VALUES (
-  'Suriname Default Tax Rules',
-  'suriname-default',
-  'active',
-  NOW()
-) ON CONFLICT (slug) DO NOTHING;
+-- Use the Test Company organization for tax rules
+-- This organization is created by seed-paylinq-demo-data.js
+-- Organization ID: 96a08639-b162-4959-80ab-a839d57648ef
 
 -- Get organization ID for use in subsequent inserts
 DO $$
@@ -33,8 +24,8 @@ DECLARE
   v_org_id UUID;
   v_tax_rule_id UUID;
 BEGIN
-  -- Get the organization ID
-  SELECT id INTO v_org_id FROM organizations WHERE slug = 'suriname-default';
+  -- Get the Test Company organization ID (used by payroll@testcompany.com)
+  SELECT id INTO v_org_id FROM organizations WHERE name = 'Test Company Ltd';
   
   RAISE NOTICE '[INFO] Starting Suriname tax rules seed...';
   RAISE NOTICE 'Using organization ID: %', v_org_id;
@@ -144,6 +135,40 @@ BEGIN
   
   RAISE NOTICE '  ✓ Created: Suriname Overtime Tax 2025 (Jan-Jun)';
   
+  -- 2025 AOV (Old Age Pension) - 4% flat rate
+  INSERT INTO payroll.tax_rule_set (
+    organization_id, tax_type, tax_name, country,
+    effective_from, effective_to, calculation_method, description
+  ) VALUES (
+    v_org_id, 'aov', 'Suriname AOV 2025', 'SR',
+    '2025-01-01', '2025-12-31', 'flat_rate',
+    'Old Age Pension (AOV) - 4% flat rate on taxable income'
+  ) RETURNING id INTO v_tax_rule_id;
+  
+  INSERT INTO payroll.tax_bracket (
+    organization_id, tax_rule_set_id, bracket_order, income_min, income_max, rate_percentage, fixed_amount
+  ) VALUES
+    (v_org_id, v_tax_rule_id, 1, 0, NULL, 4.00, 0);
+  
+  RAISE NOTICE '  ✓ Created: Suriname AOV 2025';
+  
+  -- 2025 AWW (General Widow and Orphan) - 1% flat rate
+  INSERT INTO payroll.tax_rule_set (
+    organization_id, tax_type, tax_name, country,
+    effective_from, effective_to, calculation_method, description
+  ) VALUES (
+    v_org_id, 'aww', 'Suriname AWW 2025', 'SR',
+    '2025-01-01', '2025-12-31', 'flat_rate',
+    'General Widow and Orphan Fund (AWW) - 1% flat rate on taxable income'
+  ) RETURNING id INTO v_tax_rule_id;
+  
+  INSERT INTO payroll.tax_bracket (
+    organization_id, tax_rule_set_id, bracket_order, income_min, income_max, rate_percentage, fixed_amount
+  ) VALUES
+    (v_org_id, v_tax_rule_id, 1, 0, NULL, 1.00, 0);
+  
+  RAISE NOTICE '  ✓ Created: Suriname AWW 2025';
+  
   -- ========================================================================
   -- 2024 TAX RULES
   -- ========================================================================
@@ -189,6 +214,40 @@ BEGIN
     (v_org_id, v_tax_rule_id, 4, 10500, NULL, 38, 0);
   
   RAISE NOTICE '  ✓ Created: Suriname Wage Tax 2024 (Monthly)';
+  
+  -- 2024 AOV - 4% flat rate
+  INSERT INTO payroll.tax_rule_set (
+    organization_id, tax_type, tax_name, country,
+    effective_from, effective_to, calculation_method, description
+  ) VALUES (
+    v_org_id, 'aov', 'Suriname AOV 2024', 'SR',
+    '2024-01-01', '2024-12-31', 'flat_rate',
+    'Old Age Pension (AOV) - 4% flat rate on taxable income'
+  ) RETURNING id INTO v_tax_rule_id;
+  
+  INSERT INTO payroll.tax_bracket (
+    organization_id, tax_rule_set_id, bracket_order, income_min, income_max, rate_percentage, fixed_amount
+  ) VALUES
+    (v_org_id, v_tax_rule_id, 1, 0, NULL, 4.00, 0);
+  
+  RAISE NOTICE '  ✓ Created: Suriname AOV 2024';
+  
+  -- 2024 AWW - 1% flat rate
+  INSERT INTO payroll.tax_rule_set (
+    organization_id, tax_type, tax_name, country,
+    effective_from, effective_to, calculation_method, description
+  ) VALUES (
+    v_org_id, 'aww', 'Suriname AWW 2024', 'SR',
+    '2024-01-01', '2024-12-31', 'flat_rate',
+    'General Widow and Orphan Fund (AWW) - 1% flat rate on taxable income'
+  ) RETURNING id INTO v_tax_rule_id;
+  
+  INSERT INTO payroll.tax_bracket (
+    organization_id, tax_rule_set_id, bracket_order, income_min, income_max, rate_percentage, fixed_amount
+  ) VALUES
+    (v_org_id, v_tax_rule_id, 1, 0, NULL, 1.00, 0);
+  
+  RAISE NOTICE '  ✓ Created: Suriname AWW 2024';
   
   -- ========================================================================
   -- 2023 TAX RULES
@@ -410,6 +469,32 @@ BEGIN
   RAISE NOTICE '  ✓ Created: Anniversary Benefits';
   
   -- ========================================================================
+  -- CALCULATION MODES (Phase 2B: Tax Calculation Mode Configuration)
+  -- ========================================================================
+  
+  RAISE NOTICE '[INFO] Configuring calculation modes...';
+  
+  -- Set proportional_distribution for all progressive wage taxes (bracket method)
+  UPDATE payroll.tax_rule_set 
+  SET calculation_mode = 'proportional_distribution'
+  WHERE organization_id = v_org_id
+    AND country = 'SR'
+    AND calculation_method = 'bracket'
+    AND tax_type IN ('wage_tax', 'wage_tax_monthly', 'lump_sum_benefits', 'overtime');
+  
+  RAISE NOTICE '  ✓ Set progressive taxes to proportional_distribution mode';
+  
+  -- Set component_based for flat-rate taxes (AOV, AWW)
+  UPDATE payroll.tax_rule_set 
+  SET calculation_mode = 'component_based'
+  WHERE organization_id = v_org_id
+    AND country = 'SR'
+    AND calculation_method = 'flat_rate'
+    AND tax_type IN ('aov', 'aww');
+  
+  RAISE NOTICE '  ✓ Set flat-rate taxes (AOV, AWW) to component_based mode';
+  
+  -- ========================================================================
   -- SUMMARY
   -- ========================================================================
   
@@ -443,6 +528,6 @@ FROM payroll.deductible_cost_rule
 WHERE country = 'SR';
 SELECT '' as "Separator";
 SELECT 'Organization:' as "Section";
-SELECT '  Name: Suriname Default Tax Rules' as "Info";
-SELECT '  Slug: suriname-default' as "Info";
+SELECT '  Name: Test Company Ltd' as "Info";
+SELECT '  ID: ' || id as "Info" FROM organizations WHERE name = 'Test Company Ltd';
 SELECT '  Country: SR (Suriname)' as "Info";

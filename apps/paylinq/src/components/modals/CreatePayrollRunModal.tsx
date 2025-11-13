@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
-import FormField, { Input, Select } from '@/components/ui/FormField';
+import FormField, { Input } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { Calendar } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { RunTypeSelector } from '@/components/common/RunTypeSelector';
 
 interface CreatePayrollRunModalProps {
   isOpen: boolean;
@@ -16,12 +17,12 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
   const { success, error } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedRunType, setSelectedRunType] = useState<any>(null);
   const [formData, setFormData] = useState({
     payrollName: `Payroll ${new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`,
     payPeriodStart: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     payPeriodEnd: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0],
     paymentDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 5).toISOString().split('T')[0],
-    type: 'regular',
     description: '',
   });
 
@@ -29,6 +30,7 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
     const newErrors: Record<string, string> = {};
 
     if (!formData.payrollName?.trim()) newErrors.payrollName = 'Payroll name is required';
+    if (!selectedRunType) newErrors.runType = 'Run type is required';
     if (!formData.payPeriodStart) newErrors.payPeriodStart = 'Start date is required';
     if (!formData.payPeriodEnd) newErrors.payPeriodEnd = 'End date is required';
     if (formData.payPeriodStart && formData.payPeriodEnd && formData.payPeriodStart >= formData.payPeriodEnd) {
@@ -57,6 +59,7 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
         periodStart: formData.payPeriodStart,
         periodEnd: formData.payPeriodEnd,
         paymentDate: formData.paymentDate,
+        runType: selectedRunType?.typeCode,
         status: 'draft',
       });
 
@@ -151,20 +154,19 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
           />
         </FormField>
 
-        <FormField label="Payroll Type" required>
-          <Select
-            name="type"
-            data-testid="payroll-type-select"
-            value={formData.type}
-            onChange={(e) => handleChange('type', e.target.value)}
-            options={[
-              { value: 'regular', label: 'Regular Payroll' },
-              { value: '13th-month', label: '13th Month Bonus' },
-              { value: 'bonus', label: 'Special Bonus' },
-              { value: 'correction', label: 'Correction Run' },
-            ]}
-          />
-        </FormField>
+        <RunTypeSelector
+          value={selectedRunType}
+          onChange={(runType) => {
+            setSelectedRunType(runType);
+            if (errors.runType) {
+              const newErrors = { ...errors };
+              delete newErrors.runType;
+              setErrors(newErrors);
+            }
+          }}
+          required
+          error={errors.runType}
+        />
 
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Period Start Date" required error={errors.payPeriodStart}>

@@ -20,10 +20,10 @@ export const employeesService = {
    * Get list of employees with optional filters
    */
   list: async (filters?: EmployeeFilters): Promise<EmployeeListItem[]> => {
-    const { data } = await apiClient.get<PaginatedResponse<EmployeeListItem>>('/employees', {
+    const result = await apiClient.get<PaginatedResponse<EmployeeListItem>>('/employees', {
       params: { page: 1, limit: 50, ...filters },
     });
-    return data.data;
+    return result.data;
   },
 
   /**
@@ -34,42 +34,58 @@ export const employeesService = {
     page = 1,
     limit = 20
   ): Promise<PaginatedResponse<EmployeeListItem>> => {
-    const { data } = await apiClient.get<PaginatedResponse<EmployeeListItem>>('/employees', {
+    return await apiClient.get<PaginatedResponse<EmployeeListItem>>('/employees', {
       params: { ...filters, page, limit },
     });
-    return data;
   },
 
   /**
    * Get single employee by ID
    */
   get: async (id: string): Promise<Employee> => {
-    const { data } = await apiClient.get<Employee>(`/employees/${id}`);
-    return data;
+    return await apiClient.get<Employee>(`/employees/${id}`);
   },
 
   /**
    * Create new employee
    */
   create: async (employee: CreateEmployeeDTO): Promise<Employee> => {
-    const { data } = await apiClient.post<Employee>('/employees', employee);
-    return data;
+    return await apiClient.post<Employee>('/employees', employee);
   },
 
   /**
    * Update existing employee
    */
   update: async (id: string, updates: UpdateEmployeeDTO): Promise<Employee> => {
-    const { data } = await apiClient.patch<Employee>(`/employees/${id}`, updates);
-    return data;
+    return await apiClient.patch<Employee>(`/employees/${id}`, updates);
   },
 
   /**
    * Terminate employee
    */
   terminate: async (id: string, terminationData: TerminateEmployeeDTO): Promise<Employee> => {
-    const { data } = await apiClient.post<Employee>(`/employees/${id}/terminate`, terminationData);
-    return data;
+    return await apiClient.post<Employee>(`/employees/${id}/terminate`, terminationData);
+  },
+
+  /**
+   * Rehire employee
+   */
+  rehire: async (id: string, rehireData: any): Promise<any> => {
+    return await apiClient.post<any>(`/employees/${id}/rehire`, rehireData);
+  },
+
+  /**
+   * Get employment history for employee
+   */
+  getEmploymentHistory: async (id: string): Promise<any[]> => {
+    return await apiClient.get<any[]>(`/employees/${id}/employment-history`);
+  },
+
+  /**
+   * Check if employee can be rehired
+   */
+  checkRehireEligibility: async (id: string): Promise<any> => {
+    return await apiClient.get<any>(`/employees/${id}/rehire-eligibility`);
   },
 
   /**
@@ -83,20 +99,16 @@ export const employeesService = {
    * Search employees by query
    */
   search: async (query: string): Promise<EmployeeListItem[]> => {
-    const { data } = await apiClient.get<any>('/employees/search', {
+    return await apiClient.get<EmployeeListItem[]>('/employees/search', {
       params: { q: query },
     });
-    // Handle both array and object with data property
-    return Array.isArray(data) ? data : data.data;
   },
 
   /**
    * Get organization chart data
    */
   getOrgChart: async (): Promise<OrgChartNode[]> => {
-    const { data } = await apiClient.get<any>('/employees/org-chart');
-    // Handle both array and object with data property
-    return Array.isArray(data) ? data : data.data;
+    return await apiClient.get<OrgChartNode[]>('/employees/org-chart');
   },
 
   /**

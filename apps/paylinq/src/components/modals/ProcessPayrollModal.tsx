@@ -4,6 +4,7 @@ import FormField, { Input } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
 
 interface ProcessPayrollModalProps {
   isOpen: boolean;
@@ -130,7 +131,7 @@ export default function ProcessPayrollModal({ isOpen, onClose, payrollRun, onSuc
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Total Gross</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    SRD {payrollRun.totalGross.toLocaleString()}
+                    <CurrencyDisplay amount={payrollRun.totalGross} />
                   </p>
                 </div>
               </div>
@@ -189,7 +190,7 @@ export default function ProcessPayrollModal({ isOpen, onClose, payrollRun, onSuc
                 Final Amount to be Processed
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                SRD {payrollRun.totalGross.toLocaleString()}
+                <CurrencyDisplay amount={payrollRun.totalGross} />
               </p>
             </div>
           </>

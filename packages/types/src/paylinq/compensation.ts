@@ -19,11 +19,8 @@ export interface Compensation extends BaseEntity {
   
   // Compensation details
   compensationType: CompensationType;
-  amount: number; // Primary amount
-  hourlyRate?: number; // For hourly workers
+  amount: number; // Primary amount (single source of truth)
   overtimeRate?: number; // Overtime multiplier (e.g., 1.5)
-  payPeriodAmount?: number; // Amount per pay period
-  annualAmount?: number; // Annual salary equivalent
   
   // Effective dates
   effectiveFrom: string; // ISO date
@@ -43,10 +40,7 @@ export interface CreateCompensationRequest {
   employeeId: string;
   compensationType: CompensationType;
   amount: number;
-  hourlyRate?: number;
   overtimeRate?: number;
-  payPeriodAmount?: number;
-  annualAmount?: number;
   effectiveFrom: string; // ISO date
   effectiveTo?: string; // ISO date
   currency?: Currency;
@@ -58,10 +52,7 @@ export interface CreateCompensationRequest {
 export interface UpdateCompensationRequest {
   compensationType?: CompensationType;
   amount?: number;
-  hourlyRate?: number;
   overtimeRate?: number;
-  payPeriodAmount?: number;
-  annualAmount?: number;
   effectiveTo?: string; // ISO date
   currency?: Currency;
 }

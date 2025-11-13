@@ -11,6 +11,7 @@ const router = express.Router();
 
 // Validation schemas
 // Note: Pay period dates are date-only fields per TIMEZONE_ARCHITECTURE.md
+// Updated to include runType field for dynamic payroll run type selection
 // They should be YYYY-MM-DD format strings, not full ISO 8601 timestamps
 const createPayrollRunSchema = Joi.object({
   payrollName: Joi.string().required().messages({
@@ -28,6 +29,9 @@ const createPayrollRunSchema = Joi.object({
   paymentDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
     'string.pattern.base': 'Payment date must be a valid date in YYYY-MM-DD format',
     'any.required': 'Payment date is required',
+  }),
+  runType: Joi.string().optional().default('REGULAR').messages({
+    'string.empty': 'Run type cannot be empty',
   }),
   status: Joi.string().valid('draft', 'calculating', 'calculated', 'approved', 'processing', 'processed', 'cancelled').default('draft'),
 });
@@ -62,6 +66,7 @@ router.post('/', validate(createPayrollRunSchema, 'body'), payrollRunController.
 router.get('/', payrollRunController.getPayrollRuns);
 router.get('/:id', validate(idParamSchema, 'params'), payrollRunController.getPayrollRunById);
 router.post('/:id/calculate', validate(idParamSchema, 'params'), validate(calculatePayrollSchema, 'body'), payrollRunController.calculatePayroll);
+router.post('/:id/mark-for-review', validate(idParamSchema, 'params'), payrollRunController.markPayrollRunForReview);
 router.post('/:id/process', validate(idParamSchema, 'params'), payrollRunController.processPayrollRun);
 router.post('/:id/approve', validate(idParamSchema, 'params'), payrollRunController.approvePayrollRun);
 router.post('/:id/cancel', validate(idParamSchema, 'params'), payrollRunController.cancelPayrollRun);

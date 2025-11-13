@@ -718,17 +718,90 @@ class PayStructureService {
     const components = snapshot.components || [];
     const overrides = structure.overrides || [];
 
-    // Prepare calculation context
+    // NEW ARCHITECTURE: Base salary/hourly rate comes from inputData (passed from compensation table)
+    // This makes compensation the single source of truth
+    // Legacy: Fall back to structure fields if not provided in input (for backward compatibility)
+    const baseSalary = inputData.baseSalary || structure.baseSalary || structure.base_salary;
+    const hourlyRate = inputData.hourlyRate || structure.hourlyRate || structure.hourly_rate;
+    const payFrequency = inputData.payFrequency || structure.payFrequency || structure.pay_frequency;
+    
+    // Validate that we have required compensation data from either source
+    if (!baseSalary && !hourlyRate) {
+      throw new NotFoundError(
+        'No compensation data provided. Please provide baseSalary or hourlyRate in inputData, ' +
+        'or ensure worker pay structure has these values set.'
+      );
+    }
+    
+    // Build context with BOTH camelCase and snake_case for backward compatibility
+    // ARCHITECTURE NOTE: Component configurations are stored in template_snapshot JSONB field
+    // which contains snake_case field references like percentageOf: "base_salary"
+    // While the DTO mapper converts top-level fields (base_salary -> baseSalary),
+    // it does NOT transform field references INSIDE JSONB configuration objects.
+    // Therefore, we provide both formats in context so components can reference either:
+    //   - baseSalary (for future camelCase configs and programmatic access)
+    //   - base_salary (for existing snake_case references in JSONB configs)
     const context = {
-      baseSalary: structure.baseSalary || structure.base_salary,
-      hourlyRate: structure.hourlyRate || structure.hourly_rate,
-      payFrequency: structure.payFrequency || structure.pay_frequency,
+      // Compensation values in both formats for JSONB config compatibility
+      baseSalary,
+      base_salary: baseSalary, // Required for components with percentageOf: "base_salary"
+      hourlyRate,
+      hourly_rate: hourlyRate, // Required for components with rateOf: "hourly_rate"
+      payFrequency,
+      pay_frequency: payFrequency, // Required for frequency-based calculations
       currency: structure.currency,
       ...inputData // hours, overtime_hours, etc.
     };
 
     const calculations = [];
     const calculatedValues = {}; // Store calculated values for dependent components
+
+    // ARCHITECTURE: Automatically include base compensation as the first earning
+    // This ensures the base salary/hourly rate is always part of gross pay
+    // Components in the template then add/subtract from this base
+    if (baseSalary) {
+      calculations.push({
+        componentCode: 'BASE_SALARY',
+        componentName: 'Base Salary',
+        componentCategory: 'earning',
+        amount: baseSalary,
+        configSnapshot: { 
+          source: 'compensation_table',
+          note: 'Automatically included from payroll.compensation.amount'
+        },
+        calculationMetadata: {
+          calculationType: 'auto_base_compensation',
+          inputs: { baseSalary },
+          overrideApplied: false
+        }
+      });
+      calculatedValues['BASE_SALARY'] = baseSalary;
+      calculatedValues['base_salary'] = baseSalary; // Both formats for component references
+      context.grossEarnings = baseSalary;
+    } else if (hourlyRate) {
+      const hours = context.hours || context.regularHours || 0;
+      const regularPay = hourlyRate * hours;
+      calculations.push({
+        componentCode: 'REGULAR_PAY',
+        componentName: 'Regular Pay',
+        componentCategory: 'earning',
+        amount: regularPay,
+        configSnapshot: { 
+          source: 'compensation_table',
+          hourlyRate,
+          hours,
+          note: 'Automatically calculated from payroll.compensation.amount * hours'
+        },
+        calculationMetadata: {
+          calculationType: 'auto_base_compensation',
+          inputs: { hourlyRate, hours },
+          overrideApplied: false
+        }
+      });
+      calculatedValues['REGULAR_PAY'] = regularPay;
+      calculatedValues['regular_pay'] = regularPay;
+      context.grossEarnings = regularPay;
+    }
 
     // Sort components by sequence order
     const sortedComponents = components.sort((a, b) => a.sequenceOrder - b.sequenceOrder);

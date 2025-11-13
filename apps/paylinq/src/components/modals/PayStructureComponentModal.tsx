@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, DollarSign, Percent, Clock } from 'lucide-react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea } from '@/components/ui/FormField';
+import AvailableComponentsPicker from '@/components/ui/AvailableComponentsPicker';
+import ConditionsBuilder from '@/components/ui/ConditionsBuilder';
+import MetadataBuilder from '@/components/ui/MetadataBuilder';
 import { usePayComponents } from '@/hooks/usePayComponents';
+import { useToast } from '@/contexts/ToastContext';
 import type { PayStructureComponent } from '@/hooks/usePayStructures';
 
 interface PayStructureComponentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any) => Promise<void> | void;
   component?: PayStructureComponent | null;
   existingComponents?: PayStructureComponent[];
 }
@@ -20,6 +24,8 @@ export default function PayStructureComponentModal({
   component,
   existingComponents = [],
 }: PayStructureComponentModalProps) {
+  const { error: showError } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     componentCode: '',
     componentName: '',
@@ -106,7 +112,7 @@ export default function PayStructureComponentModal({
     }
   }, [isOpen, component, existingComponents]);
 
-  const validateForm = () => {
+  const validateForm = (): { isValid: boolean; errors: Record<string, string> } => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.componentCode.trim()) {
@@ -166,13 +172,24 @@ export default function PayStructureComponentModal({
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return {
+      isValid: Object.keys(newErrors).length === 0,
+      errors: newErrors,
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    const validation = validateForm();
+    if (!validation.isValid) {
+      // Get the first error message to show in toast
+      const errorMessages = Object.values(validation.errors);
+      if (errorMessages.length > 0) {
+        showError(errorMessages[0]);
+      } else {
+        showError('Please fix the validation errors before submitting');
+      }
       return;
     }
 
@@ -180,9 +197,12 @@ export default function PayStructureComponentModal({
     const submitData: any = {
       componentCode: formData.componentCode,
       componentName: formData.componentName,
+      // Map plural frontend types to singular backend types
       componentCategory: formData.componentType === 'earnings' ? 'earning' : 
                         formData.componentType === 'deductions' ? 'deduction' :
-                        formData.componentType, // Map earnings->earning, deductions->deduction
+                        formData.componentType === 'taxes' ? 'tax' :
+                        formData.componentType === 'benefits' ? 'benefit' :
+                        formData.componentType,
       calculationType: formData.calculationType,
       sequenceOrder: formData.sequenceOrder,
       isMandatory: !formData.isOptional, // Map isOptional to isMandatory (inverse)
@@ -226,8 +246,18 @@ export default function PayStructureComponentModal({
       }
     }
 
-    onSubmit(submitData);
-    onClose();
+    console.log('Submitting component data:', submitData);
+    
+    setIsSubmitting(true);
+    try {
+      await onSubmit(submitData);
+      onClose();
+    } catch (error) {
+      // Error is handled by the mutation hook, just prevent modal from closing
+      console.error('Error submitting component:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSelectExistingComponent = (componentCode: string) => {
@@ -255,6 +285,20 @@ export default function PayStructureComponentModal({
         overrideAllowedFields: [],
       });
     }
+  };
+
+  const handleAddComponentToPercentageBase = (componentCode: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      percentageBase: prev.percentageBase ? `${prev.percentageBase}, ${componentCode}` : componentCode,
+    }));
+  };
+
+  const handleAddComponentToFormula = (componentCode: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      formula: prev.formula ? `${prev.formula} ${componentCode}` : componentCode,
+    }));
   };
 
   return (
@@ -395,6 +439,12 @@ export default function PayStructureComponentModal({
                 placeholder="e.g., base_salary, gross_pay"
               />
             </FormField>
+            
+            <AvailableComponentsPicker
+              onComponentClick={handleAddComponentToPercentageBase}
+              label="Available Variables"
+              hint="Click to add a component variable to the percentage base field"
+            />
           </>
         )}
 
@@ -417,14 +467,27 @@ export default function PayStructureComponentModal({
         )}
 
         {formData.calculationType === 'formula' && (
-          <FormField label="Formula" required error={errors.formula}>
-            <TextArea
-              value={formData.formula}
-              onChange={(e) => setFormData({ ...formData, formula: e.target.value })}
-              placeholder="e.g., base_salary * 0.10 + allowances"
-              rows={3}
+          <>
+            <FormField 
+              label="Custom Formula Expression" 
+              required 
+              error={errors.formula}
+              hint="Use variables with operators +, -, *, /"
+            >
+              <TextArea
+                value={formData.formula}
+                onChange={(e) => setFormData({ ...formData, formula: e.target.value })}
+                placeholder="e.g., (base_salary * 0.10) + (overtime_hours * 1.5)"
+                rows={3}
+              />
+            </FormField>
+            
+            <AvailableComponentsPicker
+              onComponentClick={handleAddComponentToFormula}
+              label="Available Variables"
+              hint="Click to add a component variable to your formula"
             />
-          </FormField>
+          </>
         )}
 
         {formData.calculationType === 'tiered' && (
@@ -556,37 +619,41 @@ export default function PayStructureComponentModal({
           )}
         </div>
 
-        <FormField label="Conditions (JSON)" error={errors.conditions} hint="Optional - JSON format">
-          <TextArea
-            value={formData.conditions}
-            onChange={(e) => setFormData({ ...formData, conditions: e.target.value })}
-            placeholder='{"minHours": 40, "workerType": "full-time"}'
-            rows={3}
-          />
-        </FormField>
+        <ConditionsBuilder
+          value={formData.conditions}
+          onChange={(value) => setFormData({ ...formData, conditions: value })}
+        />
 
-        <FormField label="Metadata (JSON)" error={errors.metadata} hint="Optional - JSON format">
-          <TextArea
-            value={formData.metadata}
-            onChange={(e) => setFormData({ ...formData, metadata: e.target.value })}
-            placeholder='{"category": "regular", "taxable": true}'
-            rows={3}
-          />
-        </FormField>
+        <MetadataBuilder
+          value={formData.metadata}
+          onChange={(value) => setFormData({ ...formData, metadata: value })}
+        />
 
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors font-medium"
+            disabled={isSubmitting}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
+            disabled={isSubmitting}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {component ? 'Update Component' : 'Add Component'}
+            {isSubmitting ? (
+              <>
+                <svg className="inline w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                {component ? 'Updating...' : 'Adding...'}
+              </>
+            ) : (
+              <>{component ? 'Update Component' : 'Add Component'}</>
+            )}
           </button>
         </div>
       </form>
