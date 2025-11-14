@@ -503,6 +503,258 @@ class CurrencyService {
   getCacheStats() {
     return this.cache.getStats();
   }
+
+  /**
+   * Convert payroll components with currency support
+   * Handles component-level currency conversions for payroll calculations
+   * 
+   * @param {Array} components - Array of payroll components with amounts
+   * @param {string} targetCurrency - Target currency for conversion
+   * @param {string} organizationId - Organization ID
+   * @param {Object} options - Conversion options
+   * @returns {Promise<Object>} Converted components with summary
+   */
+  async convertPayrollComponents(components, targetCurrency, organizationId, options = {}) {
+    const {
+      date = new Date(),
+      roundingMethod = 'half_up',
+      decimalPlaces = 2,
+      createdBy = 'system',
+      paycheckId = null
+    } = options;
+
+    const convertedComponents = [];
+    const conversions = [];
+    let totalOriginalAmount = 0;
+    let totalConvertedAmount = 0;
+
+    for (const component of components) {
+      const {
+        id,
+        name,
+        componentType,
+        amount,
+        currency: componentCurrency = targetCurrency,
+        ...rest
+      } = component;
+
+      // Track original amount
+      totalOriginalAmount += amount;
+
+      // Check if conversion is needed
+      if (componentCurrency === targetCurrency) {
+        // No conversion needed
+        convertedComponents.push({
+          id,
+          name,
+          componentType,
+          amount,
+          currency: componentCurrency,
+          originalAmount: amount,
+          originalCurrency: componentCurrency,
+          exchangeRate: 1.0,
+          conversionNeeded: false,
+          ...rest
+        });
+        totalConvertedAmount += amount;
+      } else {
+        // Conversion needed
+        try {
+          const conversionResult = await this.convertAmount({
+            organizationId,
+            fromCurrency: componentCurrency,
+            toCurrency: targetCurrency,
+            amount,
+            date,
+            roundingMethod,
+            decimalPlaces,
+            referenceType: 'payroll_component',
+            referenceId: id,
+            logConversion: true,
+            createdBy
+          });
+
+          convertedComponents.push({
+            id,
+            name,
+            componentType,
+            amount: conversionResult.toAmount,
+            currency: targetCurrency,
+            originalAmount: amount,
+            originalCurrency: componentCurrency,
+            exchangeRate: conversionResult.rate,
+            conversionNeeded: true,
+            conversionId: conversionResult.conversionId,
+            ...rest
+          });
+
+          conversions.push({
+            componentId: id,
+            componentName: name,
+            fromCurrency: componentCurrency,
+            toCurrency: targetCurrency,
+            fromAmount: amount,
+            toAmount: conversionResult.toAmount,
+            rate: conversionResult.rate
+          });
+
+          totalConvertedAmount += conversionResult.toAmount;
+        } catch (error) {
+          logger.error('Failed to convert payroll component', {
+            componentId: id,
+            componentName: name,
+            fromCurrency: componentCurrency,
+            toCurrency: targetCurrency,
+            amount,
+            error: error.message
+          });
+          throw new Error(`Failed to convert component "${name}": ${error.message}`);
+        }
+      }
+    }
+
+    return {
+      components: convertedComponents,
+      conversions,
+      summary: {
+        totalComponents: components.length,
+        componentsConverted: conversions.length,
+        targetCurrency,
+        totalOriginalAmount,
+        totalConvertedAmount,
+        conversionDate: date,
+        paycheckId
+      }
+    };
+  }
+
+  /**
+   * Calculate paycheck with multi-currency support
+   * Converts all components to target currency and generates paycheck summary
+   * 
+   * @param {Object} paycheckData - Paycheck data with components
+   * @param {string} organizationId - Organization ID
+   * @param {Object} options - Calculation options
+   * @returns {Promise<Object>} Paycheck with currency conversion details
+   */
+  async calculatePaycheckWithCurrency(paycheckData, organizationId, options = {}) {
+    const {
+      paymentCurrency,
+      baseCurrency,
+      components = [],
+      employeeId,
+      payrollRunId,
+      createdBy = 'system'
+    } = paycheckData;
+
+    const {
+      date = new Date(),
+      roundingMethod = 'half_up',
+      decimalPlaces = 2
+    } = options;
+
+    // If no conversion needed, return as is
+    if (!paymentCurrency || paymentCurrency === baseCurrency) {
+      const grossPay = components
+        .filter(c => c.componentType === 'earning')
+        .reduce((sum, c) => sum + c.amount, 0);
+      
+      const totalDeductions = components
+        .filter(c => c.componentType === 'deduction')
+        .reduce((sum, c) => sum + c.amount, 0);
+      
+      const totalTaxes = components
+        .filter(c => c.componentType === 'tax')
+        .reduce((sum, c) => sum + c.amount, 0);
+      
+      const netPay = grossPay - totalDeductions - totalTaxes;
+
+      return {
+        baseCurrency: baseCurrency || paymentCurrency,
+        paymentCurrency: paymentCurrency || baseCurrency,
+        grossPay,
+        totalDeductions,
+        totalTaxes,
+        netPay,
+        components,
+        conversionApplied: false
+      };
+    }
+
+    // Convert components
+    const conversionResult = await this.convertPayrollComponents(
+      components,
+      paymentCurrency,
+      organizationId,
+      {
+        date,
+        roundingMethod,
+        decimalPlaces,
+        createdBy
+      }
+    );
+
+    // Calculate totals in target currency
+    const convertedComponents = conversionResult.components;
+    
+    const grossPay = convertedComponents
+      .filter(c => c.componentType === 'earning')
+      .reduce((sum, c) => sum + c.amount, 0);
+    
+    const totalDeductions = convertedComponents
+      .filter(c => c.componentType === 'deduction')
+      .reduce((sum, c) => sum + c.amount, 0);
+    
+    const totalTaxes = convertedComponents
+      .filter(c => c.componentType === 'tax')
+      .reduce((sum, c) => sum + c.amount, 0);
+    
+    const netPay = grossPay - totalDeductions - totalTaxes;
+
+    // Calculate original amounts in base currency
+    const originalGrossPay = components
+      .filter(c => c.componentType === 'earning')
+      .reduce((sum, c) => sum + c.amount, 0);
+    
+    const originalTotalDeductions = components
+      .filter(c => c.componentType === 'deduction')
+      .reduce((sum, c) => sum + c.amount, 0);
+    
+    const originalTotalTaxes = components
+      .filter(c => c.componentType === 'tax')
+      .reduce((sum, c) => sum + c.amount, 0);
+    
+    const originalNetPay = originalGrossPay - originalTotalDeductions - originalTotalTaxes;
+
+    // Get the exchange rate used for gross pay conversion
+    const grossConversion = conversionResult.conversions.find(c => 
+      c.componentType === 'earning'
+    );
+    const exchangeRateUsed = grossConversion ? grossConversion.rate : 1.0;
+
+    return {
+      baseCurrency,
+      paymentCurrency,
+      grossPay,
+      totalDeductions,
+      totalTaxes,
+      netPay,
+      components: convertedComponents,
+      conversionApplied: true,
+      exchangeRateUsed,
+      conversionSummary: {
+        originalGrossPay,
+        originalTotalDeductions,
+        originalTotalTaxes,
+        originalNetPay,
+        conversionDate: date.toISOString(),
+        roundingMethod,
+        componentsConverted: conversionResult.summary.componentsConverted,
+        source: 'payroll_calculation'
+      },
+      conversions: conversionResult.conversions
+    };
+  }
 }
 
 export default CurrencyService;
