@@ -32,6 +32,7 @@ import settingsRoutes from './settings.js';
 import payslipTemplateRoutes from './payslipTemplates.js';
 import temporalPatternRoutes from './temporalPatterns.js';
 import currencyRoutes from './currency.js';
+import approvalRoutes from './approvals.js';
 
 const router = express.Router();
 
@@ -82,5 +83,6 @@ router.use('/payslip-templates', payslipTemplateRoutes);
 router.use('/patterns', temporalPatternRoutes);
 router.use('/currency', currencyRoutes);
 router.use('/exchange-rates', currencyRoutes); // Alias for backward compatibility
+router.use('/approvals', approvalRoutes);
 
 export default router;

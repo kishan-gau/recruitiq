@@ -1,0 +1,334 @@
+import express from 'express';
+import Joi from 'joi';
+import ApprovalService from '../services/approvalService.js';
+import logger from '../../../utils/logger.js';
+
+const router = express.Router();
+const approvalService = new ApprovalService();
+
+/**
+ * Validation schemas
+ */
+const createApprovalSchema = Joi.object({
+  requestType: Joi.string()
+    .valid('conversion', 'rate_change', 'bulk_rate_import', 'configuration_change')
+    .required(),
+  referenceType: Joi.string().optional(),
+  referenceId: Joi.number().integer().optional(),
+  requestData: Joi.object().required(),
+  reason: Joi.string().max(1000).optional(),
+  priority: Joi.string().valid('low', 'normal', 'high', 'urgent').default('normal')
+});
+
+const approvalActionSchema = Joi.object({
+  comments: Joi.string().max(1000).optional().allow(null, '')
+});
+
+const rejectActionSchema = Joi.object({
+  comments: Joi.string().max(1000).required()
+});
+
+/**
+ * @route   POST /api/paylinq/approvals
+ * @desc    Create a new approval request
+ * @access  Private (Payroll Admin, Finance Manager)
+ */
+router.post('/', async (req, res) => {
+  try {
+    // Validate request body
+    const { error, value } = createApprovalSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.details.map(d => d.message)
+      });
+    }
+
+    const approvalData = {
+      organizationId: req.organizationId,
+      ...value,
+      createdBy: req.userId
+    };
+
+    const result = await approvalService.createApprovalRequest(approvalData);
+
+    res.status(201).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    logger.error('Error creating approval request', { error, userId: req.userId });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create approval request',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/paylinq/approvals/pending
+ * @desc    Get pending approval requests for organization
+ * @access  Private (Approvers)
+ */
+router.get('/pending', async (req, res) => {
+  try {
+    const { requestType, priority } = req.query;
+
+    const approvals = await approvalService.getPendingApprovals(req.organizationId, {
+      requestType,
+      priority,
+      userId: req.userId
+    });
+
+    res.json({
+      success: true,
+      data: approvals,
+      count: approvals.length
+    });
+  } catch (error) {
+    logger.error('Error fetching pending approvals', { error, userId: req.userId });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch pending approvals',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/paylinq/approvals/:id
+ * @desc    Get approval request details
+ * @access  Private
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const query = `
+      SELECT 
+        ar.*,
+        creator.first_name || ' ' || creator.last_name as requested_by_name,
+        creator.email as requested_by_email,
+        json_agg(
+          json_build_object(
+            'id', aa.id,
+            'action', aa.action,
+            'comments', aa.comments,
+            'created_at', aa.created_at,
+            'created_by', approver.first_name || ' ' || approver.last_name,
+            'created_by_email', approver.email
+          ) ORDER BY aa.created_at
+        ) FILTER (WHERE aa.id IS NOT NULL) as actions
+      FROM payroll.currency_approval_request ar
+      LEFT JOIN payroll.currency_approval_action aa ON ar.id = aa.approval_request_id
+      LEFT JOIN hris.user_account creator ON ar.created_by = creator.id
+      LEFT JOIN hris.user_account approver ON aa.created_by = approver.id
+      WHERE ar.id = $1 AND ar.organization_id = $2
+      GROUP BY ar.id, creator.first_name, creator.last_name, creator.email
+    `;
+
+    const { pool } = await import('../../../config/database.js');
+    const result = await pool.query(query, [id, req.organizationId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Approval request not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    logger.error('Error fetching approval request', { error, requestId: req.params.id });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch approval request',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/paylinq/approvals/:id/approve
+ * @desc    Approve an approval request
+ * @access  Private (Approvers)
+ */
+router.post('/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate request body
+    const { error, value } = approvalActionSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.details.map(d => d.message)
+      });
+    }
+
+    const request = await approvalService.approveRequest(
+      parseInt(id),
+      req.userId,
+      value.comments
+    );
+
+    res.json({
+      success: true,
+      message: 'Approval request approved successfully',
+      data: request
+    });
+  } catch (error) {
+    logger.error('Error approving request', { error, requestId: req.params.id, userId: req.userId });
+    
+    if (error.message.includes('not authorized') || error.message.includes('already approved')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to approve request',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/paylinq/approvals/:id/reject
+ * @desc    Reject an approval request
+ * @access  Private (Approvers)
+ */
+router.post('/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate request body
+    const { error, value } = rejectActionSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: error.details.map(d => d.message)
+      });
+    }
+
+    const request = await approvalService.rejectRequest(
+      parseInt(id),
+      req.userId,
+      value.comments
+    );
+
+    res.json({
+      success: true,
+      message: 'Approval request rejected successfully',
+      data: request
+    });
+  } catch (error) {
+    logger.error('Error rejecting request', { error, requestId: req.params.id, userId: req.userId });
+    
+    if (error.message.includes('not authorized')) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reject request',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/paylinq/approvals/history/:referenceType/:referenceId
+ * @desc    Get approval history for a reference
+ * @access  Private
+ */
+router.get('/history/:referenceType/:referenceId', async (req, res) => {
+  try {
+    const { referenceType, referenceId } = req.params;
+
+    const history = await approvalService.getApprovalHistory(
+      referenceType,
+      parseInt(referenceId)
+    );
+
+    res.json({
+      success: true,
+      data: history
+    });
+  } catch (error) {
+    logger.error('Error fetching approval history', { error, params: req.params });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch approval history',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/paylinq/approvals/expire
+ * @desc    Expire old pending approval requests (admin/cron)
+ * @access  Private (Admin only)
+ */
+router.post('/expire', async (req, res) => {
+  try {
+    const expiredCount = await approvalService.expireOldRequests();
+
+    res.json({
+      success: true,
+      message: `Expired ${expiredCount} old approval requests`,
+      data: { expiredCount }
+    });
+  } catch (error) {
+    logger.error('Error expiring old requests', { error });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to expire old requests',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/paylinq/approvals/statistics
+ * @desc    Get approval statistics for organization
+ * @access  Private (Admin, Finance Manager)
+ */
+router.get('/statistics', async (req, res) => {
+  try {
+    const query = `
+      SELECT * FROM payroll.approval_statistics
+      WHERE organization_id = $1
+      ORDER BY request_type
+    `;
+
+    const { pool } = await import('../../../config/database.js');
+    const result = await pool.query(query, [req.organizationId]);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    logger.error('Error fetching approval statistics', { error });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch approval statistics',
+      error: error.message
+    });
+  }
+});
+
+export default router;

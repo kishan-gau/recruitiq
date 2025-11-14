@@ -1,4 +1,5 @@
 import ExchangeRateRepository from '../repositories/ExchangeRateRepository.js';
+import ApprovalService from './approvalService.js';
 import logger from '../../../utils/logger.js';
 import NodeCache from 'node-cache';
 import { createClient } from 'redis';
@@ -14,6 +15,7 @@ import { pool } from '../../../config/database.js';
 class CurrencyService {
   constructor() {
     this.repository = new ExchangeRateRepository();
+    this.approvalService = new ApprovalService();
     
     // L1 Cache: NodeCache (in-memory, fast)
     this.cache = new NodeCache({
@@ -29,6 +31,7 @@ class CurrencyService {
     // Performance flags
     this.useMaterializedViews = process.env.USE_MATERIALIZED_VIEWS !== 'false';
     this.useRedisCache = process.env.USE_REDIS_CACHE !== 'false';
+    this.useApprovalWorkflow = process.env.USE_APPROVAL_WORKFLOW !== 'false';
   }
 
   /**
@@ -1031,6 +1034,72 @@ class CurrencyService {
     if (this.redisClient && this.redisClient.isOpen) {
       await this.redisClient.quit();
       logger.info('Redis connection closed');
+    }
+  }
+
+  /**
+   * Check if conversion requires approval
+   * @param {Object} conversionData - Conversion details
+   * @returns {Object} { requiresApproval, approvalRequest }
+   */
+  async checkConversionApproval(conversionData) {
+    if (!this.useApprovalWorkflow) {
+      return { requiresApproval: false };
+    }
+
+    try {
+      const result = await this.approvalService.createApprovalRequest({
+        organizationId: conversionData.organizationId,
+        requestType: 'conversion',
+        referenceType: conversionData.referenceType || 'manual',
+        referenceId: conversionData.referenceId,
+        requestData: {
+          from_currency: conversionData.fromCurrency,
+          to_currency: conversionData.toCurrency,
+          amount: conversionData.amount,
+          rate: conversionData.rate
+        },
+        reason: conversionData.reason,
+        priority: conversionData.priority || 'normal',
+        createdBy: conversionData.userId
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Error checking conversion approval', { error, conversionData });
+      throw error;
+    }
+  }
+
+  /**
+   * Check if rate change requires approval
+   * @param {Object} rateChangeData - Rate change details
+   * @returns {Object} { requiresApproval, approvalRequest }
+   */
+  async checkRateChangeApproval(rateChangeData) {
+    if (!this.useApprovalWorkflow) {
+      return { requiresApproval: false };
+    }
+
+    try {
+      const result = await this.approvalService.createApprovalRequest({
+        organizationId: rateChangeData.organizationId,
+        requestType: 'rate_change',
+        requestData: {
+          from_currency: rateChangeData.fromCurrency,
+          to_currency: rateChangeData.toCurrency,
+          old_rate: rateChangeData.oldRate,
+          new_rate: rateChangeData.newRate
+        },
+        reason: rateChangeData.reason,
+        priority: rateChangeData.priority || 'normal',
+        createdBy: rateChangeData.userId
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Error checking rate change approval', { error, rateChangeData });
+      throw error;
     }
   }
 }
