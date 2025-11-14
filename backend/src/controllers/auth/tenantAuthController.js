@@ -74,12 +74,14 @@ export const login = async (req, res) => {
     await db.query(`SET LOCAL app.current_organization_id = '${organizationId}'`);
 
     // DEBUG: Log what we're putting in the JWT
-    console.log('=== JWT TOKEN GENERATION ===');
-    console.log('User email:', user.email);
-    console.log('User enabled_products:', user.enabled_products);
-    console.log('User product_roles:', user.product_roles);
-    console.log('Type of enabled_products:', typeof user.enabled_products);
-    console.log('Is array?:', Array.isArray(user.enabled_products));
+    if (process.env.NODE_ENV === 'development') {
+      console.log('=== JWT TOKEN GENERATION ===');
+      console.log('User email:', user.email);
+      console.log('User enabled_products:', user.enabled_products);
+      console.log('User product_roles:', user.product_roles);
+      console.log('Type of enabled_products:', typeof user.enabled_products);
+      console.log('Is array?:', Array.isArray(user.enabled_products));
+    }
 
     // Generate access token (short-lived)
     const tokenPayload = {
@@ -93,7 +95,9 @@ export const login = async (req, res) => {
       organizationTier: user.organization_tier
     };
     
-    console.log('JWT payload:', JSON.stringify(tokenPayload, null, 2));
+    if (process.env.NODE_ENV === 'development') {
+      console.log('JWT payload:', JSON.stringify(tokenPayload, null, 2));
+    }
     
     const accessToken = jwt.sign(
       tokenPayload,
@@ -257,7 +261,9 @@ export const refresh = async (req, res) => {
       organizationTier: user.organization_tier
     };
     
-    console.log('[REFRESH] Generating new access token with payload:', JSON.stringify(tokenPayload, null, 2));
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[REFRESH] Generating new access token with payload:', JSON.stringify(tokenPayload, null, 2));
+    }
     
     const accessToken = jwt.sign(
       tokenPayload,

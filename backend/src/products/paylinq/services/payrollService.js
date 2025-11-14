@@ -12,6 +12,7 @@ import PayrollRepository from '../repositories/payrollRepository.js';
 import DeductionRepository from '../repositories/deductionRepository.js';
 import taxCalculationService from './taxCalculationService.js';
 import PayStructureService from './payStructureService.js';
+import PayrollRunTypeService from './PayrollRunTypeService.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 import { emitPayrollRunCreated, emitPayrollRunCalculated, emitPayrollRunCompleted  } from '../events/emitters/payrollEmitters.js';
@@ -837,6 +838,31 @@ class PayrollService {
       throw new ValidationError(error.details[0].message);
     }
 
+    // Validate run type exists and is active
+    try {
+      const runType = await PayrollRunTypeService.getByCode(value.runType, organizationId);
+      if (!runType) {
+        throw new ValidationError(`Run type '${value.runType}' not found for this organization`);
+      }
+      if (!runType.isActive) {
+        throw new ValidationError(`Run type '${value.runType}' is inactive and cannot be used`);
+      }
+      logger.info('Run type validated for payroll run creation', {
+        runType: value.runType,
+        runTypeName: runType.typeName,
+        organizationId
+      });
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        throw err;
+      }
+      logger.warn('Run type validation failed, proceeding with default', {
+        runType: value.runType,
+        error: err.message,
+        organizationId
+      });
+    }
+
     // Business rule: Validate dates (dates are YYYY-MM-DD strings)
     if (value.payPeriodEnd <= value.payPeriodStart) {
       throw new Error('Pay period end must be after pay period start');
@@ -856,6 +882,7 @@ class PayrollService {
       logger.info('Payroll run created', {
         payrollRunId: payrollRun.id,
         runNumber: payrollRun.run_number,
+        runType: payrollRun.run_type,
         organizationId
       });
 
@@ -903,6 +930,29 @@ class PayrollService {
       );
 
       logger.info('Starting payroll calculation', { payrollRunId, organizationId });
+
+      // Resolve allowed components for this run type
+      let allowedComponents = null;
+      try {
+        allowedComponents = await PayrollRunTypeService.resolveAllowedComponents(
+          payrollRun.run_type,
+          organizationId
+        );
+        logger.info('Components resolved for run type', {
+          runType: payrollRun.run_type,
+          componentCount: allowedComponents.length,
+          components: allowedComponents,
+          payrollRunId,
+          organizationId
+        });
+      } catch (err) {
+        logger.warn('Failed to resolve run type components, will include all components', {
+          runType: payrollRun.run_type,
+          error: err.message,
+          payrollRunId,
+          organizationId
+        });
+      }
 
       // Get all active employees
       const employees = await this.payrollRepository.findByOrganization(organizationId, {
@@ -1034,6 +1084,27 @@ class PayrollService {
             workerStructureId = payStructureCalc.structureId;
             templateVersion = payStructureCalc.templateVersion;
             paycheckComponents = payStructureCalc.calculations;
+
+            // Filter components based on run type (Component-Based Payroll Architecture)
+            if (allowedComponents && allowedComponents.length > 0) {
+              const originalCount = paycheckComponents.length;
+              paycheckComponents = paycheckComponents.filter(comp => 
+                allowedComponents.includes(comp.componentCode)
+              );
+              
+              // Recalculate gross pay based on filtered components
+              grossPay = paycheckComponents.reduce((sum, comp) => sum + (comp.amount || 0), 0);
+              
+              logger.info('Filtered components by run type', {
+                employeeId,
+                originalComponentCount: originalCount,
+                filteredComponentCount: paycheckComponents.length,
+                excludedComponents: originalCount - paycheckComponents.length,
+                originalGrossPay: payStructureCalc.summary.totalEarnings,
+                filteredGrossPay: grossPay,
+                runType: payrollRun.run_type
+              });
+            }
 
             // Extract regular and overtime pay from components
             const regularPayComp = paycheckComponents.find(c => c.componentCode === 'BASE_SALARY' || c.componentCode === 'REGULAR_PAY');

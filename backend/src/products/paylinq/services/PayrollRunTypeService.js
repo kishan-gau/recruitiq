@@ -16,10 +16,12 @@ import PayrollRunTypeRepository from '../repositories/PayrollRunTypeRepository.j
 import { mapRunTypeDbToApi, mapRunTypesDbToApi, mapRunTypeApiToDb } from '../dto/payrollRunTypeDto.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../../middleware/errorHandler.js';
+import PayStructureService from './payStructureService.js';
 
 class PayrollRunTypeService {
   constructor() {
     this.repository = PayrollRunTypeRepository;
+    this.payStructureService = new PayStructureService();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -395,14 +397,27 @@ class PayrollRunTypeService {
       case 'template':
         // Load components from linked template
         if (runType.default_template_id) {
-          // TODO: Call PayStructureService to get template components
-          // For now, return empty array
-          logger.warn('Template component resolution not yet implemented', {
-            templateId: runType.default_template_id,
-            typeCode,
-            organizationId
-          });
-          components = [];
+          try {
+            const templateComponents = await this.payStructureService.getTemplateComponents(
+              runType.default_template_id,
+              organizationId
+            );
+            components = templateComponents.map(c => c.component_code);
+            logger.debug('Template components resolved', {
+              templateId: runType.default_template_id,
+              componentCount: components.length,
+              typeCode,
+              organizationId
+            });
+          } catch (error) {
+            logger.error('Failed to resolve template components', {
+              error: error.message,
+              templateId: runType.default_template_id,
+              typeCode,
+              organizationId
+            });
+            components = [];
+          }
         }
         break;
       
@@ -414,12 +429,26 @@ class PayrollRunTypeService {
       case 'hybrid':
         // Start with template components, then apply overrides
         if (runType.default_template_id) {
-          // TODO: Load template components
-          logger.warn('Template component resolution not yet implemented', {
-            templateId: runType.default_template_id,
-            typeCode,
-            organizationId
-          });
+          try {
+            const templateComponents = await this.payStructureService.getTemplateComponents(
+              runType.default_template_id,
+              organizationId
+            );
+            components = templateComponents.map(c => c.component_code);
+            logger.debug('Template components loaded for hybrid mode', {
+              templateId: runType.default_template_id,
+              componentCount: components.length,
+              typeCode,
+              organizationId
+            });
+          } catch (error) {
+            logger.error('Failed to load template components for hybrid mode', {
+              error: error.message,
+              templateId: runType.default_template_id,
+              typeCode,
+              organizationId
+            });
+          }
         }
         
         // Add allowed components
@@ -505,4 +534,8 @@ class PayrollRunTypeService {
   }
 }
 
-export default PayrollRunTypeService;
+// Export singleton instance
+const payrollRunTypeService = new PayrollRunTypeService();
+
+export default payrollRunTypeService;
+export { PayrollRunTypeService };

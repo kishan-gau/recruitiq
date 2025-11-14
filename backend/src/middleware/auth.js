@@ -242,12 +242,14 @@ export const authenticateTenant = async (req, res, next) => {
       user_type: 'tenant' // Add for compatibility
     };
     
-    // DEBUG: Log what's in req.user
-    console.log('=== MIDDLEWARE AUTH CHECK ===');
-    console.log('User email:', req.user.email);
-    console.log('enabledProducts:', req.user.enabledProducts);
-    console.log('Type:', typeof req.user.enabledProducts);
-    console.log('Is array?:', Array.isArray(req.user.enabledProducts));
+    // DEBUG: Log what's in req.user (dev mode only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('=== MIDDLEWARE AUTH CHECK ===');
+      console.log('User email:', req.user.email);
+      console.log('enabledProducts:', req.user.enabledProducts);
+      console.log('Type:', typeof req.user.enabledProducts);
+      console.log('Is array?:', Array.isArray(req.user.enabledProducts));
+    }
     
     next();
   } catch (error) {
@@ -350,13 +352,15 @@ export const requireProductAccess = (product) => {
     
     const enabledProducts = req.user.enabledProducts || [];
     
-    // DEBUG: Log product access check
-    console.log('=== PRODUCT ACCESS CHECK ===');
-    console.log('Required product:', product);
-    console.log('User enabledProducts:', enabledProducts);
-    console.log('Type of enabledProducts:', typeof enabledProducts);
-    console.log('Is array?:', Array.isArray(enabledProducts));
-    console.log('Includes product?:', enabledProducts.includes(product));
+    // DEBUG: Log product access check (dev mode only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('=== PRODUCT ACCESS CHECK ===');
+      console.log('Required product:', product);
+      console.log('User enabledProducts:', enabledProducts);
+      console.log('Type of enabledProducts:', typeof enabledProducts);
+      console.log('Is array?:', Array.isArray(enabledProducts));
+      console.log('Includes product?:', enabledProducts.includes(product));
+    }
     
     if (!enabledProducts.includes(product)) {
       logger.warn('Product access denied', {

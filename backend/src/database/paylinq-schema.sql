@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS payroll.employee_payroll_config (
   pay_frequency VARCHAR(20) NOT NULL CHECK (pay_frequency IN ('weekly', 'biweekly', 'semimonthly', 'monthly')),
   payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('direct_deposit', 'check', 'cash', 'card')),
   currency VARCHAR(3) DEFAULT 'SRD',
+  payment_currency VARCHAR(3), -- Currency for payment (can differ from base currency)
+  allow_multi_currency BOOLEAN NOT NULL DEFAULT false,
   
   -- Bank information (for direct deposit)
   bank_name VARCHAR(100),
@@ -879,6 +881,12 @@ CREATE TABLE IF NOT EXISTS payroll.paycheck (
   -- Net pay
   net_pay NUMERIC(12, 2) NOT NULL DEFAULT 0,
   
+  -- Multi-Currency Support
+  base_currency VARCHAR(3) DEFAULT 'SRD',
+  payment_currency VARCHAR(3),
+  exchange_rate_used NUMERIC(18, 8),
+  conversion_summary JSONB DEFAULT '{}'::jsonb,
+  
   -- Payment details
   payment_method VARCHAR(20) CHECK (payment_method IN ('direct_deposit', 'check', 'cash', 'card')),
   check_number VARCHAR(50),
@@ -931,6 +939,14 @@ CREATE TABLE IF NOT EXISTS payroll.payroll_run_component (
   units NUMERIC(12, 2), -- Hours, percentage, etc.
   rate NUMERIC(12, 2), -- Rate per unit
   amount NUMERIC(12, 2) NOT NULL,
+  
+  -- Multi-Currency Support
+  component_currency VARCHAR(3),
+  original_amount NUMERIC(15, 2),
+  converted_amount NUMERIC(15, 2),
+  conversion_id BIGINT REFERENCES payroll.currency_conversion(id),
+  exchange_rate_used NUMERIC(18, 8),
+  conversion_metadata JSONB DEFAULT '{}'::jsonb,
   
   -- Metadata
   is_taxable BOOLEAN DEFAULT true,
@@ -1362,11 +1378,15 @@ CREATE INDEX IF NOT EXISTS idx_paycheck_run ON payroll.paycheck(payroll_run_id);
 CREATE INDEX IF NOT EXISTS idx_paycheck_employee ON payroll.paycheck(employee_id);
 CREATE INDEX IF NOT EXISTS idx_paycheck_status ON payroll.paycheck(status) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_paycheck_payment_date ON payroll.paycheck(payment_date);
+CREATE INDEX IF NOT EXISTS idx_paycheck_multi_currency ON payroll.paycheck(id) 
+  WHERE payment_currency IS NOT NULL AND payment_currency != base_currency;
 
 -- Payroll run component indexes
 CREATE INDEX IF NOT EXISTS idx_run_component_paycheck ON payroll.payroll_run_component(paycheck_id);
 CREATE INDEX IF NOT EXISTS idx_run_component_run ON payroll.payroll_run_component(payroll_run_id);
 CREATE INDEX IF NOT EXISTS idx_run_component_type ON payroll.payroll_run_component(component_type, component_code);
+CREATE INDEX IF NOT EXISTS idx_run_component_conversion ON payroll.payroll_run_component(conversion_id)
+  WHERE conversion_id IS NOT NULL;
 
 -- Payment transaction indexes
 CREATE INDEX IF NOT EXISTS idx_payment_transaction_paycheck ON payroll.payment_transaction(paycheck_id);
@@ -1888,6 +1908,10 @@ CREATE TABLE IF NOT EXISTS payroll.worker_pay_structure_component_override (
   override_formula_variables JSONB,
   override_rate NUMERIC(12,4),
   is_disabled BOOLEAN DEFAULT false, -- Disable this component for this worker
+  
+  -- Multi-Currency Support (for Phase 3)
+  component_currency VARCHAR(3),
+  currency_conversion_required BOOLEAN NOT NULL DEFAULT false,
   
   -- Custom Component Configuration (for override_type = 'custom')
   custom_component_definition JSONB, -- Complete component config if this is a custom add-on
@@ -2684,6 +2708,280 @@ CREATE POLICY company_holiday_tenant_isolation ON payroll.company_holiday
 CREATE POLICY company_holiday_tenant_isolation_insert ON payroll.company_holiday
   FOR INSERT
   WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- ================================================================
+-- MULTI-CURRENCY SUPPORT TABLES
+-- ================================================================
+
+-- Exchange Rate Management
+CREATE TABLE IF NOT EXISTS payroll.exchange_rate (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Currency Pair
+  from_currency VARCHAR(3) NOT NULL,
+  to_currency VARCHAR(3) NOT NULL,
+  
+  -- Rate Information
+  rate NUMERIC(18, 8) NOT NULL CHECK (rate > 0),
+  
+  -- Temporal Validity
+  effective_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  effective_to TIMESTAMPTZ,
+  
+  -- Source & Metadata
+  source VARCHAR(50) NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'ecb', 'central_bank', 'api', 'system_default')),
+  metadata JSONB DEFAULT '{}'::jsonb,
+  
+  -- Audit
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  
+  -- Constraints
+  CONSTRAINT valid_currencies CHECK (from_currency != to_currency),
+  CONSTRAINT valid_date_range CHECK (effective_to IS NULL OR effective_to > effective_from),
+  CONSTRAINT unique_rate_effective UNIQUE (organization_id, from_currency, to_currency, effective_from)
+);
+
+-- Indexes for exchange_rate
+CREATE INDEX idx_exchange_rate_org_curr_date ON payroll.exchange_rate(
+  organization_id, from_currency, to_currency, effective_from
+) WHERE effective_to IS NULL;
+
+CREATE INDEX idx_exchange_rate_temporal ON payroll.exchange_rate 
+  USING GIST (tstzrange(effective_from, effective_to));
+
+CREATE INDEX idx_exchange_rate_metadata ON payroll.exchange_rate 
+  USING GIN (metadata);
+
+CREATE INDEX idx_exchange_rate_org ON payroll.exchange_rate(organization_id);
+
+COMMENT ON TABLE payroll.exchange_rate IS 'Exchange rates for currency conversions with temporal validity';
+COMMENT ON COLUMN payroll.exchange_rate.rate IS 'Exchange rate from from_currency to to_currency (e.g., 1 USD = 21.5 SRD)';
+COMMENT ON COLUMN payroll.exchange_rate.effective_from IS 'When this rate becomes effective';
+COMMENT ON COLUMN payroll.exchange_rate.effective_to IS 'When this rate expires (NULL = current)';
+
+-- Currency Conversion Audit Trail
+CREATE TABLE IF NOT EXISTS payroll.currency_conversion (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Conversion Details
+  from_currency VARCHAR(3) NOT NULL,
+  to_currency VARCHAR(3) NOT NULL,
+  from_amount NUMERIC(15, 2) NOT NULL CHECK (from_amount > 0),
+  to_amount NUMERIC(15, 2) NOT NULL CHECK (to_amount > 0),
+  
+  -- Rate Used
+  exchange_rate_id BIGINT REFERENCES payroll.exchange_rate(id),
+  rate_used NUMERIC(18, 8) NOT NULL CHECK (rate_used > 0),
+  
+  -- Reference to Source Transaction
+  reference_type VARCHAR(50) NOT NULL CHECK (reference_type IN ('paycheck', 'component', 'adjustment', 'manual')),
+  reference_id BIGINT NOT NULL,
+  
+  -- Metadata
+  conversion_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'::jsonb,
+  
+  -- Audit
+  created_by UUID REFERENCES hris.user_account(id),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+-- Indexes for currency_conversion
+CREATE INDEX idx_conversion_org_date ON payroll.currency_conversion(
+  organization_id, conversion_date DESC
+);
+
+CREATE INDEX idx_conversion_reference ON payroll.currency_conversion(
+  reference_type, reference_id
+);
+
+CREATE INDEX idx_conversion_exchange_rate ON payroll.currency_conversion(
+  exchange_rate_id
+);
+
+CREATE INDEX idx_conversion_metadata ON payroll.currency_conversion 
+  USING GIN (metadata);
+
+COMMENT ON TABLE payroll.currency_conversion IS 'Audit trail for all currency conversions performed in the system';
+COMMENT ON COLUMN payroll.currency_conversion.reference_type IS 'Type of entity that triggered the conversion';
+COMMENT ON COLUMN payroll.currency_conversion.reference_id IS 'ID of the entity that triggered the conversion';
+
+-- Organization Currency Configuration
+CREATE TABLE IF NOT EXISTS payroll.organization_currency_config (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id UUID NOT NULL UNIQUE REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Currency Settings
+  base_currency VARCHAR(3) NOT NULL DEFAULT 'SRD',
+  supported_currencies VARCHAR(3)[] NOT NULL DEFAULT '{SRD}',
+  
+  -- Exchange Rate Settings
+  auto_update_rates BOOLEAN NOT NULL DEFAULT false,
+  rate_update_source VARCHAR(50) CHECK (rate_update_source IN ('ecb', 'central_bank', 'manual')),
+  rate_update_frequency VARCHAR(20) CHECK (rate_update_frequency IN ('daily', 'weekly', 'manual')),
+  
+  -- Conversion Settings
+  default_rounding_method VARCHAR(20) NOT NULL DEFAULT 'half_up' CHECK (default_rounding_method IN ('up', 'down', 'half_up', 'half_down', 'half_even')),
+  default_decimal_places INTEGER NOT NULL DEFAULT 2 CHECK (default_decimal_places BETWEEN 0 AND 4),
+  
+  -- Approval Settings
+  require_approval_threshold NUMERIC(15, 2),
+  require_approval_for_rate_changes BOOLEAN NOT NULL DEFAULT false,
+  
+  -- Metadata
+  metadata JSONB DEFAULT '{}'::jsonb,
+  
+  -- Audit
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_org_currency_config_org ON payroll.organization_currency_config(organization_id);
+
+COMMENT ON TABLE payroll.organization_currency_config IS 'Organization-level currency configuration and preferences';
+COMMENT ON COLUMN payroll.organization_currency_config.base_currency IS 'Primary currency for payroll calculations';
+COMMENT ON COLUMN payroll.organization_currency_config.supported_currencies IS 'Array of currencies the organization supports for payments';
+
+-- Exchange Rate Audit Log
+CREATE TABLE IF NOT EXISTS payroll.exchange_rate_audit (
+  id BIGSERIAL PRIMARY KEY,
+  exchange_rate_id BIGINT NOT NULL REFERENCES payroll.exchange_rate(id) ON DELETE CASCADE,
+  
+  -- Action Details
+  action VARCHAR(20) NOT NULL CHECK (action IN ('created', 'updated', 'deleted', 'expired')),
+  old_rate NUMERIC(18, 8),
+  new_rate NUMERIC(18, 8),
+  
+  -- Context
+  reason TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  
+  -- Audit
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  changed_by UUID NOT NULL REFERENCES hris.user_account(id)
+);
+
+CREATE INDEX idx_rate_audit_rate_id ON payroll.exchange_rate_audit(exchange_rate_id);
+CREATE INDEX idx_rate_audit_date ON payroll.exchange_rate_audit(changed_at DESC);
+
+COMMENT ON TABLE payroll.exchange_rate_audit IS 'Audit log for all exchange rate changes';
+
+-- ================================================================
+-- MULTI-CURRENCY TRIGGERS
+-- ================================================================
+
+-- Trigger for exchange_rate updated_at
+CREATE OR REPLACE FUNCTION payroll.update_exchange_rate_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER exchange_rate_updated_at
+  BEFORE UPDATE ON payroll.exchange_rate
+  FOR EACH ROW
+  EXECUTE FUNCTION payroll.update_exchange_rate_updated_at();
+
+-- Trigger for organization_currency_config updated_at
+CREATE OR REPLACE FUNCTION payroll.update_org_currency_config_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER org_currency_config_updated_at
+  BEFORE UPDATE ON payroll.organization_currency_config
+  FOR EACH ROW
+  EXECUTE FUNCTION payroll.update_org_currency_config_updated_at();
+
+-- Trigger to log exchange rate changes
+CREATE OR REPLACE FUNCTION payroll.log_exchange_rate_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO payroll.exchange_rate_audit (
+      exchange_rate_id, action, new_rate, changed_by
+    ) VALUES (
+      NEW.id, 'created', NEW.rate, NEW.created_by
+    );
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF OLD.rate != NEW.rate THEN
+      INSERT INTO payroll.exchange_rate_audit (
+        exchange_rate_id, action, old_rate, new_rate, changed_by
+      ) VALUES (
+        NEW.id, 'updated', OLD.rate, NEW.rate, NEW.updated_by
+      );
+    END IF;
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO payroll.exchange_rate_audit (
+      exchange_rate_id, action, old_rate, changed_by, changed_at
+    ) VALUES (
+      OLD.id, 'deleted', OLD.rate, 
+      COALESCE(current_setting('app.current_user_id', true)::UUID, OLD.updated_by),
+      NOW()
+    );
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER exchange_rate_audit_trigger
+  AFTER INSERT OR UPDATE OR DELETE ON payroll.exchange_rate
+  FOR EACH ROW
+  EXECUTE FUNCTION payroll.log_exchange_rate_changes();
+
+-- ================================================================
+-- MULTI-CURRENCY RLS POLICIES
+-- ================================================================
+
+ALTER TABLE payroll.exchange_rate ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payroll.currency_conversion ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payroll.organization_currency_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payroll.exchange_rate_audit ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY exchange_rate_org_isolation ON payroll.exchange_rate
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY exchange_rate_org_isolation_insert ON payroll.exchange_rate
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY conversion_org_isolation ON payroll.currency_conversion
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY conversion_org_isolation_insert ON payroll.currency_conversion
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY config_org_isolation ON payroll.organization_currency_config
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY config_org_isolation_insert ON payroll.organization_currency_config
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY audit_org_isolation ON payroll.exchange_rate_audit
+  USING (
+    EXISTS (
+      SELECT 1 FROM payroll.exchange_rate er
+      WHERE er.id = exchange_rate_audit.exchange_rate_id
+      AND er.organization_id = payroll.get_current_organization_id()
+    )
+  );
 
 -- ================================================================
 -- END OF PAYLINQ SCHEMA

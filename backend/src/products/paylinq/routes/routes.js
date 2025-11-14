@@ -31,16 +31,19 @@ import reportsRoutes from './reports.js';
 import settingsRoutes from './settings.js';
 import payslipTemplateRoutes from './payslipTemplates.js';
 import temporalPatternRoutes from './temporalPatterns.js';
+import currencyRoutes from './currency.js';
 
 const router = express.Router();
 
 // DEBUG: Log all incoming requests to PayLinQ routes
 router.use((req, res, next) => {
-  console.log('=== PayLinQ Route Debug ===');
-  console.log('Path:', req.path);
-  console.log('Method:', req.method);
-  console.log('Cookies object:', req.cookies);
-  console.log('Cookie keys:', Object.keys(req.cookies || {}));
+  if (process.env.NODE_ENV === 'development') {
+    console.log('=== PayLinQ Route Debug ===');
+    console.log('Path:', req.path);
+    console.log('Method:', req.method);
+    console.log('Cookies object:', req.cookies);
+    console.log('Cookie keys:', Object.keys(req.cookies || {}));
+  }
   console.log('Signed cookies:', req.signedCookies);
   console.log('Raw cookie header:', req.headers.cookie);
   console.log('=========================');
@@ -77,5 +80,7 @@ router.use('/reports', reportsRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/payslip-templates', payslipTemplateRoutes);
 router.use('/patterns', temporalPatternRoutes);
+router.use('/currency', currencyRoutes);
+router.use('/exchange-rates', currencyRoutes); // Alias for backward compatibility
 
 export default router;

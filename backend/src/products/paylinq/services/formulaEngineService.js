@@ -7,9 +7,13 @@
  * MVP Version: Simple arithmetic formulas (e.g., hours * rate, base + bonus)
  * Phase 2: Complex expressions with conditionals, aggregations, and custom functions
  * 
+ * SECURITY: Uses expr-eval library for safe expression evaluation.
+ * Prevents code injection vulnerabilities by avoiding eval() and Function() constructor.
+ * 
  * @module products/paylinq/services/formulaEngineService
  */
 
+import { Parser } from 'expr-eval';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 
@@ -128,13 +132,15 @@ class FormulaEngineService {
   }
 
   /**
-   * Evaluate arithmetic expression (MVP version)
+   * Evaluate arithmetic expression using safe parser
+   * SECURITY: Uses expr-eval library instead of Function() constructor
+   * to prevent code injection vulnerabilities
+   * 
    * @param {string} expression - Arithmetic expression
    * @returns {number} Calculated result
    */
   evaluateExpression(expression) {
     try {
-      // MVP: Use Function constructor for safe evaluation
       // Remove all whitespace
       const cleanExpression = expression.replace(/\s+/g, '');
 
@@ -148,9 +154,10 @@ class FormulaEngineService {
         throw new Error('Expression contains invalid characters after substitution');
       }
 
-      // Evaluate using Function constructor (safer than eval)
-      const func = new Function('return ' + cleanExpression);
-      const result = func();
+      // SECURITY FIX: Use safe expression parser instead of Function() constructor
+      // This prevents code injection attacks
+      const parser = new Parser();
+      const result = parser.evaluate(cleanExpression);
 
       // Validate result
       if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {

@@ -3,6 +3,8 @@ export { default as StatusBadge } from './StatusBadge';
 export { default as Badge } from './Badge';
 export { default as WorkerAvatar } from './WorkerAvatar';
 export { default as CurrencyDisplay } from './CurrencyDisplay';
+export { default as CurrencySelector } from './CurrencySelector';
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './Tooltip';
 
 // Navigation Components
 export { default as Pagination } from './Pagination';
