@@ -40,6 +40,7 @@ import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import Badge from '@/components/ui/Badge';
+import PayrollRunTypeModal from '@/components/modals/PayrollRunTypeModal';
 
 // PayrollRunType interface
 interface PayrollRunType {
@@ -380,39 +381,17 @@ export default function PayrollRunTypeSettings() {
       )}
 
       {/* TODO: Create/Edit Modals */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Run Type</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Feature coming soon! For now, run types are managed via database seed data.
-            </p>
-            <button
-              onClick={() => setIsCreateModalOpen(false)}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      <PayrollRunTypeModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        runType={null}
+      />
 
-      {editingRunType && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Run Type</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Feature coming soon! Editing: <strong>{editingRunType.typeName}</strong>
-            </p>
-            <button
-              onClick={() => setEditingRunType(null)}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      <PayrollRunTypeModal
+        isOpen={!!editingRunType}
+        onClose={() => setEditingRunType(null)}
+        runType={editingRunType}
+      />
     </div>
   );
 }

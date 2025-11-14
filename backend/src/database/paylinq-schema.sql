@@ -2984,5 +2984,300 @@ CREATE POLICY audit_org_isolation ON payroll.exchange_rate_audit
   );
 
 -- ================================================================
+-- PERFORMANCE OPTIMIZATION - MATERIALIZED VIEWS & INDEXES
+-- Phase 3 Week 9: Performance & Polish
+-- ================================================================
+
+-- =============================================================================
+-- 1. MATERIALIZED VIEW FOR ACTIVE EXCHANGE RATES
+-- =============================================================================
+-- Purpose: Pre-compute active rates for faster lookups
+-- Refresh: Every 5 minutes via cron or manual trigger
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS payroll.active_exchange_rates_mv AS
+SELECT 
+  er.id,
+  er.organization_id,
+  er.from_currency,
+  er.to_currency,
+  er.rate,
+  er.effective_from,
+  er.source,
+  er.metadata,
+  er.updated_at,
+  -- Add commonly queried computed fields
+  (1.0 / er.rate) as inverse_rate,
+  EXTRACT(EPOCH FROM (NOW() - er.effective_from)) as age_seconds,
+  -- Add organization context for faster joins
+  o.name as organization_name
+FROM payroll.exchange_rate er
+JOIN organizations o ON er.organization_id = o.id
+WHERE er.effective_to IS NULL  -- Only active rates
+  AND er.rate > 0;  -- Valid rates only
+
+-- Create unique index for fast lookups
+CREATE UNIQUE INDEX idx_active_rates_mv_pk 
+  ON payroll.active_exchange_rates_mv(id);
+
+CREATE INDEX idx_active_rates_mv_org_pair 
+  ON payroll.active_exchange_rates_mv(organization_id, from_currency, to_currency);
+
+CREATE INDEX idx_active_rates_mv_org 
+  ON payroll.active_exchange_rates_mv(organization_id);
+
+CREATE INDEX idx_active_rates_mv_currencies 
+  ON payroll.active_exchange_rates_mv(from_currency, to_currency);
+
+COMMENT ON MATERIALIZED VIEW payroll.active_exchange_rates_mv IS 
+  'Materialized view of active exchange rates for performance optimization. Refresh every 5 minutes.';
+
+-- =============================================================================
+-- 2. CONVERSION SUMMARY MATERIALIZED VIEW
+-- =============================================================================
+-- Purpose: Pre-aggregate conversion statistics for reporting
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS payroll.currency_conversion_summary_mv AS
+SELECT 
+  cc.organization_id,
+  cc.from_currency,
+  cc.to_currency,
+  DATE_TRUNC('day', cc.conversion_date) as conversion_day,
+  
+  -- Aggregated metrics
+  COUNT(*) as total_conversions,
+  SUM(cc.from_amount) as total_from_amount,
+  SUM(cc.to_amount) as total_to_amount,
+  AVG(cc.rate_used) as avg_rate_used,
+  MIN(cc.rate_used) as min_rate_used,
+  MAX(cc.rate_used) as max_rate_used,
+  STDDEV(cc.rate_used) as rate_stddev,
+  
+  -- By reference type
+  COUNT(*) FILTER (WHERE cc.reference_type = 'paycheck') as paycheck_conversions,
+  COUNT(*) FILTER (WHERE cc.reference_type = 'component') as component_conversions,
+  COUNT(*) FILTER (WHERE cc.reference_type = 'adjustment') as adjustment_conversions,
+  
+  -- Amounts by reference type
+  SUM(cc.to_amount) FILTER (WHERE cc.reference_type = 'paycheck') as paycheck_total,
+  SUM(cc.to_amount) FILTER (WHERE cc.reference_type = 'component') as component_total,
+  
+  -- Time metadata
+  MIN(cc.conversion_date) as first_conversion_at,
+  MAX(cc.conversion_date) as last_conversion_at
+
+FROM payroll.currency_conversion cc
+WHERE cc.conversion_date >= NOW() - INTERVAL '90 days'  -- Keep 90 days
+GROUP BY 
+  cc.organization_id, 
+  cc.from_currency, 
+  cc.to_currency, 
+  DATE_TRUNC('day', cc.conversion_date);
+
+CREATE INDEX idx_conversion_summary_mv_org_date 
+  ON payroll.currency_conversion_summary_mv(organization_id, conversion_day DESC);
+
+CREATE INDEX idx_conversion_summary_mv_currencies 
+  ON payroll.currency_conversion_summary_mv(from_currency, to_currency);
+
+CREATE INDEX idx_conversion_summary_mv_day 
+  ON payroll.currency_conversion_summary_mv(conversion_day DESC);
+
+COMMENT ON MATERIALIZED VIEW payroll.currency_conversion_summary_mv IS 
+  'Daily aggregated conversion statistics. Refresh hourly.';
+
+-- =============================================================================
+-- 3. RATE CHANGE HISTORY VIEW WITH VARIANCE ANALYSIS
+-- =============================================================================
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS payroll.exchange_rate_history_mv AS
+SELECT 
+  er.id,
+  er.organization_id,
+  er.from_currency,
+  er.to_currency,
+  er.rate as current_rate,
+  er.effective_from,
+  er.effective_to,
+  er.source,
+  
+  -- Previous rate (for variance calculation)
+  LAG(er.rate) OVER (
+    PARTITION BY er.organization_id, er.from_currency, er.to_currency 
+    ORDER BY er.effective_from
+  ) as previous_rate,
+  
+  LAG(er.effective_from) OVER (
+    PARTITION BY er.organization_id, er.from_currency, er.to_currency 
+    ORDER BY er.effective_from
+  ) as previous_rate_date,
+  
+  -- Calculate rate change
+  er.rate - LAG(er.rate) OVER (
+    PARTITION BY er.organization_id, er.from_currency, er.to_currency 
+    ORDER BY er.effective_from
+  ) as rate_change_amount,
+  
+  -- Calculate percentage change
+  CASE 
+    WHEN LAG(er.rate) OVER (
+      PARTITION BY er.organization_id, er.from_currency, er.to_currency 
+      ORDER BY er.effective_from
+    ) IS NOT NULL AND LAG(er.rate) OVER (
+      PARTITION BY er.organization_id, er.from_currency, er.to_currency 
+      ORDER BY er.effective_from
+    ) > 0
+    THEN ROUND(
+      ((er.rate - LAG(er.rate) OVER (
+        PARTITION BY er.organization_id, er.from_currency, er.to_currency 
+        ORDER BY er.effective_from
+      )) / LAG(er.rate) OVER (
+        PARTITION BY er.organization_id, er.from_currency, er.to_currency 
+        ORDER BY er.effective_from
+      )) * 100, 
+      4
+    )
+    ELSE NULL
+  END as rate_change_percentage,
+  
+  -- Duration this rate was active
+  COALESCE(
+    EXTRACT(EPOCH FROM (er.effective_to - er.effective_from)) / 86400,
+    EXTRACT(EPOCH FROM (NOW() - er.effective_from)) / 86400
+  ) as active_days
+
+FROM payroll.exchange_rate er
+WHERE er.effective_from >= NOW() - INTERVAL '2 years';  -- Keep 2 years of history
+
+CREATE INDEX idx_rate_history_mv_org_curr 
+  ON payroll.exchange_rate_history_mv(organization_id, from_currency, to_currency, effective_from DESC);
+
+CREATE INDEX idx_rate_history_mv_date 
+  ON payroll.exchange_rate_history_mv(effective_from DESC);
+
+CREATE INDEX idx_rate_history_mv_variance 
+  ON payroll.exchange_rate_history_mv(rate_change_percentage) 
+  WHERE rate_change_percentage IS NOT NULL;
+
+COMMENT ON MATERIALIZED VIEW payroll.exchange_rate_history_mv IS 
+  'Exchange rate history with variance analysis. Includes rate changes and percentage differences.';
+
+-- =============================================================================
+-- 4. ADDITIONAL PERFORMANCE INDEXES
+-- =============================================================================
+
+-- Composite index for common query pattern: org + currencies + date range
+CREATE INDEX IF NOT EXISTS idx_exchange_rate_lookup_optimized 
+  ON payroll.exchange_rate(organization_id, from_currency, to_currency, effective_from DESC)
+  INCLUDE (rate, source, metadata)
+  WHERE effective_to IS NULL;
+
+-- Partial index for recent conversions (hot data)
+CREATE INDEX IF NOT EXISTS idx_conversion_recent 
+  ON payroll.currency_conversion(organization_id, conversion_date DESC)
+  WHERE conversion_date >= NOW() - INTERVAL '30 days';
+
+-- Index for batch conversion queries
+CREATE INDEX IF NOT EXISTS idx_conversion_batch_lookup 
+  ON payroll.currency_conversion(organization_id, reference_type, reference_id)
+  INCLUDE (from_currency, to_currency, from_amount, to_amount, rate_used);
+
+-- Index for rate variance queries
+CREATE INDEX IF NOT EXISTS idx_exchange_rate_org_curr_history 
+  ON payroll.exchange_rate(organization_id, from_currency, to_currency, effective_from DESC)
+  INCLUDE (rate, effective_to)
+  WHERE effective_from >= NOW() - INTERVAL '1 year';
+
+-- =============================================================================
+-- 5. REFRESH FUNCTIONS
+-- =============================================================================
+
+-- Function to refresh all currency materialized views
+CREATE OR REPLACE FUNCTION payroll.refresh_currency_materialized_views()
+RETURNS void AS $$
+BEGIN
+  -- Refresh active rates (fast, small dataset)
+  REFRESH MATERIALIZED VIEW CONCURRENTLY payroll.active_exchange_rates_mv;
+  
+  -- Refresh conversion summary (medium dataset)
+  REFRESH MATERIALIZED VIEW CONCURRENTLY payroll.currency_conversion_summary_mv;
+  
+  -- Refresh rate history (large dataset, less frequent)
+  REFRESH MATERIALIZED VIEW CONCURRENTLY payroll.exchange_rate_history_mv;
+  
+  RAISE NOTICE 'All currency materialized views refreshed successfully';
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION payroll.refresh_currency_materialized_views() IS 
+  'Refresh all currency-related materialized views. Schedule via cron or pg_cron.';
+
+-- Function to refresh only active rates (frequent refresh)
+CREATE OR REPLACE FUNCTION payroll.refresh_active_rates_mv()
+RETURNS void AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY payroll.active_exchange_rates_mv;
+  RAISE NOTICE 'Active exchange rates materialized view refreshed';
+END;
+$$ LANGUAGE plpgsql;
+
+-- =============================================================================
+-- 6. QUERY OPTIMIZATION STATISTICS
+-- =============================================================================
+
+-- Ensure statistics are up-to-date for query planner
+ANALYZE payroll.exchange_rate;
+ANALYZE payroll.currency_conversion;
+ANALYZE payroll.organization_currency_config;
+
+-- Set statistics target higher for commonly filtered columns
+ALTER TABLE payroll.exchange_rate 
+  ALTER COLUMN organization_id SET STATISTICS 1000,
+  ALTER COLUMN from_currency SET STATISTICS 500,
+  ALTER COLUMN to_currency SET STATISTICS 500;
+
+ALTER TABLE payroll.currency_conversion 
+  ALTER COLUMN organization_id SET STATISTICS 1000,
+  ALTER COLUMN conversion_date SET STATISTICS 1000;
+
+-- =============================================================================
+-- 7. PERFORMANCE MONITORING VIEW
+-- =============================================================================
+
+CREATE OR REPLACE VIEW payroll.currency_mv_status AS
+SELECT 
+  'active_exchange_rates_mv' as view_name,
+  pg_size_pretty(pg_total_relation_size('payroll.active_exchange_rates_mv')) as size,
+  (SELECT COUNT(*) FROM payroll.active_exchange_rates_mv) as row_count,
+  (SELECT MAX(updated_at) FROM payroll.active_exchange_rates_mv) as last_data_update,
+  pg_stat_get_last_vacuum_time(c.oid) as last_maintenance
+FROM pg_class c
+WHERE c.relname = 'active_exchange_rates_mv'
+
+UNION ALL
+
+SELECT 
+  'currency_conversion_summary_mv' as view_name,
+  pg_size_pretty(pg_total_relation_size('payroll.currency_conversion_summary_mv')) as size,
+  (SELECT COUNT(*) FROM payroll.currency_conversion_summary_mv) as row_count,
+  (SELECT MAX(last_conversion_at) FROM payroll.currency_conversion_summary_mv) as last_data_update,
+  pg_stat_get_last_vacuum_time(c.oid) as last_maintenance
+FROM pg_class c
+WHERE c.relname = 'currency_conversion_summary_mv'
+
+UNION ALL
+
+SELECT 
+  'exchange_rate_history_mv' as view_name,
+  pg_size_pretty(pg_total_relation_size('payroll.exchange_rate_history_mv')) as size,
+  (SELECT COUNT(*) FROM payroll.exchange_rate_history_mv) as row_count,
+  (SELECT MAX(effective_from) FROM payroll.exchange_rate_history_mv) as last_data_update,
+  pg_stat_get_last_vacuum_time(c.oid) as last_maintenance
+FROM pg_class c
+WHERE c.relname = 'exchange_rate_history_mv';
+
+COMMENT ON VIEW payroll.currency_mv_status IS 
+  'Monitor materialized view size, freshness, and maintenance status';
+
+-- ================================================================
 -- END OF PAYLINQ SCHEMA
 -- ================================================================

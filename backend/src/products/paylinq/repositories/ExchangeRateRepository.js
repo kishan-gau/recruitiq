@@ -358,6 +358,145 @@ class ExchangeRateRepository {
       throw error;
     }
   }
+
+  /**
+   * Get materialized view status and freshness
+   * @returns {Array} Array of view statistics
+   */
+  async getMaterializedViewStatus() {
+    const query = `
+      SELECT * FROM payroll.currency_mv_status
+    `;
+
+    try {
+      const result = await pool.query(query);
+      return result.rows;
+    } catch (error) {
+      logger.error('Error getting materialized view status', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Refresh all currency materialized views
+   */
+  async refreshMaterializedViews() {
+    try {
+      await pool.query('SELECT payroll.refresh_currency_materialized_views()');
+      logger.info('All currency materialized views refreshed');
+    } catch (error) {
+      logger.error('Error refreshing materialized views', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Refresh only active exchange rates materialized view
+   */
+  async refreshActiveRatesView() {
+    try {
+      await pool.query('SELECT payroll.refresh_active_rates_mv()');
+      logger.info('Active exchange rates materialized view refreshed');
+    } catch (error) {
+      logger.error('Error refreshing active rates view', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Get conversion statistics for reporting
+   * @param {string} organizationId - Organization ID
+   * @param {Object} options - Query options
+   * @returns {Array} Conversion statistics
+   */
+  async getConversionStatistics(organizationId, options = {}) {
+    const { fromDate, toDate, currencyPair } = options;
+
+    let query = `
+      SELECT 
+        from_currency,
+        to_currency,
+        conversion_day,
+        total_conversions,
+        total_from_amount,
+        total_to_amount,
+        avg_rate_used,
+        min_rate_used,
+        max_rate_used,
+        rate_stddev,
+        paycheck_conversions,
+        component_conversions
+      FROM payroll.currency_conversion_summary_mv
+      WHERE organization_id = $1
+    `;
+
+    const params = [organizationId];
+    let paramCount = 1;
+
+    if (fromDate) {
+      paramCount++;
+      query += ` AND conversion_day >= $${paramCount}`;
+      params.push(fromDate);
+    }
+
+    if (toDate) {
+      paramCount++;
+      query += ` AND conversion_day <= $${paramCount}`;
+      params.push(toDate);
+    }
+
+    if (currencyPair) {
+      paramCount++;
+      query += ` AND (from_currency, to_currency) = ($${paramCount}, $${paramCount + 1})`;
+      params.push(currencyPair.from, currencyPair.to);
+    }
+
+    query += ' ORDER BY conversion_day DESC';
+
+    try {
+      const result = await pool.query(query, params);
+      return result.rows;
+    } catch (error) {
+      logger.error('Error getting conversion statistics', { organizationId, options, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Get rate change history with variance analysis
+   * @param {string} organizationId - Organization ID
+   * @param {string} fromCurrency - Source currency
+   * @param {string} toCurrency - Target currency
+   * @returns {Array} Rate history with variance
+   */
+  async getRateChangeHistory(organizationId, fromCurrency, toCurrency) {
+    const query = `
+      SELECT 
+        id,
+        current_rate,
+        previous_rate,
+        rate_change_amount,
+        rate_change_percentage,
+        effective_from,
+        previous_rate_date,
+        active_days,
+        source
+      FROM payroll.exchange_rate_history_mv
+      WHERE organization_id = $1
+        AND from_currency = $2
+        AND to_currency = $3
+      ORDER BY effective_from DESC
+      LIMIT 50
+    `;
+
+    try {
+      const result = await pool.query(query, [organizationId, fromCurrency, toCurrency]);
+      return result.rows;
+    } catch (error) {
+      logger.error('Error getting rate change history', { organizationId, fromCurrency, toCurrency, error });
+      throw error;
+    }
+  }
 }
 
 export default ExchangeRateRepository;

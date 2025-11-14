@@ -1,25 +1,76 @@
 import ExchangeRateRepository from '../repositories/ExchangeRateRepository.js';
 import logger from '../../../utils/logger.js';
 import NodeCache from 'node-cache';
+import { createClient } from 'redis';
 import { pool } from '../../../config/database.js';
 
 /**
  * Currency Service - Handles all currency conversion operations
+ * Performance optimizations:
+ * - Dual-layer caching (NodeCache L1 + Redis L2)
+ * - Materialized view support for active rates
+ * - Optimized batch conversions with parallel processing
  */
 class CurrencyService {
   constructor() {
     this.repository = new ExchangeRateRepository();
     
-    // Cache exchange rates for 1 hour
+    // L1 Cache: NodeCache (in-memory, fast)
     this.cache = new NodeCache({
-      stdTTL: 3600, // 1 hour
-      checkperiod: 600, // Check for expired keys every 10 minutes
+      stdTTL: 300, // 5 minutes (shorter for L1)
+      checkperiod: 60,
       useClones: false
     });
+
+    // L2 Cache: Redis (distributed, persistent)
+    this.redisClient = null;
+    this.initializeRedis();
+
+    // Performance flags
+    this.useMaterializedViews = process.env.USE_MATERIALIZED_VIEWS !== 'false';
+    this.useRedisCache = process.env.USE_REDIS_CACHE !== 'false';
   }
 
   /**
-   * Get exchange rate for a currency pair
+   * Initialize Redis connection
+   */
+  async initializeRedis() {
+    if (!this.useRedisCache) {
+      logger.info('Redis caching disabled via environment variable');
+      return;
+    }
+
+    try {
+      this.redisClient = createClient({
+        url: process.env.REDIS_URL || 'redis://localhost:6379',
+        socket: {
+          reconnectStrategy: (retries) => {
+            if (retries > 10) {
+              logger.error('Redis reconnection failed after 10 attempts');
+              return new Error('Redis unavailable');
+            }
+            return Math.min(retries * 100, 3000);
+          }
+        }
+      });
+
+      this.redisClient.on('error', (err) => {
+        logger.error('Redis connection error', { error: err.message });
+      });
+
+      this.redisClient.on('connect', () => {
+        logger.info('Redis connected for currency caching');
+      });
+
+      await this.redisClient.connect();
+    } catch (error) {
+      logger.warn('Redis initialization failed, falling back to NodeCache only', { error: error.message });
+      this.redisClient = null;
+    }
+  }
+
+  /**
+   * Get exchange rate for a currency pair with dual-layer caching
    * @param {string} organizationId - Organization ID
    * @param {string} fromCurrency - Source currency code
    * @param {string} toCurrency - Target currency code
@@ -38,17 +89,42 @@ class CurrencyService {
       };
     }
 
-    // Check cache first
     const cacheKey = `rate:${organizationId}:${fromCurrency}:${toCurrency}`;
-    const cachedRate = this.cache.get(cacheKey);
-    
-    if (cachedRate) {
-      logger.debug('Exchange rate retrieved from cache', { fromCurrency, toCurrency });
-      return cachedRate;
+
+    // L1 Cache: NodeCache check
+    const l1Cache = this.cache.get(cacheKey);
+    if (l1Cache) {
+      logger.debug('Exchange rate from L1 cache', { fromCurrency, toCurrency });
+      return l1Cache;
     }
 
-    // Get from database
-    let rate = await this.repository.getCurrentRate(organizationId, fromCurrency, toCurrency, effectiveDate);
+    // L2 Cache: Redis check
+    if (this.redisClient && this.useRedisCache) {
+      try {
+        const redisData = await this.redisClient.get(cacheKey);
+        if (redisData) {
+          const rate = JSON.parse(redisData);
+          // Populate L1 cache
+          this.cache.set(cacheKey, rate);
+          logger.debug('Exchange rate from L2 cache (Redis)', { fromCurrency, toCurrency });
+          return rate;
+        }
+      } catch (error) {
+        logger.warn('Redis cache read failed', { error: error.message });
+      }
+    }
+
+    // Get from database (use materialized view if available)
+    let rate;
+    if (this.useMaterializedViews && !effectiveDate) {
+      // Use materialized view for current rates (faster)
+      rate = await this.getFromMaterializedView(organizationId, fromCurrency, toCurrency);
+    }
+    
+    if (!rate) {
+      // Fallback to regular table query
+      rate = await this.repository.getCurrentRate(organizationId, fromCurrency, toCurrency, effectiveDate);
+    }
 
     // If direct rate not found, try reverse and invert
     if (!rate) {
@@ -77,10 +153,46 @@ class CurrencyService {
       throw new Error(`Exchange rate not found for ${fromCurrency} to ${toCurrency}`);
     }
 
-    // Cache the rate
+    // Cache the rate in both layers
     this.cache.set(cacheKey, rate);
+    
+    if (this.redisClient && this.useRedisCache) {
+      try {
+        await this.redisClient.setEx(cacheKey, 3600, JSON.stringify(rate)); // 1 hour in Redis
+      } catch (error) {
+        logger.warn('Redis cache write failed', { error: error.message });
+      }
+    }
 
     return rate;
+  }
+
+  /**
+   * Get active exchange rate from materialized view (performance optimization)
+   * @param {string} organizationId - Organization ID
+   * @param {string} fromCurrency - Source currency code
+   * @param {string} toCurrency - Target currency code
+   * @returns {Object|null} Exchange rate or null
+   */
+  async getFromMaterializedView(organizationId, fromCurrency, toCurrency) {
+    try {
+      const query = `
+        SELECT 
+          id, organization_id, from_currency, to_currency, rate,
+          effective_from, source, metadata, updated_at
+        FROM payroll.active_exchange_rates_mv
+        WHERE organization_id = $1
+          AND from_currency = $2
+          AND to_currency = $3
+        LIMIT 1
+      `;
+      
+      const result = await pool.query(query, [organizationId, fromCurrency, toCurrency]);
+      return result.rows[0] || null;
+    } catch (error) {
+      logger.warn('Materialized view query failed, falling back to regular table', { error: error.message });
+      return null;
+    }
   }
 
   /**
@@ -238,30 +350,108 @@ class CurrencyService {
   }
 
   /**
-   * Batch convert multiple amounts
+   * Batch convert multiple amounts with optimized parallel processing
+   * Performance improvements:
+   * - Pre-fetch all required rates in single query
+   * - Parallel conversion processing
+   * - Reduced database round-trips
+   * 
    * @param {string} organizationId - Organization ID
    * @param {Array} conversions - Array of conversion requests
    * @returns {Array} Array of conversion results
    */
   async batchConvert(organizationId, conversions) {
-    const results = [];
+    if (!conversions || conversions.length === 0) {
+      return [];
+    }
 
-    for (const conversion of conversions) {
+    // Extract unique currency pairs
+    const currencyPairs = new Map();
+    conversions.forEach(conv => {
+      const key = `${conv.fromCurrency}-${conv.toCurrency}`;
+      if (!currencyPairs.has(key) && conv.fromCurrency !== conv.toCurrency) {
+        currencyPairs.set(key, { from: conv.fromCurrency, to: conv.toCurrency });
+      }
+    });
+
+    // Pre-fetch all required rates in parallel
+    const rateFetchPromises = Array.from(currencyPairs.values()).map(pair =>
+      this.getExchangeRate(organizationId, pair.from, pair.to).catch(err => ({
+        error: err.message,
+        from: pair.from,
+        to: pair.to
+      }))
+    );
+
+    const fetchedRates = await Promise.all(rateFetchPromises);
+    const rateMap = new Map();
+    
+    fetchedRates.forEach(rate => {
+      if (!rate.error) {
+        const key = `${rate.from_currency}-${rate.to_currency}`;
+        rateMap.set(key, rate);
+      }
+    });
+
+    // Process conversions in parallel using pre-fetched rates
+    const conversionPromises = conversions.map(async (conversion) => {
       try {
-        const result = await this.convertAmount({
-          organizationId,
-          ...conversion
-        });
-        results.push({ success: true, ...result });
+        // Same currency optimization
+        if (conversion.fromCurrency === conversion.toCurrency) {
+          return {
+            success: true,
+            fromCurrency: conversion.fromCurrency,
+            toCurrency: conversion.toCurrency,
+            fromAmount: conversion.amount,
+            toAmount: conversion.amount,
+            rate: 1.0,
+            source: 'identity'
+          };
+        }
+
+        const key = `${conversion.fromCurrency}-${conversion.toCurrency}`;
+        const rate = rateMap.get(key);
+
+        if (!rate) {
+          throw new Error(`No exchange rate found for ${conversion.fromCurrency} to ${conversion.toCurrency}`);
+        }
+
+        const convertedAmount = conversion.amount * rate.rate;
+        const roundedAmount = this.roundAmount(
+          convertedAmount,
+          conversion.decimalPlaces || 2,
+          conversion.roundingMethod || 'half_up'
+        );
+
+        return {
+          success: true,
+          fromCurrency: conversion.fromCurrency,
+          toCurrency: conversion.toCurrency,
+          fromAmount: conversion.amount,
+          toAmount: roundedAmount,
+          rate: rate.rate,
+          exchangeRateId: rate.id,
+          source: rate.source
+        };
       } catch (error) {
-        logger.error('Batch conversion error', { conversion, error });
-        results.push({
+        logger.error('Batch conversion item error', { conversion, error });
+        return {
           success: false,
           error: error.message,
-          ...conversion
-        });
+          fromCurrency: conversion.fromCurrency,
+          toCurrency: conversion.toCurrency,
+          fromAmount: conversion.amount
+        };
       }
-    }
+    });
+
+    const results = await Promise.all(conversionPromises);
+    
+    logger.info('Batch conversion completed', {
+      total: conversions.length,
+      successful: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length
+    });
 
     return results;
   }
@@ -309,9 +499,8 @@ class CurrencyService {
   async createExchangeRate(rateData) {
     const rate = await this.repository.createRate(rateData);
     
-    // Invalidate cache for this currency pair
-    const cacheKey = `rate:${rateData.organizationId}:${rateData.fromCurrency}:${rateData.toCurrency}`;
-    this.cache.del(cacheKey);
+    // Invalidate both cache layers for this currency pair
+    await this.invalidateRateCache(rateData.organizationId, rateData.fromCurrency, rateData.toCurrency);
     
     return rate;
   }
@@ -325,10 +514,50 @@ class CurrencyService {
   async updateExchangeRate(id, updateData) {
     const rate = await this.repository.updateRate(id, updateData);
     
-    // Invalidate cache
-    this.cache.flushAll();
+    // Invalidate all caches (we don't know which pairs are affected)
+    await this.invalidateAllCaches();
     
     return rate;
+  }
+
+  /**
+   * Invalidate cache for specific currency pair
+   */
+  async invalidateRateCache(organizationId, fromCurrency, toCurrency) {
+    const cacheKey = `rate:${organizationId}:${fromCurrency}:${toCurrency}`;
+    
+    // Clear L1 cache
+    this.cache.del(cacheKey);
+    
+    // Clear L2 cache (Redis)
+    if (this.redisClient && this.useRedisCache) {
+      try {
+        await this.redisClient.del(cacheKey);
+      } catch (error) {
+        logger.warn('Redis cache invalidation failed', { error: error.message });
+      }
+    }
+  }
+
+  /**
+   * Invalidate all caches (use sparingly)
+   */
+  async invalidateAllCaches() {
+    // Clear L1 cache
+    this.cache.flushAll();
+    
+    // Clear L2 cache (Redis) - remove all rate keys
+    if (this.redisClient && this.useRedisCache) {
+      try {
+        const keys = await this.redisClient.keys('rate:*');
+        if (keys.length > 0) {
+          await this.redisClient.del(keys);
+          logger.info('Redis rate cache cleared', { count: keys.length });
+        }
+      } catch (error) {
+        logger.warn('Redis cache flush failed', { error: error.message });
+      }
+    }
   }
 
   /**
@@ -754,6 +983,55 @@ class CurrencyService {
       },
       conversions: conversionResult.conversions
     };
+  }
+
+  /**
+   * Refresh materialized views for currency data
+   * Should be called periodically via cron/scheduler
+   */
+  async refreshMaterializedViews() {
+    try {
+      await pool.query('SELECT payroll.refresh_currency_materialized_views()');
+      logger.info('Currency materialized views refreshed successfully');
+      return { success: true };
+    } catch (error) {
+      logger.error('Failed to refresh materialized views', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Get cache statistics and health
+   */
+  getCacheStats() {
+    const stats = {
+      l1Cache: {
+        type: 'NodeCache',
+        enabled: true,
+        keys: this.cache.keys().length,
+        stats: this.cache.getStats()
+      },
+      l2Cache: {
+        type: 'Redis',
+        enabled: this.useRedisCache,
+        connected: this.redisClient?.isOpen || false
+      },
+      materializedViews: {
+        enabled: this.useMaterializedViews
+      }
+    };
+    
+    return stats;
+  }
+
+  /**
+   * Cleanup resources (call on shutdown)
+   */
+  async cleanup() {
+    if (this.redisClient && this.redisClient.isOpen) {
+      await this.redisClient.quit();
+      logger.info('Redis connection closed');
+    }
   }
 }
 
