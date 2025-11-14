@@ -17,6 +17,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@radix-ui/react-tooltip": "^1.0.7",
     "@recruitiq/api-client": "workspace:*",
     "@recruitiq/types": "workspace:*",
     "@recruitiq/ui": "workspace:*",
