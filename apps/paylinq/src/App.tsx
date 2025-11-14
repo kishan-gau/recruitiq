@@ -38,6 +38,11 @@ const PayslipTemplates = lazy(() => import('@/pages/settings/payslip-templates/P
 const PayslipTemplateEditor = lazy(() => import('@/pages/settings/payslip-templates/PayslipTemplateEditor'));
 const WorkerTypes = lazy(() => import('@/pages/worker-types/WorkerTypesList'));
 
+// Currency & Approvals
+const ExchangeRatesPage = lazy(() => import('@/components/currency/ExchangeRatesPage'));
+const CurrencyConfigPage = lazy(() => import('@/components/currency/CurrencyConfigPage'));
+const ApprovalQueuePage = lazy(() => import('@/components/approvals/ApprovalQueuePage'));
+
 function App() {
   return (
     <ErrorBoundary>
@@ -89,6 +94,13 @@ function App() {
             
             {/* Reports */}
             <Route path="reports" element={<Reports />} />
+            
+            {/* Currency Management */}
+            <Route path="currency/exchange-rates" element={<ExchangeRatesPage />} />
+            <Route path="currency/configuration" element={<CurrencyConfigPage />} />
+            
+            {/* Approval Workflows */}
+            <Route path="approvals" element={<ApprovalQueuePage />} />
             
             {/* Settings */}
             <Route path="settings" element={<SettingsHub />} />

@@ -22,6 +22,8 @@ import {
   FileBarChart,
   LogOut,
   Briefcase,
+  Coins,
+  CheckSquare,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -91,6 +93,28 @@ const complianceItems: NavigationItem[] = [
     href: '/reconciliation',
     icon: Scale,
     description: 'Balance and verify accounts',
+  },
+];
+
+const currencyItems: NavigationItem[] = [
+  {
+    name: 'Exchange Rates',
+    href: '/currency/exchange-rates',
+    icon: Coins,
+    description: 'Manage currency exchange rates',
+  },
+  {
+    name: 'Currency Config',
+    href: '/currency/configuration',
+    icon: DollarSign,
+    description: 'Configure currency settings',
+  },
+  {
+    name: 'Approvals',
+    href: '/approvals',
+    icon: CheckSquare,
+    description: 'Review currency approval requests',
+    badge: 0, // Will be updated dynamically with pending count
   },
 ];
 
@@ -190,6 +214,16 @@ export default function Layout() {
             title="Compliance & Finance"
             icon={FileBarChart}
             items={complianceItems}
+            collapsible
+            defaultOpen
+            onItemClick={() => setSidebarOpen(false)}
+          />
+
+          {/* Currency Management Group */}
+          <NavigationGroup
+            title="Currency Management"
+            icon={Coins}
+            items={currencyItems}
             collapsible
             defaultOpen
             onItemClick={() => setSidebarOpen(false)}
