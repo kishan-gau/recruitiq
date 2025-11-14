@@ -26,9 +26,17 @@ const PayrollRunDetails = lazy(() => import('@/pages/payroll/PayrollRunDetails')
 const Payslips = lazy(() => import('@/pages/payslips/PayslipsList'));
 const Reconciliation = lazy(() => import('@/pages/reconciliation/ReconciliationDashboard'));
 const Reports = lazy(() => import('@/pages/reports/ReportsDashboard'));
-const SystemPreferences = lazy(() => import('@/pages/SystemPreferencesPage'));
+const SettingsHub = lazy(() => import('@/pages/settings/SettingsHub'));
+const GeneralSettings = lazy(() => import('@/pages/settings/GeneralSettings'));
+const EmailSettings = lazy(() => import('@/pages/settings/EmailSettings'));
+const NotificationSettings = lazy(() => import('@/pages/settings/NotificationSettings'));
+const PayrollDefaultsSettings = lazy(() => import('@/pages/settings/PayrollDefaultsSettings'));
+const PayPeriodConfigPage = lazy(() => import('@/pages/PayPeriodConfigPage'));
+const TaxSettingsPage = lazy(() => import('@/pages/TaxSettingsPage'));
+const PayrollRunTypeSettings = lazy(() => import('@/pages/PayrollRunTypeSettings'));
 const PayslipTemplates = lazy(() => import('@/pages/settings/payslip-templates/PayslipTemplates'));
 const PayslipTemplateEditor = lazy(() => import('@/pages/settings/payslip-templates/PayslipTemplateEditor'));
+const WorkerTypes = lazy(() => import('@/pages/worker-types/WorkerTypesList'));
 
 function App() {
   return (
@@ -83,7 +91,15 @@ function App() {
             <Route path="reports" element={<Reports />} />
             
             {/* Settings */}
-            <Route path="settings" element={<SystemPreferences />} />
+            <Route path="settings" element={<SettingsHub />} />
+            <Route path="settings/general" element={<GeneralSettings />} />
+            <Route path="settings/email" element={<EmailSettings />} />
+            <Route path="settings/notifications" element={<NotificationSettings />} />
+            <Route path="settings/worker-types" element={<WorkerTypes />} />
+            <Route path="settings/payroll-defaults" element={<PayrollDefaultsSettings />} />
+            <Route path="settings/pay-periods" element={<PayPeriodConfigPage />} />
+            <Route path="settings/tax-settings" element={<TaxSettingsPage />} />
+            <Route path="settings/payroll-run-types" element={<PayrollRunTypeSettings />} />
             <Route path="settings/payslip-templates" element={<PayslipTemplates />} />
             <Route path="settings/payslip-templates/:id" element={<PayslipTemplateEditor />} />
             

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, FileText } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Plus, Search, FileText, ArrowLeft } from 'lucide-react';
 import TemplateCard from '@/components/payslip-templates/TemplateCard';
 import TemplateAssignmentModal from '@/components/payslip-templates/TemplateAssignmentModal';
 import { useToast } from '@/contexts/ToastContext';
@@ -108,13 +108,21 @@ export default function PayslipTemplates() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Payslip Templates</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Create and manage customizable payslip designs
-          </p>
-        </div>
+      <div>
+        <Link
+          to="/settings"
+          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Settings
+        </Link>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Payslip Templates</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              Create and manage customizable payslip designs
+            </p>
+          </div>
         <button
           onClick={handleCreateTemplate}
           className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
@@ -122,6 +130,7 @@ export default function PayslipTemplates() {
           <Plus className="w-5 h-5" />
           <span>Create Template</span>
         </button>
+        </div>
       </div>
 
       {/* Search & Filters */}

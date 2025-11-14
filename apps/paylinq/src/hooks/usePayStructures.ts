@@ -38,6 +38,7 @@ export interface PayStructureComponent {
   templateId?: string;
   componentCode: string;
   componentName: string;
+  description?: string;
   componentCategory: 'earning' | 'deduction' | 'tax' | 'benefit' | 'employer_cost' | 'reimbursement';
   componentType?: 'earnings' | 'deductions' | 'taxes' | 'benefits'; // Legacy field
   calculationType: 'fixed' | 'percentage' | 'formula' | 'hourly_rate' | 'tiered' | 'external';
@@ -48,8 +49,13 @@ export interface PayStructureComponent {
   // Worker override configuration
   allowWorkerOverride?: boolean;
   overrideAllowedFields?: string[];
+  hasOverrides?: boolean;
   isMandatory?: boolean;
   isTaxable?: boolean;
+  
+  // Pay impact configuration
+  affectsGrossPay?: boolean;
+  affectsNetPay?: boolean;
   
   // Calculation-specific fields
   defaultAmount?: number; // For fixed and base for hourly_rate
@@ -64,8 +70,41 @@ export interface PayStructureComponent {
   hourlyRate?: number; // Legacy
   tieredRates?: TieredRate[];
   
+  // Constraint fields
+  minAmount?: number;
+  maxAmount?: number;
+  minPercentage?: number;
+  maxPercentage?: number;
+  maxAnnual?: number;
+  maxPerPeriod?: number;
+  
+  // Display and approval configuration
+  displayOnPayslip?: boolean;
+  requiresApproval?: boolean;
+  taxCategory?: string;
+  accountingCode?: string;
+  
+  // Temporal and proration
+  temporalPatternId?: string;
+  prorationMethod?: string;
+  
+  // Conditions and rules
+  applicabilityRules?: any;
+  conditionExpression?: string;
   conditions?: any;
+  
+  // Calculation settings
+  roundingMethod?: string;
+  roundingPrecision?: number;
+  currency?: string;
+  payFrequency?: string;
+  compoundingFrequency?: string;
+  
+  // Additional metadata
+  notes?: string;
+  tags?: string[] | string;
   metadata?: any;
+  
   createdAt?: string;
   updatedAt?: string;
 }
@@ -81,14 +120,16 @@ export interface TieredRate {
 export interface WorkerPayStructure {
   id: string;
   employeeId: string;
-  templateId: string;
+  templateVersionId: string; // FK to specific template version
+  baseSalary?: number;
   effectiveFrom: string;
   effectiveTo?: string;
   assignmentReason?: string;
-  templateSnapshot: any;
   createdAt: string;
   createdBy: string;
+  // Runtime-resolved from template JOIN
   template?: PayStructureTemplate;
+  components?: PayStructureComponent[];
   overrides?: ComponentOverride[];
 }
 

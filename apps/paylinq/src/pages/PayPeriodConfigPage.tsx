@@ -9,7 +9,8 @@
  * - Preview of upcoming pay periods
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Calendar,
   Settings,
@@ -17,9 +18,13 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle,
+  ArrowLeft,
+  Loader2,
 } from 'lucide-react';
 import { DatePicker, FormSection, FormGrid, FormField, FormActions } from '@/components/form';
 import { format, addDays, addMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useToast } from '@/contexts/ToastContext';
 
 type PayFrequency = 'weekly' | 'bi-weekly' | 'semi-monthly' | 'monthly';
 
@@ -33,9 +38,9 @@ interface PayPeriodConfig {
 
 interface Holiday {
   id: string;
-  name: string;
-  date: Date;
-  recurring: boolean;
+  holidayName: string;
+  holidayDate: string | Date;
+  isRecurring: boolean;
 }
 
 const PAY_FREQUENCIES = [
@@ -95,28 +100,53 @@ function calculateNextPayPeriods(config: PayPeriodConfig, count: number = 6) {
 }
 
 export default function PayPeriodConfigPage() {
+  const { paylinq } = usePaylinqAPI();
+  const { success: showSuccess, error: showError } = useToast();
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<PayFrequency>('bi-weekly');
   const [startDate, setStartDate] = useState<Date | null>(new Date());
-  const [payDayOffset, setPayDayOffset] = useState(3); // 3 days after period end
-  const [holidays, setHolidays] = useState<Holiday[]>([
-    {
-      id: '1',
-      name: 'New Year\'s Day',
-      date: new Date(2025, 0, 1),
-      recurring: true,
-    },
-    {
-      id: '2',
-      name: 'Independence Day',
-      date: new Date(2025, 10, 25),
-      recurring: true,
-    },
-  ]);
+  const [payDayOffset, setPayDayOffset] = useState(3);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [showAddHoliday, setShowAddHoliday] = useState(false);
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState<Date | null>(null);
   const [newHolidayRecurring, setNewHolidayRecurring] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    loadConfig();
+    loadHolidays();
+  }, []);
+
+  const loadConfig = async () => {
+    try {
+      setIsLoading(true);
+      const response = await paylinq.getPayPeriodConfig();
+      if (response.payPeriodConfig) {
+        const config = response.payPeriodConfig;
+        setSelectedFrequency(config.payFrequency);
+        setStartDate(new Date(config.periodStartDate));
+        setPayDayOffset(config.payDayOffset || 3);
+      }
+    } catch (err: any) {
+      console.error('Error loading pay period config:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadHolidays = async () => {
+    try {
+      const response = await paylinq.getHolidays();
+      if (response.holidays) {
+        setHolidays(response.holidays);
+      }
+    } catch (err: any) {
+      console.error('Error loading holidays:', err);
+    }
+  };
 
   const config: PayPeriodConfig = {
     frequency: selectedFrequency,
@@ -126,33 +156,75 @@ export default function PayPeriodConfigPage() {
 
   const upcomingPeriods = startDate ? calculateNextPayPeriods(config, 6) : [];
 
-  const handleSave = () => {
-    // In real implementation, call API to save settings
-    console.log('Saving pay period configuration:', config);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+  const handleSave = async () => {
+    if (!startDate) {
+      showError('Please select a pay period start date');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await paylinq.savePayPeriodConfig({
+        payFrequency: selectedFrequency,
+        periodStartDate: startDate.toISOString().split('T')[0],
+        payDayOffset,
+      });
+      
+      showSuccess('Pay period configuration saved successfully');
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err: any) {
+      showError(err.message || 'Failed to save configuration');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleAddHoliday = () => {
-    if (!newHolidayName || !newHolidayDate) return;
+  const handleAddHoliday = async () => {
+    if (!newHolidayName || !newHolidayDate) {
+      showError('Please enter holiday name and date');
+      return;
+    }
 
-    const newHoliday: Holiday = {
-      id: Date.now().toString(),
-      name: newHolidayName,
-      date: newHolidayDate,
-      recurring: newHolidayRecurring,
-    };
+    try {
+      const response = await paylinq.createHoliday({
+        holidayName: newHolidayName,
+        holidayDate: newHolidayDate.toISOString().split('T')[0],
+        isRecurring: newHolidayRecurring,
+        affectsPaySchedule: true,
+        affectsWorkSchedule: true,
+      });
 
-    setHolidays([...holidays, newHoliday]);
-    setNewHolidayName('');
-    setNewHolidayDate(null);
-    setNewHolidayRecurring(true);
-    setShowAddHoliday(false);
+      if (response.holiday) {
+        setHolidays([...holidays, response.holiday]);
+        setNewHolidayName('');
+        setNewHolidayDate(null);
+        setNewHolidayRecurring(false);
+        setShowAddHoliday(false);
+        showSuccess('Holiday added successfully');
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to add holiday');
+    }
   };
 
-  const handleDeleteHoliday = (id: string) => {
-    setHolidays(holidays.filter(h => h.id !== id));
+  const handleDeleteHoliday = async (id: string) => {
+    try {
+      await paylinq.deleteHoliday(id);
+      setHolidays(holidays.filter(h => h.id !== id));
+      showSuccess('Holiday deleted successfully');
+    } catch (err: any) {
+      showError(err.message || 'Failed to delete holiday');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -268,10 +340,10 @@ export default function PayPeriodConfigPage() {
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                     >
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">{holiday.name}</div>
+                        <div className="text-sm font-medium text-gray-900">{holiday.holidayName}</div>
                         <div className="text-xs text-gray-500">
-                          {format(holiday.date, 'MMMM dd, yyyy')}
-                          {holiday.recurring && ' • Recurring annually'}
+                          {format(new Date(holiday.holidayDate), 'MMMM dd, yyyy')}
+                          {holiday.isRecurring && ' • Recurring annually'}
                         </div>
                       </div>
                       <button

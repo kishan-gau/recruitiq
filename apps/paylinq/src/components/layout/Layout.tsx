@@ -21,6 +21,7 @@ import {
   Wallet,
   FileBarChart,
   LogOut,
+  Briefcase,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -104,7 +105,7 @@ const settingsItem: NavigationItem = {
   name: 'Settings',
   href: '/settings',
   icon: Settings,
-  description: 'System configuration',
+  description: 'System configuration and preferences',
 };
 
 export default function Layout() {

@@ -340,7 +340,10 @@ function ComponentRow({ component, index, onEdit, onDelete, isDraft }: Component
       case 'fixed':
         return `Fixed: ${component.fixedAmount || 0} SRD`;
       case 'percentage':
-        return `${component.percentageValue || 0}% of ${component.percentageBase || 'base'}`;
+        // Both percentageRate and percentageValue are stored as decimals (0.05 = 5%), multiply by 100 for display
+        const percentageDisplay = ((component.percentageRate || component.percentageValue || 0) * 100).toFixed(4).replace(/\.?0+$/, '');
+        const percentageBase = component.percentageOf || component.percentageBase || 'base';
+        return `${percentageDisplay}% of ${percentageBase}`;
       case 'hourly_rate':
         return `Hourly: ${component.hourlyRate || 0} SRD/hr`;
       case 'formula':
@@ -492,8 +495,14 @@ function ComponentDetails({ component }: ComponentDetailsProps) {
           
           {component.calculationType === 'percentage' && (
             <>
-              <DetailRow label="Percentage Value" value={`${component.percentageValue || 0}%`} />
-              <DetailRow label="Percentage Base" value={component.percentageBase} />
+              <DetailRow 
+                label="Percentage Value" 
+                value={`${((component.percentageRate || component.percentageValue || 0) * 100).toFixed(2)}%`} 
+              />
+              <DetailRow 
+                label="Percentage Base" 
+                value={component.percentageOf || component.percentageBase || 'base_salary'} 
+              />
             </>
           )}
           
@@ -534,19 +543,19 @@ function ComponentDetails({ component }: ComponentDetailsProps) {
       </div>
 
       {/* Min/Max Constraints */}
-      {(component.minValue !== null || component.maxValue !== null) && (
+      {(component.minAmount !== undefined && component.minAmount !== null) || (component.maxAmount !== undefined && component.maxAmount !== null) ? (
         <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
           <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-2 uppercase tracking-wide">Value Constraints</h4>
           <div className="space-y-0.5">
-            {component.minValue !== null && (
-              <DetailRow label="Minimum Value" value={`${component.minValue} SRD`} />
+            {component.minAmount !== undefined && component.minAmount !== null && (
+              <DetailRow label="Minimum Amount" value={`${component.minAmount} SRD`} />
             )}
-            {component.maxValue !== null && (
-              <DetailRow label="Maximum Value" value={`${component.maxValue} SRD`} />
+            {component.maxAmount !== undefined && component.maxAmount !== null && (
+              <DetailRow label="Maximum Amount" value={`${component.maxAmount} SRD`} />
             )}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Overrides & Patterns - Compact badges */}
       {(component.allowWorkerOverride || component.hasOverrides || component.temporalPatternId) && (

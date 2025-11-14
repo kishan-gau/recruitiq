@@ -536,45 +536,6 @@ class PayStructureService {
       throw new ValidationError('Only active templates can be assigned to workers');
     }
 
-    // Create template snapshot - access components with snake_case as they come from raw query
-    const components = await this.repository.getTemplateComponents(template.id, organizationId);
-    const templateSnapshot = {
-      template: {
-        id: template.id,
-        code: template.templateCode,
-        name: template.templateName,
-        version: template.version,
-        payFrequency: template.payFrequency,
-        currency: template.currency
-      },
-      components: components.map(c => ({
-        id: c.id,
-        code: c.component_code,
-        name: c.component_name,
-        category: c.component_category,
-        calculationType: c.calculation_type,
-        sequenceOrder: c.sequence_order,
-        configuration: {
-          defaultAmount: c.default_amount,
-          percentageOf: c.percentage_of,
-          percentageRate: c.percentage_rate,
-          formulaExpression: c.formula_expression,
-          formulaVariables: c.formula_variables,
-          formulaAst: c.formula_ast,
-          rateMultiplier: c.rate_multiplier,
-          tierConfiguration: c.tier_configuration,
-          isTaxable: c.is_taxable,
-          affectsGrossPay: c.affects_gross_pay,
-          affectsNetPay: c.affects_net_pay,
-          minAmount: c.min_amount,
-          maxAmount: c.max_amount,
-          maxAnnual: c.max_annual,
-          allowWorkerOverride: c.allow_worker_override,
-          overrideAllowedFields: c.override_allowed_fields
-        }
-      }))
-    };
-
     // Check for any existing assignments that would overlap with the new date range
     const overlappingStructures = await this.repository.getOverlappingWorkerStructures(
       value.employeeId,
@@ -602,13 +563,12 @@ class PayStructureService {
     }
 
     try {
-      // Create new assignment
+      // Create new assignment (reference-based: only FK to template + worker-specific data)
       const assignment = await this.repository.assignTemplateToWorker(
         {
           ...value,
-          templateCode: template.templateCode,
-          templateVersion: template.version,
-          templateSnapshot,
+          templateVersionId: template.id, // FK to specific template version
+          baseSalary: value.baseSalary || null,
           assignmentSource: value.assignmentType === 'default' ? 'org_default' : 'manual',
           isCurrent: true
         },
@@ -729,9 +689,10 @@ class PayStructureService {
   /**
    * Calculate worker pay based on pay structure
    * This is called by PayrollService during payroll processing
+   * ARCHITECTURE: Reference-based - template resolved via JOIN, overrides applied at runtime
    */
   async calculateWorkerPay(employeeId, inputData, organizationId, asOfDate = null) {
-    // Get worker's current pay structure
+    // Get worker's current pay structure (with template JOINed)
     const structure = await this.getCurrentWorkerStructure(employeeId, organizationId, asOfDate);
     if (!structure) {
       throw new NotFoundError('No pay structure found for worker');
@@ -740,19 +701,15 @@ class PayStructureService {
     logger.info('Calculate worker pay - structure retrieved', {
       employeeId,
       structureId: structure.id,
-      hasTemplateSnapshot: !!structure.templateSnapshot,
-      templateSnapshotKeys: structure.templateSnapshot ? Object.keys(structure.templateSnapshot) : []
+      templateId: structure.template?.id,
+      componentsCount: structure.components?.length || 0
     });
 
-    const snapshot = structure.templateSnapshot || structure.template_snapshot;
-    if (!snapshot) {
-      throw new Error('No template snapshot found in pay structure');
-    }
-    
-    const components = snapshot.components || [];
+    // ARCHITECTURE: Components come from template JOIN, not snapshot
+    const components = structure.components || [];
     const overrides = structure.overrides || [];
 
-    // NEW ARCHITECTURE: Base salary/hourly rate comes from inputData (passed from compensation table)
+    // Base salary/hourly rate comes from inputData (passed from compensation table)
     // This makes compensation the single source of truth
     // Legacy: Fall back to structure fields if not provided in input (for backward compatibility)
     const baseSalary = inputData.baseSalary || structure.baseSalary || structure.base_salary;
@@ -768,13 +725,12 @@ class PayStructureService {
     }
     
     // Build context with BOTH camelCase and snake_case for backward compatibility
-    // ARCHITECTURE NOTE: Component configurations are stored in template_snapshot JSONB field
-    // which contains snake_case field references like percentageOf: "base_salary"
+    // ARCHITECTURE NOTE: Component configurations reference other fields (e.g., percentageOf: "base_salary")
     // While the DTO mapper converts top-level fields (base_salary -> baseSalary),
-    // it does NOT transform field references INSIDE JSONB configuration objects.
+    // it does NOT transform field references INSIDE configuration objects.
     // Therefore, we provide both formats in context so components can reference either:
     //   - baseSalary (for future camelCase configs and programmatic access)
-    //   - base_salary (for existing snake_case references in JSONB configs)
+    //   - base_salary (for existing snake_case references in configs)
     const context = {
       // Compensation values in both formats for JSONB config compatibility
       baseSalary,

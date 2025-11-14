@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, CheckCircle } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
@@ -124,23 +124,31 @@ export default function PayslipTemplateEditor() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate('/settings/payslip-templates')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {id === 'new' ? 'Create Template' : 'Edit Template'}
-            </h1>
-            <p className="mt-1 text-gray-600 dark:text-gray-400">
-              Customize your payslip design and layout
-            </p>
+      <div>
+        <Link
+          to="/settings"
+          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Settings
+        </Link>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate('/settings/payslip-templates')}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                {id === 'new' ? 'Create Template' : 'Edit Template'}
+              </h1>
+              <p className="mt-1 text-gray-600 dark:text-gray-400">
+                Customize your payslip design and layout
+              </p>
+            </div>
           </div>
-        </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => handleSave(false)}
@@ -158,6 +166,7 @@ export default function PayslipTemplateEditor() {
             <CheckCircle className="w-4 h-4" />
             <span>Activate</span>
           </button>
+          </div>
         </div>
       </div>
 

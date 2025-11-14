@@ -27,13 +27,13 @@ export default function PayStructureComponentModal({
   const { error: showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<'basic' | 'conditions' | 'advanced'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'config' | 'conditions' | 'advanced'>('basic');
   const [formData, setFormData] = useState({
     componentCode: '',
     componentName: '',
     componentType: 'earnings' as 'earnings' | 'deductions' | 'taxes' | 'benefits',
     calculationType: 'fixed' as 'fixed' | 'percentage' | 'formula' | 'hourly_rate' | 'tiered',
-    sequenceOrder: existingComponents.length + 1,
+    sequenceOrder: 1,
     isOptional: false,
     isVisible: true,
     allowWorkerOverride: false,
@@ -45,6 +45,23 @@ export default function PayStructureComponentModal({
     hourlyRate: '',
     conditions: '',
     metadata: '',
+    // Tax & Pay Impact
+    isTaxable: true,
+    isMandatory: false,
+    affectsGrossPay: true,
+    affectsNetPay: true,
+    taxCategory: '',
+    // Value Constraints
+    minAmount: '',
+    maxAmount: '',
+    minPercentage: '',
+    maxPercentage: '',
+    maxAnnual: '',
+    maxPerPeriod: '',
+    // Display & Approval
+    displayOnPayslip: true,
+    requiresApproval: false,
+    accountingCode: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -65,7 +82,10 @@ export default function PayStructureComponentModal({
         
         // Map backend fields (both new and legacy) to frontend form fields
         const fixedAmountValue = component.fixedAmount ?? component.defaultAmount;
-        const percentageValueRaw = component.percentageValue ?? (component.percentageRate ? component.percentageRate * 100 : null);
+        // Both percentageValue and percentageRate are stored as decimals (0.05 = 5%), multiply by 100 for display
+        const percentageValueRaw = component.percentageRate != null 
+          ? component.percentageRate * 100 
+          : (component.percentageValue != null ? component.percentageValue * 100 : null);
         const percentageBaseValue = component.percentageBase ?? component.percentageOf;
         const formulaValue = component.formula ?? component.formulaExpression;
         const hourlyRateValue = component.hourlyRate ?? component.rateMultiplier;
@@ -91,6 +111,23 @@ export default function PayStructureComponentModal({
           metadata: component.metadata && Object.keys(component.metadata).length > 0 
             ? JSON.stringify(component.metadata, null, 2) 
             : '',
+          // Tax & Pay Impact
+          isTaxable: component.isTaxable ?? true,
+          isMandatory: component.isMandatory ?? false,
+          affectsGrossPay: component.affectsGrossPay ?? true,
+          affectsNetPay: component.affectsNetPay ?? true,
+          taxCategory: component.taxCategory || '',
+          // Value Constraints
+          minAmount: component.minAmount != null ? component.minAmount.toString() : '',
+          maxAmount: component.maxAmount != null ? component.maxAmount.toString() : '',
+          minPercentage: component.minPercentage != null ? (component.minPercentage * 100).toString() : '',
+          maxPercentage: component.maxPercentage != null ? (component.maxPercentage * 100).toString() : '',
+          maxAnnual: component.maxAnnual != null ? component.maxAnnual.toString() : '',
+          maxPerPeriod: component.maxPerPeriod != null ? component.maxPerPeriod.toString() : '',
+          // Display & Approval
+          displayOnPayslip: component.displayOnPayslip ?? true,
+          requiresApproval: component.requiresApproval ?? false,
+          accountingCode: component.accountingCode || '',
         });
       } else {
         // Add mode - reset form
@@ -111,6 +148,23 @@ export default function PayStructureComponentModal({
           hourlyRate: '',
           conditions: '',
           metadata: '',
+          // Tax & Pay Impact
+          isTaxable: true,
+          isMandatory: false,
+          affectsGrossPay: true,
+          affectsNetPay: true,
+          taxCategory: '',
+          // Value Constraints
+          minAmount: '',
+          maxAmount: '',
+          minPercentage: '',
+          maxPercentage: '',
+          maxAnnual: '',
+          maxPerPeriod: '',
+          // Display & Approval
+          displayOnPayslip: true,
+          requiresApproval: false,
+          accountingCode: '',
         });
       }
       setErrors({});
@@ -211,9 +265,24 @@ export default function PayStructureComponentModal({
       calculationType: formData.calculationType,
       sequenceOrder: formData.sequenceOrder,
       isMandatory: !formData.isOptional, // Map isOptional to isMandatory (inverse)
-      displayOnPayslip: formData.isVisible, // Map isVisible to displayOnPayslip
+      displayOnPayslip: formData.displayOnPayslip,
       allowWorkerOverride: formData.allowWorkerOverride,
       overrideAllowedFields: formData.overrideAllowedFields,
+      // Tax & Pay Impact
+      isTaxable: formData.isTaxable,
+      affectsGrossPay: formData.affectsGrossPay,
+      affectsNetPay: formData.affectsNetPay,
+      taxCategory: formData.taxCategory || null,
+      // Value Constraints
+      minAmount: formData.minAmount ? parseFloat(formData.minAmount) : null,
+      maxAmount: formData.maxAmount ? parseFloat(formData.maxAmount) : null,
+      minPercentage: formData.minPercentage ? parseFloat(formData.minPercentage) / 100 : null,
+      maxPercentage: formData.maxPercentage ? parseFloat(formData.maxPercentage) / 100 : null,
+      maxAnnual: formData.maxAnnual ? parseFloat(formData.maxAnnual) : null,
+      maxPerPeriod: formData.maxPerPeriod ? parseFloat(formData.maxPerPeriod) : null,
+      // Display & Approval
+      requiresApproval: formData.requiresApproval,
+      accountingCode: formData.accountingCode || null,
     };
 
     // Add calculation-specific fields with backend field names
@@ -327,6 +396,18 @@ export default function PayStructureComponentModal({
           >
             <FileText className="w-4 h-4" />
             Basic Info
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('config')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'config'
+                ? 'border-emerald-600 dark:border-blue-400 text-emerald-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            Configuration
           </button>
           <button
             type="button"
@@ -564,13 +645,184 @@ export default function PayStructureComponentModal({
           <label className="flex items-center space-x-2">
             <input
               type="checkbox"
-              checked={formData.isVisible}
-              onChange={(e) => setFormData({ ...formData, isVisible: e.target.checked })}
+              checked={formData.displayOnPayslip}
+              onChange={(e) => setFormData({ ...formData, displayOnPayslip: e.target.checked })}
               className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
             />
             <span className="text-sm text-gray-900 dark:text-white">Visible on Payslip</span>
           </label>
         </div>
+              </>
+            )}
+
+            {/* Configuration Tab */}
+            {activeTab === 'config' && (
+              <>
+                {/* Tax & Pay Impact Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Tax & Pay Impact</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.isTaxable}
+                        onChange={(e) => setFormData({ ...formData, isTaxable: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">Taxable</span>
+                    </label>
+
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.affectsGrossPay}
+                        onChange={(e) => setFormData({ ...formData, affectsGrossPay: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">Affects Gross Pay</span>
+                    </label>
+
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.affectsNetPay}
+                        onChange={(e) => setFormData({ ...formData, affectsNetPay: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">Affects Net Pay</span>
+                    </label>
+
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.requiresApproval}
+                        onChange={(e) => setFormData({ ...formData, requiresApproval: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">Requires Approval</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Tax Category">
+                      <Input
+                        value={formData.taxCategory}
+                        onChange={(e) => setFormData({ ...formData, taxCategory: e.target.value })}
+                        placeholder="e.g., standard, exempt"
+                      />
+                    </FormField>
+
+                    <FormField label="Accounting Code">
+                      <Input
+                        value={formData.accountingCode}
+                        onChange={(e) => setFormData({ ...formData, accountingCode: e.target.value })}
+                        placeholder="e.g., 5100"
+                      />
+                    </FormField>
+                  </div>
+                </div>
+
+                {/* Value Constraints Section */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Value Constraints</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField label="Minimum Amount">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <DollarSign className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.minAmount}
+                          onChange={(e) => setFormData({ ...formData, minAmount: e.target.value })}
+                          className="pl-10"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </FormField>
+
+                    <FormField label="Maximum Amount">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <DollarSign className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.maxAmount}
+                          onChange={(e) => setFormData({ ...formData, maxAmount: e.target.value })}
+                          className="pl-10"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </FormField>
+
+                    <FormField label="Minimum Percentage">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <Percent className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.minPercentage}
+                          onChange={(e) => setFormData({ ...formData, minPercentage: e.target.value })}
+                          className="pr-10"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </FormField>
+
+                    <FormField label="Maximum Percentage">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <Percent className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.maxPercentage}
+                          onChange={(e) => setFormData({ ...formData, maxPercentage: e.target.value })}
+                          className="pr-10"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </FormField>
+
+                    <FormField label="Maximum Annual">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <DollarSign className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.maxAnnual}
+                          onChange={(e) => setFormData({ ...formData, maxAnnual: e.target.value })}
+                          className="pl-10"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </FormField>
+
+                    <FormField label="Maximum Per Period">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <DollarSign className="w-4 h-4 text-gray-400" />
+                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={formData.maxPerPeriod}
+                          onChange={(e) => setFormData({ ...formData, maxPerPeriod: e.target.value })}
+                          className="pl-10"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </FormField>
+                  </div>
+                </div>
               </>
             )}
 

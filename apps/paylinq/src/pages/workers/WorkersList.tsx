@@ -10,12 +10,14 @@ import type { FilterConfig } from '@/components/ui/FilterPanel';
 import TableSkeleton from '@/components/ui/TableSkeleton';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
 import AddWorkerModal from '@/components/modals/AddWorkerModal';
 
 export default function WorkersList() {
   const navigate = useNavigate();
   const { success, error } = useToast();
   const { paylinq } = usePaylinqAPI();
+  const { data: workerTypes = [] } = useWorkerTypeTemplates({ status: 'active' });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,12 +107,10 @@ export default function WorkersList() {
       id: 'workerType',
       label: 'Worker Type',
       type: 'multiselect',
-      options: [
-        { label: 'Full-Time', value: 'Full-Time' },
-        { label: 'Part-Time', value: 'Part-Time' },
-        { label: 'Contract', value: 'Contract' },
-        { label: 'Hourly', value: 'Hourly' },
-      ],
+      options: workerTypes.map((type: any) => ({
+        label: type.name || type.code,
+        value: type.id
+      })),
     },
   ];
 

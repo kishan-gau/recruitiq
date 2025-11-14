@@ -19,6 +19,7 @@ import {
   updateTaxRule,
   deleteTaxRule,
 } from '../controllers/taxRulesController.js';
+import payPeriodController from '../controllers/payPeriodController.js';
 
 const router = express.Router();
 
@@ -35,6 +36,17 @@ router.put('/company', updateCompanySettings);
 // Payroll settings
 router.get('/payroll', getPayrollSettings);
 router.put('/payroll', updatePayrollSettings);
+
+// Pay Period Configuration
+router.get('/pay-period-config', payPeriodController.getPayPeriodConfig);
+router.put('/pay-period-config', payPeriodController.savePayPeriodConfig);
+router.get('/pay-period/current', payPeriodController.getCurrentPayPeriod);
+router.get('/pay-period/next', payPeriodController.getNextPayPeriod);
+
+// Company Holidays
+router.get('/holidays', payPeriodController.getHolidays);
+router.post('/holidays', payPeriodController.createHoliday);
+router.delete('/holidays/:id', payPeriodController.deleteHoliday);
 
 // Tax rules
 router.get('/tax-rules', getTaxRules);

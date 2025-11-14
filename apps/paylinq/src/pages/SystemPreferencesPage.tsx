@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Globe,
   DollarSign,
@@ -23,6 +24,7 @@ import {
   Send,
   Settings,
   FileText,
+  ArrowLeft,
 } from 'lucide-react';
 import { FormSection, FormGrid, FormField } from '@/components/form/FormField';
 import { SelectWithSearch } from '@/components/form/SelectWithSearch';
@@ -56,9 +58,18 @@ interface NotificationPreference {
 const SystemPreferencesPage = () => {
   const { client: api } = usePaylinqAPI();
   const { success: showSuccess, error: showError } = useToast();
+  const [searchParams] = useSearchParams();
   
-  // Active tab
-  const [activeTab, setActiveTab] = useState('general');
+  // Get active tab from URL param (e.g., ?tab=email) or determine from path
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab = (() => {
+    if (window.location.pathname.includes('/settings/email')) return 'email';
+    if (window.location.pathname.includes('/settings/notifications')) return 'notifications';
+    if (window.location.pathname.includes('/settings/payroll-defaults')) return 'payroll';
+    return tabFromUrl || 'general';
+  })();
+  
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isLoading, setIsLoading] = useState(false);
 
   // Currency settings
@@ -392,21 +403,30 @@ const SystemPreferencesPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">System Preferences</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Configure system-wide defaults and preferences
-          </p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={isLoading}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+      <div>
+        <Link
+          to="/settings"
+          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
         >
-          <CheckCircle className="h-4 w-4 mr-2" />
-          {isLoading ? 'Saving...' : 'Save Preferences'}
-        </button>
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Settings
+        </Link>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">System Preferences</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Configure system-wide defaults and preferences
+            </p>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={isLoading}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            {isLoading ? 'Saving...' : 'Save Preferences'}
+          </button>
+        </div>
       </div>
 
       {/* Success message */}

@@ -94,6 +94,111 @@ class WorkerTypeService {
   }
 
   /**
+   * Get worker type templates with pagination, filtering, and sorting
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} pagination - Pagination params {page, limit}
+   * @param {Object} filters - Filter params
+   * @param {Object} sort - Sort params {sortBy, sortOrder}
+   * @returns {Promise<Object>} Paginated worker types with metadata
+   */
+  async getWorkerTypes(organizationId, pagination = {}, filters = {}, sort = {}) {
+    try {
+      const page = pagination.page || 1;
+      const limit = pagination.limit || 20;
+      const offset = (page - 1) * limit;
+      const sortBy = sort.sortBy || 'name';
+      const sortOrder = sort.sortOrder || 'asc';
+
+      // Build WHERE clause
+      const conditions = ['organization_id = $1', 'deleted_at IS NULL'];
+      const params = [organizationId];
+      let paramIndex = 2;
+
+      // Apply filters
+      if (filters.status === 'active') {
+        conditions.push('status = \'active\'');
+      } else if (filters.status === 'inactive') {
+        conditions.push('status = \'inactive\'');
+      }
+
+      if (filters.benefitsEligible !== undefined) {
+        params.push(filters.benefitsEligible);
+        conditions.push(`benefits_eligible = $${paramIndex++}`);
+      }
+
+      if (filters.overtimeEligible !== undefined) {
+        params.push(filters.overtimeEligible);
+        conditions.push(`overtime_eligible = $${paramIndex++}`);
+      }
+
+      if (filters.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`(LOWER(name) LIKE LOWER($${paramIndex}) OR LOWER(code) LIKE LOWER($${paramIndex}))`);
+        paramIndex++;
+      }
+
+      const whereClause = conditions.join(' AND ');
+
+      // Validate and map sort field
+      const sortFieldMap = {
+        name: 'name',
+        code: 'code',
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+        payType: 'pay_type',
+      };
+      const sortField = sortFieldMap[sortBy] || 'name';
+      const sortDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+      // Get total count
+      const countResult = await query(
+        `SELECT COUNT(*) as total FROM payroll.worker_type_template WHERE ${whereClause}`,
+        params,
+        organizationId
+      );
+      const total = parseInt(countResult.rows[0].total);
+
+      // Get paginated results
+      const result = await query(
+        `SELECT 
+          id, code, name, description,
+          default_pay_frequency as "defaultPayFrequency",
+          default_payment_method as "defaultPaymentMethod",
+          benefits_eligible as "benefitsEligible",
+          overtime_eligible as "overtimeEligible",
+          pto_eligible as "ptoEligible",
+          sick_leave_eligible as "sickLeaveEligible",
+          vacation_accrual_rate as "vacationAccrualRate",
+          status,
+          organization_id as "organizationId",
+          created_at as "createdAt", created_by as "createdBy",
+          updated_at as "updatedAt", updated_by as "updatedBy"
+        FROM payroll.worker_type_template
+        WHERE ${whereClause}
+        ORDER BY ${sortField} ${sortDirection}
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        [...params, limit, offset],
+        organizationId
+      );
+
+      return {
+        workerTypes: result.rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNext: offset + limit < total,
+          hasPrev: page > 1,
+        },
+      };
+    } catch (err) {
+      logger.error('Error fetching worker types', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
    * Get worker type templates
    * @param {string} organizationId - Organization UUID
    * @param {Object} filters - Optional filters
@@ -361,6 +466,81 @@ class WorkerTypeService {
     }
   }
 
+  /**
+   * Get employees by worker type with pagination
+   * @param {string} workerTypeId - Worker type UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} pagination - Pagination options {page, limit}
+   * @returns {Promise<Object>} {employees: [], pagination: {page, limit, total, totalPages, hasNext, hasPrev}}
+   */
+  async getEmployeesByWorkerType(workerTypeId, organizationId, pagination = {}) {
+    try {
+      const page = pagination.page || 1;
+      const limit = Math.min(pagination.limit || 20, 100); // Max 100 per API standards
+      const offset = (page - 1) * limit;
+
+      // Get total count
+      const countResult = await query(
+        `SELECT COUNT(*) as total 
+         FROM payroll.worker_type_assignment wta
+         WHERE wta.worker_type_id = $1 
+         AND wta.organization_id = $2 
+         AND wta.deleted_at IS NULL`,
+        [workerTypeId, organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'worker_type_assignment' }
+      );
+
+      const total = parseInt(countResult.rows[0].total);
+      const totalPages = Math.ceil(total / limit);
+
+      // Get paginated employees
+      const result = await query(
+        `SELECT 
+           wta.id,
+           wta.employee_record_id as "employeeRecordId",
+           wta.worker_type_id as "workerTypeId",
+           wta.effective_date as "effectiveDate",
+           wta.end_date as "endDate",
+           wta.created_at as "createdAt",
+           wta.updated_at as "updatedAt",
+           e.first_name as "firstName",
+           e.last_name as "lastName",
+           e.email,
+           e.employee_number as "employeeNumber"
+         FROM payroll.worker_type_assignment wta
+         LEFT JOIN public.employees e ON wta.employee_record_id = e.id
+         WHERE wta.worker_type_id = $1 
+         AND wta.organization_id = $2 
+         AND wta.deleted_at IS NULL
+         ORDER BY wta.created_at DESC
+         LIMIT $3 OFFSET $4`,
+        [workerTypeId, organizationId, limit, offset],
+        organizationId,
+        { operation: 'SELECT', table: 'worker_type_assignment' }
+      );
+
+      return {
+        employees: result.rows,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      };
+    } catch (err) {
+      logger.error('Error fetching employees by worker type', { 
+        error: err.message, 
+        workerTypeId, 
+        organizationId 
+      });
+      throw err;
+    }
+  }
+
   // ==================== TIER LIMIT VALIDATION ====================
 
   /**
@@ -420,4 +600,4 @@ class WorkerTypeService {
   }
 }
 
-export default WorkerTypeService;
+export default new WorkerTypeService();

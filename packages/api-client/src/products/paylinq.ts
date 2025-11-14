@@ -119,7 +119,7 @@ export class PaylinqAPI {
   async getWorkerTypeTemplates(params?: PaginationParams & { status?: string }) {
     const query = new URLSearchParams(params as any).toString();
     return this.client.get<PaginatedResponse<WorkerTypeTemplate>>(
-      `${this.basePath}/worker-type-templates${query ? '?' + query : ''}`
+      `${this.basePath}/worker-types${query ? '?' + query : ''}`
     );
   }
 
@@ -128,7 +128,7 @@ export class PaylinqAPI {
    */
   async getWorkerTypeTemplate(id: string) {
     return this.client.get<ApiResponse<WorkerTypeTemplate>>(
-      `${this.basePath}/worker-type-templates/${id}`
+      `${this.basePath}/worker-types/${id}`
     );
   }
 
@@ -137,7 +137,7 @@ export class PaylinqAPI {
    */
   async createWorkerTypeTemplate(data: CreateWorkerTypeTemplateRequest) {
     return this.client.post<ApiResponse<WorkerTypeTemplate>>(
-      `${this.basePath}/worker-type-templates`,
+      `${this.basePath}/worker-types`,
       data
     );
   }
@@ -147,7 +147,7 @@ export class PaylinqAPI {
    */
   async updateWorkerTypeTemplate(id: string, data: UpdateWorkerTypeTemplateRequest) {
     return this.client.put<ApiResponse<WorkerTypeTemplate>>(
-      `${this.basePath}/worker-type-templates/${id}`,
+      `${this.basePath}/worker-types/${id}`,
       data
     );
   }
@@ -157,7 +157,7 @@ export class PaylinqAPI {
    */
   async deleteWorkerTypeTemplate(id: string) {
     return this.client.delete<ApiResponse<void>>(
-      `${this.basePath}/worker-type-templates/${id}`
+      `${this.basePath}/worker-types/${id}`
     );
   }
 
@@ -1481,6 +1481,60 @@ export class PaylinqAPI {
    */
   async deleteTaxRule(id: string) {
     return this.client.delete(`${this.basePath}/settings/tax-rules/${id}`);
+  }
+
+  // ============================================================================
+  // Pay Period Configuration
+  // ============================================================================
+
+  /**
+   * Get pay period configuration
+   */
+  async getPayPeriodConfig() {
+    return this.client.get(`${this.basePath}/settings/pay-period-config`);
+  }
+
+  /**
+   * Save pay period configuration
+   */
+  async savePayPeriodConfig(data: any) {
+    return this.client.put(`${this.basePath}/settings/pay-period-config`, data);
+  }
+
+  /**
+   * Get current pay period
+   */
+  async getCurrentPayPeriod() {
+    return this.client.get(`${this.basePath}/settings/pay-period/current`);
+  }
+
+  /**
+   * Get next pay period
+   */
+  async getNextPayPeriod() {
+    return this.client.get(`${this.basePath}/settings/pay-period/next`);
+  }
+
+  /**
+   * Get company holidays
+   */
+  async getHolidays(year?: number) {
+    const query = year ? `?year=${year}` : '';
+    return this.client.get(`${this.basePath}/settings/holidays${query}`);
+  }
+
+  /**
+   * Create company holiday
+   */
+  async createHoliday(data: any) {
+    return this.client.post(`${this.basePath}/settings/holidays`, data);
+  }
+
+  /**
+   * Delete company holiday
+   */
+  async deleteHoliday(id: string) {
+    return this.client.delete(`${this.basePath}/settings/holidays/${id}`);
   }
 
   // ============================================================================

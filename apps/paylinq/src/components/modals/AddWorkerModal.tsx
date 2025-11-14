@@ -3,6 +3,7 @@ import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
 
 interface AddWorkerModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ interface WorkerFormData {
 export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorkerModalProps) {
   const { paylinq } = usePaylinqAPI();
   const { success, error } = useToast();
+  const { data: workerTypes = [], isLoading: loadingTypes } = useWorkerTypeTemplates({ status: 'active' });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof WorkerFormData, string>>>({});
   const [formData, setFormData] = useState<WorkerFormData>({
@@ -41,7 +43,7 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
     nationalId: '',
     dateOfBirth: '',
     startDate: new Date().toISOString().split('T')[0],
-    workerType: 'Full-Time',
+    workerType: '',
     department: '',
     position: '',
     compensation: '',
@@ -322,11 +324,13 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
                 value={formData.workerType}
                 onChange={(e) => handleChange('workerType', e.target.value)}
                 options={[
-                  { value: 'Full-Time', label: 'Full-Time' },
-                  { value: 'Part-Time', label: 'Part-Time' },
-                  { value: 'Contract', label: 'Contract' },
-                  { value: 'Hourly', label: 'Hourly' },
+                  { value: '', label: loadingTypes ? 'Loading...' : 'Select worker type' },
+                  ...workerTypes.map((type: any) => ({
+                    value: type.id,
+                    label: type.name || type.code
+                  }))
                 ]}
+                disabled={loadingTypes}
               />
             </FormField>
 

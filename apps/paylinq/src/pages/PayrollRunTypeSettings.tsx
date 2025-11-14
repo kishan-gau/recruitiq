@@ -17,6 +17,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Plus, 
@@ -29,6 +30,7 @@ import {
   Award,
   Edit,
   UserX,
+  ArrowLeft,
   TrendingUp,
   CheckCircle,
   XCircle,
@@ -235,6 +237,13 @@ export default function PayrollRunTypeSettings() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
+        <Link
+          to="/settings"
+          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Settings
+        </Link>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Payroll Run Types</h1>
         <p className="text-gray-600">
           Manage run types to control which components are included in different payroll scenarios

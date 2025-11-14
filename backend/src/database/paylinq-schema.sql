@@ -1798,15 +1798,20 @@ CREATE INDEX idx_pay_structure_component_pay_component ON payroll.pay_structure_
 COMMENT ON TABLE payroll.pay_structure_component IS 'Individual compensation components within a pay structure template. Defines how each component is calculated.';
 
 -- Worker Pay Structure Assignments (Worker-Specific Applications)
+-- ARCHITECTURE: Reference-Based with Override Layer
+-- Templates are referenced by FK, not duplicated in snapshots
+-- Only worker-specific data (overrides, base salary) is stored
+-- Runtime resolution: JOIN template + apply overrides
 CREATE TABLE IF NOT EXISTS payroll.worker_pay_structure (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   employee_id UUID NOT NULL REFERENCES hris.employee(id) ON DELETE CASCADE,
   
-  -- Template Reference (snapshot at assignment time)
-  template_id UUID NOT NULL REFERENCES payroll.pay_structure_template(id),
-  template_code VARCHAR(50) NOT NULL,
-  template_version VARCHAR(20) NOT NULL, -- '1.2.3' - frozen at assignment
+  -- Template Reference (FK to versioned template - single source of truth)
+  template_version_id UUID NOT NULL REFERENCES payroll.pay_structure_template(id),
+  
+  -- Worker-Specific Data (overrides template defaults)
+  base_salary NUMERIC(12, 4), -- Worker's base salary (if applicable)
   
   -- Assignment Metadata
   assignment_type VARCHAR(20) NOT NULL 
@@ -1820,11 +1825,8 @@ CREATE TABLE IF NOT EXISTS payroll.worker_pay_structure (
   effective_to DATE,
   is_current BOOLEAN DEFAULT true,
   
-  -- Frozen Template Snapshot (for historical accuracy)
-  template_snapshot JSONB NOT NULL, -- Complete template + components configuration at assignment time
-  
   -- Metadata
-  pay_frequency VARCHAR(20), -- Can reference payroll.employee_payroll_config.pay_frequency
+  pay_frequency VARCHAR(20), -- Can override template default
   currency VARCHAR(3), -- Can override template default
   
   -- Approval Workflow
@@ -1856,16 +1858,18 @@ CREATE TABLE IF NOT EXISTS payroll.worker_pay_structure (
   
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
   FOREIGN KEY (employee_id) REFERENCES hris.employee(id) ON DELETE CASCADE,
-  FOREIGN KEY (template_id) REFERENCES payroll.pay_structure_template(id)
+  FOREIGN KEY (template_version_id) REFERENCES payroll.pay_structure_template(id)
 );
 
 CREATE INDEX idx_worker_pay_structure_org ON payroll.worker_pay_structure(organization_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_worker_pay_structure_employee ON payroll.worker_pay_structure(employee_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_worker_pay_structure_current ON payroll.worker_pay_structure(employee_id, is_current) WHERE is_current = true AND deleted_at IS NULL;
-CREATE INDEX idx_worker_pay_structure_template ON payroll.worker_pay_structure(template_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_worker_pay_structure_template_version ON payroll.worker_pay_structure(template_version_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_worker_pay_structure_effective ON payroll.worker_pay_structure(employee_id, effective_from, effective_to) WHERE deleted_at IS NULL;
 
-COMMENT ON TABLE payroll.worker_pay_structure IS 'Worker-specific assignments of pay structure templates. Includes a frozen snapshot for historical accuracy.';
+COMMENT ON TABLE payroll.worker_pay_structure IS 'Worker-specific assignments of pay structure templates. Uses reference-based architecture: templates are referenced by FK, worker-specific overrides stored separately.';
+COMMENT ON COLUMN payroll.worker_pay_structure.template_version_id IS 'FK to pay_structure_template. Single source of truth. Template changes flow through automatically.';
+COMMENT ON COLUMN payroll.worker_pay_structure.base_salary IS 'Worker-specific base salary. Overrides template default if set.';
 
 -- Worker Pay Structure Component Overrides
 CREATE TABLE IF NOT EXISTS payroll.worker_pay_structure_component_override (
@@ -2016,7 +2020,7 @@ COMMENT ON COLUMN payroll.payroll_run_component.structure_template_version IS 'V
 COMMENT ON COLUMN payroll.payroll_run_component.component_config_snapshot IS 'Complete component configuration at calculation time. Enables exact recalculation.';
 COMMENT ON COLUMN payroll.payroll_run_component.calculation_metadata IS 'Metadata about the calculation: formula variables, inputs, intermediate results, etc.';
 
--- Helper function to get current pay structure for a worker
+-- Helper function to get current pay structure for a worker (with template JOIN)
 CREATE OR REPLACE FUNCTION payroll.get_current_worker_pay_structure(
   p_employee_id UUID,
   p_as_of_date DATE DEFAULT CURRENT_DATE
@@ -2025,22 +2029,29 @@ RETURNS TABLE (
   structure_id UUID,
   template_id UUID,
   template_code VARCHAR(50),
+  template_name VARCHAR(100),
   template_version VARCHAR(20),
-  template_snapshot JSONB,
+  base_salary NUMERIC(12, 4),
   effective_from DATE,
-  effective_to DATE
+  effective_to DATE,
+  pay_frequency VARCHAR(20),
+  currency VARCHAR(3)
 ) AS $$
 BEGIN
   RETURN QUERY
   SELECT 
     wps.id,
-    wps.template_id,
-    wps.template_code,
-    wps.template_version,
-    wps.template_snapshot,
+    t.id,
+    t.template_code,
+    t.template_name,
+    t.version_string,
+    wps.base_salary,
     wps.effective_from,
-    wps.effective_to
+    wps.effective_to,
+    COALESCE(wps.pay_frequency, t.pay_frequency),
+    COALESCE(wps.currency, t.currency)
   FROM payroll.worker_pay_structure wps
+  JOIN payroll.pay_structure_template t ON wps.template_version_id = t.id
   WHERE wps.employee_id = p_employee_id
     AND wps.effective_from <= p_as_of_date
     AND (wps.effective_to IS NULL OR wps.effective_to >= p_as_of_date)
@@ -2107,7 +2118,7 @@ SELECT
   COUNT(DISTINCT wps.id) as assigned_worker_count
 FROM payroll.pay_structure_template pst
 LEFT JOIN payroll.pay_structure_component psc ON psc.template_id = pst.id AND psc.deleted_at IS NULL
-LEFT JOIN payroll.worker_pay_structure wps ON wps.template_id = pst.id AND wps.is_current = true AND wps.deleted_at IS NULL
+LEFT JOIN payroll.worker_pay_structure wps ON wps.template_version_id = pst.id AND wps.is_current = true AND wps.deleted_at IS NULL
 WHERE pst.status = 'active'
   AND pst.deleted_at IS NULL
 GROUP BY pst.id;
@@ -2120,22 +2131,22 @@ SELECT
   wps.employee_id,
   e.employee_number,
   e.first_name || ' ' || e.last_name as employee_name,
-  wps.template_code,
-  wps.template_version,
+  pst.template_code,
+  pst.version_string as template_version,
   pst.template_name,
   wps.assignment_type,
   wps.effective_from,
   wps.effective_to,
   wps.is_current,
-  wps.currency,
-  wps.pay_frequency,
+  COALESCE(wps.currency, pst.currency) as currency,
+  COALESCE(wps.pay_frequency, pst.pay_frequency) as pay_frequency,
   COUNT(DISTINCT wpco.id) as override_count
 FROM payroll.worker_pay_structure wps
 INNER JOIN hris.employee e ON e.id = wps.employee_id
-LEFT JOIN payroll.pay_structure_template pst ON pst.id = wps.template_id
+JOIN payroll.pay_structure_template pst ON pst.id = wps.template_version_id
 LEFT JOIN payroll.worker_pay_structure_component_override wpco ON wpco.worker_structure_id = wps.id AND wpco.deleted_at IS NULL
 WHERE wps.deleted_at IS NULL
-GROUP BY wps.id, e.employee_number, e.first_name, e.last_name, pst.template_name, wps.currency, wps.pay_frequency;
+GROUP BY wps.id, e.employee_number, e.first_name, e.last_name, pst.template_code, pst.version_string, pst.template_name, wps.currency, wps.pay_frequency, pst.currency, pst.pay_frequency;
 
 COMMENT ON VIEW payroll.v_worker_pay_structure_summary IS 'Summary view of worker pay structure assignments with override counts.';
 
@@ -2573,6 +2584,106 @@ CREATE POLICY pay_structure_template_changelog_tenant_isolation_insert ON payrol
       AND pst.organization_id = payroll.get_current_organization_id()
     )
   );
+
+-- ================================================================
+-- PAY PERIOD CONFIGURATION
+-- ================================================================
+
+-- Pay Period Configuration (organization-level settings)
+CREATE TABLE IF NOT EXISTS payroll.pay_period_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Pay Frequency Configuration
+  pay_frequency VARCHAR(20) NOT NULL CHECK (pay_frequency IN ('weekly', 'bi-weekly', 'semi-monthly', 'monthly')),
+  
+  -- Pay Period Start (anchor date for calculating all periods)
+  period_start_date DATE NOT NULL,
+  
+  -- Pay Day Configuration (days after period end)
+  pay_day_offset INTEGER NOT NULL DEFAULT 0 CHECK (pay_day_offset >= 0 AND pay_day_offset <= 30),
+  
+  -- Semi-Monthly specific settings
+  first_pay_day INTEGER CHECK (first_pay_day >= 1 AND first_pay_day <= 31), -- e.g., 15
+  second_pay_day INTEGER CHECK (second_pay_day >= 1 AND second_pay_day <= 31), -- e.g., last day
+  
+  -- Status
+  is_active BOOLEAN DEFAULT true,
+  
+  -- Metadata
+  notes TEXT,
+  
+  -- Audit fields
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  
+  -- Only one active config per organization
+  CONSTRAINT unique_active_config UNIQUE (organization_id, is_active)
+    DEFERRABLE INITIALLY DEFERRED,
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_pay_period_config_org ON payroll.pay_period_config(organization_id) WHERE is_active = true;
+
+COMMENT ON TABLE payroll.pay_period_config IS 'Organization pay period configuration - defines pay frequency and schedule';
+COMMENT ON COLUMN payroll.pay_period_config.period_start_date IS 'Anchor date for calculating all pay periods';
+COMMENT ON COLUMN payroll.pay_period_config.pay_day_offset IS 'Number of days after period end that employees get paid';
+
+-- Company Holidays Calendar
+CREATE TABLE IF NOT EXISTS payroll.company_holiday (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Holiday Information
+  holiday_name VARCHAR(100) NOT NULL,
+  holiday_date DATE NOT NULL,
+  is_recurring BOOLEAN DEFAULT false, -- Recurs annually (e.g., Christmas)
+  
+  -- Pay Schedule Impact
+  affects_pay_schedule BOOLEAN DEFAULT true, -- If payday falls on holiday, adjust
+  affects_work_schedule BOOLEAN DEFAULT true, -- Employees don't work on this day
+  
+  -- Status
+  is_active BOOLEAN DEFAULT true,
+  
+  -- Audit fields
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_company_holiday_org_date ON payroll.company_holiday(organization_id, holiday_date) WHERE is_active = true;
+CREATE INDEX idx_company_holiday_org ON payroll.company_holiday(organization_id) WHERE is_active = true;
+
+COMMENT ON TABLE payroll.company_holiday IS 'Organization holiday calendar for pay schedule and attendance tracking';
+
+-- ================================================================
+-- PAY PERIOD CONFIGURATION RLS POLICIES
+-- ================================================================
+
+ALTER TABLE payroll.pay_period_config ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY pay_period_config_tenant_isolation ON payroll.pay_period_config
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY pay_period_config_tenant_isolation_insert ON payroll.pay_period_config
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+ALTER TABLE payroll.company_holiday ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY company_holiday_tenant_isolation ON payroll.company_holiday
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY company_holiday_tenant_isolation_insert ON payroll.company_holiday
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
 
 -- ================================================================
 -- END OF PAYLINQ SCHEMA

@@ -9,6 +9,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   DollarSign,
   Plus,
@@ -16,9 +17,10 @@ import {
   Calculator,
   CheckCircle,
   Info,
+  ArrowLeft,
 } from 'lucide-react';
-import { FormSection, FormGrid, FormField } from '../components/form/FormField';
-import { CurrencyInput } from '../components/form/CurrencyInput';
+import { FormSection, FormGrid, FormField } from '@/components/form/FormField';
+import { CurrencyInput } from '@/components/form/CurrencyInput';
 
 type Currency = 'SRD' | 'USD' | 'EUR';
 
@@ -192,20 +194,29 @@ const TaxSettingsPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Tax Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Configure tax jurisdictions, brackets, and calculation settings
-          </p>
-        </div>
-        <button
-          onClick={handleSave}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+      <div>
+        <Link
+          to="/settings"
+          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
         >
-          <CheckCircle className="h-4 w-4 mr-2" />
-          Save Settings
-        </button>
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Settings
+        </Link>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Tax Settings</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Configure tax jurisdictions, brackets, and calculation settings
+            </p>
+          </div>
+          <button
+            onClick={handleSave}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Save Settings
+          </button>
+        </div>
       </div>
 
       {/* Success message */}

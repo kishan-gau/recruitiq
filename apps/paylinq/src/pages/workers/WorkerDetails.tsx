@@ -13,12 +13,14 @@ import WorkerPayStructure from '@/components/worker/WorkerPayStructure';
 import SystemAccessPanel from '@/components/worker/SystemAccessPanel';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
 
 export default function WorkerDetails() {
   const { workerId } = useParams();
   const navigate = useNavigate();
   const { paylinq } = usePaylinqAPI();
   const { error: showError } = useToast();
+  const { data: workerTypes = [] } = useWorkerTypeTemplates({ status: 'active' });
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -202,7 +204,7 @@ export default function WorkerDetails() {
               <p className="text-sm text-gray-500 dark:text-gray-400">Current Compensation</p>
               <CurrencyDisplay amount={worker.compensation} className="text-xl font-bold" currency={worker.currency} />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                per {worker.workerType === 'Hourly' ? 'hour' : 'month'}
+                {worker.payFrequency || 'monthly'}
               </p>
             </div>
           </div>
@@ -261,7 +263,7 @@ export default function WorkerDetails() {
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Payment Frequency</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {worker.workerType === 'Hourly' ? 'Hourly' : 'Monthly'}
+                  {worker.payFrequency || 'monthly'}
                 </p>
               </div>
               <div>
@@ -292,7 +294,7 @@ export default function WorkerDetails() {
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Type</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {worker.workerType === 'Hourly' ? 'Hourly' : 'Salary'}
+                  {worker.workerType}
                 </p>
               </div>
             </div>

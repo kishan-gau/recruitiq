@@ -43,45 +43,63 @@ async function createWorkerType(req, res) {
     if (error.message.includes('limit reached')) {
       return res.status(403).json({
         success: false,
-        error: 'Tier Limit Reached',
-        message: error.message,
+        error: error.message,
+        errorCode: 'TIER_LIMIT_REACHED',
       });
     }
 
     if (error.message.includes('Worker type') && error.message.includes('already exists')) {
       return res.status(409).json({
         success: false,
-        error: 'Conflict',
-        message: error.message,
+        error: error.message,
+        errorCode: 'WORKER_TYPE_ALREADY_EXISTS',
       });
     }
 
     res.status(400).json({
       success: false,
-      error: 'Bad Request',
-      message: error.message,
+      error: error.message,
+      errorCode: 'VALIDATION_ERROR',
     });
   }
 }
 
 /**
  * Get all worker types for an organization
- * GET /api/paylinq/worker-types
+ * GET /api/paylinq/worker-types?page=1&limit=20&status=active&sortBy=name&sortOrder=asc
  */
 async function getWorkerTypes(req, res) {
   try {
     const { organization_id: organizationId } = req.user;
-    const { includeInactive } = req.query;
+    
+    // Parse pagination parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    
+    // Parse filters
+    const filters = {
+      status: req.query.status, // active, inactive, all
+      payType: req.query.payType,
+      search: req.query.search, // Search by name or code
+      benefitsEligible: req.query.benefitsEligible === 'true' ? true : req.query.benefitsEligible === 'false' ? false : undefined,
+      overtimeEligible: req.query.overtimeEligible === 'true' ? true : req.query.overtimeEligible === 'false' ? false : undefined,
+    };
+    
+    // Parse sorting
+    const sortBy = req.query.sortBy || 'name'; // name, code, createdAt, updatedAt
+    const sortOrder = req.query.sortOrder === 'desc' ? 'desc' : 'asc';
 
-    const workerTypes = await workerTypeService.getWorkerTypesByOrganization(
+    const result = await workerTypeService.getWorkerTypes(
       organizationId,
-      includeInactive === 'true'
+      { page, limit },
+      filters,
+      { sortBy, sortOrder }
     );
 
     res.status(200).json({
       success: true,
-      workerTypes: workerTypes,
-      count: workerTypes.length,
+      workerTypes: result.workerTypes,
+      pagination: result.pagination,
     });
   } catch (error) {
     logger.error('Error fetching worker types', {
@@ -91,8 +109,8 @@ async function getWorkerTypes(req, res) {
 
     res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
-      message: 'Failed to fetch worker types',
+      error: 'Failed to fetch worker types',
+      errorCode: 'INTERNAL_SERVER_ERROR',
     });
   }
 }
@@ -111,8 +129,8 @@ async function getWorkerTypeById(req, res) {
     if (!workerType) {
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Worker type not found',
+        error: 'Worker type not found',
+        errorCode: 'WORKER_TYPE_NOT_FOUND',
       });
     }
 
@@ -129,8 +147,8 @@ async function getWorkerTypeById(req, res) {
 
     res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
-      message: 'Failed to fetch worker type',
+      error: 'Failed to fetch worker type',
+      errorCode: 'INTERNAL_SERVER_ERROR',
     });
   }
 }
@@ -154,8 +172,8 @@ async function updateWorkerType(req, res) {
     if (!workerType) {
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Worker type not found',
+        error: 'Worker type not found',
+        errorCode: 'WORKER_TYPE_NOT_FOUND',
       });
     }
 
@@ -180,8 +198,8 @@ async function updateWorkerType(req, res) {
 
     res.status(400).json({
       success: false,
-      error: 'Bad Request',
-      message: error.message,
+      error: error.message,
+      errorCode: 'VALIDATION_ERROR',
     });
   }
 }
@@ -200,8 +218,8 @@ async function deleteWorkerType(req, res) {
     if (!deleted) {
       return res.status(404).json({
         success: false,
-        error: 'Not Found',
-        message: 'Worker type not found',
+        error: 'Worker type not found',
+        errorCode: 'WORKER_TYPE_NOT_FOUND',
       });
     }
 
@@ -226,15 +244,15 @@ async function deleteWorkerType(req, res) {
     if (error.message.includes('has assigned employees')) {
       return res.status(409).json({
         success: false,
-        error: 'Conflict',
-        message: error.message,
+        error: error.message,
+        errorCode: 'WORKER_TYPE_IN_USE',
       });
     }
 
     res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
-      message: 'Failed to delete worker type',
+      error: 'Failed to delete worker type',
+      errorCode: 'INTERNAL_SERVER_ERROR',
     });
   }
 }
@@ -252,8 +270,8 @@ async function assignEmployees(req, res) {
     if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Bad Request',
-        message: 'employeeIds must be a non-empty array',
+        error: 'employeeIds must be a non-empty array',
+        errorCode: 'VALIDATION_ERROR',
       });
     }
 
@@ -286,27 +304,35 @@ async function assignEmployees(req, res) {
 
     res.status(400).json({
       success: false,
-      error: 'Bad Request',
-      message: error.message,
+      error: error.message,
+      errorCode: 'VALIDATION_ERROR',
     });
   }
 }
 
 /**
  * Get employees assigned to a worker type
- * GET /api/paylinq/worker-types/:id/employees
+ * GET /api/paylinq/worker-types/:id/employees?page=1&limit=20
  */
 async function getWorkerTypeEmployees(req, res) {
   try {
     const { organization_id: organizationId } = req.user;
     const { id } = req.params;
+    
+    // Parse pagination parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
 
-    const employees = await workerTypeService.getEmployeesByWorkerType(id, organizationId);
+    const result = await workerTypeService.getEmployeesByWorkerType(
+      id,
+      organizationId,
+      { page, limit }
+    );
 
     res.status(200).json({
       success: true,
-      employees: employees,
-      count: employees.length,
+      employees: result.employees,
+      pagination: result.pagination,
     });
   } catch (error) {
     logger.error('Error fetching worker type employees', {
@@ -317,8 +343,8 @@ async function getWorkerTypeEmployees(req, res) {
 
     res.status(500).json({
       success: false,
-      error: 'Internal Server Error',
-      message: 'Failed to fetch employees',
+      error: 'Failed to fetch employees',
+      errorCode: 'INTERNAL_SERVER_ERROR',
     });
   }
 }

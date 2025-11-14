@@ -3,6 +3,7 @@ import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
 
 interface EditWorkerModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ interface EditWorkerModalProps {
 export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: EditWorkerModalProps) {
   const { paylinq } = usePaylinqAPI();
   const { success, error } = useToast();
+  const { data: workerTypes = [], isLoading: loadingTypes } = useWorkerTypeTemplates({ status: 'active' });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
@@ -282,11 +284,13 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
                 value={formData.workerType}
                 onChange={(e) => handleChange('workerType', e.target.value)}
                 options={[
-                  { value: 'Full-Time', label: 'Full-Time' },
-                  { value: 'Part-Time', label: 'Part-Time' },
-                  { value: 'Contract', label: 'Contract' },
-                  { value: 'Hourly', label: 'Hourly' },
+                  { value: '', label: loadingTypes ? 'Loading...' : 'Select worker type' },
+                  ...workerTypes.map((type: any) => ({
+                    value: type.id,
+                    label: type.name || type.code
+                  }))
                 ]}
+                disabled={loadingTypes}
               />
             </FormField>
 

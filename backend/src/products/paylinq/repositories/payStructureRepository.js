@@ -66,7 +66,7 @@ class PayStructureRepository {
                WHERE psc.template_id = pst.id 
                AND psc.deleted_at IS NULL) as component_count,
               (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
-               WHERE wps.template_id = pst.id 
+               WHERE wps.template_version_id = pst.id 
                AND wps.is_current = true 
                AND wps.deleted_at IS NULL) as assigned_worker_count,
               COALESCE(e.first_name || ' ' || e.last_name, u.email) as created_by_name
@@ -123,7 +123,7 @@ class PayStructureRepository {
                WHERE psc.template_id = pst.id 
                AND psc.deleted_at IS NULL) as component_count,
               (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
-               WHERE wps.template_id = pst.id 
+               WHERE wps.template_version_id = pst.id 
                AND wps.is_current = true 
                AND wps.deleted_at IS NULL) as assigned_worker_count
        FROM payroll.pay_structure_template pst
@@ -494,6 +494,7 @@ class PayStructureRepository {
     const logger = (await import('../../../utils/logger.js')).default;
     logger.info('INSERT worker_pay_structure values', {
       employeeId: assignmentData.employeeId,
+      templateVersionId: assignmentData.templateVersionId,
       effectiveFrom: assignmentData.effectiveFrom,
       effectiveTo: assignmentData.effectiveTo,
       isCurrent: assignmentData.isCurrent
@@ -501,18 +502,17 @@ class PayStructureRepository {
     
     const result = await query(
       `INSERT INTO payroll.worker_pay_structure
-      (organization_id, employee_id, template_id, template_code, template_version,
+      (organization_id, employee_id, template_version_id, base_salary,
        assignment_type, assignment_source, assigned_by, assignment_reason,
-       effective_from, effective_to, is_current, template_snapshot,
+       effective_from, effective_to, is_current,
        pay_frequency, currency, approval_status, tags, notes, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
       [
         organizationId,
         assignmentData.employeeId,
-        assignmentData.templateId,
-        assignmentData.templateCode,
-        assignmentData.templateVersion,
+        assignmentData.templateVersionId,
+        assignmentData.baseSalary || null,
         assignmentData.assignmentType || 'custom',
         assignmentData.assignmentSource,
         userId,
@@ -520,7 +520,6 @@ class PayStructureRepository {
         assignmentData.effectiveFrom,
         assignmentData.effectiveTo,
         assignmentData.isCurrent !== undefined ? assignmentData.isCurrent : true,
-        JSON.stringify(assignmentData.templateSnapshot),
         assignmentData.payFrequency,
         assignmentData.currency,
         assignmentData.approvalStatus || 'approved',
@@ -575,7 +574,8 @@ class PayStructureRepository {
 
   /**
    * Get current worker pay structure
-   * Returns the most recent structure for the worker with full template details
+   * Returns the most recent structure for the worker with full template details via JOIN
+   * ARCHITECTURE: Reference-based - template is resolved at runtime, not from snapshot
    */
   async getCurrentWorkerStructure(employeeId, organizationId, asOfDate = null) {
     const dateCondition = asOfDate 
@@ -596,13 +596,17 @@ class PayStructureRepository {
               pst.version_minor,
               pst.version_patch,
               pst.version_string,
+              pst.pay_frequency as template_pay_frequency,
+              pst.currency as template_currency,
               jsonb_build_object(
                 'id', pst.id,
                 'templateName', pst.template_name,
                 'templateCode', pst.template_code,
                 'description', pst.description,
                 'status', pst.status,
-                'version', pst.version_string
+                'version', pst.version_string,
+                'payFrequency', pst.pay_frequency,
+                'currency', pst.currency
               ) as template,
               (SELECT jsonb_agg(
                 jsonb_build_object(
@@ -616,17 +620,19 @@ class PayStructureRepository {
                   'percentageOf', psc.percentage_of,
                   'rateMultiplier', psc.rate_multiplier,
                   'formulaExpression', psc.formula_expression,
+                  'formulaVariables', psc.formula_variables,
                   'sequenceOrder', psc.sequence_order,
                   'allowWorkerOverride', psc.allow_worker_override,
+                  'overrideAllowedFields', psc.override_allowed_fields,
                   'isMandatory', psc.is_mandatory,
                   'isTaxable', psc.is_taxable
                 ) ORDER BY psc.sequence_order
               )
               FROM payroll.pay_structure_component psc
-              WHERE psc.template_id = wps.template_id AND psc.deleted_at IS NULL
+              WHERE psc.template_id = pst.id AND psc.deleted_at IS NULL
               ) as components
        FROM payroll.worker_pay_structure wps
-       LEFT JOIN payroll.pay_structure_template pst ON pst.id = wps.template_id
+       JOIN payroll.pay_structure_template pst ON pst.id = wps.template_version_id
        WHERE wps.employee_id = $1 
          AND wps.organization_id = $2
          AND wps.deleted_at IS NULL
@@ -658,7 +664,7 @@ class PayStructureRepository {
               pst.template_name,
               COUNT(DISTINCT wpco.id) as override_count
        FROM payroll.worker_pay_structure wps
-       INNER JOIN payroll.pay_structure_template pst ON pst.id = wps.template_id
+       INNER JOIN payroll.pay_structure_template pst ON pst.id = wps.template_version_id
        LEFT JOIN payroll.worker_pay_structure_component_override wpco 
          ON wpco.worker_structure_id = wps.id AND wpco.deleted_at IS NULL
        WHERE wps.employee_id = $1 AND wps.organization_id = $2 AND wps.deleted_at IS NULL
@@ -984,7 +990,7 @@ class PayStructureRepository {
                WHERE psc.template_id = pst.id 
                AND psc.deleted_at IS NULL) as component_count,
               (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
-               WHERE wps.template_id = pst.id 
+               WHERE wps.template_version_id = pst.id 
                AND wps.deleted_at IS NULL
                AND wps.effective_to IS NULL) as assigned_worker_count,
               COALESCE(e.first_name || ' ' || e.last_name, u.email) as created_by_name

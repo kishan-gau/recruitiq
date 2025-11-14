@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Edit2, AlertCircle, Trash2, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Edit2, AlertCircle, Trash2, X, ArrowLeft } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
 import { useTaxRules, useCreateTaxRule, useUpdateTaxRule, useDeleteTaxRule } from '@/hooks/useTaxRules';
@@ -162,13 +163,21 @@ export default function TaxRulesList() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tax Rules</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Manage Surinamese tax rules and social security contributions
-          </p>
-        </div>
+      <div>
+        <Link
+          to="/settings"
+          className="inline-flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Settings
+        </Link>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tax Rules</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              Manage Surinamese tax rules and social security contributions
+            </p>
+          </div>
         <button
           onClick={handleAdd}
           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors"
@@ -176,6 +185,7 @@ export default function TaxRulesList() {
           <Plus className="w-4 h-4" />
           Add Tax Rule
         </button>
+        </div>
       </div>
 
       {/* Loading State */}
