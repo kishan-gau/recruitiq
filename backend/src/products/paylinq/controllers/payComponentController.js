@@ -43,16 +43,31 @@ async function createPayComponent(req, res) {
       userId: req.user?.id,
     });
 
-    if (error.message.includes('already exists')) {
+    // ValidationError - return structured validation error response
+    if (error.constructor.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        errorCode: 'VALIDATION_ERROR',
+        error: 'Validation Error',
+        message: error.message,
+        details: error.details || []
+      });
+    }
+
+    // ConflictError - resource already exists
+    if (error.constructor.name === 'ConflictError' || error.message.includes('already exists')) {
       return res.status(409).json({
         success: false,
+        errorCode: 'CONFLICT',
         error: 'Conflict',
         message: error.message,
       });
     }
 
+    // Default error response
     res.status(400).json({
       success: false,
+      errorCode: 'BAD_REQUEST',
       error: 'Bad Request',
       message: error.message,
     });
@@ -66,23 +81,41 @@ async function createPayComponent(req, res) {
 async function getPayComponents(req, res) {
   try {
     const organizationId = req.user.organization_id;
-    const { componentType, category, includeInactive } = req.query;
+    const { componentType, category, includeInactive, page, limit } = req.query;
+
+    // Parse pagination parameters
+    const currentPage = Math.max(1, parseInt(page) || 1);
+    const itemsPerPage = Math.min(100, Math.max(1, parseInt(limit) || 20)); // Max 100 per page
+    const offset = (currentPage - 1) * itemsPerPage;
 
     const filters = {
       componentType,
       category,
       includeInactive: includeInactive === 'true',
+      limit: itemsPerPage,
+      offset
     };
 
-    const components = await payComponentService.getPayComponentsByOrganization(
+    const result = await payComponentService.getPayComponentsByOrganization(
       organizationId,
       filters
     );
 
+    // Calculate pagination metadata
+    const totalItems = result.total || result.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
     res.status(200).json({
       success: true,
-      payComponents: mapPayComponentDbArrayToApi(components),
-      count: components.length,
+      payComponents: mapPayComponentDbArrayToApi(result.components || result),
+      pagination: {
+        page: currentPage,
+        limit: itemsPerPage,
+        total: totalItems,
+        totalPages,
+        hasNext: currentPage < totalPages,
+        hasPrev: currentPage > 1
+      }
     });
   } catch (error) {
     logger.error('Error fetching pay components', {
@@ -92,6 +125,7 @@ async function getPayComponents(req, res) {
 
     res.status(500).json({
       success: false,
+      errorCode: 'INTERNAL_ERROR',
       error: 'Internal Server Error',
       message: 'Failed to fetch pay components',
     });
@@ -120,16 +154,31 @@ async function getPayComponentById(req, res) {
       organizationId: req.user?.organization_id,
     });
 
+    // ValidationError - invalid UUID format
+    if (error.constructor.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        errorCode: 'VALIDATION_ERROR',
+        error: 'Validation Error',
+        message: error.message,
+        details: error.details || []
+      });
+    }
+
+    // NotFoundError - component doesn't exist
     if (error.constructor.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
+        errorCode: 'NOT_FOUND',
         error: 'Not Found',
         message: error.message,
       });
     }
 
+    // Default server error
     res.status(500).json({
       success: false,
+      errorCode: 'INTERNAL_ERROR',
       error: 'Internal Server Error',
       message: 'Failed to fetch pay component',
     });

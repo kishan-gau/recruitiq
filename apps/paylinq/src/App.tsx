@@ -95,13 +95,6 @@ function App() {
             {/* Reports */}
             <Route path="reports" element={<Reports />} />
             
-            {/* Currency Management */}
-            <Route path="currency/exchange-rates" element={<ExchangeRatesPage />} />
-            <Route path="currency/configuration" element={<CurrencyConfigPage />} />
-            
-            {/* Approval Workflows */}
-            <Route path="approvals" element={<ApprovalQueuePage />} />
-            
             {/* Settings */}
             <Route path="settings" element={<SettingsHub />} />
             <Route path="settings/general" element={<GeneralSettings />} />
@@ -114,6 +107,13 @@ function App() {
             <Route path="settings/payroll-run-types" element={<PayrollRunTypeSettings />} />
             <Route path="settings/payslip-templates" element={<PayslipTemplates />} />
             <Route path="settings/payslip-templates/:id" element={<PayslipTemplateEditor />} />
+            
+            {/* Currency Management (under Payroll Configuration) */}
+            <Route path="settings/currency/exchange-rates" element={<ExchangeRatesPage />} />
+            <Route path="settings/currency/configuration" element={<CurrencyConfigPage />} />
+            
+            {/* Approval Workflows */}
+            <Route path="approvals" element={<ApprovalQueuePage />} />
             
             {/* 404 */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -22,7 +22,6 @@ import {
   FileBarChart,
   LogOut,
   Briefcase,
-  Coins,
   CheckSquare,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -96,27 +95,13 @@ const complianceItems: NavigationItem[] = [
   },
 ];
 
-const currencyItems: NavigationItem[] = [
-  {
-    name: 'Exchange Rates',
-    href: '/currency/exchange-rates',
-    icon: Coins,
-    description: 'Manage currency exchange rates',
-  },
-  {
-    name: 'Currency Config',
-    href: '/currency/configuration',
-    icon: DollarSign,
-    description: 'Configure currency settings',
-  },
-  {
-    name: 'Approvals',
-    href: '/approvals',
-    icon: CheckSquare,
-    description: 'Review currency approval requests',
-    badge: 0, // Will be updated dynamically with pending count
-  },
-];
+const approvalsItem: NavigationItem = {
+  name: 'Approvals',
+  href: '/approvals',
+  icon: CheckSquare,
+  description: 'Review approval requests',
+  badge: 0, // Will be updated dynamically with pending count
+};
 
 const reportsItem: NavigationItem = {
   name: 'Reports',
@@ -137,6 +122,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
   const handleLogout = async () => {
     await logout();
@@ -195,7 +181,8 @@ export default function Layout() {
             icon={UserCircle2}
             items={peopleItems}
             collapsible
-            defaultOpen
+            isOpen={expandedGroup === 'people'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'people' ? null : 'people')}
             onItemClick={() => setSidebarOpen(false)}
           />
 
@@ -205,7 +192,8 @@ export default function Layout() {
             icon={Wallet}
             items={payrollItems}
             collapsible
-            defaultOpen
+            isOpen={expandedGroup === 'payroll'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'payroll' ? null : 'payroll')}
             onItemClick={() => setSidebarOpen(false)}
           />
 
@@ -215,21 +203,18 @@ export default function Layout() {
             icon={FileBarChart}
             items={complianceItems}
             collapsible
-            defaultOpen
-            onItemClick={() => setSidebarOpen(false)}
-          />
-
-          {/* Currency Management Group */}
-          <NavigationGroup
-            title="Currency Management"
-            icon={Coins}
-            items={currencyItems}
-            collapsible
-            defaultOpen
+            isOpen={expandedGroup === 'compliance'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'compliance' ? null : 'compliance')}
             onItemClick={() => setSidebarOpen(false)}
           />
 
           <div className="border-t border-slate-200 dark:border-slate-700 my-2" />
+
+          {/* Approvals - Top level */}
+          <NavigationGroup
+            items={[approvalsItem]}
+            onItemClick={() => setSidebarOpen(false)}
+          />
 
           {/* Reports - Top level */}
           <NavigationGroup

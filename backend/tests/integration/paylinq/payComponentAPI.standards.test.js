@@ -26,7 +26,7 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
 import { query } from '../../../src/config/database.js';
-import app from '../../../src/server.js';
+import app, { apiRouter } from '../../../src/server.js'; // Import apiRouter for direct manipulation
 import productManager from '../../../src/products/core/ProductManager.js';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../../../src/config/database.js';
@@ -47,28 +47,33 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
     const dynamicRouter = await productManager.initialize(app);
     console.log('Product Manager initialized successfully');
     
-    // Debug: Inspect Express app structure
-    console.log('=== EXPRESS APP STRUCTURE DEBUG ===');
-    console.log('app._router exists:', !!app._router);
-    console.log('app._router.stack length:', app._router?.stack?.length);
+    // CRITICAL FIX: Replace the dynamicProductMiddleware in apiRouter with our initialized router
+    // The dynamicProductMiddleware is mounted in apiRouter and returns 503 in tests
+    // because the closure variable (dynamicProductRouter) is never set in test environment
     
-    if (app._router && app._router.stack) {
-      console.log('\nMiddleware stack layers:');
-      app._router.stack.forEach((layer, index) => {
-        console.log(`  [${index}] name: ${layer.name}, path: ${layer.path || 'N/A'}, regexp: ${layer.regexp}`);
-        if (layer.name === 'router' && layer.handle && layer.handle.stack) {
-          console.log(`    └─ Has sub-stack with ${layer.handle.stack.length} layers`);
-          layer.handle.stack.slice(0, 3).forEach((subLayer, subIndex) => {
-            console.log(`       [${subIndex}] name: ${subLayer.name}, regexp: ${subLayer.regexp}`);
-          });
-        }
-      });
+    console.log('Searching for dynamicProductMiddleware in apiRouter...');
+    
+    if (apiRouter.stack) {
+      // Find the dynamicProductMiddleware layer by name
+      const productsLayerIndex = apiRouter.stack.findIndex(layer => 
+        layer.name === 'dynamicProductMiddleware'
+      );
+      
+      if (productsLayerIndex !== -1) {
+        console.log(`✅ Found dynamicProductMiddleware at index ${productsLayerIndex}`);
+        console.log('Replacing with initialized router...');
+        
+        // Replace the middleware with our initialized router
+        apiRouter.stack[productsLayerIndex].handle = dynamicRouter;
+        
+        console.log('✅ Product router successfully replaced in apiRouter');
+        console.log('✅ Product routes are now accessible\n');
+      } else {
+        console.log('❌ Could not find dynamicProductMiddleware in apiRouter');
+        console.log('This should not happen - middleware should be mounted in server.js\n');
+      }
     }
-    console.log('=== END DEBUG ===\n');
-    
-    // For now, just mount it and see what happens
-    app.use('/api/products', dynamicRouter);
-    console.log('Product router mounted at /api/products');
+
     
     // Create test organization
     testOrgId = uuidv4();

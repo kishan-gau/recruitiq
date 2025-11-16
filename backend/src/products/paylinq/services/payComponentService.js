@@ -215,15 +215,18 @@ class PayComponentService {
   }
 
   /**
-   * Get pay components
+   * Get all pay components for an organization
    * @param {string} organizationId - Organization UUID
    * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Pay components
+   * @returns {Promise<Object>} { components: Array, total: number }
    */
   async getPayComponents(organizationId, filters = {}) {
     try {
-      const components = await this.payComponentRepository.findPayComponents(organizationId, filters);
-      return mapComponentsDbToApi(components);
+      const result = await this.payComponentRepository.findPayComponents(organizationId, filters);
+      return {
+        components: mapComponentsDbToApi(result.components),
+        total: result.total
+      };
     } catch (err) {
       logger.error('Error fetching pay components', { error: err.message, organizationId });
       throw err;

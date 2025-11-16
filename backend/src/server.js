@@ -414,3 +414,4 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 export default app;
+export { apiRouter }; // Export for test access

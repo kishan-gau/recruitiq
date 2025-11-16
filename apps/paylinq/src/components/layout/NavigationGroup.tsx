@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronDown, ChevronRight, LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
@@ -17,7 +16,8 @@ interface NavigationGroupProps {
   icon?: LucideIcon;
   items: NavigationItem[];
   collapsible?: boolean;
-  defaultOpen?: boolean;
+  isOpen?: boolean;
+  onToggle?: () => void;
   onItemClick?: () => void;
 }
 
@@ -26,11 +26,11 @@ export default function NavigationGroup({
   icon: GroupIcon,
   items,
   collapsible = false,
-  defaultOpen = true,
+  isOpen = true,
+  onToggle,
   onItemClick,
 }: NavigationGroupProps) {
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   // Check if any item in this group is active
   const hasActiveItem = items.some((item) => {
@@ -42,8 +42,8 @@ export default function NavigationGroup({
   });
 
   const toggleOpen = () => {
-    if (collapsible) {
-      setIsOpen(!isOpen);
+    if (collapsible && onToggle) {
+      onToggle();
     }
   };
 

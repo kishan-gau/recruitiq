@@ -57,7 +57,9 @@ export function validate(schema, source = 'body') {
         });
 
         return res.status(400).json({
+          success: false,
           error: 'Validation Error',
+          errorCode: 'VALIDATION_ERROR',
           message: 'The request contains invalid data',
           details: errors,
         });

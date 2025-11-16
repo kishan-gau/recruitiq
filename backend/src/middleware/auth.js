@@ -112,14 +112,24 @@ export const authenticatePlatform = async (req, res, next) => {
  */
 export const authenticateTenant = async (req, res, next) => {
   try {
-    // SECURITY: Get token from httpOnly cookie instead of Authorization header
-    const token = req.cookies.accessToken;
+    // SECURITY: Support both httpOnly cookies (production) and Bearer tokens (tests)
+    // Priority: Cookie > Bearer token
+    let token = req.cookies.accessToken;
     
-    // DEBUG: Log cookie debugging info
-    logger.debug('authenticateTenant - Cookie debug', {
+    // Fallback to Bearer token for testing (when cookies aren't used)
+    if (!token && req.headers.authorization) {
+      const authHeader = req.headers.authorization;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7); // Remove 'Bearer ' prefix
+      }
+    }
+    
+    // DEBUG: Log authentication debug info
+    logger.debug('authenticateTenant - Auth debug', {
       hasCookies: !!req.cookies,
       cookieKeys: Object.keys(req.cookies || {}),
       hasAccessToken: !!token,
+      authMethod: req.cookies.accessToken ? 'cookie' : (req.headers.authorization ? 'bearer' : 'none'),
       rawCookieHeader: req.headers.cookie,
       path: req.path,
       method: req.method
@@ -129,6 +139,7 @@ export const authenticateTenant = async (req, res, next) => {
       logger.warn('authenticateTenant - No token found', {
         cookies: req.cookies,
         rawCookieHeader: req.headers.cookie,
+        authorizationHeader: req.headers.authorization ? 'present' : 'missing',
         path: req.path
       });
       return res.status(401).json({

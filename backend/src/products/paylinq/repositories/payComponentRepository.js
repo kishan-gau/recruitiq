@@ -59,10 +59,10 @@ class PayComponentRepository {
   }
 
   /**
-   * Find pay components by organization
+   * Find pay components by organization with pagination support
    * @param {string} organizationId - Organization UUID
    * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Pay components
+   * @returns {Promise<Object>} { components: Array, total: number }
    */
   async findPayComponents(organizationId, filters = {}) {
     let whereClause = 'WHERE organization_id = $1 AND deleted_at IS NULL';
@@ -93,16 +93,44 @@ class PayComponentRepository {
       params.push(filters.isSystemComponent);
     }
     
-    const result = await this.query(
-      `SELECT * FROM payroll.pay_component
-       ${whereClause}
-       ORDER BY component_type, component_name ASC`,
+    // Get total count for pagination
+    const countResult = await this.query(
+      `SELECT COUNT(*) as total FROM payroll.pay_component ${whereClause}`,
       params,
       organizationId,
       { operation: 'SELECT', table: 'payroll.pay_component' }
     );
     
-    return result.rows;
+    const total = parseInt(countResult.rows[0].total);
+    
+    // Build pagination
+    let limitClause = '';
+    if (filters.limit !== undefined) {
+      paramCount++;
+      limitClause += ` LIMIT $${paramCount}`;
+      params.push(filters.limit);
+    }
+    
+    if (filters.offset !== undefined) {
+      paramCount++;
+      limitClause += ` OFFSET $${paramCount}`;
+      params.push(filters.offset);
+    }
+    
+    const result = await this.query(
+      `SELECT * FROM payroll.pay_component
+       ${whereClause}
+       ORDER BY component_type, component_name ASC
+       ${limitClause}`,
+      params,
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_component' }
+    );
+    
+    return {
+      components: result.rows,
+      total
+    };
   }
 
   /**

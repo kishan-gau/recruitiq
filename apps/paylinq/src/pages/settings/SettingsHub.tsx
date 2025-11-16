@@ -101,6 +101,20 @@ const settingsCards: SettingCard[] = [
     href: '/settings/payroll-run-types',
     category: 'payroll',
   },
+  {
+    title: 'Exchange Rates',
+    description: 'Manage currency exchange rates for multi-currency payroll',
+    icon: <DollarSign className="h-6 w-6" />,
+    href: '/settings/currency/exchange-rates',
+    category: 'payroll',
+  },
+  {
+    title: 'Currency Configuration',
+    description: 'Configure supported currencies and default currency settings',
+    icon: <Globe className="h-6 w-6" />,
+    href: '/settings/currency/configuration',
+    category: 'payroll',
+  },
   
   // Compliance & Tax
   {

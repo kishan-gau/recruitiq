@@ -3023,6 +3023,230 @@ CREATE INDEX idx_rate_audit_date ON payroll.exchange_rate_audit(changed_at DESC)
 COMMENT ON TABLE payroll.exchange_rate_audit IS 'Audit log for all exchange rate changes';
 
 -- ================================================================
+-- CURRENCY APPROVAL WORKFLOW TABLES
+-- ================================================================
+
+-- Currency Approval Request
+CREATE TABLE IF NOT EXISTS payroll.currency_approval_request (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Request Details
+  request_type VARCHAR(50) NOT NULL CHECK (request_type IN ('rate_change', 'conversion', 'bulk_import', 'config_change')),
+  reference_type VARCHAR(50) NOT NULL CHECK (reference_type IN ('exchange_rate', 'conversion', 'config', 'bulk_operation')),
+  reference_id BIGINT,
+  
+  -- Request Data
+  request_data JSONB NOT NULL,
+  reason TEXT,
+  
+  -- Priority
+  priority VARCHAR(20) NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+  
+  -- Status
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'expired', 'cancelled')),
+  
+  -- Approval Tracking
+  required_approvals INTEGER NOT NULL DEFAULT 1,
+  current_approvals INTEGER NOT NULL DEFAULT 0,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  
+  -- Audit
+  created_by UUID NOT NULL REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  deleted_at TIMESTAMPTZ,
+  deleted_by UUID REFERENCES hris.user_account(id),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+-- Indexes for currency_approval_request
+CREATE INDEX idx_approval_request_org_status ON payroll.currency_approval_request(
+  organization_id, status
+) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_approval_request_type ON payroll.currency_approval_request(
+  request_type, status
+) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_approval_request_reference ON payroll.currency_approval_request(
+  reference_type, reference_id
+);
+
+CREATE INDEX idx_approval_request_created ON payroll.currency_approval_request(
+  created_at DESC
+);
+
+CREATE INDEX idx_approval_request_priority ON payroll.currency_approval_request(
+  priority, status
+) WHERE status = 'pending' AND deleted_at IS NULL;
+
+COMMENT ON TABLE payroll.currency_approval_request IS 'Approval requests for currency operations requiring authorization';
+COMMENT ON COLUMN payroll.currency_approval_request.request_data IS 'JSONB containing the full details of what is being requested';
+COMMENT ON COLUMN payroll.currency_approval_request.current_approvals IS 'Count of approvals received so far';
+
+-- Currency Approval Action (Individual Approver Actions)
+CREATE TABLE IF NOT EXISTS payroll.currency_approval_action (
+  id BIGSERIAL PRIMARY KEY,
+  approval_request_id BIGINT NOT NULL REFERENCES payroll.currency_approval_request(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Action Details
+  action VARCHAR(20) NOT NULL CHECK (action IN ('approve', 'reject', 'comment')),
+  comments TEXT,
+  
+  -- Audit
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID NOT NULL REFERENCES hris.user_account(id),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (approval_request_id) REFERENCES payroll.currency_approval_request(id) ON DELETE CASCADE
+);
+
+-- Indexes for currency_approval_action
+CREATE INDEX idx_approval_action_request ON payroll.currency_approval_action(
+  approval_request_id, created_at DESC
+);
+
+CREATE INDEX idx_approval_action_user ON payroll.currency_approval_action(
+  created_by, created_at DESC
+);
+
+COMMENT ON TABLE payroll.currency_approval_action IS 'Individual actions taken by approvers on approval requests';
+
+-- Currency Approval Rule (Configurable Approval Rules)
+CREATE TABLE IF NOT EXISTS payroll.currency_approval_rule (
+  id BIGSERIAL PRIMARY KEY,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Rule Configuration
+  rule_name VARCHAR(100) NOT NULL,
+  rule_type VARCHAR(50) NOT NULL CHECK (rule_type IN ('conversion_threshold', 'rate_variance', 'bulk_operation', 'configuration_change')),
+  
+  -- Rule Conditions (JSONB for flexibility)
+  conditions JSONB NOT NULL,
+  
+  -- Approval Requirements
+  required_approvals INTEGER NOT NULL DEFAULT 1 CHECK (required_approvals >= 1),
+  allowed_approver_roles VARCHAR(50)[] NOT NULL DEFAULT '{admin}',
+  
+  -- Priority
+  priority INTEGER NOT NULL DEFAULT 100,
+  
+  -- Status
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  
+  -- Audit
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_by UUID NOT NULL REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  deleted_at TIMESTAMPTZ,
+  deleted_by UUID REFERENCES hris.user_account(id),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  UNIQUE(organization_id, rule_name)
+);
+
+-- Indexes for currency_approval_rule
+CREATE INDEX idx_approval_rule_org_active ON payroll.currency_approval_rule(
+  organization_id, is_active
+) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_approval_rule_type ON payroll.currency_approval_rule(
+  rule_type, is_active
+) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_approval_rule_priority ON payroll.currency_approval_rule(
+  organization_id, priority DESC
+) WHERE is_active = true AND deleted_at IS NULL;
+
+COMMENT ON TABLE payroll.currency_approval_rule IS 'Configurable rules defining when approvals are required';
+COMMENT ON COLUMN payroll.currency_approval_rule.conditions IS 'JSONB containing rule matching conditions (thresholds, percentages, etc.)';
+COMMENT ON COLUMN payroll.currency_approval_rule.priority IS 'Higher priority rules are evaluated first';
+
+-- Currency Approval Notification
+CREATE TABLE IF NOT EXISTS payroll.currency_approval_notification (
+  id BIGSERIAL PRIMARY KEY,
+  approval_request_id BIGINT NOT NULL REFERENCES payroll.currency_approval_request(id) ON DELETE CASCADE,
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Recipient
+  recipient_id UUID NOT NULL REFERENCES hris.user_account(id),
+  
+  -- Notification Details
+  notification_type VARCHAR(50) NOT NULL CHECK (notification_type IN ('request_created', 'request_approved', 'request_rejected', 'request_expired')),
+  message TEXT NOT NULL,
+  
+  -- Status
+  is_read BOOLEAN NOT NULL DEFAULT false,
+  read_at TIMESTAMPTZ,
+  
+  -- Audit
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (approval_request_id) REFERENCES payroll.currency_approval_request(id) ON DELETE CASCADE
+);
+
+-- Indexes for currency_approval_notification
+CREATE INDEX idx_approval_notification_recipient ON payroll.currency_approval_notification(
+  recipient_id, is_read, created_at DESC
+);
+
+CREATE INDEX idx_approval_notification_request ON payroll.currency_approval_notification(
+  approval_request_id, created_at DESC
+);
+
+COMMENT ON TABLE payroll.currency_approval_notification IS 'Notification tracking for approval workflow events';
+
+-- ================================================================
+-- CURRENCY APPROVAL VIEWS
+-- ================================================================
+
+-- Pending Approval Requests View (for quick access)
+CREATE OR REPLACE VIEW payroll.pending_approval_requests AS
+SELECT 
+  ar.*,
+  u.email as requester_email,
+  u.first_name || ' ' || u.last_name as requester_name,
+  COUNT(aa.id) FILTER (WHERE aa.action = 'approve') as approval_count,
+  COUNT(aa.id) FILTER (WHERE aa.action = 'reject') as rejection_count,
+  ARRAY_AGG(DISTINCT aa.created_by) FILTER (WHERE aa.action = 'approve') as approved_by_users
+FROM payroll.currency_approval_request ar
+LEFT JOIN hris.user_account u ON ar.created_by = u.id
+LEFT JOIN payroll.currency_approval_action aa ON ar.id = aa.approval_request_id
+WHERE ar.status = 'pending'
+  AND ar.deleted_at IS NULL
+  AND (ar.expires_at IS NULL OR ar.expires_at > NOW())
+GROUP BY ar.id, u.email, u.first_name, u.last_name;
+
+COMMENT ON VIEW payroll.pending_approval_requests IS 'Active pending approval requests with aggregated approval counts';
+
+-- Approval Statistics View
+CREATE OR REPLACE VIEW payroll.approval_statistics AS
+SELECT 
+  organization_id,
+  request_type,
+  COUNT(*) as total_requests,
+  COUNT(*) FILTER (WHERE status = 'pending') as pending_requests,
+  COUNT(*) FILTER (WHERE status = 'approved') as approved_requests,
+  COUNT(*) FILTER (WHERE status = 'rejected') as rejected_requests,
+  COUNT(*) FILTER (WHERE status = 'expired') as expired_requests,
+  AVG(EXTRACT(EPOCH FROM (completed_at - created_at)) / 3600) FILTER (WHERE completed_at IS NOT NULL) as avg_approval_time_hours,
+  MAX(created_at) as last_request_at
+FROM payroll.currency_approval_request
+WHERE deleted_at IS NULL
+GROUP BY organization_id, request_type;
+
+COMMENT ON VIEW payroll.approval_statistics IS 'Aggregated approval workflow statistics per organization and request type';
+
+-- ================================================================
 -- MULTI-CURRENCY TRIGGERS
 -- ================================================================
 
@@ -3090,6 +3314,97 @@ CREATE TRIGGER exchange_rate_audit_trigger
   FOR EACH ROW
   EXECUTE FUNCTION payroll.log_exchange_rate_changes();
 
+-- Trigger for currency_approval_request updated_at
+CREATE OR REPLACE FUNCTION payroll.update_approval_request_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER approval_request_updated_at
+  BEFORE UPDATE ON payroll.currency_approval_request
+  FOR EACH ROW
+  EXECUTE FUNCTION payroll.update_approval_request_updated_at();
+
+-- Trigger to update approval counts
+CREATE OR REPLACE FUNCTION payroll.update_approval_counts()
+RETURNS TRIGGER AS $$
+DECLARE
+  approval_count INTEGER;
+  rejection_count INTEGER;
+BEGIN
+  -- Count approvals and rejections
+  SELECT 
+    COUNT(*) FILTER (WHERE action = 'approve'),
+    COUNT(*) FILTER (WHERE action = 'reject')
+  INTO approval_count, rejection_count
+  FROM payroll.currency_approval_action
+  WHERE approval_request_id = NEW.approval_request_id;
+  
+  -- Update the approval request
+  UPDATE payroll.currency_approval_request
+  SET 
+    current_approvals = approval_count,
+    status = CASE 
+      WHEN rejection_count > 0 THEN 'rejected'
+      WHEN approval_count >= required_approvals THEN 'approved'
+      ELSE 'pending'
+    END,
+    completed_at = CASE 
+      WHEN rejection_count > 0 OR approval_count >= required_approvals THEN NOW()
+      ELSE NULL
+    END,
+    updated_at = NOW()
+  WHERE id = NEW.approval_request_id;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER approval_action_update_counts
+  AFTER INSERT ON payroll.currency_approval_action
+  FOR EACH ROW
+  EXECUTE FUNCTION payroll.update_approval_counts();
+
+-- Trigger for currency_approval_rule updated_at
+CREATE OR REPLACE FUNCTION payroll.update_approval_rule_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER approval_rule_updated_at
+  BEFORE UPDATE ON payroll.currency_approval_rule
+  FOR EACH ROW
+  EXECUTE FUNCTION payroll.update_approval_rule_updated_at();
+
+-- Function to expire old approval requests
+CREATE OR REPLACE FUNCTION payroll.expire_old_approval_requests()
+RETURNS INTEGER AS $$
+DECLARE
+  expired_count INTEGER;
+BEGIN
+  UPDATE payroll.currency_approval_request
+  SET 
+    status = 'expired',
+    completed_at = NOW(),
+    updated_at = NOW()
+  WHERE status = 'pending'
+    AND expires_at IS NOT NULL
+    AND expires_at < NOW()
+    AND deleted_at IS NULL;
+  
+  GET DIAGNOSTICS expired_count = ROW_COUNT;
+  RETURN expired_count;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION payroll.expire_old_approval_requests() IS 'Expires approval requests that have passed their expiration date. Returns count of expired requests.';
+
 -- ================================================================
 -- MULTI-CURRENCY RLS POLICIES
 -- ================================================================
@@ -3098,6 +3413,10 @@ ALTER TABLE payroll.exchange_rate ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payroll.currency_conversion ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payroll.organization_currency_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payroll.exchange_rate_audit ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payroll.currency_approval_request ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payroll.currency_approval_action ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payroll.currency_approval_rule ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payroll.currency_approval_notification ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY exchange_rate_org_isolation ON payroll.exchange_rate
   USING (organization_id = payroll.get_current_organization_id());
@@ -3128,6 +3447,41 @@ CREATE POLICY audit_org_isolation ON payroll.exchange_rate_audit
       AND er.organization_id = payroll.get_current_organization_id()
     )
   );
+
+-- Approval request isolation
+CREATE POLICY approval_request_org_isolation ON payroll.currency_approval_request
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY approval_request_org_isolation_insert ON payroll.currency_approval_request
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- Approval action isolation
+CREATE POLICY approval_action_org_isolation ON payroll.currency_approval_action
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY approval_action_org_isolation_insert ON payroll.currency_approval_action
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- Approval rule isolation
+CREATE POLICY approval_rule_org_isolation ON payroll.currency_approval_rule
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY approval_rule_org_isolation_insert ON payroll.currency_approval_rule
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
+-- Approval notification isolation (users can only see their own notifications)
+CREATE POLICY approval_notification_org_isolation ON payroll.currency_approval_notification
+  USING (
+    organization_id = payroll.get_current_organization_id()
+    AND recipient_id = payroll.get_current_user_id()
+  );
+
+CREATE POLICY approval_notification_org_isolation_insert ON payroll.currency_approval_notification
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
 
 -- ================================================================
 -- PERFORMANCE OPTIMIZATION - MATERIALIZED VIEWS & INDEXES
