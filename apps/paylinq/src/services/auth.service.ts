@@ -66,11 +66,8 @@ class AuthService {
       const { user } = response.data;
       
       // SECURITY: Tokens are now in httpOnly cookies set by backend
-      // No need to store them in localStorage (prevents XSS attacks)
-      
-      // Store user data for UI
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('organizationId', user.organizationId);
+      // User data should be stored in React state by the calling component
+      // Do NOT store in localStorage to prevent XSS attacks
       
       return { user };
     } catch (error: any) {
@@ -83,14 +80,12 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
-      // Backend will read refreshToken from httpOnly cookie
+      // Backend will read refreshToken from httpOnly cookie and clear cookies
       await api.post(`${this.baseURL}/logout`, {});
+      // Calling component should clear user state
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      // Clear user data
-      localStorage.removeItem('user');
-      localStorage.removeItem('organizationId');
+      throw error;
     }
   }
 
@@ -103,8 +98,7 @@ class AuthService {
       await api.post(`${this.baseURL}/refresh`, {});
       // New access token is set as httpOnly cookie by backend
     } catch (error: any) {
-      // Refresh failed, clear auth data and redirect to login
-      this.clearAuth();
+      // Refresh failed - calling component should handle auth state clearing
       throw error;
     }
   }
@@ -118,7 +112,7 @@ class AuthService {
       const response = await api.get(`${this.baseURL}/me`);
       
       const user = response.data.user;
-      localStorage.setItem('user', JSON.stringify(user));
+      // Calling component should store user in state
       
       return user;
     } catch (error: any) {
@@ -140,7 +134,7 @@ class AuthService {
       const { product: currentProduct, role } = response.data;
       
       // New access token with product context is set as httpOnly cookie by backend
-      localStorage.setItem('currentProduct', currentProduct);
+      // Calling component should store current product in state
       
       return { product: currentProduct, role };
     } catch (error: any) {
@@ -161,57 +155,21 @@ class AuthService {
   }
 
   /**
-   * Check if user is authenticated
-   */
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('accessToken');
-  }
-
-  /**
-   * Get stored user data
-   */
-  getUser(): LoginResponse['user'] | null {
-    const userStr = localStorage.getItem('user');
-    if (!userStr) return null;
-    
-    try {
-      return JSON.parse(userStr);
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Get organization ID
-   */
-  getOrganizationId(): string | null {
-    return localStorage.getItem('organizationId');
-  }
-
-  /**
    * Check if user has access to product
+   * @param user - Current user object from component state
+   * @param product - Product identifier
    */
-  hasProductAccess(product: string): boolean {
-    const user = this.getUser();
+  hasProductAccess(user: LoginResponse['user'] | null, product: string): boolean {
     return user?.enabledProducts?.includes(product) || false;
   }
 
   /**
    * Get user's role in product
+   * @param user - Current user object from component state
+   * @param product - Product identifier
    */
-  getProductRole(product: string): string | null {
-    const user = this.getUser();
+  getProductRole(user: LoginResponse['user'] | null, product: string): string | null {
     return user?.productRoles?.[product] || null;
-  }
-
-  /**
-   * Clear auth data
-   */
-  private clearAuth(): void {
-    // SECURITY: Tokens are in httpOnly cookies, no need to remove from localStorage
-    localStorage.removeItem('user');
-    localStorage.removeItem('organizationId');
-    localStorage.removeItem('currentProduct');
   }
 }
 
