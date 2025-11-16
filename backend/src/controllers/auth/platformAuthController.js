@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import PlatformUser from '../../models/PlatformUser.js';
 import db from '../../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  AUTH_CONFIG, 
+  getAccessTokenCookieOptions, 
+  getRefreshTokenCookieOptions, 
+  getCookieClearOptions 
+} from '../../config/auth.js';
 
 /**
  * Platform Authentication Controller
@@ -106,19 +112,10 @@ export const login = async (req, res) => {
     await PlatformUser.updateLastLogin(user.id, req.ip || req.connection.remoteAddress);
 
     // SECURITY: Set tokens as httpOnly cookies (industry standard - protects against XSS)
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000 // 15 minutes
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000
-    });
+    // Using platform-specific cookie names (isolated from tenant apps, no SSO)
+    res.cookie(AUTH_CONFIG.platform.cookieName, accessToken, getAccessTokenCookieOptions('platform'));
+    
+    res.cookie(AUTH_CONFIG.platform.refreshCookieName, refreshToken, getRefreshTokenCookieOptions('platform', rememberMe));
 
     // Return success with user info only (tokens are in httpOnly cookies)
     res.json({
@@ -147,7 +144,7 @@ export const login = async (req, res) => {
 export const refresh = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies[AUTH_CONFIG.platform.refreshCookieName];
 
     if (!refreshToken) {
       return res.status(400).json({
@@ -217,12 +214,7 @@ export const refresh = async (req, res) => {
     );
 
     // SECURITY: Set new access token as httpOnly cookie
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000
-    });
+    res.cookie(AUTH_CONFIG.platform.cookieName, accessToken, getAccessTokenCookieOptions('platform'));
 
     res.json({
       success: true
@@ -243,7 +235,7 @@ export const refresh = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies[AUTH_CONFIG.platform.refreshCookieName];
 
     if (refreshToken) {
       // Revoke the refresh token
@@ -256,17 +248,9 @@ export const logout = async (req, res) => {
     }
 
     // SECURITY: Clear httpOnly cookies
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
-    });
-
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
-    });
+    res.clearCookie(AUTH_CONFIG.platform.cookieName, getCookieClearOptions('platform'));
+    
+    res.clearCookie(AUTH_CONFIG.platform.refreshCookieName, getCookieClearOptions('platform'));
 
     res.json({
       success: true,

@@ -3,6 +3,7 @@ import PlatformUser from '../models/PlatformUser.js';
 import TenantUser from '../models/TenantUser.js';
 import db from '../config/database.js';
 import logger from '../utils/logger.js';
+import { AUTH_CONFIG } from '../config/auth.js';
 
 /**
  * New Authentication Middleware
@@ -18,7 +19,7 @@ import logger from '../utils/logger.js';
 export const authenticatePlatform = async (req, res, next) => {
   try {
     // SECURITY: Get token from httpOnly cookie instead of Authorization header
-    const token = req.cookies.accessToken;
+    const token = req.cookies[AUTH_CONFIG.platform.cookieName];
     
     if (!token) {
       return res.status(401).json({
@@ -113,7 +114,7 @@ export const authenticatePlatform = async (req, res, next) => {
 export const authenticateTenant = async (req, res, next) => {
   try {
     // SECURITY: Get token from httpOnly cookie instead of Authorization header
-    const token = req.cookies.accessToken;
+    const token = req.cookies[AUTH_CONFIG.tenant.cookieName];
     
     // DEBUG: Log cookie debugging info
     logger.debug('authenticateTenant - Cookie debug', {

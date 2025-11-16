@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import TenantUser from '../../models/TenantUser.js';
 import db from '../../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  AUTH_CONFIG, 
+  getAccessTokenCookieOptions, 
+  getRefreshTokenCookieOptions, 
+  getCookieClearOptions 
+} from '../../config/auth.js';
 
 /**
  * Tenant Authentication Controller
@@ -141,21 +147,10 @@ export const login = async (req, res) => {
     await TenantUser.updateLastLogin(user.id, user.organization_id, req.ip || req.connection.remoteAddress);
 
     // SECURITY: Set tokens as httpOnly cookies (industry standard - protects against XSS)
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,  // Cannot be accessed via JavaScript (XSS protection)
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Allow cross-origin in dev
-      maxAge: 15 * 60 * 1000, // 15 minutes
-      path: '/' // Available for all routes
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000, // 30 days or 7 days
-      path: '/' // Available for all routes
-    });
+    // Using tenant-specific cookie names for SSO support
+    res.cookie(AUTH_CONFIG.tenant.cookieName, accessToken, getAccessTokenCookieOptions('tenant'));
+    
+    res.cookie(AUTH_CONFIG.tenant.refreshCookieName, refreshToken, getRefreshTokenCookieOptions('tenant', rememberMe));
 
     // Return success with user info only (tokens are in httpOnly cookies)
     res.json({
@@ -189,7 +184,7 @@ export const login = async (req, res) => {
 export const refresh = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie instead of request body
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies[AUTH_CONFIG.tenant.refreshCookieName];
 
     if (!refreshToken) {
       return res.status(400).json({
@@ -272,13 +267,7 @@ export const refresh = async (req, res) => {
     );
 
     // SECURITY: Set new access token as httpOnly cookie
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
-      path: '/' // Available for all routes
-    });
+    res.cookie(AUTH_CONFIG.tenant.cookieName, accessToken, getAccessTokenCookieOptions('tenant'));
 
     res.json({
       success: true
@@ -299,7 +288,7 @@ export const refresh = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies[AUTH_CONFIG.tenant.refreshCookieName];
 
     if (refreshToken) {
       // Revoke the refresh token
@@ -312,17 +301,9 @@ export const logout = async (req, res) => {
     }
 
     // SECURITY: Clear httpOnly cookies
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
-    });
-
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
-    });
+    res.clearCookie(AUTH_CONFIG.tenant.cookieName, getCookieClearOptions('tenant'));
+    
+    res.clearCookie(AUTH_CONFIG.tenant.refreshCookieName, getCookieClearOptions('tenant'));
 
     res.json({
       success: true,
