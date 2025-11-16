@@ -154,7 +154,7 @@ export const login = async (req, res) => {
       path: '/' // Available for all routes
     });
 
-    res.cookie('tenant_refresh_token', refreshToken, {Token, {
+    res.cookie('tenant_refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax', // Allow SSO navigation between tenant apps

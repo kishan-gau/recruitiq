@@ -115,7 +115,7 @@ export const login = async (req, res) => {
       path: '/'
     });
 
-    res.cookie('platform_refresh_token', refreshToken, {shToken, {
+    res.cookie('platform_refresh_token', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict', // Strict for platform security
