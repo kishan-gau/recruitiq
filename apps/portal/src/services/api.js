@@ -97,8 +97,7 @@ api.interceptors.response.use(
         // Retry original request (cookie will be sent automatically)
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear storage and redirect to login
-        localStorage.removeItem('user')
+        // Refresh failed, clear CSRF token and redirect to login
         csrfToken = null // Clear CSRF token
         
         if (!window.location.pathname.includes('/login')) {
@@ -126,13 +125,9 @@ class APIService {
     const response = await api.post('/auth/platform/login', { email, password })
     const { user } = response.data
     
-    // SECURITY: Tokens are now in httpOnly cookies set by backend
-    // No need to store them in localStorage (prevents XSS attacks)
+    // SECURITY: Tokens are now in httpOnly cookies set by backend (XSS-proof)
+    // User data returned in response, stored in React state only (not localStorage)
     
-    // Store user data in localStorage for convenience (non-sensitive)
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user))
-    }
     return response.data
   }
 
@@ -143,8 +138,7 @@ class APIService {
     } catch (err) {
       console.error('Logout error:', err)
     }
-    // Clear user data and CSRF token
-    localStorage.removeItem('user')
+    // Clear CSRF token only (no localStorage usage)
     csrfToken = null
   }
 

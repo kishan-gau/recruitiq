@@ -9,24 +9,22 @@ export function AuthProvider({ children }) {
   const [mfaWarning, setMfaWarning] = useState(null); // Grace period warning
 
   // Initialize auth state by checking with backend (cookies are sent automatically)
-  // OPTIMIZATION: Only validate session on page load - no CSRF token fetch needed
-  // CSRF tokens are fetched lazily on first mutation by the API client interceptor
+  // SECURITY: Session validation via httpOnly cookies (XSS-proof)
+  // No localStorage usage - user data stored only in React state
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Validate session via cookies (sent automatically by browser)
+        // Validate session via httpOnly cookies (sent automatically by browser)
         const userData = await apiService.getMe();
         
         // Verify platform access
         if (userData.user_type === 'platform' && userData.permissions?.includes('portal.view')) {
           setUser(userData);
-          // Store user data in localStorage for convenience (non-sensitive)
-          localStorage.setItem('user', JSON.stringify(userData));
+          // REMOVED: localStorage.setItem() - unnecessary security risk
         }
       } catch (error) {
-        // Not authenticated, clear any stale data
+        // Not authenticated, clear state
         setUser(null);
-        localStorage.removeItem('user');
       } finally {
         setLoading(false);
       }

@@ -106,18 +106,21 @@ export const login = async (req, res) => {
     await PlatformUser.updateLastLogin(user.id, req.ip || req.connection.remoteAddress);
 
     // SECURITY: Set tokens as httpOnly cookies (industry standard - protects against XSS)
-    res.cookie('accessToken', accessToken, {
+    // Using 'platform_' prefix for clarity, strict sameSite (no SSO for platform admin)
+    res.cookie('platform_access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000 // 15 minutes
+      sameSite: 'strict', // Strict for platform security (no cross-origin)
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/'
     });
 
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie('platform_refresh_token', refreshToken, {shToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000
+      sameSite: 'strict', // Strict for platform security
+      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000,
+      path: '/'
     });
 
     // Return success with user info only (tokens are in httpOnly cookies)
@@ -217,11 +220,12 @@ export const refresh = async (req, res) => {
     );
 
     // SECURITY: Set new access token as httpOnly cookie
-    res.cookie('accessToken', accessToken, {
+    res.cookie('platform_access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000
+      sameSite: 'strict', // Strict for platform security
+      maxAge: 15 * 60 * 1000,
+      path: '/'
     });
 
     res.json({
@@ -255,17 +259,19 @@ export const logout = async (req, res) => {
       );
     }
 
-    // SECURITY: Clear httpOnly cookies
-    res.clearCookie('accessToken', {
+    // SECURITY: Clear httpOnly cookies (must match cookie options used in login)
+    res.clearCookie('platform_access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'strict',
+      path: '/'
     });
 
-    res.clearCookie('refreshToken', {
+    res.clearCookie('platform_refresh_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'strict',
+      path: '/'
     });
 
     res.json({

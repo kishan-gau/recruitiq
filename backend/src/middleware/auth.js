@@ -17,8 +17,8 @@ import logger from '../utils/logger.js';
  */
 export const authenticatePlatform = async (req, res, next) => {
   try {
-    // SECURITY: Get token from httpOnly cookie instead of Authorization header
-    const token = req.cookies.accessToken;
+    // SECURITY: Get token from httpOnly cookie (platform_access_token)
+    const token = req.cookies.platform_access_token;
     
     if (!token) {
       return res.status(401).json({
@@ -114,7 +114,7 @@ export const authenticateTenant = async (req, res, next) => {
   try {
     // SECURITY: Support both httpOnly cookies (production) and Bearer tokens (tests)
     // Priority: Cookie > Bearer token
-    let token = req.cookies.accessToken;
+    let token = req.cookies.tenant_access_token;
     
     // Fallback to Bearer token for testing (when cookies aren't used)
     if (!token && req.headers.authorization) {
@@ -129,7 +129,7 @@ export const authenticateTenant = async (req, res, next) => {
       hasCookies: !!req.cookies,
       cookieKeys: Object.keys(req.cookies || {}),
       hasAccessToken: !!token,
-      authMethod: req.cookies.accessToken ? 'cookie' : (req.headers.authorization ? 'bearer' : 'none'),
+      authMethod: req.cookies.tenant_access_token ? 'cookie' : (req.headers.authorization ? 'bearer' : 'none'),
       rawCookieHeader: req.headers.cookie,
       path: req.path,
       method: req.method

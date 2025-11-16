@@ -70,8 +70,11 @@ export const login = async (req, res) => {
     }
 
     // Set PostgreSQL RLS context for the session
-    // Note: SET LOCAL doesn't support parameterized queries, but organizationId is validated UUID
-    await db.query(`SET LOCAL app.current_organization_id = '${organizationId}'`);
+    // Using set_config() function to safely set session variable with parameterized query
+    await db.query('SELECT set_config($1, $2, true)', [
+      'app.current_organization_id',
+      organizationId
+    ]);
 
     // DEBUG: Log what we're putting in the JWT
     if (process.env.NODE_ENV === 'development') {
@@ -141,18 +144,21 @@ export const login = async (req, res) => {
     await TenantUser.updateLastLogin(user.id, user.organization_id, req.ip || req.connection.remoteAddress);
 
     // SECURITY: Set tokens as httpOnly cookies (industry standard - protects against XSS)
-    res.cookie('accessToken', accessToken, {
+    // Using 'tenant_' prefix for clarity and '.recruitiq.com' domain for SSO across tenant apps
+    res.cookie('tenant_access_token', accessToken, {
       httpOnly: true,  // Cannot be accessed via JavaScript (XSS protection)
       secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Allow cross-origin in dev
+      sameSite: 'lax', // Allow SSO navigation between tenant apps (paylinq, nexus, recruitiq, schedulehub)
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined, // SSO domain in production
       maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/' // Available for all routes
     });
 
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie('tenant_refresh_token', refreshToken, {Token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: 'lax', // Allow SSO navigation between tenant apps
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined, // SSO domain in production
       maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000, // 30 days or 7 days
       path: '/' // Available for all routes
     });
@@ -237,8 +243,11 @@ export const refresh = async (req, res) => {
     }
 
     // Set RLS context
-    // Note: SET LOCAL doesn't support parameterized queries, but organizationId is from validated JWT
-    await db.query(`SET LOCAL app.current_organization_id = '${tokenRecord.organization_id}'`);
+    // Using set_config() function to safely set session variable with parameterized query
+    await db.query('SELECT set_config($1, $2, true)', [
+      'app.current_organization_id',
+      tokenRecord.organization_id
+    ]);
 
     // Get user
     const user = await TenantUser.findById(decoded.id, decoded.organizationId);
@@ -272,10 +281,11 @@ export const refresh = async (req, res) => {
     );
 
     // SECURITY: Set new access token as httpOnly cookie
-    res.cookie('accessToken', accessToken, {
+    res.cookie('tenant_access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: 'lax', // Allow SSO navigation between tenant apps
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined, // SSO domain in production
       maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/' // Available for all routes
     });
@@ -311,17 +321,21 @@ export const logout = async (req, res) => {
       );
     }
 
-    // SECURITY: Clear httpOnly cookies
-    res.clearCookie('accessToken', {
+    // SECURITY: Clear httpOnly cookies (must match cookie options used in login)
+    res.clearCookie('tenant_access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined,
+      path: '/'
     });
 
-    res.clearCookie('refreshToken', {
+    res.clearCookie('tenant_refresh_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined,
+      path: '/'
     });
 
     res.json({
