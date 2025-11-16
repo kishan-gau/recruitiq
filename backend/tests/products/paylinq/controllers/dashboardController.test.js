@@ -54,14 +54,15 @@ describe('Dashboard Controller - API Contract Tests', () => {
       expect(response.body.data).toBeDefined();
       
       // CRITICAL: Validate summary object exists (would have caught the TypeError)
-      expect(response.body.data.summary).toBeDefined();
-      expect(response.body.data.summary).toHaveProperty('totalWorkers');
-      expect(response.body.data.summary).toHaveProperty('activeWorkers');
-      expect(response.body.data.summary).toHaveProperty('workersTrend');
-      expect(response.body.data.summary).toHaveProperty('pendingApprovals');
-      expect(response.body.data.summary).toHaveProperty('daysUntilPayroll');
-      expect(response.body.data.summary).toHaveProperty('monthlyCost');
-      expect(response.body.data.summary).toHaveProperty('costTrend');
+      expect(response.body?.data?.summary).toBeDefined();
+      expect(response.body?.data?.summary).toHaveProperty('totalWorkers');
+      expect(response.body?.data?.summary).toHaveProperty('activeWorkers');
+      expect(response.body?.data?.summary).toHaveProperty('workersTrend');
+      expect(response.body?.data?.summary).toHaveProperty('pendingApprovals');
+      expect(response.body?.data?.summary).toHaveProperty('daysUntilPayroll');
+      expect(response.body?.data).toBeDefined();
+      expect(response.body?.data?.summary).toHaveProperty('monthlyCost');
+      expect(response.body?.data?.summary).toHaveProperty('costTrend');
 
       // Validate other required objects
       expect(response.body.data).toHaveProperty('payroll');
@@ -116,10 +117,10 @@ describe('Dashboard Controller - API Contract Tests', () => {
 
       expect(response.body.success).toBe(true);
       // Verify numbers are 0, not null or undefined
-      expect(response.body.data.summary.totalWorkers).toBe(0);
-      expect(response.body.data.summary.pendingApprovals).toBe(0);
-      expect(response.body.data.summary.daysUntilPayroll).toBe(0);
-      expect(response.body.data.summary.monthlyCost).toBe(0);
+      expect(response.body?.data?.summary.totalWorkers).toBe(0);
+      expect(response.body?.data?.summary.pendingApprovals).toBe(0);
+      expect(response.body?.data?.summary.daysUntilPayroll).toBe(0);
+      expect(response.body?.data?.summary.monthlyCost).toBe(0);
     });
 
     test('should accept period query parameter', async () => {

@@ -15,8 +15,8 @@ import PayrollRunTypeService from '../services/PayrollRunTypeService.js';
 import { mapRunTypesDbToApi, mapRunTypeDbToApi, mapRunTypesToSummary } from '../dto/payrollRunTypeDto.js';
 import logger from '../../../utils/logger.js';
 
-// Use singleton instance
-const service = PayrollRunTypeService;
+// Instantiate service
+const service = new PayrollRunTypeService();
 
 /**
  * List all run types for organization

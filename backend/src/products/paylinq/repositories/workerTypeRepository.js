@@ -12,6 +12,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class WorkerTypeRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   // ==================== WORKER TYPE TEMPLATES ====================
   
   /**
@@ -22,7 +26,7 @@ class WorkerTypeRepository {
    * @returns {Promise<Object>} Created worker type template
    */
   async createTemplate(templateData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.worker_type_template 
       (organization_id, name, code, description, default_pay_frequency,
        default_payment_method, benefits_eligible, overtime_eligible, 
@@ -74,7 +78,7 @@ class WorkerTypeRepository {
       params.push(filters.code);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.worker_type_template
        ${whereClause}
        ORDER BY name ASC`,
@@ -93,7 +97,7 @@ class WorkerTypeRepository {
    * @returns {Promise<Object|null>} Worker type template or null
    */
   async findTemplateById(templateId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.worker_type_template
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
       [templateId, organizationId],
@@ -111,7 +115,7 @@ class WorkerTypeRepository {
    * @returns {Promise<Object|null>} Worker type template or null
    */
   async findTemplateByCode(code, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.worker_type_template
        WHERE code = $1 AND organization_id = $2 AND deleted_at IS NULL`,
       [code, organizationId],
@@ -163,7 +167,7 @@ class WorkerTypeRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.worker_type_template 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -187,7 +191,7 @@ class WorkerTypeRepository {
    */
   async assignWorkerType(assignmentData, organizationId, userId) {
     // Set previous assignment to non-current
-    await query(
+    await this.query(
       `UPDATE payroll.worker_type 
        SET is_current = false, 
            effective_to = $1, 
@@ -200,7 +204,7 @@ class WorkerTypeRepository {
     );
     
     // Create new assignment
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.worker_type 
       (organization_id, employee_id, worker_type_template_id, effective_from, 
        pay_frequency, payment_method, is_current, created_by)
@@ -229,7 +233,7 @@ class WorkerTypeRepository {
    * @returns {Promise<Object|null>} Current worker type or null
    */
   async findCurrentWorkerType(employeeId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT wt.*, 
               wtt.name as template_name, 
               wtt.code as template_code,
@@ -259,7 +263,7 @@ class WorkerTypeRepository {
    * @returns {Promise<Array>} Worker type history
    */
   async findWorkerTypeHistory(employeeId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT wt.*, 
               wtt.name as template_name, 
               wtt.code as template_code
@@ -293,7 +297,7 @@ class WorkerTypeRepository {
       whereClause += ' AND wt.is_current = true';
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT wt.*, 
               e.employee_number,
               e.id as employee_id,
@@ -317,7 +321,7 @@ class WorkerTypeRepository {
    * @returns {Promise<Array>} Worker type counts
    */
   async countEmployeesByWorkerType(organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT wtt.id, wtt.name, wtt.code, COUNT(wt.employee_id) as employee_count
        FROM payroll.worker_type_template wtt
        LEFT JOIN payroll.worker_type wt ON wt.worker_type_template_id = wtt.id 
@@ -342,7 +346,7 @@ class WorkerTypeRepository {
    * @returns {Promise<Object|null>} Worker type or null
    */
   async findWorkerTypeOnDate(employeeId, effectiveDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT wt.*, 
               wtt.name as template_name, 
               wtt.code as template_code,
@@ -398,7 +402,7 @@ class WorkerTypeRepository {
       throw new Error(`Cannot delete worker type template. It is currently assigned to ${assignments.length} employee(s).`);
     }
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.worker_type_template 
        SET deleted_at = NOW(), 
            deleted_by = $1,

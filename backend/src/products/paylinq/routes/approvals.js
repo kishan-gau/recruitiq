@@ -46,9 +46,9 @@ router.post('/', async (req, res) => {
     }
 
     const approvalData = {
-      organizationId: req.organizationId,
+      organizationId: req.user.organizationId,
       ...value,
-      createdBy: req.userId
+      createdBy: req.user.id
     };
 
     const result = await approvalService.createApprovalRequest(approvalData);
@@ -76,10 +76,10 @@ router.get('/pending', async (req, res) => {
   try {
     const { requestType, priority } = req.query;
 
-    const approvals = await approvalService.getPendingApprovals(req.organizationId, {
+    const approvals = await approvalService.getPendingApprovals(req.user.organizationId, {
       requestType,
       priority,
-      userId: req.userId
+      userId: req.user.id
     });
 
     res.json({
@@ -130,7 +130,7 @@ router.get('/:id', async (req, res) => {
     `;
 
     const { pool } = await import('../../../config/database.js');
-    const result = await pool.query(query, [id, req.organizationId]);
+    const result = await pool.query(query, [id, req.user.organizationId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -174,7 +174,7 @@ router.post('/:id/approve', async (req, res) => {
 
     const request = await approvalService.approveRequest(
       parseInt(id),
-      req.userId,
+      req.user.id,
       value.comments
     );
 
@@ -222,7 +222,7 @@ router.post('/:id/reject', async (req, res) => {
 
     const request = await approvalService.rejectRequest(
       parseInt(id),
-      req.userId,
+      req.user.id,
       value.comments
     );
 
@@ -315,7 +315,7 @@ router.get('/statistics', async (req, res) => {
     `;
 
     const { pool } = await import('../../../config/database.js');
-    const result = await pool.query(query, [req.organizationId]);
+    const result = await pool.query(query, [req.user.organizationId]);
 
     res.json({
       success: true,

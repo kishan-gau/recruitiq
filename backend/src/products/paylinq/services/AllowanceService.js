@@ -18,8 +18,11 @@ import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.js';
 
 class AllowanceService {
-  constructor() {
-    this.repository = AllowanceRepository;
+  /**
+   * @param {AllowanceRepository} repository - Optional repository instance for testing
+   */
+  constructor(repository = null) {
+    this.repository = repository || new AllowanceRepository();
   }
 
   /**

@@ -11,14 +11,19 @@
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
-/**
- * Find active allowance by type for a specific date
- * @param {string} allowanceType - e.g., 'tax_free_sum_monthly', 'holiday_allowance', 'bonus_gratuity'
- * @param {Date} effectiveDate - Date to check
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @returns {Promise<Object|null>} Allowance record or null
- */
-export async function findActiveAllowanceByType(allowanceType, effectiveDate, organizationId) {
+class AllowanceRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
+  /**
+   * Find active allowance by type for a specific date
+   * @param {string} allowanceType - e.g., 'tax_free_sum_monthly', 'holiday_allowance', 'bonus_gratuity'
+   * @param {Date} effectiveDate - Date to check
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @returns {Promise<Object|null>} Allowance record or null
+   */
+  async findActiveAllowanceByType(allowanceType, effectiveDate, organizationId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -50,7 +55,7 @@ export async function findActiveAllowanceByType(allowanceType, effectiveDate, or
     LIMIT 1
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [organizationId, allowanceType, effectiveDate],
     organizationId,
@@ -66,18 +71,18 @@ export async function findActiveAllowanceByType(allowanceType, effectiveDate, or
     return null;
   }
 
-  return result.rows[0];
-}
+    return result.rows[0];
+  }
 
-/**
- * Get employee allowance usage for a specific year
- * @param {string} employeeId - Employee UUID
- * @param {string} allowanceType - Allowance type (e.g., 'holiday_allowance', 'bonus_gratuity')
- * @param {number} year - Calendar year
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @returns {Promise<Object|null>} Usage record or null
- */
-export async function getEmployeeAllowanceUsage(employeeId, allowanceType, year, organizationId) {
+  /**
+   * Get employee allowance usage for a specific year
+   * @param {string} employeeId - Employee UUID
+   * @param {string} allowanceType - Allowance type (e.g., 'holiday_allowance', 'bonus_gratuity')
+   * @param {number} year - Calendar year
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @returns {Promise<Object|null>} Usage record or null
+   */
+  async getEmployeeAllowanceUsage(employeeId, allowanceType, year, organizationId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -101,7 +106,7 @@ export async function getEmployeeAllowanceUsage(employeeId, allowanceType, year,
       AND calendar_year = $4
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [organizationId, employeeId, allowanceType, year],
     organizationId,
@@ -118,19 +123,19 @@ export async function getEmployeeAllowanceUsage(employeeId, allowanceType, year,
     return null;
   }
 
-  return result.rows[0];
-}
+    return result.rows[0];
+  }
 
-/**
- * Record or update allowance usage
- * @param {string} employeeId - Employee UUID
- * @param {string} allowanceType - Allowance type
- * @param {number} amountUsed - Amount to add to usage
- * @param {number} year - Calendar year
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @returns {Promise<Object>} Updated usage record
- */
-export async function recordAllowanceUsage(employeeId, allowanceType, amountUsed, year, organizationId) {
+  /**
+   * Record or update allowance usage
+   * @param {string} employeeId - Employee UUID
+   * @param {string} allowanceType - Allowance type
+   * @param {number} amountUsed - Amount to add to usage
+   * @param {number} year - Calendar year
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @returns {Promise<Object>} Updated usage record
+   */
+  async recordAllowanceUsage(employeeId, allowanceType, amountUsed, year, organizationId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -156,7 +161,7 @@ export async function recordAllowanceUsage(employeeId, allowanceType, amountUsed
       updated_at
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [organizationId, employeeId, allowanceType, year, amountUsed],
     organizationId,
@@ -172,15 +177,15 @@ export async function recordAllowanceUsage(employeeId, allowanceType, amountUsed
     totalUsed: result.rows[0].amount_used
   });
 
-  return result.rows[0];
-}
+    return result.rows[0];
+  }
 
-/**
- * Get all allowances for an organization
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @returns {Promise<Array>} Array of allowance records
- */
-export async function getAllAllowances(organizationId) {
+  /**
+   * Get all allowances for an organization
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @returns {Promise<Array>} Array of allowance records
+   */
+  async getAllAllowances(organizationId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -207,26 +212,26 @@ export async function getAllAllowances(organizationId) {
     ORDER BY allowance_type, effective_from DESC
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [organizationId],
     organizationId,
     { operation: 'SELECT', table: 'payroll.allowance', method: 'getAllAllowances' }
   );
 
-  return result.rows;
-}
+    return result.rows;
+  }
 
-/**
- * Reset allowance usage for a new year
- * Useful for yearly cap resets (e.g., holiday allowance, bonus allowance)
- * @param {string} employeeId - Employee UUID
- * @param {string} allowanceType - Allowance type
- * @param {number} year - Calendar year
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @returns {Promise<void>}
- */
-export async function resetAllowanceUsage(employeeId, allowanceType, year, organizationId) {
+  /**
+   * Reset allowance usage for a new year
+   * Useful for yearly cap resets (e.g., holiday allowance, bonus allowance)
+   * @param {string} employeeId - Employee UUID
+   * @param {string} allowanceType - Allowance type
+   * @param {number} year - Calendar year
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @returns {Promise<void>}
+   */
+  async resetAllowanceUsage(employeeId, allowanceType, year, organizationId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -243,25 +248,20 @@ export async function resetAllowanceUsage(employeeId, allowanceType, year, organ
       AND calendar_year = $4
   `;
 
-  await query(
+  await this.query(
     text,
     [organizationId, employeeId, allowanceType, year],
     organizationId,
     { operation: 'UPDATE', table: 'payroll.employee_allowance_usage', method: 'resetAllowanceUsage' }
   );
 
-  logger.info('Allowance usage reset', {
-    employeeId,
-    allowanceType,
-    year,
-    organizationId
-  });
+    logger.info('Allowance usage reset', {
+      employeeId,
+      allowanceType,
+      year,
+      organizationId
+    });
+  }
 }
 
-export default {
-  findActiveAllowanceByType,
-  getEmployeeAllowanceUsage,
-  recordAllowanceUsage,
-  getAllAllowances,
-  resetAllowanceUsage
-};
+export default AllowanceRepository;

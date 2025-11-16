@@ -8,7 +8,7 @@ Unified API client for the RecruitIQ platform. Provides consistent access to all
 - **Automatic Token Refresh**: Seamless token renewal on expiration
 - **Type-Safe**: Full TypeScript support with type definitions
 - **Error Handling**: Consistent error handling and retry logic
-- **Product-Specific APIs**: Organized endpoints by product
+- **Product-Specific Clients**: Organized endpoints by product
 - **MFA Support**: Multi-factor authentication integration
 - **Session Management**: Device and session control
 

@@ -17,8 +17,8 @@ const mockGetPayComponents = vi.fn();
 const mockGetPayComponent = vi.fn();
 const mockCreatePayComponent = vi.fn();
 
-// Mock PaylinqAPIProvider component for test wrapper
-const PaylinqAPIProvider = ({ children }: { children: ReactNode }) => children;
+// Mock PaylinqClientProvider component for test wrapper
+const PaylinqClientProvider = ({ children }: { children: ReactNode }) => children;
 
 vi.mock('@/hooks/usePaylinqAPI', () => ({
   usePaylinqAPI: () => ({
@@ -35,7 +35,7 @@ describe('usePayComponents Hook', () => {
 
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client: queryClient },
-      createElement(PaylinqAPIProvider, null,
+      createElement(PaylinqClientProvider, null,
         createElement(ToastProvider, null, children)
       )
     );

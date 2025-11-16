@@ -6,7 +6,9 @@
  * @module products/paylinq/controllers/dashboardController
  */
 
-import dashboardService from '../services/dashboardService.js';
+import DashboardService from '../services/dashboardService.js';
+
+const dashboardService = new DashboardService();
 import logger from '../../../utils/logger.js';
 
 /**

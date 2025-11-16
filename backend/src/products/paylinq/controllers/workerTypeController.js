@@ -3,9 +3,12 @@
  * Handles HTTP requests for worker type/classification management
  */
 
-import workerTypeService from '../services/workerTypeService.js';
+import WorkerTypeService from '../services/workerTypeService.js';
 import { mapApiToDb } from '../utils/dtoMapper.js';
 import logger from '../../../utils/logger.js';
+
+// Instantiate service
+const workerTypeService = new WorkerTypeService();
 
 /**
  * Create a new worker type template
@@ -20,7 +23,7 @@ async function createWorkerType(req, res) {
       createdBy: userId,
     };
 
-    const workerType = await workerTypeService.createWorkerType(workerTypeData);
+    const workerType = await workerTypeService.createWorkerTypeTemplate(workerTypeData);
 
     logger.info('Worker type created', {
       organizationId,
@@ -124,7 +127,7 @@ async function getWorkerTypeById(req, res) {
     const { organization_id: organizationId } = req.user;
     const { id } = req.params;
 
-    const workerType = await workerTypeService.getWorkerTypeById(id, organizationId);
+    const workerType = await workerTypeService.getWorkerTypeTemplateById(id, organizationId);
 
     if (!workerType) {
       return res.status(404).json({
@@ -167,7 +170,7 @@ async function updateWorkerType(req, res) {
       updatedBy: userId,
     };
 
-    const workerType = await workerTypeService.updateWorkerType(id, organizationId, updateData);
+    const workerType = await workerTypeService.updateWorkerTypeTemplate(id, organizationId, updateData);
 
     if (!workerType) {
       return res.status(404).json({
@@ -213,7 +216,7 @@ async function deleteWorkerType(req, res) {
     const { organization_id: organizationId, id: userId } = req.user;
     const { id } = req.params;
 
-    const deleted = await workerTypeService.deleteWorkerType(id, organizationId, userId);
+    const deleted = await workerTypeService.deleteWorkerTypeTemplate(id, organizationId, userId);
 
     if (!deleted) {
       return res.status(404).json({
@@ -275,7 +278,7 @@ async function assignEmployees(req, res) {
       });
     }
 
-    const result = await workerTypeService.assignEmployeesToWorkerType(
+    const result = await workerTypeService.bulkAssignWorkerTypes(
       id,
       employeeIds,
       organizationId,

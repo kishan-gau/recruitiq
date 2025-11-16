@@ -11,13 +11,18 @@
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
-/**
- * Find run type by code within an organization
- * @param {string} typeCode - Run type code (e.g., 'VAKANTIEGELD', 'BONUS')
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @returns {Promise<Object|null>} Run type or null
- */
-export async function findByCode(typeCode, organizationId) {
+class PayrollRunTypeRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
+  /**
+   * Find run type by code within an organization
+   * @param {string} typeCode - Run type code (e.g., 'VAKANTIEGELD', 'BONUS')
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @returns {Promise<Object|null>} Run type or null
+   */
+  async findByCode(typeCode, organizationId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -54,7 +59,7 @@ export async function findByCode(typeCode, organizationId) {
     LIMIT 1
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [organizationId, typeCode],
     organizationId,
@@ -66,16 +71,16 @@ export async function findByCode(typeCode, organizationId) {
     return null;
   }
 
-  return result.rows[0];
-}
+    return result.rows[0];
+  }
 
-/**
- * Find run type by ID within an organization
- * @param {string} id - Run type UUID
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @returns {Promise<Object|null>} Run type or null
- */
-export async function findById(id, organizationId) {
+  /**
+   * Find run type by ID within an organization
+   * @param {string} id - Run type UUID
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @returns {Promise<Object|null>} Run type or null
+   */
+  async findById(id, organizationId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -112,7 +117,7 @@ export async function findById(id, organizationId) {
     LIMIT 1
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [id, organizationId],
     organizationId,
@@ -124,16 +129,16 @@ export async function findById(id, organizationId) {
     return null;
   }
 
-  return result.rows[0];
-}
+    return result.rows[0];
+  }
 
-/**
- * List all active run types for an organization
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @param {boolean} includeInactive - Include inactive run types (default: false)
- * @returns {Promise<Array>} Array of run types
- */
-export async function findAll(organizationId, includeInactive = false) {
+  /**
+   * List all active run types for an organization
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @param {boolean} includeInactive - Include inactive run types (default: false)
+   * @returns {Promise<Array>} Array of run types
+   */
+  async findAll(organizationId, includeInactive = false) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -169,7 +174,7 @@ export async function findAll(organizationId, includeInactive = false) {
     ORDER BY prt.display_order ASC, prt.type_name ASC
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [organizationId],
     organizationId,
@@ -182,17 +187,17 @@ export async function findAll(organizationId, includeInactive = false) {
     includeInactive 
   });
 
-  return result.rows;
-}
+    return result.rows;
+  }
 
-/**
- * Create a new run type
- * @param {Object} data - Run type data
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @param {string} userId - User UUID creating the run type
- * @returns {Promise<Object>} Created run type
- */
-export async function create(data, organizationId, userId) {
+  /**
+   * Create a new run type
+   * @param {Object} data - Run type data
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @param {string} userId - User UUID creating the run type
+   * @returns {Promise<Object>} Created run type
+   */
+  async create(data, organizationId, userId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -224,7 +229,7 @@ export async function create(data, organizationId, userId) {
       created_by
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [
       organizationId,
@@ -253,18 +258,18 @@ export async function create(data, organizationId, userId) {
     userId
   });
 
-  return result.rows[0];
-}
+    return result.rows[0];
+  }
 
-/**
- * Update a run type
- * @param {string} id - Run type UUID
- * @param {Object} data - Update data
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @param {string} userId - User UUID updating the run type
- * @returns {Promise<Object|null>} Updated run type or null
- */
-export async function update(id, data, organizationId, userId) {
+  /**
+   * Update a run type
+   * @param {string} id - Run type UUID
+   * @param {Object} data - Update data
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @param {string} userId - User UUID updating the run type
+   * @returns {Promise<Object|null>} Updated run type or null
+   */
+  async update(id, data, organizationId, userId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -380,7 +385,7 @@ export async function update(id, data, organizationId, userId) {
       updated_by
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     values,
     organizationId,
@@ -399,17 +404,17 @@ export async function update(id, data, organizationId, userId) {
     userId
   });
 
-  return result.rows[0];
-}
+    return result.rows[0];
+  }
 
-/**
- * Soft delete a run type
- * @param {string} id - Run type UUID
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @param {string} userId - User UUID deleting the run type
- * @returns {Promise<boolean>} True if deleted, false if not found
- */
-export async function softDelete(id, organizationId, userId) {
+  /**
+   * Soft delete a run type
+   * @param {string} id - Run type UUID
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @param {string} userId - User UUID deleting the run type
+   * @returns {Promise<boolean>} True if deleted, false if not found
+   */
+  async softDelete(id, organizationId, userId) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -426,7 +431,7 @@ export async function softDelete(id, organizationId, userId) {
       AND is_system_default = false
   `;
 
-  const result = await query(
+  const result = await this.query(
     text,
     [userId, id, organizationId],
     organizationId,
@@ -447,17 +452,17 @@ export async function softDelete(id, organizationId, userId) {
     userId
   });
 
-  return true;
-}
+    return true;
+  }
 
-/**
- * Check if type code already exists for organization
- * @param {string} typeCode - Run type code
- * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
- * @param {string} excludeId - Optional ID to exclude from check (for updates)
- * @returns {Promise<boolean>} True if exists, false otherwise
- */
-export async function typeCodeExists(typeCode, organizationId, excludeId = null) {
+  /**
+   * Check if type code already exists for organization
+   * @param {string} typeCode - Run type code
+   * @param {string} organizationId - Organization UUID (REQUIRED for tenant isolation)
+   * @param {string} excludeId - Optional ID to exclude from check (for updates)
+   * @returns {Promise<boolean>} True if exists, false otherwise
+   */
+  async typeCodeExists(typeCode, organizationId, excludeId = null) {
   if (!organizationId) {
     throw new Error('organizationId is required for tenant isolation');
   }
@@ -476,7 +481,7 @@ export async function typeCodeExists(typeCode, organizationId, excludeId = null)
     ? [organizationId, typeCode, excludeId]
     : [organizationId, typeCode];
 
-  const result = await query(
+  const result = await this.query(
     text,
     params,
     organizationId,
@@ -484,14 +489,8 @@ export async function typeCodeExists(typeCode, organizationId, excludeId = null)
   );
 
   return result.rows.length > 0;
+  }
 }
 
-export default {
-  findByCode,
-  findById,
-  findAll,
-  create,
-  update,
-  softDelete,
-  typeCodeExists
-};
+export default PayrollRunTypeRepository;
+

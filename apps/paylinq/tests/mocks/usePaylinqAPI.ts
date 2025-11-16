@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 // Mock successful API response
-const mockPaylinqAPI = {
+const mockPaylinqClient = {
   createPayrollRun: vi.fn().mockResolvedValue({
     success: true,
     payrollRun: {
@@ -19,9 +19,9 @@ const mockPaylinqAPI = {
 };
 
 export const usePaylinqAPI = vi.fn(() => ({
-  paylinq: mockPaylinqAPI,
+  paylinq: mockPaylinqClient,
   auth: {},
   client: {},
 }));
 
-export { mockPaylinqAPI };
+export { mockPaylinqClient };

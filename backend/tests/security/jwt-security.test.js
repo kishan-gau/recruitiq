@@ -7,6 +7,7 @@
  * - No weak or predictable patterns
  */
 
+import { jest } from '@jest/globals';
 import { describe, test, expect } from '@jest/globals';
 
 // Helper function to validate JWT secret (mirrors config validation logic)

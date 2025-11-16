@@ -12,13 +12,14 @@
 
 import Joi from 'joi';
 import PayComponentRepository from '../repositories/payComponentRepository.js';
+import { mapComponentDbToApi, mapComponentsDbToApi, mapComponentApiToDb } from '../dto/payComponentDto.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 import formulaEngine from '../../../services/formula/FormulaEngine.js';
 
 class PayComponentService {
-  constructor() {
-    this.payComponentRepository = new PayComponentRepository();
+  constructor(repository = null) {
+    this.payComponentRepository = repository || new PayComponentRepository();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -187,20 +188,26 @@ class PayComponentService {
         );
       }
 
+      // Transform API data to DB format
+      const dbData = mapComponentApiToDb(value);
+
       const component = await this.payComponentRepository.createPayComponent(
-        value,
+        dbData,
         organizationId,
         userId
       );
 
+      // Transform DB result to API format
+      const apiComponent = mapComponentDbToApi(component);
+
       logger.info('Pay component created', {
-        componentId: component.id,
-        componentCode: component.component_code,
-        componentType: component.component_type,
+        componentId: apiComponent.id,
+        componentCode: apiComponent.componentCode,
+        componentType: apiComponent.componentType,
         organizationId
       });
 
-      return component;
+      return apiComponent;
     } catch (err) {
       logger.error('Error creating pay component', { error: err.message, organizationId });
       throw err;
@@ -215,7 +222,8 @@ class PayComponentService {
    */
   async getPayComponents(organizationId, filters = {}) {
     try {
-      return await this.payComponentRepository.findPayComponents(organizationId, filters);
+      const components = await this.payComponentRepository.findPayComponents(organizationId, filters);
+      return mapComponentsDbToApi(components);
     } catch (err) {
       logger.error('Error fetching pay components', { error: err.message, organizationId });
       throw err;
@@ -239,7 +247,7 @@ class PayComponentService {
         throw new NotFoundError('Pay component not found');
       }
 
-      return component;
+      return mapComponentDbToApi(component);
     } catch (err) {
       logger.error('Error fetching pay component', { error: err.message, componentId });
       throw err;
@@ -258,13 +266,13 @@ class PayComponentService {
     try {
       // Business rule: Prevent updating system components
       const existing = await this.getPayComponentById(componentId, organizationId);
-      if (existing.is_system_component) {
+      if (existing.isSystemDefined) {
         throw new ValidationError('System components cannot be modified');
       }
 
       // Business rule: If updating category, validate it matches component type
       if (updates.category) {
-        const componentType = updates.componentType || existing.component_type;
+        const componentType = updates.componentType || existing.componentType;
         this.validateCategoryForType(componentType, updates.category);
       }
 
@@ -288,9 +296,12 @@ class PayComponentService {
         }
       }
 
+      // Transform API data to DB format
+      const dbUpdates = mapComponentApiToDb(updates);
+
       const component = await this.payComponentRepository.updatePayComponent(
         componentId,
-        updates,
+        dbUpdates,
         organizationId,
         userId
       );
@@ -301,7 +312,8 @@ class PayComponentService {
         organizationId
       });
 
-      return component;
+      // Transform DB result to API format
+      return mapComponentDbToApi(component);
     } catch (err) {
       logger.error('Error updating pay component', { error: err.message, componentId });
       throw err;
@@ -319,7 +331,7 @@ class PayComponentService {
     try {
       // Business rule: Prevent deleting system components
       const existing = await this.getPayComponentById(componentId, organizationId);
-      if (existing.is_system_component) {
+      if (existing.isSystemDefined) {
         throw new ValidationError(
           'System components cannot be deleted. These are required for payroll processing.'
         );
@@ -604,7 +616,8 @@ class PayComponentService {
    */
   async getActivePayComponentsForPayroll(organizationId) {
     try {
-      return await this.payComponentRepository.findActivePayComponentsForPayroll(organizationId);
+      const components = await this.payComponentRepository.findActivePayComponentsForPayroll(organizationId);
+      return mapComponentsDbToApi(components);
     } catch (err) {
       logger.error('Error fetching active pay components for payroll', { error: err.message, organizationId });
       throw err;
@@ -624,7 +637,7 @@ class PayComponentService {
     try {
       const component = await this.getPayComponentById(componentId, organizationId);
 
-      if (component.calculation_type !== 'formula') {
+      if (component.calculationType !== 'formula') {
         throw new ValidationError('Component is not a formula-based component');
       }
 
@@ -638,7 +651,7 @@ class PayComponentService {
       // Log execution for audit trail
       logger.info('Formula executed', {
         componentId,
-        componentCode: component.component_code,
+        componentCode: component.componentCode,
         formula: component.formula,
         variables,
         result: result.value,
@@ -651,8 +664,8 @@ class PayComponentService {
         executionTime: result.metadata.executionTime,
         variablesUsed: result.metadata.variablesUsed,
         formula: component.formula,
-        componentName: component.component_name,
-        componentCode: component.component_code,
+        componentName: component.componentName,
+        componentCode: component.componentCode,
       };
     } catch (err) {
       logger.error('Error executing formula', {
@@ -766,4 +779,4 @@ class PayComponentService {
   }
 }
 
-export default new PayComponentService();
+export default PayComponentService;

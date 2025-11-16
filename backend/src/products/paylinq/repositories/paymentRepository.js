@@ -14,6 +14,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class PaymentRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   /**
    * Create payment transaction
    * @param {Object} transactionData - Payment transaction data
@@ -22,7 +26,7 @@ class PaymentRepository {
    * @returns {Promise<Object>} Created payment transaction
    */
   async createPaymentTransaction(transactionData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.payment_transaction 
       (organization_id, paycheck_id, payroll_run_id, employee_id,
        payment_method, payment_amount, payment_date, scheduled_date,
@@ -110,7 +114,7 @@ class PaymentRepository {
       params.push(criteria.toDate);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT pt.*,
               e.employee_number,
               e.id as employee_id,
@@ -137,7 +141,7 @@ class PaymentRepository {
    * @returns {Promise<Object|null>} Payment transaction or null
    */
   async findPaymentTransactionById(transactionId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT pt.*,
               e.employee_number,
               e.first_name,
@@ -206,7 +210,7 @@ class PaymentRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.payment_transaction 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -228,7 +232,7 @@ class PaymentRepository {
    * @returns {Promise<Object>} Updated payment transaction
    */
   async recordPaymentFailure(transactionId, failureReason, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.payment_transaction 
        SET payment_status = 'failed',
            failure_reason = $1,
@@ -265,7 +269,7 @@ class PaymentRepository {
       params.push(scheduledBefore);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT pt.*,
               e.employee_number,
               e.first_name,
@@ -316,7 +320,7 @@ class PaymentRepository {
       params.push(filters.toDate);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT pt.*,
               pr.run_number,
               pr.pay_period_start,
@@ -351,7 +355,7 @@ class PaymentRepository {
    * @returns {Promise<Object>} Payment statistics
    */
   async getPaymentStatistics(payrollRunId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
         COUNT(pt.id) as total_payments,
         COUNT(CASE WHEN pt.payment_status = 'pending' THEN 1 END) as pending_payments,
@@ -380,7 +384,7 @@ class PaymentRepository {
    * @returns {Promise<Array>} Payment method breakdown
    */
   async getPaymentMethodBreakdown(payrollRunId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
         pt.payment_method,
         COUNT(pt.id) as payment_count,
@@ -406,7 +410,7 @@ class PaymentRepository {
    * @returns {Promise<Array>} Failed payments eligible for retry
    */
   async getFailedPaymentsForRetry(organizationId, maxRetries = 3) {
-    const result = await query(
+    const result = await this.query(
       `SELECT pt.*,
               e.employee_number,
               e.first_name,

@@ -4,9 +4,9 @@
  * Unit tests for component DTO mapping functions (Phase 2).
  */
 
-import { mapComponentsToBreakdown } from '../../../../src/products/paylinq/dto/componentDto.js';
+import { mapRunComponentsToBreakdown } from '../../../../src/products/paylinq/dto/componentDto.js';
 
-describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
+describe('ComponentDTO - mapRunComponentsToBreakdown (Phase 2)', () => {
   describe('Basic Mapping', () => {
     test('should map single earning component with tax breakdown', () => {
       const components = [
@@ -33,7 +33,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result).toBeDefined();
       expect(result.earnings).toHaveLength(1);
@@ -81,7 +81,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.earnings).toHaveLength(1);
       const earning = result.earnings[0];
@@ -105,7 +105,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.earnings).toHaveLength(1);
       expect(result.earnings[0].totalTax).toBe(0);
@@ -161,7 +161,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.earnings).toHaveLength(2);
 
@@ -231,7 +231,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.earnings).toHaveLength(2);
 
@@ -271,7 +271,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       const bonus = result.earnings[0];
       expect(bonus.allowanceType).toBe('bonus_gratuity');
@@ -307,7 +307,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.taxes).toHaveLength(3);
 
@@ -344,7 +344,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       const aov = result.taxes.find(t => t.componentCode === 'AOV');
       expect(aov).toBeDefined();
@@ -377,7 +377,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       const aww = result.taxes.find(t => t.componentCode === 'AWW');
       expect(aww).toBeDefined();
@@ -410,7 +410,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.taxes).toHaveLength(0);
       expect(result.summary.totalTaxes).toBe(0);
@@ -431,7 +431,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.earnings).toHaveLength(0);
       expect(result.deductions).toHaveLength(1);
@@ -456,7 +456,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.benefits).toHaveLength(1);
       expect(result.benefits[0].componentCode).toBe('COMPANY_CAR');
@@ -541,7 +541,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       // Verify all component types are present
       expect(result.earnings).toHaveLength(2);
@@ -592,7 +592,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       // Net Pay = Earnings - Taxes - Deductions
       // Net Pay = 20000 - 1705 - 500 = 17795
@@ -605,7 +605,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
 
   describe('Edge Cases', () => {
     test('should handle empty components array', () => {
-      const result = mapComponentsToBreakdown([]);
+      const result = mapRunComponentsToBreakdown([]);
 
       expect(result.earnings).toHaveLength(0);
       expect(result.taxes).toHaveLength(0);
@@ -622,13 +622,13 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
 
     test('should handle null input gracefully', () => {
       expect(() => {
-        mapComponentsToBreakdown(null);
+        mapRunComponentsToBreakdown(null);
       }).toThrow();
     });
 
     test('should handle undefined input gracefully', () => {
       expect(() => {
-        mapComponentsToBreakdown(undefined);
+        mapRunComponentsToBreakdown(undefined);
       }).toThrow();
     });
 
@@ -642,7 +642,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
       ];
 
       expect(() => {
-        mapComponentsToBreakdown(components);
+        mapRunComponentsToBreakdown(components);
       }).toThrow();
     });
 
@@ -671,7 +671,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.summary.totalEarnings).toBe(1000000);
       expect(result.summary.totalTaxes).toBe(153605);
@@ -703,7 +703,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       expect(result.summary.totalEarnings).toBeCloseTo(15123.456, 2);
       expect(result.summary.totalTaxes).toBeCloseTo(949.14, 2);
@@ -737,7 +737,7 @@ describe('ComponentDTO - mapComponentsToBreakdown (Phase 2)', () => {
         }
       ];
 
-      const result = mapComponentsToBreakdown(components);
+      const result = mapRunComponentsToBreakdown(components);
 
       // All values should be converted to numbers
       expect(typeof result.earnings[0].amount).toBe('number');

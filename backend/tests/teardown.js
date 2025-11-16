@@ -5,9 +5,16 @@
  * Use it for cleanup operations.
  */
 
-console.error('🧹 Jest global teardown complete');
+import { closePool } from '../src/config/database.js';
 
 export default async function globalTeardown() {
-  // Add any global cleanup here if needed
-  // For example, closing persistent connections
+  // Close database pool to prevent connection leaks
+  try {
+    await closePool();
+    console.error('🧹 Database pool closed');
+  } catch (error) {
+    console.error('❌ Error closing database pool:', error.message);
+  }
+  
+  console.error('🧹 Jest global teardown complete');
 }

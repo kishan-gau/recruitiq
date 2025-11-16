@@ -1,14 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { apiClient } from '../../utils/apiClient';
+import { useState, useEffect } from 'react';
+import { usePaylinqAPI } from '../../hooks/usePaylinqAPI';
 
-/**
- * Approval History Component
- * Shows approval history for a specific reference
- */
-const ApprovalHistory = ({ referenceType, referenceId }) => {
-  const [history, setHistory] = useState([]);
+interface ApprovalAction {
+  id: number;
+  action: 'approved' | 'rejected';
+  comments: string;
+  actor_name: string;
+  created_at: string;
+}
+
+interface ApprovalHistoryItem {
+  request_id: number;
+  request_type: string;
+  status: string;
+  requested_by: string;
+  requested_at: string;
+  current_approvals: number;
+  required_approvals: number;
+  actions: ApprovalAction[];
+}
+
+interface ApprovalHistoryProps {
+  referenceType: string;
+  referenceId: string;
+}
+
+const ApprovalHistory = ({ referenceType, referenceId }: ApprovalHistoryProps) => {
+  const { paylinq } = usePaylinqAPI();
+  const [history, setHistory] = useState<ApprovalHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     if (referenceType && referenceId) {
@@ -19,12 +40,10 @@ const ApprovalHistory = ({ referenceType, referenceId }) => {
   const fetchHistory = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(
-        `/api/paylinq/approvals/history/${referenceType}/${referenceId}`
-      );
+      const response = await paylinq.getApprovalHistory(referenceType, referenceId);
       setHistory(response.data.data || []);
-      setError(null);
-    } catch (err) {
+      setError('');
+    } catch (err: any) {
       console.error('Error fetching approval history:', err);
       setError(err.response?.data?.message || 'Failed to fetch approval history');
     } finally {
@@ -32,23 +51,23 @@ const ApprovalHistory = ({ referenceType, referenceId }) => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    const colors = {
+  const getStatusBadge = (status: string) => {
+    const colors: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       approved: 'bg-green-100 text-green-800',
       rejected: 'bg-red-100 text-red-800',
       cancelled: 'bg-gray-100 text-gray-800',
-      expired: 'bg-orange-100 text-orange-800'
+      expired: 'bg-orange-100 text-orange-800',
     };
 
     return (
-      <span className={`px-2 py-1 text-xs font-semibold rounded ${colors[status] || colors.pending}`}>
+      <span className={`px-2 py-1 text-xs font-semibold rounded ${colors[status] || colors['pending']}`}>
         {status?.toUpperCase()}
       </span>
     );
   };
 
-  const getActionIcon = (action) => {
+  const getActionIcon = (action: string) => {
     if (action === 'approved') {
       return (
         <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -63,24 +82,20 @@ const ApprovalHistory = ({ referenceType, referenceId }) => {
         </svg>
       );
     }
-    return (
-      <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-        </svg>
-      );
+    return null;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="text-gray-500">Loading approval history...</div>
+      <div className="flex justify-center items-center py-8">
+        <div className="text-gray-600">Loading approval history...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
         {error}
       </div>
     );
@@ -89,19 +104,16 @@ const ApprovalHistory = ({ referenceType, referenceId }) => {
   if (history.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        <svg className="w-12 h-12 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <p>No approval history available</p>
+        No approval history found for this item.
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">Approval History</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Approval History</h3>
       
-      <div className="space-y-3">
+      <div className="space-y-4">
         {history.map((item) => (
           <div key={item.request_id} className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="flex justify-between items-start mb-3">
@@ -122,10 +134,10 @@ const ApprovalHistory = ({ referenceType, referenceId }) => {
             </div>
 
             {/* Approval Progress */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex-1 bg-gray-200 rounded-full h-2">
+            <div className="mb-3">
+              <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all ${
+                  className={`h-2 rounded-full ${
                     item.status === 'approved' ? 'bg-green-600' :
                     item.status === 'rejected' ? 'bg-red-600' :
                     'bg-blue-600'
@@ -133,38 +145,33 @@ const ApprovalHistory = ({ referenceType, referenceId }) => {
                   style={{ width: `${(item.current_approvals / item.required_approvals) * 100}%` }}
                 />
               </div>
-              <div className="text-xs text-gray-600 whitespace-nowrap">
-                {item.current_approvals} / {item.required_approvals}
+              <div className="text-xs text-gray-500 mt-1">
+                {item.current_approvals} / {item.required_approvals} approvals
               </div>
             </div>
 
-            {/* Actions Timeline */}
+            {/* Action History */}
             {item.actions && item.actions.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <div className="text-xs font-medium text-gray-700 mb-2">Actions:</div>
+              <div className="border-t border-gray-200 pt-3">
+                <div className="text-sm font-medium text-gray-700 mb-2">Actions</div>
                 <div className="space-y-2">
                   {item.actions.map((action, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-sm">
+                    <div key={idx} className="flex items-start space-x-2 text-sm">
                       <div className="mt-0.5">{getActionIcon(action.action)}</div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900">{action.created_by}</span>
-                          <span className={`text-xs ${
-                            action.action === 'approved' ? 'text-green-600' :
-                            action.action === 'rejected' ? 'text-red-600' :
-                            'text-gray-600'
-                          }`}>
+                        <div className="text-gray-900">
+                          <span className="font-medium">{action.actor_name}</span>
+                          {' '}
+                          <span className={action.action === 'approved' ? 'text-green-600' : 'text-red-600'}>
                             {action.action}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {new Date(action.created_at).toLocaleString()}
                           </span>
                         </div>
                         {action.comments && (
-                          <div className="text-xs text-gray-600 mt-1 italic">
-                            "{action.comments}"
-                          </div>
+                          <div className="text-gray-600 italic mt-1">{action.comments}</div>
                         )}
+                        <div className="text-gray-500 text-xs mt-1">
+                          {new Date(action.created_at).toLocaleString()}
+                        </div>
                       </div>
                     </div>
                   ))}

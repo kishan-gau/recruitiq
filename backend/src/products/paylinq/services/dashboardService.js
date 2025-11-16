@@ -6,15 +6,23 @@
  * @module products/paylinq/services/dashboardService
  */
 
-import dashboardRepository from '../repositories/dashboardRepository.js';
+import DashboardRepository from '../repositories/dashboardRepository.js';
 import logger from '../../../utils/logger.js';
 
-/**
- * Calculate days until next payroll run
- * @param {Array} upcomingPayrolls 
- * @returns {number}
- */
-function calculateDaysUntilNextPayroll(upcomingPayrolls) {
+class DashboardService {
+  /**
+   * @param {DashboardRepository} repository - Optional repository instance for testing
+   */
+  constructor(repository = null) {
+    this.repository = repository || new DashboardRepository();
+  }
+
+  /**
+   * Calculate days until next payroll run
+   * @param {Array} upcomingPayrolls 
+   * @returns {number}
+   */
+  calculateDaysUntilNextPayroll(upcomingPayrolls) {
   if (!upcomingPayrolls || upcomingPayrolls.length === 0) {
     return 0;
   }
@@ -32,13 +40,13 @@ function calculateDaysUntilNextPayroll(upcomingPayrolls) {
   return diffDays > 0 ? diffDays : 0;
 }
 
-/**
- * Get dashboard overview with key metrics
- * @param {string} organizationId 
- * @param {number} period - Days to look back
- * @returns {Promise<Object>}
- */
-async function getDashboardOverview(organizationId, period = 30) {
+  /**
+   * Get dashboard overview with key metrics
+   * @param {string} organizationId 
+   * @param {number} period - Days to look back
+   * @returns {Promise<Object>}
+   */
+  async getDashboardOverview(organizationId, period = 30) {
   try {
     const endDate = new Date();
     const startDate = new Date();
@@ -52,11 +60,11 @@ async function getDashboardOverview(organizationId, period = 30) {
       upcomingPayrolls,
       recentActivity
     ] = await Promise.all([
-      dashboardRepository.getPayrollMetrics(organizationId, startDate, endDate),
-      dashboardRepository.getEmployeeMetrics(organizationId),
-      dashboardRepository.getTimesheetMetrics(organizationId, startDate, endDate),
-      dashboardRepository.getUpcomingPayrolls(organizationId, 5),
-      dashboardRepository.getRecentActivity(organizationId, 10)
+      this.repository.getPayrollMetrics(organizationId, startDate, endDate),
+      this.repository.getEmployeeMetrics(organizationId),
+      this.repository.getTimesheetMetrics(organizationId, startDate, endDate),
+      this.repository.getUpcomingPayrolls(organizationId, 5),
+      this.repository.getRecentActivity(organizationId, 10)
     ]);
 
     // Transform data to match frontend expectations
@@ -66,7 +74,7 @@ async function getDashboardOverview(organizationId, period = 30) {
         activeWorkers: employeeStats.activeEmployees,
         workersTrend: 0, // TODO: Calculate trend
         pendingApprovals: timesheetStats.pendingApproval || 0,
-        daysUntilPayroll: calculateDaysUntilNextPayroll(upcomingPayrolls),
+        daysUntilPayroll: this.calculateDaysUntilNextPayroll(upcomingPayrolls),
         monthlyCost: payrollStats.totalGrossPay,
         costTrend: 0 // TODO: Calculate trend
       },
@@ -86,19 +94,19 @@ async function getDashboardOverview(organizationId, period = 30) {
   }
 }
 
-/**
- * Get detailed payroll statistics
- * @param {string} organizationId 
- * @param {string} startDate 
- * @param {string} endDate 
- * @returns {Promise<Object>}
- */
-async function getPayrollStats(organizationId, startDate, endDate) {
+  /**
+   * Get detailed payroll statistics
+   * @param {string} organizationId 
+   * @param {string} startDate 
+   * @param {string} endDate 
+   * @returns {Promise<Object>}
+   */
+  async getPayrollStats(organizationId, startDate, endDate) {
   try {
     const start = startDate ? new Date(startDate) : new Date(new Date().setDate(1)); // First of month
     const end = endDate ? new Date(endDate) : new Date();
 
-    const stats = await dashboardRepository.getPayrollMetrics(organizationId, start, end);
+    const stats = await this.repository.getPayrollMetrics(organizationId, start, end);
     return stats;
   } catch (error) {
     logger.error('Error getting payroll stats', {
@@ -109,15 +117,15 @@ async function getPayrollStats(organizationId, startDate, endDate) {
   }
 }
 
-/**
- * Get employee statistics
- * @param {string} organizationId 
- * @returns {Promise<Object>}
- */
-async function getEmployeeStats(organizationId) {
-  try {
-    const stats = await dashboardRepository.getEmployeeMetrics(organizationId);
-    return stats;
+  /**
+   * Get employee statistics
+   * @param {string} organizationId 
+   * @returns {Promise<Object>}
+   */
+  async getEmployeeStats(organizationId) {
+    try {
+      const stats = await this.repository.getEmployeeMetrics(organizationId);
+      return stats;
   } catch (error) {
     logger.error('Error getting employee stats', {
       error: error.message,
@@ -127,16 +135,16 @@ async function getEmployeeStats(organizationId) {
   }
 }
 
-/**
- * Get recent activity
- * @param {string} organizationId 
- * @param {number} limit 
- * @returns {Promise<Array>}
- */
-async function getRecentActivity(organizationId, limit = 10) {
-  try {
-    const activities = await dashboardRepository.getRecentActivity(organizationId, limit);
-    return activities;
+  /**
+   * Get recent activity
+   * @param {string} organizationId 
+   * @param {number} limit 
+   * @returns {Promise<Array>}
+   */
+  async getRecentActivity(organizationId, limit = 10) {
+    try {
+      const activities = await this.repository.getRecentActivity(organizationId, limit);
+      return activities;
   } catch (error) {
     logger.error('Error getting recent activity', {
       error: error.message,
@@ -146,9 +154,6 @@ async function getRecentActivity(organizationId, limit = 10) {
   }
 }
 
-export default {
-  getDashboardOverview,
-  getPayrollStats,
-  getEmployeeStats,
-  getRecentActivity
-};
+}
+
+export default DashboardService;

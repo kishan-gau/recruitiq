@@ -81,8 +81,8 @@ router.use('/reports', reportsRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/payslip-templates', payslipTemplateRoutes);
 router.use('/patterns', temporalPatternRoutes);
-router.use('/currency', currencyRoutes);
-router.use('/exchange-rates', currencyRoutes); // Alias for backward compatibility
+router.use('/currency', currencyRoutes); // Config, conversion, cache
+router.use('/exchange-rates', currencyRoutes); // Exchange rates CRUD
 router.use('/approvals', approvalRoutes);
 
 export default router;

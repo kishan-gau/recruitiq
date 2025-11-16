@@ -15,6 +15,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class TimeAttendanceRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   // ==================== SHIFT TYPES ====================
   
   /**
@@ -25,7 +29,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object>} Created shift type
    */
   async createShiftType(shiftData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.shift_type 
       (organization_id, shift_name, shift_code, start_time, end_time,
        duration_hours, is_overnight, break_duration_minutes, 
@@ -70,7 +74,7 @@ class TimeAttendanceRepository {
       params.push(filters.status);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.shift_type
        ${whereClause}
        ORDER BY shift_name ASC`,
@@ -89,7 +93,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object|null>} Shift type or null
    */
   async findShiftTypeById(shiftTypeId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.shift_type
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
       [shiftTypeId, organizationId],
@@ -110,7 +114,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object>} Created time event
    */
   async createTimeEvent(eventData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.time_attendance_event 
       (organization_id, employee_id, event_type, event_timestamp,
        location_id, gps_latitude, gps_longitude, device_id, ip_address,
@@ -144,7 +148,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object|null>} Open clock in event or null
    */
   async findOpenClockEvent(employeeId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.time_attendance_event
        WHERE employee_id = $1
          AND organization_id = $2
@@ -196,7 +200,7 @@ class TimeAttendanceRepository {
       params.push(filters.eventType);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.time_attendance_event
        ${whereClause}
        ORDER BY event_timestamp DESC`,
@@ -218,7 +222,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object>} Created time entry
    */
   async createTimeEntry(entryData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.time_entry 
       (organization_id, employee_id, entry_date, clock_in, clock_out,
        worked_hours, regular_hours, overtime_hours, break_hours, 
@@ -258,7 +262,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object|null>} Time entry or null
    */
   async findTimeEntryById(timeEntryId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT te.*,
               e.employee_number,
               e.first_name,
@@ -318,7 +322,7 @@ class TimeAttendanceRepository {
       params.push(criteria.entryType);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT te.*,
               e.employee_number,
               e.id as employee_id,
@@ -347,7 +351,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object>} Updated time entry
    */
   async updateTimeEntryStatus(timeEntryId, status, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.time_entry 
        SET status = $1::text,
            approved_by = CASE WHEN $1::text = 'approved' THEN $2 ELSE approved_by END,
@@ -405,7 +409,7 @@ class TimeAttendanceRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.time_entry 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -428,7 +432,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object>} Created rated time line
    */
   async createRatedTimeLine(lineData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.rated_time_line 
       (organization_id, time_entry_id, pay_component_id, hours, rate, amount, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -456,7 +460,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Array>} Rated time lines
    */
   async findRatedTimeLinesByEntry(timeEntryId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT rtl.*,
               pc.component_code,
               pc.component_name,
@@ -482,7 +486,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Array>} Pay components with custom rates
    */
   async findEmployeePayComponents(employeeId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT pc.*,
               cpc.custom_rate,
               cpc.custom_amount
@@ -515,7 +519,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<Object>} Hours summary
    */
   async getHoursSummary(employeeId, startDate, endDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
         COALESCE(SUM(worked_hours), 0) as total_hours,
         COALESCE(SUM(regular_hours), 0) as regular_hours,
@@ -563,7 +567,7 @@ class TimeAttendanceRepository {
    * @returns {Promise<boolean>} Success status
    */
   async deleteTimeEntry(timeEntryId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.time_entry
        SET deleted_at = NOW(),
            deleted_by = $1

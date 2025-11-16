@@ -998,6 +998,251 @@ logger.logSecurityEvent('unauthorized_access', {
 
 ---
 
+## DTO (Data Transfer Object) Standards
+
+### DTO Purpose and Responsibility
+
+**DTOs transform data between database format (snake_case) and API format (camelCase).**
+
+```
+Database (snake_case) → DTO → API Response (camelCase)
+API Request (camelCase) → DTO → Database (snake_case)
+```
+
+### File Organization (MANDATORY)
+
+**✅ CORRECT:** One DTO file per database table/entity
+
+```
+src/products/paylinq/dto/
+├── payComponentDto.js       → pay_components table
+├── runComponentDto.js       → payroll_run_components table  
+├── payrollRunDto.js         → payroll_runs table
+├── payrollRunTypeDto.js     → payroll_run_types table
+├── allowanceDto.js          → allowances table
+└── deductionDto.js          → deductions table
+```
+
+**❌ WRONG:** Multiple entities in one DTO file
+
+```
+src/products/paylinq/dto/
+└── componentDto.js          → ❌ Mixes PayComponent + RunComponent
+```
+
+**Why This Matters:**
+- **Single Responsibility Principle** - Each DTO maps ONE database table
+- **Maintainability** - Easier to find and update specific mappings
+- **Testing** - Clear which service needs which DTO
+- **Explicit Dependencies** - Import names match entities exactly
+- **Clean Architecture** - Proper separation of concerns
+
+### DTO File Structure (MANDATORY)
+
+Every DTO file MUST export these functions:
+
+```javascript
+/**
+ * Pay Component DTO
+ * Maps pay_components table between DB and API formats
+ * 
+ * @module products/paylinq/dto/payComponentDto
+ */
+
+/**
+ * Map single component from database to API format
+ * @param {Object} dbComponent - Component record from database (snake_case)
+ * @returns {Object} Component in API format (camelCase)
+ */
+export function mapComponentDbToApi(dbComponent) {
+  if (!dbComponent) return null;
+
+  return {
+    id: dbComponent.id,
+    organizationId: dbComponent.organization_id,
+    componentCode: dbComponent.component_code,
+    componentName: dbComponent.component_name,
+    componentType: dbComponent.component_type,
+    description: dbComponent.description || null,
+    calculationMetadata: dbComponent.calculation_metadata || {},
+    isActive: dbComponent.is_active,
+    isTaxable: dbComponent.is_taxable,
+    displayOrder: dbComponent.display_order,
+    createdBy: dbComponent.created_by,
+    createdAt: dbComponent.created_at,
+    updatedBy: dbComponent.updated_by,
+    updatedAt: dbComponent.updated_at
+  };
+}
+
+/**
+ * Map array of components from database to API format
+ * @param {Array} dbComponents - Array of component records
+ * @returns {Array} Array of components in API format
+ */
+export function mapComponentsDbToApi(dbComponents) {
+  if (!Array.isArray(dbComponents)) return [];
+  return dbComponents.map(mapComponentDbToApi);
+}
+
+/**
+ * Map component from API format to database format
+ * @param {Object} apiData - Component data from API (camelCase)
+ * @returns {Object} Component in database format (snake_case)
+ */
+export function mapComponentApiToDb(apiData) {
+  if (!apiData) return null;
+
+  const dbData = {};
+
+  // Only include fields present in API data
+  if (apiData.componentCode !== undefined) {
+    dbData.component_code = apiData.componentCode;
+  }
+  if (apiData.componentName !== undefined) {
+    dbData.component_name = apiData.componentName;
+  }
+  if (apiData.componentType !== undefined) {
+    dbData.component_type = apiData.componentType;
+  }
+  if (apiData.description !== undefined) {
+    dbData.description = apiData.description;
+  }
+  if (apiData.calculationMetadata !== undefined) {
+    dbData.calculation_metadata = apiData.calculationMetadata;
+  }
+  if (apiData.isActive !== undefined) {
+    dbData.is_active = apiData.isActive;
+  }
+  if (apiData.isTaxable !== undefined) {
+    dbData.is_taxable = apiData.isTaxable;
+  }
+  if (apiData.displayOrder !== undefined) {
+    dbData.display_order = apiData.displayOrder;
+  }
+
+  return dbData;
+}
+```
+
+### Required DTO Functions
+
+Every DTO file MUST export at minimum:
+
+| Function | Purpose | Return Type |
+|----------|---------|-------------|
+| `map[Entity]DbToApi(db)` | Single record: DB → API | Object |
+| `map[Entity]sDbToApi(dbs)` | Multiple records: DB → API | Array |
+| `map[Entity]ApiToDb(api)` | Single record: API → DB | Object |
+
+**Optional helper functions:**
+- `map[Entity]ToSummary()` - For dropdowns/lists
+- `map[Entity]ToDetails()` - For detailed views
+- `group[Entity]sByField()` - For grouping logic
+
+### Service Integration (MANDATORY)
+
+Services MUST use DTOs for all CRUD operations:
+
+```javascript
+import { mapComponentDbToApi, mapComponentsDbToApi, mapComponentApiToDb } 
+  from '../dto/payComponentDto.js';
+
+class PayComponentService {
+  async create(data, organizationId, userId) {
+    // Validate API data
+    const { error, value } = this.constructor.createSchema.validate(data);
+    if (error) throw new ValidationError(error.details[0].message);
+
+    // Transform: API → DB
+    const dbData = mapComponentApiToDb(value);
+
+    // Create in database
+    const created = await this.repository.create(dbData, organizationId, userId);
+
+    // Transform: DB → API
+    return mapComponentDbToApi(created);
+  }
+
+  async getById(id, organizationId) {
+    const component = await this.repository.findById(id, organizationId);
+    if (!component) throw new NotFoundError('Component not found');
+
+    // Transform: DB → API
+    return mapComponentDbToApi(component);
+  }
+
+  async list(organizationId, filters = {}) {
+    const components = await this.repository.findAll(organizationId, filters);
+
+    // Transform: DB[] → API[]
+    return mapComponentsDbToApi(components);
+  }
+
+  async update(id, data, organizationId, userId) {
+    const { error, value } = this.constructor.updateSchema.validate(data);
+    if (error) throw new ValidationError(error.details[0].message);
+
+    // Transform: API → DB
+    const dbData = mapComponentApiToDb(value);
+
+    const updated = await this.repository.update(id, dbData, organizationId, userId);
+    if (!updated) throw new NotFoundError('Component not found');
+
+    // Transform: DB → API
+    return mapComponentDbToApi(updated);
+  }
+}
+```
+
+### Naming Conventions
+
+| Entity Name | DTO File | DB Table | Service | Repository |
+|-------------|----------|----------|---------|------------|
+| PayComponent | payComponentDto.js | pay_components | PayComponentService | PayComponentRepository |
+| RunComponent | runComponentDto.js | payroll_run_components | RunComponentService | RunComponentRepository |
+| PayrollRun | payrollRunDto.js | payroll_runs | PayrollRunService | PayrollRunRepository |
+| Allowance | allowanceDto.js | allowances | AllowanceService | AllowanceRepository |
+
+**Pattern:** `[camelCaseEntity]Dto.js` maps `[snake_case_table]` table
+
+### When NOT to Use DTOs
+
+Some methods return calculated values, not database records:
+
+```javascript
+// ✅ Does NOT need DTO - returns number
+async calculateTotal(componentId, employeeId, organizationId) {
+  const component = await this.repository.findById(componentId, organizationId);
+  return component.rate * component.hours; // Returns number, not DB record
+}
+
+// ✅ Does NOT need DTO - returns validation object
+async validateComponent(code, organizationId) {
+  const component = await this.repository.findByCode(code, organizationId);
+  return { isValid: !!component, errors: [] }; // Returns plain object
+}
+
+// ❌ NEEDS DTO - returns database record
+async getComponentByCode(code, organizationId) {
+  const component = await this.repository.findByCode(code, organizationId);
+  return mapComponentDbToApi(component); // ✓ Transforms DB → API
+}
+```
+
+### Acceptance Criteria
+
+- ✅ One DTO file per database table/entity
+- ✅ DTO file named `[entity]Dto.js` matches table `[entity]s` or `[entity_name]s`
+- ✅ All CRUD service methods use DTO transformations
+- ✅ DTOs export minimum 3 functions: `DbToApi`, `sDbToApi`, `ApiToDb`
+- ✅ Services import DTOs, not repositories
+- ✅ API responses always in camelCase (via DTO transformation)
+- ✅ Database writes always in snake_case (via DTO transformation)
+- ✅ No mixed casing in API responses or DB writes
+
+---
+
 ## Common Patterns
 
 ### Pattern: Pagination

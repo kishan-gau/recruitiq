@@ -1,4 +1,4 @@
-import { pool } from '../../../config/database.js';
+import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 /**
@@ -383,9 +383,11 @@ class ApprovalService {
   async getPendingApprovals(organizationId, options = {}) {
     const { requestType, priority, userId } = options;
 
-    let query = `
-      SELECT * FROM payroll.pending_approval_requests
+    let queryText = `
+      SELECT * FROM payroll.currency_approval_request
       WHERE organization_id = $1
+        AND status = 'pending'
+        AND deleted_at IS NULL
     `;
 
     const params = [organizationId];
@@ -393,20 +395,24 @@ class ApprovalService {
 
     if (requestType) {
       paramCount++;
-      query += ` AND request_type = $${paramCount}`;
+      queryText += ` AND request_type = $${paramCount}`;
       params.push(requestType);
     }
 
     if (priority) {
       paramCount++;
-      query += ` AND priority = $${paramCount}`;
+      queryText += ` AND priority = $${paramCount}`;
       params.push(priority);
     }
 
-    query += ' ORDER BY priority DESC, created_at ASC';
+    queryText += ' ORDER BY priority DESC, created_at ASC';
 
     try {
-      const result = await pool.query(query, params);
+      const result = await query(queryText, params, organizationId, {
+        operation: 'SELECT',
+        table: 'currency_approval_request',
+        userId
+      });
       return result.rows;
     } catch (error) {
       logger.error('Error getting pending approvals', { error, organizationId });

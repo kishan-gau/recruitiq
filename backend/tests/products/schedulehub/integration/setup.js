@@ -13,7 +13,7 @@ import jwt from 'jsonwebtoken';
 export const createTestOrganization = async () => {
   // Create organization
   const orgResult = await pool.query(
-    `INSERT INTO public.organization (name, created_at) 
+    `INSERT INTO organizations (name, created_at) 
      VALUES ('Test Org - ScheduleHub Integration', NOW()) 
      RETURNING id`
   );
@@ -241,5 +241,5 @@ export const cleanupTestData = async (organizationId) => {
   await pool.query('DELETE FROM hris.location WHERE organization_id = $1', [organizationId]);
   await pool.query('DELETE FROM hris.department WHERE organization_id = $1', [organizationId]);
   await pool.query('DELETE FROM public.users WHERE organization_id = $1', [organizationId]);
-  await pool.query('DELETE FROM public.organization WHERE id = $1', [organizationId]);
+  await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
 };

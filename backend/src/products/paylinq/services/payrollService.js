@@ -15,7 +15,6 @@ import PayStructureService from './payStructureService.js';
 import PayrollRunTypeService from './PayrollRunTypeService.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
-import { emitPayrollRunCreated, emitPayrollRunCalculated, emitPayrollRunCompleted  } from '../events/emitters/payrollEmitters.js';
 import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from '../../../utils/timezone.js';
 
 class PayrollService {
@@ -886,9 +885,6 @@ class PayrollService {
         organizationId
       });
 
-      // Emit event for other systems
-      emitPayrollRunCreated(payrollRun, organizationId);
-
       return payrollRun;
     } catch (err) {
       logger.error('Error creating payroll run', { error: err.message, organizationId });
@@ -1514,14 +1510,6 @@ class PayrollService {
 
       // Get updated payroll run data
       const updatedPayrollRun = await this.payrollRepository.findPayrollRunById(payrollRunId, organizationId);
-      
-      // Emit calculation completed event
-      emitPayrollRunCalculated(updatedPayrollRun, {
-        totalEmployees,
-        totalGrossPay,
-        totalNetPay,
-        totalTaxes
-      }, organizationId);
 
       return {
         payrollRunId,

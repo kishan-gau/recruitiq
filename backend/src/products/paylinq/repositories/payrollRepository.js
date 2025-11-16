@@ -7,10 +7,15 @@
  * @module products/paylinq/repositories/payrollRepository
  */
 
-import { query  } from '../../../config/database.js';
+import { query as dbQuery } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class PayrollRepository {
+  constructor(database = null, queryFn = null) {
+    this.dbQuery = database?.query || dbQuery;
+    this.query = queryFn || dbQuery;
+  }
+
   // ==================== EMPLOYEE RECORDS ====================
   
   /**
@@ -23,7 +28,7 @@ class PayrollRepository {
   async createEmployeeRecord(employeeData, organizationId, userId) {
     const metadataParam = employeeData.metadata ? JSON.stringify(employeeData.metadata) : null;
     
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.employee_payroll_config 
       (organization_id, employee_id,
        pay_frequency, payment_method, currency,
@@ -105,7 +110,7 @@ class PayrollRepository {
     const sortDirection = (filters.sortDirection === 'asc') ? 'ASC' : 'DESC';
     
     // Get total count for pagination
-    const countResult = await query(
+    const countResult = await this.query(
       `SELECT COUNT(*) as total
        FROM payroll.employee_payroll_config epc
        JOIN hris.employee e ON e.id = epc.employee_id
@@ -118,7 +123,7 @@ class PayrollRepository {
     const total = parseInt(countResult.rows[0].total, 10);
     
     // Get paginated data with employee details from hris.employee
-    const result = await query(
+    const result = await this.query(
       `SELECT 
         epc.*,
         e.employee_number,
@@ -175,7 +180,7 @@ class PayrollRepository {
    * @returns {Promise<Object|null>} Employee record or null
    */
   async findEmployeeRecordById(employeeRecordId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT epc.*,
               e.employee_number,
               e.first_name,
@@ -254,7 +259,7 @@ class PayrollRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.employee_payroll_config 
        SET ${setClause.join(', ')}
        WHERE (id = $${paramCount - 1} OR employee_id = $${paramCount - 1}) AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -275,7 +280,7 @@ class PayrollRepository {
    * @returns {Promise<Object>} Deleted employee payroll config
    */
   async deleteEmployeeRecord(employeeRecordId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.employee_payroll_config 
        SET deleted_at = NOW(), 
            deleted_by = $1,
@@ -337,7 +342,7 @@ class PayrollRepository {
       params.push(limit);
     }
     
-    const result = await query(
+    const result = await this.query(
       queryText,
       params,
       organizationId,
@@ -359,7 +364,7 @@ class PayrollRepository {
   async createCompensation(compensationData, organizationId, userId) {
     // Set previous compensation to non-current
     if (compensationData.isCurrent) {
-      await query(
+      await this.query(
         `UPDATE payroll.compensation 
          SET is_current = false, effective_to = $1, updated_at = NOW()
          WHERE employee_id = $2 AND organization_id = $3 AND is_current = true`,
@@ -369,7 +374,7 @@ class PayrollRepository {
       );
     }
     
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.compensation 
       (organization_id, employee_id, compensation_type, amount,
        overtime_rate, effective_from, is_current, currency, created_by)
@@ -400,7 +405,7 @@ class PayrollRepository {
    * @returns {Promise<Object|null>} Current compensation or null
    */
   async findCurrentCompensation(employeeId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.compensation
        WHERE employee_id = $1 
          AND organization_id = $2
@@ -421,7 +426,7 @@ class PayrollRepository {
    * @returns {Promise<Object|null>} Compensation record or null
    */
   async findCompensationById(compensationId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.compensation
        WHERE id = $1 
          AND organization_id = $2
@@ -441,7 +446,7 @@ class PayrollRepository {
    * @returns {Promise<Array>} Array of compensation records
    */
   async findCompensationHistory(employeeId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.compensation
        WHERE employee_id = $1 
          AND organization_id = $2
@@ -501,7 +506,7 @@ class PayrollRepository {
     setClauses.push(`updated_at = NOW()`);
     params.push(userId);
 
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.compensation 
        SET ${setClauses.join(', ')}
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
@@ -522,7 +527,7 @@ class PayrollRepository {
    * @returns {Promise<boolean>} True if deleted, false if not found
    */
   async deleteCompensation(compensationId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.compensation 
        SET deleted_at = NOW(), updated_by = $3, updated_at = NOW()
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
@@ -547,7 +552,7 @@ class PayrollRepository {
    */
   async createOrUpdateWorkerType(employeeId, workerTypeName, organizationId, userId) {
     // First, find the worker type template by name
-    const templateResult = await query(
+    const templateResult = await this.query(
       `SELECT id FROM payroll.worker_type_template 
        WHERE name = $1 AND is_active = true`,
       [workerTypeName],
@@ -562,7 +567,7 @@ class PayrollRepository {
     const templateId = templateResult.rows[0].id;
 
     // Check if assignment already exists
-    const existingResult = await query(
+    const existingResult = await this.query(
       `SELECT * FROM payroll.worker_type 
        WHERE organization_id = $1 
          AND employee_id = $2 
@@ -574,7 +579,7 @@ class PayrollRepository {
 
     if (existingResult.rows.length > 0) {
       // Update existing assignment to be current
-      const result = await query(
+      const result = await this.query(
         `UPDATE payroll.worker_type 
          SET is_current = true, updated_by = $4, updated_at = NOW()
          WHERE organization_id = $1 
@@ -588,7 +593,7 @@ class PayrollRepository {
       return result.rows[0];
     } else {
       // Create new assignment
-      const result = await query(
+      const result = await this.query(
         `INSERT INTO payroll.worker_type (
            organization_id, employee_id, worker_type_template_id,
            is_current, effective_from, created_by, created_at
@@ -613,7 +618,7 @@ class PayrollRepository {
    * @returns {Promise<Object>} Created payroll run
    */
   async createPayrollRun(runData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.payroll_run 
       (organization_id, run_number, run_name, run_type, pay_period_start, 
        pay_period_end, payment_date, status, created_by)
@@ -644,7 +649,7 @@ class PayrollRepository {
    * @returns {Promise<Object|null>} Payroll run or null
    */
   async findPayrollRunById(payrollRunId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
          pr.*,
          COALESCE((SELECT COUNT(DISTINCT employee_id) 
@@ -697,7 +702,7 @@ class PayrollRepository {
     // Get total count before applying pagination
     let totalCount = 0;
     if (filters.page || filters.limit) {
-      const countResult = await query(
+      const countResult = await this.query(
         `SELECT COUNT(*) as count FROM payroll.payroll_run ${whereClause}`,
         params,
         organizationId,
@@ -730,7 +735,7 @@ class PayrollRepository {
       orderByClause = `ORDER BY ${filters.sortBy} ${sortOrder}`;
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT 
          pr.*,
          COALESCE((SELECT COUNT(DISTINCT employee_id) 
@@ -769,7 +774,7 @@ class PayrollRepository {
    * @returns {Promise<Object>} Updated payroll run
    */
   async updatePayrollRunSummary(payrollRunId, summary, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.payroll_run 
        SET total_employees = $1,
            total_gross_pay = $2,
@@ -846,7 +851,7 @@ class PayrollRepository {
     paramCount++;
     params.push(organizationId);
 
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.payroll_run 
        SET ${setClauses.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -867,7 +872,7 @@ class PayrollRepository {
    * @returns {Promise<Object>} Deleted payroll run
    */
   async deletePayrollRun(payrollRunId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.payroll_run 
        SET deleted_at = NOW(),
            deleted_by = $1
@@ -891,7 +896,7 @@ class PayrollRepository {
    * @returns {Promise<Object>} Created paycheck
    */
   async createPaycheck(paycheckData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.paycheck 
       (organization_id, payroll_run_id, employee_id, payment_date,
        pay_period_start, pay_period_end, gross_pay, regular_pay, overtime_pay,
@@ -939,7 +944,7 @@ class PayrollRepository {
    * @returns {Promise<Array>} Paychecks
    */
   async findPaychecksByRun(payrollRunId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT p.*, 
               e.employee_number, 
               e.id as employee_id,
@@ -1015,7 +1020,7 @@ class PayrollRepository {
       params.push(filters.limit);
     }
 
-    const result = await query(
+    const result = await this.query(
       queryText,
       params,
       organizationId,
@@ -1032,7 +1037,7 @@ class PayrollRepository {
    * @returns {Promise<Object|null>} Paycheck or null
    */
   async findPaycheckById(paycheckId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT p.*, 
               e.employee_number, 
               e.id as employee_id,
@@ -1088,7 +1093,7 @@ class PayrollRepository {
       params.push(filters.limit);
     }
 
-    const result = await query(
+    const result = await this.query(
       queryText,
       params,
       organizationId,
@@ -1128,7 +1133,7 @@ class PayrollRepository {
     setClause.push(`updated_by = $3`);
     setClause.push(`updated_at = NOW()`);
 
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.paycheck 
        SET ${setClause.join(', ')}
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
@@ -1149,7 +1154,7 @@ class PayrollRepository {
    * @returns {Promise<boolean>} True if deleted
    */
   async deletePaycheck(paycheckId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.paycheck 
        SET deleted_at = NOW(),
            deleted_by = $3
@@ -1170,7 +1175,7 @@ class PayrollRepository {
    * @returns {Promise<number>} Number of paychecks deleted
    */
   async deletePaychecksByPayrollRun(payrollRunId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `DELETE FROM payroll.paycheck 
        WHERE payroll_run_id = $1 AND organization_id = $2`,
       [payrollRunId, organizationId],
@@ -1191,7 +1196,7 @@ class PayrollRepository {
    * @returns {Promise<Object>} Created timesheet
    */
   async createTimesheet(timesheetData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.timesheet 
       (organization_id, employee_id, period_start, period_end,
        regular_hours, overtime_hours, pto_hours, sick_hours, 
@@ -1243,7 +1248,7 @@ class PayrollRepository {
       params.push(filters.employeeId);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT 
         t.*,
         e.employee_number,
@@ -1298,7 +1303,7 @@ class PayrollRepository {
       params.push(criteria.status);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.timesheet
        ${whereClause}
        ORDER BY period_start DESC`,
@@ -1319,7 +1324,7 @@ class PayrollRepository {
    * @returns {Promise<Object>} Updated timesheet
    */
   async updateTimesheetStatus(timesheetId, status, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.timesheet 
        SET status = $1, 
            approved_by = CASE WHEN $1 = 'approved' THEN $2 ELSE approved_by END,
@@ -1346,7 +1351,7 @@ class PayrollRepository {
    * @returns {Promise<Object>} Created component
    */
   async createPayrollRunComponent(componentData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.payroll_run_component
        (organization_id, payroll_run_id, paycheck_id, component_type, component_code, component_name,
         units, rate, amount, is_taxable, tax_category,
@@ -1386,7 +1391,7 @@ class PayrollRepository {
    * @returns {Promise<Array>} Array of components
    */
   async getPaycheckComponents(paycheckId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
         id,
         organization_id,

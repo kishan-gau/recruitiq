@@ -15,6 +15,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class TaxEngineRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   // ==================== TAX RULE SETS ====================
   
   /**
@@ -25,7 +29,7 @@ class TaxEngineRepository {
    * @returns {Promise<Object>} Created tax rule set
    */
   async createTaxRuleSet(ruleSetData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.tax_rule_set 
       (organization_id, tax_type, tax_name, country, state, locality,
        effective_from, effective_to, annual_cap, 
@@ -63,7 +67,7 @@ class TaxEngineRepository {
    * @returns {Promise<Array>} Applicable tax rule sets
    */
   async findApplicableTaxRuleSets(country, state, locality, effectiveDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT trs.*, 
               COUNT(tb.id) as bracket_count
        FROM payroll.tax_rule_set trs
@@ -92,7 +96,7 @@ class TaxEngineRepository {
    * @returns {Promise<Object|null>} Tax rule set or null
    */
   async findTaxRuleSetById(ruleSetId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.tax_rule_set
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
       [ruleSetId, organizationId],
@@ -131,7 +135,7 @@ class TaxEngineRepository {
       whereClause += ` AND effective_from <= CURRENT_DATE AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)`;
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.tax_rule_set
        ${whereClause}
        ORDER BY tax_type, effective_from DESC`,
@@ -176,7 +180,7 @@ class TaxEngineRepository {
 
     setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
 
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.tax_rule_set
        SET ${setClauses.join(', ')}
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
@@ -197,7 +201,7 @@ class TaxEngineRepository {
    * @returns {Promise<boolean>} Success
    */
   async softDeleteTaxRuleSet(ruleSetId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.tax_rule_set
        SET deleted_at = CURRENT_TIMESTAMP,
            deleted_by = $3
@@ -221,7 +225,7 @@ class TaxEngineRepository {
    * @returns {Promise<Object>} Created tax bracket
    */
   async createTaxBracket(bracketData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.tax_bracket 
       (organization_id, tax_rule_set_id, bracket_order, income_min, income_max,
        rate_percentage, fixed_amount, created_by)
@@ -251,7 +255,7 @@ class TaxEngineRepository {
    * @returns {Promise<Array>} Tax brackets ordered by bracket_order
    */
   async findTaxBrackets(taxRuleSetId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.tax_bracket
        WHERE tax_rule_set_id = $1 
          AND organization_id = $2
@@ -272,7 +276,7 @@ class TaxEngineRepository {
    * @returns {Promise<Object|null>} Tax bracket or null
    */
   async findTaxBracketById(bracketId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.tax_bracket
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
       [bracketId, organizationId],
@@ -315,7 +319,7 @@ class TaxEngineRepository {
 
     setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
 
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.tax_bracket
        SET ${setClauses.join(', ')}
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
@@ -336,7 +340,7 @@ class TaxEngineRepository {
    * @returns {Promise<boolean>} Success
    */
   async softDeleteTaxBracket(bracketId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.tax_bracket
        SET deleted_at = CURRENT_TIMESTAMP,
            deleted_by = $3
@@ -442,7 +446,7 @@ class TaxEngineRepository {
    * @returns {Promise<Object>} Created allowance
    */
   async createAllowance(allowanceData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.allowance 
       (organization_id, allowance_type, allowance_name, country, state,
        amount, is_percentage, effective_from, effective_to, 
@@ -479,7 +483,7 @@ class TaxEngineRepository {
    * @returns {Promise<Array>} Applicable allowances
    */
   async findApplicableAllowances(country, state, effectiveDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.allowance
        WHERE organization_id = $1
          AND country = $2
@@ -519,7 +523,7 @@ class TaxEngineRepository {
       params.push(filters.isActive);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.allowance
        ${whereClause}
        ORDER BY allowance_type, effective_from DESC`,
@@ -541,7 +545,7 @@ class TaxEngineRepository {
    * @returns {Promise<Object>} Created deductible cost rule
    */
   async createDeductibleCostRule(ruleData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.deductible_cost_rule 
       (organization_id, cost_type, cost_name, country, state,
        amount, is_percentage, max_deduction, effective_from, effective_to,
@@ -579,7 +583,7 @@ class TaxEngineRepository {
    * @returns {Promise<Array>} Applicable deductible cost rules
    */
   async findApplicableDeductibleCostRules(country, state, effectiveDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.deductible_cost_rule
        WHERE organization_id = $1
          AND country = $2
@@ -605,7 +609,7 @@ class TaxEngineRepository {
    * @returns {Promise<Array>} Wage Tax brackets
    */
   async getSurinameseWageTaxBrackets(year, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT tb.* 
        FROM payroll.tax_bracket tb
        INNER JOIN payroll.tax_rule_set trs ON trs.id = tb.tax_rule_set_id
@@ -630,7 +634,7 @@ class TaxEngineRepository {
    * @returns {Promise<Object|null>} AOV tax rule set or null
    */
   async getSurinameseAOVRate(effectiveDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT id, organization_id, tax_type, tax_name, country, state, locality,
               effective_from, effective_to, annual_cap, 
               calculation_method, calculation_mode, description, created_at
@@ -658,7 +662,7 @@ class TaxEngineRepository {
    * @returns {Promise<Object|null>} AWW tax rule set or null
    */
   async getSurinameseAWWRate(effectiveDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT id, organization_id, tax_type, tax_name, country, state, locality,
               effective_from, effective_to, annual_cap, 
               calculation_method, calculation_mode, description, created_at

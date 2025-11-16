@@ -104,7 +104,7 @@ import type {
  * 
  * Complete API client for all 19 Paylinq modules with 149 endpoints
  */
-export class PaylinqAPI {
+export class PaylinqClient {
   private readonly basePath = '/products/paylinq';
 
   constructor(private client: APIClient) {}
@@ -1024,7 +1024,7 @@ export class PaylinqAPI {
       
       const blob = await response.blob();
       
-      console.log('[PaylinqAPI] PDF downloaded via fetch:', {
+      console.log('[PaylinqClient] PDF downloaded via fetch:', {
         status: response.status,
         blobSize: blob.size,
         blobType: blob.type,
@@ -1038,7 +1038,7 @@ export class PaylinqAPI {
         headers: response.headers,
       };
     } catch (error) {
-      console.error('[PaylinqAPI] PDF download error:', error);
+      console.error('[PaylinqClient] PDF download error:', error);
       throw error;
     }
   }
@@ -2193,5 +2193,236 @@ export class PaylinqAPI {
     return this.client.get<ApiResponse<{ schema: any }>>(
       `${this.basePath}/patterns/validation-schema`
     );
+  }
+
+  // ============================================================================
+  // Currency & Exchange Rates
+  // ============================================================================
+
+  /**
+   * Get all currencies
+   */
+  async getCurrencies(params?: { status?: string } & PaginationParams) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.client.get(`${this.basePath}/currencies${query ? '?' + query : ''}`);
+  }
+
+  /**
+   * Get exchange rates
+   */
+  async getExchangeRates(params?: {
+    fromCurrency?: string;
+    toCurrency?: string;
+    source?: string;
+    status?: string;
+  } & PaginationParams) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.client.get(`${this.basePath}/exchange-rates${query ? '?' + query : ''}`);
+  }
+
+  /**
+   * Create exchange rate
+   */
+  async createExchangeRate(data: any) {
+    return this.client.post(`${this.basePath}/exchange-rates`, data);
+  }
+
+  /**
+   * Update exchange rate
+   */
+  async updateExchangeRate(id: string, data: any) {
+    return this.client.put(`${this.basePath}/exchange-rates/${id}`, data);
+  }
+
+  /**
+   * Delete exchange rate
+   */
+  async deleteExchangeRate(id: string) {
+    return this.client.delete(`${this.basePath}/exchange-rates/${id}`);
+  }
+
+  /**
+   * Convert currency
+   */
+  async convertCurrency(data: {
+    fromCurrency: string;
+    toCurrency: string;
+    amount: number;
+    asOfDate?: string;
+    referenceType?: string;
+    referenceId?: string;
+  }) {
+    return this.client.post(`${this.basePath}/currency/convert`, data);
+  }
+
+  /**
+   * Get conversion history
+   */
+  async getConversionHistory(params?: {
+    referenceType?: string;
+    referenceId?: string;
+    fromCurrency?: string;
+    toCurrency?: string;
+  } & PaginationParams) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.client.get(`${this.basePath}/currency/conversions${query ? '?' + query : ''}`);
+  }
+
+  /**
+   * Get exchange rate history
+   */
+  async getExchangeRateHistory(params: {
+    fromCurrency: string;
+    toCurrency: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.client.get(`${this.basePath}/currency/rate-history?${query}`);
+  }
+
+  /**
+   * Get currency configuration
+   */
+  async getCurrencyConfig() {
+    return this.client.get(`${this.basePath}/currency/config`);
+  }
+
+  /**
+   * Update currency configuration
+   */
+  async updateCurrencyConfig(data: any) {
+    return this.client.put(`${this.basePath}/currency/config`, data);
+  }
+
+  /**
+   * Bulk import exchange rates
+   */
+  async bulkImportExchangeRates(rates: any[]) {
+    return this.client.post(`${this.basePath}/currency/bulk-import`, { rates });
+  }
+
+  /**
+   * Batch currency conversions
+   */
+  async batchConvertCurrency(conversions: Array<{
+    fromCurrency: string;
+    toCurrency: string;
+    amount: number;
+    asOfDate?: string;
+  }>) {
+    return this.client.post(`${this.basePath}/currency/batch-convert`, { conversions });
+  }
+
+  /**
+   * Get currency statistics
+   */
+  async getCurrencyStats() {
+    return this.client.get(`${this.basePath}/currency/stats`);
+  }
+
+  /**
+   * Get cache statistics
+   */
+  async getCacheStats() {
+    return this.client.get(`${this.basePath}/currency/cache/stats`);
+  }
+
+  /**
+   * Clear currency cache
+   */
+  async clearCurrencyCache() {
+    return this.client.post(`${this.basePath}/currency/cache/clear`);
+  }
+
+  /**
+   * Refresh materialized views
+   */
+  async refreshCurrencyViews() {
+    return this.client.post(`${this.basePath}/currency/refresh-views`);
+  }
+
+  /**
+   * Get currency audit log
+   */
+  async getCurrencyAuditLog(params?: {
+    action?: string;
+    startDate?: string;
+    endDate?: string;
+  } & PaginationParams) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.client.get(`${this.basePath}/currency/audit${query ? '?' + query : ''}`);
+  }
+
+  // ============================================================================
+  // Approval Workflows
+  // ============================================================================
+
+  /**
+   * Create approval request
+   */
+  async createApprovalRequest(data: {
+    requestType: 'conversion' | 'rate_change' | 'bulk_rate_import' | 'configuration_change';
+    referenceType: string;
+    referenceId: string;
+    requestData: any;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
+    reason?: string;
+  }) {
+    return this.client.post(`${this.basePath}/approvals`, data);
+  }
+
+  /**
+   * Get pending approvals
+   */
+  async getPendingApprovals(params?: {
+    requestType?: string;
+    priority?: string;
+  } & PaginationParams) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.client.get(`${this.basePath}/approvals/pending${query ? '?' + query : ''}`);
+  }
+
+  /**
+   * Get approval by ID
+   */
+  async getApproval(id: string) {
+    return this.client.get(`${this.basePath}/approvals/${id}`);
+  }
+
+  /**
+   * Approve request
+   */
+  async approveRequest(id: string, comments?: string) {
+    return this.client.post(`${this.basePath}/approvals/${id}/approve`, { comments });
+  }
+
+  /**
+   * Reject request
+   */
+  async rejectRequest(id: string, comments: string) {
+    return this.client.post(`${this.basePath}/approvals/${id}/reject`, { comments });
+  }
+
+  /**
+   * Get approval history
+   */
+  async getApprovalHistory(referenceType: string, referenceId: string) {
+    return this.client.get(`${this.basePath}/approvals/history/${referenceType}/${referenceId}`);
+  }
+
+  /**
+   * Expire old approval requests (admin only)
+   */
+  async expireOldApprovals() {
+    return this.client.post(`${this.basePath}/approvals/expire`);
+  }
+
+  /**
+   * Get approval statistics
+   */
+  async getApprovalStatistics(params?: { startDate?: string; endDate?: string }) {
+    const query = new URLSearchParams(params as any).toString();
+    return this.client.get(`${this.basePath}/approvals/statistics${query ? '?' + query : ''}`);
   }
 }

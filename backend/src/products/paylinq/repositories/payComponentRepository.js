@@ -12,6 +12,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class PayComponentRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   // ==================== PAY COMPONENTS ====================
   
   /**
@@ -22,7 +26,7 @@ class PayComponentRepository {
    * @returns {Promise<Object>} Created pay component
    */
   async createPayComponent(componentData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.pay_component 
       (organization_id, component_code, component_name, component_type,
        category, calculation_type, default_rate, default_amount,
@@ -89,7 +93,7 @@ class PayComponentRepository {
       params.push(filters.isSystemComponent);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.pay_component
        ${whereClause}
        ORDER BY component_type, component_name ASC`,
@@ -108,7 +112,7 @@ class PayComponentRepository {
    * @returns {Promise<Object|null>} Pay component or null
    */
   async findPayComponentById(componentId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.pay_component
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
       [componentId, organizationId],
@@ -126,7 +130,7 @@ class PayComponentRepository {
    * @returns {Promise<Object|null>} Pay component or null
    */
   async findPayComponentByCode(code, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.pay_component
        WHERE component_code = $1 AND organization_id = $2 AND deleted_at IS NULL`,
       [code, organizationId],
@@ -179,7 +183,7 @@ class PayComponentRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_component 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -202,7 +206,7 @@ class PayComponentRepository {
    * @returns {Promise<Object>} Created formula
    */
   async createComponentFormula(formulaData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.component_formula 
       (organization_id, pay_component_id, formula_name, formula_expression,
        formula_type, variables, description, created_by)
@@ -232,7 +236,7 @@ class PayComponentRepository {
    * @returns {Promise<Array>} Component formulas
    */
   async findFormulasByComponent(payComponentId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.component_formula
        WHERE pay_component_id = $1 
          AND organization_id = $2 
@@ -253,7 +257,7 @@ class PayComponentRepository {
    * @returns {Promise<Object|null>} Formula or null
    */
   async findFormulaById(formulaId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.component_formula
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
       [formulaId, organizationId],
@@ -274,7 +278,7 @@ class PayComponentRepository {
    * @returns {Promise<Object>} Created custom pay component
    */
   async assignCustomComponent(assignmentData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.custom_pay_component 
       (organization_id, employee_id, pay_component_id, 
        custom_rate, custom_amount, effective_from, effective_to,
@@ -329,7 +333,7 @@ class PayComponentRepository {
       params.push(filters.effectiveDate);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT cpc.*, 
               pc.component_code,
               pc.component_name,
@@ -399,7 +403,7 @@ class PayComponentRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.custom_pay_component 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -424,7 +428,7 @@ class PayComponentRepository {
    * @returns {Promise<Object>} Updated custom pay component
    */
   async deactivateCustomComponent(customComponentId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.custom_pay_component 
        SET is_active = false,
            effective_to = NOW(),
@@ -448,7 +452,7 @@ class PayComponentRepository {
    * @returns {Promise<Array>} All applicable pay components
    */
   async findActivePayComponentsForPayroll(organizationId, effectiveDate) {
-    const result = await query(
+    const result = await this.query(
       `SELECT DISTINCT
         pc.id,
         pc.component_code,
@@ -502,7 +506,7 @@ class PayComponentRepository {
    */
   async deletePayComponent(componentId, organizationId, userId) {
     // Business rule: Check if component is assigned to active employees
-    const employeeUsageCheck = await query(
+    const employeeUsageCheck = await this.query(
       `SELECT COUNT(*) as usage_count
        FROM payroll.custom_pay_component
        WHERE pay_component_id = $1 
@@ -523,7 +527,7 @@ class PayComponentRepository {
 
     // Business rule: Check if component was used in any payroll runs
     // This provides audit trail preservation - don't delete if used historically
-    const payrollUsageCheck = await query(
+    const payrollUsageCheck = await this.query(
       `SELECT COUNT(*) as usage_count
        FROM payroll.paycheck_earning
        WHERE pay_component_id = $1 
@@ -552,7 +556,7 @@ class PayComponentRepository {
     }
     
     // Soft delete the component
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_component 
        SET deleted_at = NOW(), 
            deleted_by = $1,
@@ -575,7 +579,7 @@ class PayComponentRepository {
    * @returns {Promise<Object>} Updated pay component
    */
   async deactivatePayComponent(componentId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_component 
        SET status = 'inactive',
            updated_by = $1,

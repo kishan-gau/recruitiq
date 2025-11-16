@@ -15,10 +15,12 @@ import Joi from 'joi';
 import TimeAttendanceRepository from '../repositories/timeAttendanceRepository.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.js';
+import { query as defaultQuery } from '../../../config/database.js';
 
 class TemporalPatternService {
-  constructor() {
-    this.timeAttendanceRepository = new TimeAttendanceRepository();
+  constructor(timeAttendanceRepository = null, queryFn = null) {
+    this.timeAttendanceRepository = timeAttendanceRepository || new TimeAttendanceRepository();
+    this.query = queryFn || defaultQuery;
   }
 
   /**
@@ -174,9 +176,11 @@ class TemporalPatternService {
     const targetDayNum = dayMap[dayOfWeek.toLowerCase()];
 
     // Filter entries for target day of week and sort by date
+    // Parse dates as local noon to avoid timezone shifts from UTC midnight
     const targetDayEntries = timeEntries
       .filter((entry) => {
-        const entryDate = new Date(entry.entry_date);
+        // For date-only strings (YYYY-MM-DD), parse as local noon to avoid timezone issues
+        const entryDate = new Date(entry.entry_date + 'T12:00:00');
         return entryDate.getDay() === targetDayNum;
       })
       .sort((a, b) => new Date(a.entry_date) - new Date(b.entry_date));
@@ -333,8 +337,7 @@ class TemporalPatternService {
     lookbackStart.setDate(lookbackStart.getDate() - lookbackPeriodDays);
 
     // Query ScheduleHub shifts table for this employee and station
-    const { query } = await import('../../../config/database.js');
-    const shiftsResult = await query(
+    const shiftsResult = await this.query(
       `SELECT DISTINCT shift_date
        FROM scheduling.shifts
        WHERE employee_id = $1
@@ -365,7 +368,7 @@ class TemporalPatternService {
     // Get station details for metadata
     let stationName = null;
     if (stationDates.length > 0) {
-      const stationResult = await query(
+      const stationResult = await this.query(
         `SELECT station_name FROM scheduling.stations WHERE id = $1 AND organization_id = $2`,
         [stationId, organizationId],
         organizationId
@@ -401,8 +404,7 @@ class TemporalPatternService {
     lookbackStart.setDate(lookbackStart.getDate() - lookbackPeriodDays);
 
     // Query ScheduleHub shifts table for this employee and role
-    const { query } = await import('../../../config/database.js');
-    const shiftsResult = await query(
+    const shiftsResult = await this.query(
       `SELECT DISTINCT shift_date
        FROM scheduling.shifts
        WHERE employee_id = $1
@@ -433,7 +435,7 @@ class TemporalPatternService {
     // Get role details for metadata
     let roleName = null;
     if (roleDates.length > 0) {
-      const roleResult = await query(
+      const roleResult = await this.query(
         `SELECT role_name FROM scheduling.roles WHERE id = $1 AND organization_id = $2`,
         [roleId, organizationId],
         organizationId
@@ -641,7 +643,6 @@ class TemporalPatternService {
    * @returns {Promise<Object>} Test results for all workers
    */
   async testPattern(pattern, employeeIds, organizationId, asOfDate = new Date()) {
-    const { query } = await import('../../../config/database.js');
     const results = [];
 
     // Fetch employee details for display
@@ -650,7 +651,7 @@ class TemporalPatternService {
       FROM hris.employee
       WHERE id = ANY($1) AND organization_id = $2
     `;
-    const employeeDetails = await query(employeeDetailsQuery, [employeeIds, organizationId], organizationId);
+    const employeeDetails = await this.query(employeeDetailsQuery, [employeeIds, organizationId], organizationId);
     const employeeMap = new Map(employeeDetails.rows.map(e => [e.id, e]));
 
     for (const employeeId of employeeIds) {

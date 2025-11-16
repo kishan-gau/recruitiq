@@ -14,6 +14,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class ReconciliationRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   // ==================== RECONCILIATION ====================
   
   /**
@@ -24,7 +28,7 @@ class ReconciliationRepository {
    * @returns {Promise<Object>} Created reconciliation
    */
   async createReconciliation(reconciliationData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.reconciliation 
       (organization_id, payroll_run_id, reconciliation_type, 
        reconciliation_date, status, notes, created_by)
@@ -87,7 +91,7 @@ class ReconciliationRepository {
       params.push(criteria.toDate);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT r.*,
               pr.run_number,
               pr.run_name,
@@ -112,7 +116,7 @@ class ReconciliationRepository {
    * @returns {Promise<Object|null>} Reconciliation or null
    */
   async findReconciliationById(reconciliationId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT r.*,
               pr.run_number,
               pr.total_net_pay as payroll_run_total
@@ -163,7 +167,7 @@ class ReconciliationRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.reconciliation 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -185,7 +189,7 @@ class ReconciliationRepository {
    * @returns {Promise<Object>} Updated reconciliation
    */
   async completeReconciliation(reconciliationId, actualTotal, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.reconciliation 
        SET status = 'completed',
            actual_total = $1,
@@ -212,7 +216,7 @@ class ReconciliationRepository {
    * @returns {Promise<boolean>} True if deleted
    */
   async deleteReconciliation(reconciliationId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.reconciliation 
        SET deleted_at = NOW(),
            deleted_by = $1
@@ -239,7 +243,7 @@ class ReconciliationRepository {
     // Determine if item is reconciled (no variance = auto-reconciled)
     const isReconciled = itemData.varianceAmount === 0;
     
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.reconciliation_item 
       (organization_id, reconciliation_id, item_type, item_reference,
        expected_amount, actual_amount, variance_amount, is_reconciled,
@@ -294,7 +298,7 @@ class ReconciliationRepository {
       whereClause += ` AND ri.variance_amount != 0`;
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT ri.* 
        FROM payroll.reconciliation_item ri
        ${whereClause}
@@ -347,7 +351,7 @@ class ReconciliationRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.reconciliation_item 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -369,7 +373,7 @@ class ReconciliationRepository {
    * @returns {Promise<Object>} Updated reconciliation item
    */
   async resolveReconciliationItem(itemId, resolution, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.reconciliation_item 
        SET is_reconciled = true,
            reconciliation_notes = $1,
@@ -392,7 +396,7 @@ class ReconciliationRepository {
    * @returns {Promise<Object>} Reconciliation summary
    */
   async getReconciliationSummary(reconciliationId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
         COUNT(ri.id) as total_items,
         COUNT(CASE WHEN ri.is_reconciled = false THEN 1 END) as pending_items,
@@ -424,7 +428,7 @@ class ReconciliationRepository {
    * @returns {Promise<Object>} Created payroll adjustment
    */
   async createPayrollAdjustment(adjustmentData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.payroll_adjustment 
       (organization_id, payroll_run_id, paycheck_id, adjustment_type,
        adjustment_reason, adjustment_amount, effective_date, status,
@@ -457,7 +461,7 @@ class ReconciliationRepository {
    * @returns {Promise<Array>} Payroll adjustments
    */
   async findAdjustmentsByRun(payrollRunId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT pa.*,
               pc.employee_id,
               e.employee_number,
@@ -504,7 +508,7 @@ class ReconciliationRepository {
       params.push(filters.adjustmentType);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT pa.*,
               pr.run_number,
               pr.pay_period_start,
@@ -530,7 +534,7 @@ class ReconciliationRepository {
    * @returns {Promise<Object>} Updated payroll adjustment
    */
   async applyAdjustment(adjustmentId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.payroll_adjustment 
        SET status = 'applied',
            applied_by = $1,

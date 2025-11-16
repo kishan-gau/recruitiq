@@ -19,9 +19,13 @@ import { ValidationError, NotFoundError, ConflictError } from '../../../middlewa
 import PayStructureService from './payStructureService.js';
 
 class PayrollRunTypeService {
-  constructor() {
-    this.repository = PayrollRunTypeRepository;
-    this.payStructureService = new PayStructureService();
+  /**
+   * @param {PayrollRunTypeRepository} repository - Optional repository instance for testing
+   * @param {PayStructureService} payStructureService - Optional service instance for testing
+   */
+  constructor(repository = null, payStructureService = null) {
+    this.repository = repository || new PayrollRunTypeRepository();
+    this.payStructureService = payStructureService || new PayStructureService();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -534,8 +538,5 @@ class PayrollRunTypeService {
   }
 }
 
-// Export singleton instance
-const payrollRunTypeService = new PayrollRunTypeService();
-
-export default payrollRunTypeService;
-export { PayrollRunTypeService };
+// Export class for dependency injection and testing
+export default PayrollRunTypeService;

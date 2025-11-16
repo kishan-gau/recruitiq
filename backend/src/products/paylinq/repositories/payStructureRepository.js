@@ -13,6 +13,10 @@ import dtoMapper from '../utils/dtoMapper.js';
 import { mapPayStructureTemplateDbToApi, mapWorkerPayStructureDbToApi } from '../utils/dtoMapper.js';
 
 class PayStructureRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   
   // ==================== PAY STRUCTURE TEMPLATES ====================
   
@@ -20,7 +24,7 @@ class PayStructureRepository {
    * Create a new pay structure template
    */
   async createTemplate(templateData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.pay_structure_template 
       (organization_id, template_code, template_name, description,
        version_major, version_minor, version_patch, status,
@@ -60,7 +64,7 @@ class PayStructureRepository {
    * Find template by ID
    */
   async findTemplateById(templateId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT pst.*,
               (SELECT COUNT(*) FROM payroll.pay_structure_component psc 
                WHERE psc.template_id = pst.id 
@@ -117,7 +121,7 @@ class PayStructureRepository {
     const sortField = filters.sortField || 'created_at';
     const sortOrder = filters.sortOrder || 'DESC';
     
-    const result = await query(
+    const result = await this.query(
       `SELECT pst.*,
               (SELECT COUNT(*) FROM payroll.pay_structure_component psc 
                WHERE psc.template_id = pst.id 
@@ -184,7 +188,7 @@ class PayStructureRepository {
     paramCount++;
     values.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_structure_template
        SET ${fields.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -201,7 +205,7 @@ class PayStructureRepository {
    * Publish template (make it active)
    */
   async publishTemplate(templateId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_structure_template
        SET status = 'active',
            published_at = NOW(),
@@ -222,7 +226,7 @@ class PayStructureRepository {
    * Deprecate template
    */
   async deprecateTemplate(templateId, reason, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_structure_template
        SET status = 'deprecated',
            deprecated_at = NOW(),
@@ -244,7 +248,7 @@ class PayStructureRepository {
    * Delete pay structure template (draft versions only - soft delete)
    */
   async deleteTemplate(templateId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_structure_template
        SET deleted_at = NOW(),
            deleted_by = $3,
@@ -270,7 +274,7 @@ class PayStructureRepository {
   async getOrganizationDefault(organizationId, asOfDate = null) {
     const dateParam = asOfDate || new Date().toISOString().split('T')[0];
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.get_organization_default_template($1, $2)`,
       [organizationId, dateParam],
       organizationId,
@@ -286,7 +290,7 @@ class PayStructureRepository {
    * Add component to template
    */
   async addComponent(componentData, templateId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.pay_structure_component
       (template_id, pay_component_id, component_code, component_name, component_category,
        calculation_type, default_amount, default_currency, percentage_of, percentage_rate,
@@ -357,7 +361,7 @@ class PayStructureRepository {
    * Get components for a template
    */
   async getTemplateComponents(templateId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT psc.*,
               pc.component_name as pay_component_name
        FROM payroll.pay_structure_component psc
@@ -454,7 +458,7 @@ class PayStructureRepository {
     paramCount++;
     values.push(componentId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_structure_component
        SET ${fields.join(', ')}
        WHERE id = $${paramCount} AND deleted_at IS NULL
@@ -471,7 +475,7 @@ class PayStructureRepository {
    * Delete component
    */
   async deleteComponent(componentId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.pay_structure_component
        SET deleted_at = NOW(), deleted_by = $2
        WHERE id = $1 AND deleted_at IS NULL
@@ -500,7 +504,7 @@ class PayStructureRepository {
       isCurrent: assignmentData.isCurrent
     });
     
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.worker_pay_structure
       (organization_id, employee_id, template_version_id, base_salary,
        assignment_type, assignment_source, assigned_by, assignment_reason,
@@ -546,7 +550,7 @@ class PayStructureRepository {
     // For open-ended ranges (effectiveTo IS NULL), treat as '9999-12-31'
     const effectiveToValue = effectiveTo || '9999-12-31';
     
-    const result = await query(
+    const result = await this.query(
       `SELECT wps.*
        FROM payroll.worker_pay_structure wps
        WHERE wps.employee_id = $1 
@@ -586,7 +590,7 @@ class PayStructureRepository {
       ? [employeeId, organizationId, asOfDate]
       : [employeeId, organizationId];
     
-    const result = await query(
+    const result = await this.query(
       `SELECT wps.*,
               pst.template_name,
               pst.template_code,
@@ -659,7 +663,7 @@ class PayStructureRepository {
    * Get worker pay structure history
    */
   async getWorkerStructureHistory(employeeId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT wps.*,
               pst.template_name,
               COUNT(DISTINCT wpco.id) as override_count
@@ -718,7 +722,7 @@ class PayStructureRepository {
     paramCount++;
     values.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.worker_pay_structure
        SET ${fields.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -735,7 +739,7 @@ class PayStructureRepository {
    * Delete worker pay structure (soft delete)
    */
   async deleteWorkerStructure(structureId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.worker_pay_structure
        SET deleted_at = NOW(), deleted_by = $2
        WHERE id = $1 AND organization_id = $3 AND deleted_at IS NULL
@@ -754,7 +758,7 @@ class PayStructureRepository {
    * Add component override for worker
    */
   async addComponentOverride(overrideData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.worker_pay_structure_component_override
       (worker_structure_id, component_code, override_type,
        override_amount, override_percentage, override_formula, override_formula_variables,
@@ -799,7 +803,7 @@ class PayStructureRepository {
    * Get worker component overrides
    */
   async getWorkerOverrides(workerStructureId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.worker_pay_structure_component_override
        WHERE worker_structure_id = $1 AND deleted_at IS NULL
        ORDER BY component_code`,
@@ -893,7 +897,7 @@ class PayStructureRepository {
     paramCount++;
     values.push(overrideId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.worker_pay_structure_component_override
        SET ${fields.join(', ')}
        WHERE id = $${paramCount} AND deleted_at IS NULL
@@ -910,7 +914,7 @@ class PayStructureRepository {
    * Delete component override
    */
   async deleteComponentOverride(overrideId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.worker_pay_structure_component_override
        SET deleted_at = NOW(), deleted_by = $2
        WHERE id = $1 AND deleted_at IS NULL
@@ -929,7 +933,7 @@ class PayStructureRepository {
    * Add changelog entry
    */
   async addChangelogEntry(changelogData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.pay_structure_template_changelog
       (template_id, from_version, to_version, change_type, change_summary,
        changes_detail, breaking_changes, breaking_changes_description,
@@ -964,7 +968,7 @@ class PayStructureRepository {
    * Get template changelog
    */
   async getTemplateChangelog(templateId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT ptc.*, u.first_name, u.last_name
        FROM payroll.pay_structure_template_changelog ptc
        LEFT JOIN users u ON u.id = ptc.changed_by
@@ -984,7 +988,7 @@ class PayStructureRepository {
    * Get all versions of a template by code
    */
   async getTemplateVersions(templateCode, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT pst.*,
               (SELECT COUNT(*) FROM payroll.pay_structure_component psc 
                WHERE psc.template_id = pst.id 
@@ -1013,7 +1017,7 @@ class PayStructureRepository {
    * Update worker pay structure end date (for version upgrades)
    */
   async updateWorkerPayStructureEndDate(workerStructureId, endDate, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.worker_pay_structure
        SET effective_to = $1, updated_at = NOW(), updated_by = $2
        WHERE id = $3 AND organization_id = $4 AND deleted_at IS NULL

@@ -49,7 +49,7 @@ describe('Security Penetration Tests', () => {
 
     test('should use parameterized queries for database operations', () => {
       // This is more of a code review check, but we can verify sanitization is called
-      const dangerousInput = "1'; DELETE FROM users WHERE '1'='1";
+      const dangerousInput = "1'; DELETE FROM platform_users WHERE '1'='1";
       expect(sanitization.containsSQLInjection(dangerousInput)).toBe(true);
     });
 

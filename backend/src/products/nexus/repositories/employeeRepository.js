@@ -8,7 +8,8 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class EmployeeRepository {
-  constructor() {
+  constructor(database = null) {
+    this.query = database?.query || query;
     this.tableName = 'hris.employee';
     this.logger = logger;
   }
@@ -34,7 +35,7 @@ class EmployeeRepository {
           AND e.deleted_at IS NULL
       `;
 
-      const result = await query(sql, [id, organizationId], organizationId, {
+      const result = await this.query(sql, [id, organizationId], organizationId, {
         operation: 'findById',
         table: this.tableName
       });
@@ -118,7 +119,7 @@ class EmployeeRepository {
       sql += ` ORDER BY ${orderBy} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId, {
+      const result = await this.query(sql, params, organizationId, {
         operation: 'findAll',
         table: this.tableName
       });
@@ -156,7 +157,7 @@ class EmployeeRepository {
         paramIndex++;
       }
 
-      const result = await query(sql, params, organizationId, {
+      const result = await this.query(sql, params, organizationId, {
         operation: 'count',
         table: this.tableName
       });
@@ -180,7 +181,7 @@ class EmployeeRepository {
           AND deleted_at IS NULL
       `;
 
-      const result = await query(sql, [email, organizationId], organizationId, {
+      const result = await this.query(sql, [email, organizationId], organizationId, {
         operation: 'findByEmail',
         table: this.tableName
       });
@@ -204,7 +205,7 @@ class EmployeeRepository {
           AND deleted_at IS NULL
       `;
 
-      const result = await query(sql, [employeeNumber, organizationId], organizationId, {
+      const result = await this.query(sql, [employeeNumber, organizationId], organizationId, {
         operation: 'findByEmployeeNumber',
         table: this.tableName
       });
@@ -284,7 +285,7 @@ class EmployeeRepository {
         userId
       ];
 
-      const result = await query(sql, params, organizationId, {
+      const result = await this.query(sql, params, organizationId, {
         operation: 'create',
         table: this.tableName
       });
@@ -380,7 +381,7 @@ class EmployeeRepository {
         organizationId
       ];
 
-      const result = await query(sql, params, organizationId, {
+      const result = await this.query(sql, params, organizationId, {
         operation: 'update',
         table: this.tableName
       });
@@ -410,7 +411,7 @@ class EmployeeRepository {
         RETURNING *
       `;
 
-      const result = await query(sql, [terminationDate, userId, id, organizationId], organizationId, {
+      const result = await this.query(sql, [terminationDate, userId, id, organizationId], organizationId, {
         operation: 'terminate',
         table: this.tableName
       });
@@ -439,7 +440,7 @@ class EmployeeRepository {
         RETURNING id
       `;
 
-      const result = await query(sql, [userId, id, organizationId], organizationId, {
+      const result = await this.query(sql, [userId, id, organizationId], organizationId, {
         operation: 'delete',
         table: this.tableName
       });
@@ -465,7 +466,7 @@ class EmployeeRepository {
         ORDER BY first_name, last_name
       `;
 
-      const result = await query(sql, [managerId, organizationId], organizationId, {
+      const result = await this.query(sql, [managerId, organizationId], organizationId, {
         operation: 'findByManager',
         table: this.tableName
       });
@@ -512,7 +513,7 @@ class EmployeeRepository {
         ORDER BY level, last_name, first_name
       `;
 
-      const result = await query(sql, [organizationId], organizationId, {
+      const result = await this.query(sql, [organizationId], organizationId, {
         operation: 'getOrgChartData',
         table: this.tableName
       });
@@ -537,7 +538,7 @@ class EmployeeRepository {
         ORDER BY hire_date DESC
       `;
 
-      const result = await query(sql, [startDate, endDate, organizationId], organizationId, {
+      const result = await this.query(sql, [startDate, endDate, organizationId], organizationId, {
         operation: 'findByHireDateRange',
         table: this.tableName
       });

@@ -3,8 +3,11 @@
  * Handles pay period configuration endpoints
  */
 
-import payPeriodService from '../services/payPeriodService.js';
+import PayPeriodService from '../services/payPeriodService.js';
 import logger from '../../../utils/logger.js';
+
+// Instantiate service
+const payPeriodService = new PayPeriodService();
 
 /**
  * Get pay period configuration

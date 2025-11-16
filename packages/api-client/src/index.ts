@@ -24,7 +24,7 @@ export type {
 // Product exports
 export { RecruitIQAPI } from './products/recruitiq';
 export { PortalAPI } from './products/portal';
-export { PaylinqAPI } from './products/paylinq';
+export { PaylinqClient } from './products/paylinq';
 
 // Unified API Client
 import { APIClient, APIClientConfig, TokenStorage } from './core/client';
@@ -32,7 +32,7 @@ import { AuthAPI } from './core/auth';
 import { FeaturesAPI } from './core/features';
 import { RecruitIQAPI } from './products/recruitiq';
 import { PortalAPI } from './products/portal';
-import { PaylinqAPI } from './products/paylinq';
+import { PaylinqClient } from './products/paylinq';
 
 /**
  * Unified RecruitIQ Platform API Client
@@ -45,7 +45,7 @@ export class RecruitIQPlatformAPI {
   public features: FeaturesAPI;
   public recruitiq: RecruitIQAPI;
   public portal: PortalAPI;
-  public paylinq: PaylinqAPI;
+  public paylinq: PaylinqClient;
 
   constructor(config: APIClientConfig = {}, tokenStorage?: TokenStorage) {
     this.apiClient = new APIClient(config, tokenStorage);
@@ -55,7 +55,7 @@ export class RecruitIQPlatformAPI {
     this.features = new FeaturesAPI(this.apiClient);
     this.recruitiq = new RecruitIQAPI(this.apiClient);
     this.portal = new PortalAPI(this.apiClient);
-    this.paylinq = new PaylinqAPI(this.apiClient);
+    this.paylinq = new PaylinqClient(this.apiClient);
   }
 
   /**

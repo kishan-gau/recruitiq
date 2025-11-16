@@ -139,9 +139,9 @@ async function getPaycheckComponents(req, res) {
 
     const result = await db(query, [id, organizationId]);
 
-    // Import componentDto to map components
-    const { mapComponentsToBreakdown } = await import('../dto/componentDto.js');
-    const components = mapComponentsToBreakdown(result.rows);
+    // Import runComponentDto to map components
+    const { mapRunComponentsToBreakdown } = await import('../dto/runComponentDto.js');
+    const components = mapRunComponentsToBreakdown(result.rows);
 
     res.status(200).json({
       success: true,

@@ -13,10 +13,18 @@ import productConfig from '../config/product.config.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 import { query  } from '../../../config/database.js';
+import { 
+  mapTemplateDbToApi, 
+  mapTemplatesDbToApi, 
+  mapTemplateApiToDb,
+  mapAssignmentDbToApi,
+  mapAssignmentsDbToApi,
+  mapAssignmentApiToDb
+} from '../dto/workerTypeDto.js';
 
 class WorkerTypeService {
-  constructor() {
-    this.workerTypeRepository = new WorkerTypeRepository();
+  constructor(repository = null) {
+    this.workerTypeRepository = repository || new WorkerTypeRepository();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -74,19 +82,19 @@ class WorkerTypeService {
         throw new ConflictError(`Worker type template with code '${value.code}' already exists`);
       }
 
-      const template = await this.workerTypeRepository.createTemplate(
+      const dbTemplate = await this.workerTypeRepository.createTemplate(
         value,
         organizationId,
         userId
       );
 
       logger.info('Worker type template created', {
-        templateId: template.id,
-        templateCode: template.code,
+        templateId: dbTemplate.id,
+        templateCode: dbTemplate.code,
         organizationId
       });
 
-      return template;
+      return mapTemplateDbToApi(dbTemplate);
     } catch (err) {
       logger.error('Error creating worker type template', { error: err.message, organizationId });
       throw err;
@@ -206,7 +214,8 @@ class WorkerTypeService {
    */
   async getWorkerTypeTemplates(organizationId, filters = {}) {
     try {
-      return await this.workerTypeRepository.findTemplatesByOrganization(organizationId, filters);
+      const dbTemplates = await this.workerTypeRepository.findTemplatesByOrganization(organizationId, filters);
+      return mapTemplatesDbToApi(dbTemplates);
     } catch (err) {
       logger.error('Error fetching worker type templates', { error: err.message, organizationId });
       throw err;
@@ -221,11 +230,11 @@ class WorkerTypeService {
    */
   async getWorkerTypeTemplateById(templateId, organizationId) {
     try {
-      const template = await this.workerTypeRepository.findTemplateById(templateId, organizationId);
-      if (!template) {
+      const dbTemplate = await this.workerTypeRepository.findTemplateById(templateId, organizationId);
+      if (!dbTemplate) {
         throw new NotFoundError('Worker type template not found');
       }
-      return template;
+      return mapTemplateDbToApi(dbTemplate);
     } catch (err) {
       logger.error('Error fetching worker type template', { error: err.message, templateId });
       throw err;
@@ -260,7 +269,7 @@ class WorkerTypeService {
         throw new Error('No valid fields to update');
       }
 
-      const template = await this.workerTypeRepository.updateTemplate(
+      const dbTemplate = await this.workerTypeRepository.updateTemplate(
         templateId,
         filteredUpdates,
         organizationId,
@@ -273,7 +282,7 @@ class WorkerTypeService {
         organizationId
       });
 
-      return template;
+      return mapTemplateDbToApi(dbTemplate);
     } catch (err) {
       logger.error('Error updating worker type template', { error: err.message, templateId });
       throw err;
@@ -364,20 +373,20 @@ class WorkerTypeService {
         }
       }
 
-      const assignment = await this.workerTypeRepository.assignWorkerType(
+      const dbAssignment = await this.workerTypeRepository.assignWorkerType(
         value,
         organizationId,
         userId
       );
 
       logger.info('Worker type assigned to employee', {
-        assignmentId: assignment.id,
-        employeeId: assignment.employee_id,
-        templateId: assignment.worker_type_template_id,
+        assignmentId: dbAssignment.id,
+        employeeId: dbAssignment.employee_id,
+        templateId: dbAssignment.worker_type_template_id,
         organizationId
       });
 
-      return assignment;
+      return mapAssignmentDbToApi(dbAssignment);
     } catch (err) {
       logger.error('Error assigning worker type', { error: err.message, organizationId });
       throw err;
@@ -392,7 +401,8 @@ class WorkerTypeService {
    */
   async getCurrentWorkerType(employeeRecordId, organizationId) {
     try {
-      return await this.workerTypeRepository.findCurrentWorkerType(employeeRecordId, organizationId);
+      const dbAssignment = await this.workerTypeRepository.findCurrentWorkerType(employeeRecordId, organizationId);
+      return mapAssignmentDbToApi(dbAssignment);
     } catch (err) {
       logger.error('Error fetching current worker type', { error: err.message, employeeRecordId });
       throw err;
@@ -407,7 +417,8 @@ class WorkerTypeService {
    */
   async getWorkerTypeHistory(employeeRecordId, organizationId) {
     try {
-      return await this.workerTypeRepository.findWorkerTypeHistory(employeeRecordId, organizationId);
+      const dbHistory = await this.workerTypeRepository.findWorkerTypeHistory(employeeRecordId, organizationId);
+      return mapAssignmentsDbToApi(dbHistory);
     } catch (err) {
       logger.error('Error fetching worker type history', { error: err.message, employeeRecordId });
       throw err;
@@ -600,4 +611,5 @@ class WorkerTypeService {
   }
 }
 
-export default new WorkerTypeService();
+// Export class for dependency injection and testing
+export default WorkerTypeService;

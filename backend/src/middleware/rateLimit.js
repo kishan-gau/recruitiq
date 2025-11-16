@@ -370,8 +370,8 @@ export function createEndpointLimiter(options = {}) {
     keyGenerator: (req) => {
       const userId = req.user?.id;
       // If authenticated, limit by endpoint + user ID
-      // If not authenticated, return undefined to let express-rate-limit handle IP
-      return userId ? `endpoint:${endpoint}:user:${userId}` : undefined;
+      // If not authenticated, limit by endpoint + IP address
+      return userId ? `endpoint:${endpoint}:user:${userId}` : `endpoint:${endpoint}:ip:${req.ip}`;
     },
   });
 }

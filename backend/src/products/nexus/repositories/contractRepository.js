@@ -8,7 +8,8 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class ContractRepository {
-  constructor() {
+  constructor(database = null) {
+    this.query = database?.query || query;
     this.tableName = 'hris.contract';
     this.logger = logger;
   }
@@ -37,7 +38,7 @@ class ContractRepository {
           AND c.deleted_at IS NULL
       `;
 
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding contract by ID', { id, organizationId, error: error.message });
@@ -93,7 +94,7 @@ class ContractRepository {
       sql += ` ORDER BY ${orderBy} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding all contracts', { filters, organizationId, error: error.message });
@@ -114,7 +115,7 @@ class ContractRepository {
         ORDER BY start_date DESC
       `;
 
-      const result = await query(sql, [employeeId, organizationId], organizationId);
+      const result = await this.query(sql, [employeeId, organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding contracts by employee', { employeeId, organizationId, error: error.message });
@@ -137,7 +138,7 @@ class ContractRepository {
         LIMIT 1
       `;
 
-      const result = await query(sql, [employeeId, organizationId], organizationId);
+      const result = await this.query(sql, [employeeId, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding active contract by employee', { employeeId, organizationId, error: error.message });
@@ -165,7 +166,7 @@ class ContractRepository {
         ORDER BY c.end_date ASC
       `;
 
-      const result = await query(sql, [organizationId, daysAhead], organizationId);
+      const result = await this.query(sql, [organizationId, daysAhead], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding expiring contracts', { daysAhead, organizationId, error: error.message });
@@ -224,7 +225,7 @@ class ContractRepository {
         userId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating contract', { contractData, organizationId, error: error.message });
@@ -286,7 +287,7 @@ class ContractRepository {
         organizationId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating contract', { id, contractData, organizationId, error: error.message });
@@ -311,7 +312,7 @@ class ContractRepository {
         RETURNING *
       `;
 
-      const result = await query(sql, [status, userId, id, organizationId], organizationId);
+      const result = await this.query(sql, [status, userId, id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating contract status', { id, status, organizationId, error: error.message });
@@ -337,7 +338,7 @@ class ContractRepository {
         RETURNING *
       `;
 
-      const result = await query(sql, [stepId, sequenceNumber, userId, id, organizationId], organizationId);
+      const result = await this.query(sql, [stepId, sequenceNumber, userId, id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating contract step', { id, stepId, organizationId, error: error.message });
@@ -357,7 +358,7 @@ class ContractRepository {
         RETURNING id
       `;
 
-      const result = await query(sql, [userId, id, organizationId], organizationId);
+      const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rowCount > 0;
     } catch (error) {
       this.logger.error('Error deleting contract', { id, organizationId, error: error.message });

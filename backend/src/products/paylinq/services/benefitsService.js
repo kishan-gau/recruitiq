@@ -3,6 +3,8 @@
  * Business logic for managing employee benefits
  */
 
+import PayrollRepository from '../repositories/payrollRepository.js';
+
 /**
  * Benefit types
  */
@@ -16,9 +18,19 @@ export const BENEFIT_TYPES = {
   FSA: 'fsa'
 };
 
+const VALID_PLAN_TYPES = ['health', 'dental', 'vision', 'life', 'retirement', 'hsa', 'fsa', 'wellness'];
+const VALID_COVERAGE_LEVELS = ['employee_only', 'employee_spouse', 'employee_children', 'family'];
+
+const COVERAGE_MULTIPLIERS = {
+  employee_only: 1,
+  employee_spouse: 1.5,
+  employee_children: 1.75,
+  family: 2
+};
+
 class BenefitsService {
-  constructor() {
-    // Constructor for service initialization
+  constructor(payrollRepository = null) {
+    this.payrollRepository = payrollRepository || new PayrollRepository();
   }
 
   /**
@@ -79,58 +91,221 @@ class BenefitsService {
     };
   }
 
-  async createBenefitPlan(planData, organizationId) {
-    return {
-      id: '123',
-      ...planData,
-      organization_id: organizationId
-    };
+  /**
+   * Create a new benefit plan
+   */
+  async createBenefitPlan(planData, organizationId, userId) {
+    // Validate required fields
+    if (!planData.planName || !planData.planType || 
+        planData.employerCost === undefined || planData.employeeCost === undefined ||
+        planData.isActive === undefined) {
+      throw new Error('Missing required fields for benefit plan');
+    }
+
+    // Validate plan type
+    if (!VALID_PLAN_TYPES.includes(planData.planType)) {
+      throw new Error(`Invalid plan type: ${planData.planType}`);
+    }
+
+    // Validate costs are positive
+    if (planData.employerCost < 0 || planData.employeeCost < 0) {
+      throw new Error('Benefit costs must be positive');
+    }
+
+    return await this.payrollRepository.createBenefitPlan(planData, organizationId, userId);
   }
 
-  async updateBenefitPlan(planId, updates, organizationId) {
-    return {
-      id: planId,
-      ...updates,
-      organization_id: organizationId
-    };
+  /**
+   * Update an existing benefit plan
+   */
+  async updateBenefitPlan(planId, updates, organizationId, userId) {
+    return await this.payrollRepository.updateBenefitPlan(planId, updates, organizationId, userId);
   }
 
+  /**
+   * Get all benefit plans for an organization
+   */
   async getBenefitPlans(organizationId, filters = {}) {
-    return [];
+    return await this.payrollRepository.findBenefitPlans(organizationId, filters);
   }
 
-  async enrollEmployee(employeeId, planId, enrollmentData, organizationId) {
-    return {
-      id: '123',
-      employee_id: employeeId,
-      plan_id: planId,
+  /**
+   * Apply coverage level multiplier to base cost
+   */
+  applyCoverageLevelMultiplier(baseCost, coverageLevel) {
+    const multiplier = COVERAGE_MULTIPLIERS[coverageLevel] || 1;
+    return baseCost * multiplier;
+  }
+
+  /**
+   * Enroll employee in benefit plan
+   */
+  async enrollEmployee(enrollmentData, organizationId, userId) {
+    // Extract data from enrollmentData
+    const { employeeRecordId, benefitPlanId, coverageLevel } = enrollmentData;
+
+    // Validate coverage level
+    if (!VALID_COVERAGE_LEVELS.includes(coverageLevel)) {
+      throw new Error(`Invalid coverage level: ${coverageLevel}`);
+    }
+
+    // Get plan details to calculate employee cost
+    const plan = await this.payrollRepository.findBenefitPlanById(benefitPlanId, organizationId);
+    if (!plan) {
+      throw new Error(`Benefit plan not found: ${benefitPlanId}`);
+    }
+
+    // Calculate employee cost based on coverage level
+    const employeeCost = this.applyCoverageLevelMultiplier(plan.employee_cost, coverageLevel);
+
+    const enrollment = {
       ...enrollmentData,
-      organization_id: organizationId
+      employee_cost: employeeCost
+    };
+
+    return await this.payrollRepository.createBenefitEnrollment(
+      enrollment,
+      organizationId,
+      userId
+    );
+  }
+
+
+  /**
+   * Unenroll employee from benefit plan
+   */
+  async unenrollEmployee(enrollmentId, terminationDate, organizationId, userId) {
+    return await this.payrollRepository.updateBenefitEnrollment(enrollmentId, {
+      status: 'inactive',
+      termination_date: terminationDate
+    }, organizationId, userId);
+  }
+
+  /**
+   * Get active enrollments for employee
+   */
+  async getEmployeeEnrollments(employeeId, organizationId) {
+    return await this.payrollRepository.findBenefitEnrollments(employeeId, organizationId);
+  }
+
+  /**
+   * Calculate total benefit costs for employee
+   */
+  async calculateBenefitCosts(employeeId, organizationId) {
+    const enrollments = await this.payrollRepository.findBenefitEnrollments(employeeId, organizationId);
+    
+    if (enrollments.length === 0) {
+      return {
+        totalEmployeeCost: 0,
+        totalEmployerCost: 0,
+        totalCost: 0,
+        benefits: []
+      };
+    }
+
+    let totalEmployeeCost = 0;
+    let totalEmployerCost = 0;
+    const benefits = [];
+
+    for (const enrollment of enrollments) {
+      const employeeCost = enrollment.employee_cost || 0;
+      const employerCost = enrollment.employer_cost || 0;
+
+      totalEmployeeCost += employeeCost;
+      totalEmployerCost += employerCost;
+
+      benefits.push({
+        planId: enrollment.plan_id,
+        employeeCost,
+        employerCost,
+        coverageLevel: enrollment.coverage_level
+      });
+    }
+
+    return {
+      totalEmployeeCost,
+      totalEmployerCost,
+      totalCost: totalEmployeeCost + totalEmployerCost,
+      benefits
     };
   }
 
-  async unenrollEmployee(employeeId, planId, organizationId) {
-    return { success: true };
-  }
-
-  async getEmployeeEnrollments(employeeId, organizationId) {
-    return [];
-  }
-
-  async calculateBenefitCosts(employeeId, organizationId) {
-    return { totalEmployeeCost: 0, totalEmployerCost: 0, benefits: [] };
-  }
-
+  /**
+   * Calculate total benefit costs for organization
+   */
   async calculateOrganizationBenefitCosts(organizationId) {
-    return { totalEmployeeCost: 0, totalEmployerCost: 0, totalCost: 0 };
+    const allEnrollments = await this.payrollRepository.findAllBenefitEnrollments(organizationId);
+    
+    let totalEmployeeCost = 0;
+    let totalEmployerCost = 0;
+
+    for (const enrollment of allEnrollments) {
+      totalEmployeeCost += enrollment.employee_cost || 0;
+      totalEmployerCost += enrollment.employer_cost || 0;
+    }
+
+    return {
+      totalEmployeeCost,
+      totalEmployerCost,
+      totalCost: totalEmployeeCost + totalEmployerCost,
+      enrollmentCount: allEnrollments.length
+    };
   }
 
+  /**
+   * Get benefit utilization report
+   */
   async getBenefitUtilizationReport(organizationId) {
-    return [];
+    const plans = await this.payrollRepository.findBenefitPlans(organizationId);
+    const allEnrollments = await this.payrollRepository.findAllBenefitEnrollments(organizationId);
+
+    const planReports = plans.map(plan => {
+      const enrollments = allEnrollments.filter(e => e.benefit_plan_id === plan.id);
+      return {
+        planId: plan.id,
+        planName: plan.plan_name,
+        planType: plan.plan_type,
+        enrollmentCount: enrollments.length,
+        totalCost: enrollments.reduce((sum, e) => {
+          return sum + (e.employee_cost || 0) + (e.employer_cost || 0);
+        }, 0)
+      };
+    });
+
+    return {
+      plans: planReports,
+      totalEnrollments: allEnrollments.length
+    };
   }
 
+  /**
+   * Get benefit cost summary by plan type
+   */
   async getBenefitCostSummary(organizationId) {
-    return [];
+    const allEnrollments = await this.payrollRepository.findAllBenefitEnrollments(organizationId);
+
+    const summary = {};
+
+    for (const enrollment of allEnrollments) {
+      const planType = enrollment.plan_type;
+      
+      if (!summary[planType]) {
+        summary[planType] = {
+          planType: planType,
+          totalEmployeeCost: 0,
+          totalEmployerCost: 0,
+          enrollmentCount: 0
+        };
+      }
+
+      summary[planType].totalEmployeeCost += enrollment.employee_cost || 0;
+      summary[planType].totalEmployerCost += enrollment.employer_cost || 0;
+      summary[planType].enrollmentCount += 1;
+    }
+
+    return {
+      byType: summary
+    };
   }
 }
 

@@ -18,10 +18,15 @@ import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 
 class TaxCalculationService {
-  constructor() {
-    this.taxEngineRepository = new TaxEngineRepository();
-    this.deductionRepository = new DeductionRepository();
-    this.allowanceService = new AllowanceService();
+  /**
+   * @param {TaxEngineRepository} taxEngineRepository - Optional for testing
+   * @param {DeductionRepository} deductionRepository - Optional for testing
+   * @param {AllowanceService} allowanceService - Optional for testing
+   */
+  constructor(taxEngineRepository = null, deductionRepository = null, allowanceService = null) {
+    this.taxEngineRepository = taxEngineRepository || new TaxEngineRepository();
+    this.deductionRepository = deductionRepository || new DeductionRepository();
+    this.allowanceService = allowanceService || new AllowanceService();
   }
 
   // ==================== VALIDATION SCHEMAS ====================

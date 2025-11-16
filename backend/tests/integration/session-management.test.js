@@ -8,6 +8,7 @@
  * with actual user accounts.
  */
 
+import { jest } from '@jest/globals';
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import jwt from 'jsonwebtoken';
 import tokenBlacklist from '../../src/services/tokenBlacklist.js';

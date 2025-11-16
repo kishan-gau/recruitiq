@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { describe, test, expect, beforeEach } from '@jest/globals';
 import FormulaExecutor from '../../../src/services/formula/FormulaExecutor.js';
 import FormulaParser from '../../../src/services/formula/FormulaParser.js';

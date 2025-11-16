@@ -8,7 +8,8 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class DocumentRepository {
-  constructor() {
+  constructor(database = null) {
+    this.query = database?.query || query;
     this.tableName = 'hris.employee_document';
     this.logger = logger;
   }
@@ -24,7 +25,7 @@ class DocumentRepository {
         LEFT JOIN hris.user_account u ON d.uploaded_by = u.id
         WHERE d.id = $1 AND d.organization_id = $2 AND d.deleted_at IS NULL
       `;
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding document', { id, error: error.message });
@@ -58,7 +59,7 @@ class DocumentRepository {
 
       sql += ` ORDER BY d.uploaded_at DESC`;
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding documents by employee', { employeeId, error: error.message });
@@ -102,7 +103,7 @@ class DocumentRepository {
       sql += ` ORDER BY d.uploaded_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding documents', { error: error.message });
@@ -129,7 +130,7 @@ class DocumentRepository {
         dbData.metadata ? JSON.stringify(dbData.metadata) : '{}',
         userId, userId, userId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating document', { error: error.message });
@@ -159,7 +160,7 @@ class DocumentRepository {
         dbData.notes, dbData.metadata ? JSON.stringify(dbData.metadata) : null,
         userId, id, organizationId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating document', { error: error.message });
@@ -175,7 +176,7 @@ class DocumentRepository {
         WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL
         RETURNING *
       `;
-      const result = await query(sql, [userId, id, organizationId], organizationId);
+      const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error deleting document', { error: error.message });
@@ -197,7 +198,7 @@ class DocumentRepository {
           AND d.expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE + $2
         ORDER BY d.expiry_date ASC
       `;
-      const result = await query(sql, [organizationId, daysAhead], organizationId);
+      const result = await this.query(sql, [organizationId, daysAhead], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding expiring documents', { error: error.message });
@@ -223,7 +224,7 @@ class DocumentRepository {
         paramIndex++;
       }
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return parseInt(result.rows[0].count, 10);
     } catch (error) {
       this.logger.error('Error counting documents', { error: error.message });

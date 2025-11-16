@@ -3,9 +3,11 @@
  * Handles HTTP requests for pay component management (earnings, deductions, benefits)
  */
 
-import payComponentService from '../services/payComponentService.js';
+import PayComponentService from '../services/payComponentService.js';
 import logger from '../../../utils/logger.js';
 import { mapPayComponentApiToDb, mapPayComponentDbToApi, mapPayComponentDbArrayToApi } from '../utils/dtoMapper.js';
+
+const payComponentService = new PayComponentService();
 
 
 

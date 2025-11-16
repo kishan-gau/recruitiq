@@ -1,1214 +1,788 @@
-/**
- * Pay Component Service - Business Logic Tests
- * 
- * Tests business rules and validations for pay component management
- * Following industry standards for payroll system validation
- */
-
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import PayComponentService from '../../../../src/products/paylinq/services/payComponentService.js';
-import { ValidationError, ConflictError } from '../../../../src/middleware/errorHandler.js';
+import { mapComponentDbToApi, mapComponentsDbToApi } from '../../../../src/products/paylinq/dto/payComponentDto.js';
 
-// Mock the repository
-jest.unstable_mockModule('../../../../src/products/paylinq/repositories/payComponentRepository.js', () => {
-  const mockRepository = {
-    createPayComponent: jest.fn(),
-    findPayComponentByCode: jest.fn(),
-    findPayComponents: jest.fn(),
-    findPayComponentById: jest.fn(),
-    updatePayComponent: jest.fn(),
-    deletePayComponent: jest.fn(),
-    deactivatePayComponent: jest.fn(),
-  };
-  
-  return {
-    default: class PayComponentRepository {
-      constructor() {
-        Object.assign(this, mockRepository);
-      }
-    }
-  };
+// Helper function to create DB format pay component (snake_case)
+const createDbComponent = (overrides = {}) => ({
+  id: overrides.id || '123e4567-e89b-12d3-a456-426614174001',
+  organization_id: overrides.organization_id || '123e4567-e89b-12d3-a456-426614174000',
+  component_code: 'TEST_CODE',
+  component_name: 'Test Component',
+  component_type: 'earning',
+  description: 'Test description',
+  calculation_type: 'fixed_amount',
+  formula: null,
+  category: 'regular_pay',
+  is_taxable: true,
+  is_system_defined: false,
+  is_active: true,
+  requires_amount_input: false,
+  requires_hours_input: false,
+  affects_provident_fund: false,
+  affects_overtime: false,
+  display_order: 1,
+  calculation_metadata: {},
+  compliance_tags: [],
+  created_by: '123e4567-e89b-12d3-a456-426614174010',
+  updated_by: '123e4567-e89b-12d3-a456-426614174010',
+  created_at: new Date('2024-01-01'),
+  updated_at: new Date('2024-01-01'),
+  ...overrides
 });
 
-// Mock logger
-jest.unstable_mockModule('../../../../src/utils/logger.js', () => ({
-  default: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  }
-}));
+// Helper for component formula (DB format)
+const createDbFormula = (overrides = {}) => ({
+  id: overrides.id || '123e4567-e89b-12d3-a456-426614174005',
+  pay_component_id: overrides.pay_component_id || '123e4567-e89b-12d3-a456-426614174001',
+  organization_id: overrides.organization_id || '123e4567-e89b-12d3-a456-426614174000',
+  formula_name: 'Test Formula',
+  formula_expression: 'gross_pay * 0.10',
+  version: 1,
+  is_active: true,
+  created_by: '123e4567-e89b-12d3-a456-426614174010',
+  created_at: new Date('2024-01-01'),
+  ...overrides
+});
 
-describe('PayComponentService - Business Logic', () => {
-  const organizationId = '123e4567-e89b-12d3-a456-426614174000';
-  const userId = '123e4567-e89b-12d3-a456-426614174001';
+// Helper for custom component (DB format)
+const createDbCustomComponent = (overrides = {}) => ({
+  id: overrides.id || '123e4567-e89b-12d3-a456-426614174006',
+  employee_id: overrides.employee_id || '123e4567-e89b-12d3-a456-426614174007',
+  pay_component_id: overrides.pay_component_id || '123e4567-e89b-12d3-a456-426614174001',
+  organization_id: overrides.organization_id || '123e4567-e89b-12d3-a456-426614174000',
+  custom_rate: 25.50,
+  custom_amount: null,
+  effective_from: new Date('2024-01-01'),
+  effective_to: null,
+  is_active: true,
+  created_by: '123e4567-e89b-12d3-a456-426614174010',
+  created_at: new Date('2024-01-01'),
+  ...overrides
+});
+
+describe('PayComponentService', () => {
+  let service;
+  let mockRepository;
+  const orgId = '123e4567-e89b-12d3-a456-426614174000';
+  const userId = '123e4567-e89b-12d3-a456-426614174010';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockRepository = {
+      createPayComponent: jest.fn(),
+      findPayComponents: jest.fn(),
+      findPayComponentById: jest.fn(),
+      findPayComponentByCode: jest.fn(),
+      updatePayComponent: jest.fn(),
+      deletePayComponent: jest.fn(),
+      createComponentFormula: jest.fn(),
+      findFormulasByComponent: jest.fn(),
+      assignCustomComponent: jest.fn(),
+      findCustomComponentsByEmployee: jest.fn(),
+      updateCustomComponent: jest.fn(),
+      deactivateCustomComponent: jest.fn(),
+      findActivePayComponentsForPayroll: jest.fn(),
+    };
+
+    service = new PayComponentService(mockRepository);
   });
 
+  // ==================== PAY COMPONENT CRUD ====================
+
   describe('createPayComponent', () => {
-    describe('Code Format Validation', () => {
-      it('should accept valid uppercase code with numbers and underscores', async () => {
-        const validComponent = {
-          componentCode: 'BASE_SALARY_2024',
-          componentName: 'Base Salary',
-          componentType: 'earning',
-          category: 'regular_pay',
-          calculationType: 'fixed_amount',
-          defaultAmount: 5000,
-        };
+    it('should create a pay component and return DTO-transformed result', async () => {
+      const apiData = {
+        componentCode: 'BASIC_PAY',
+        componentName: 'Basic Pay',
+        componentType: 'earning',
+        calculationType: 'fixed_amount',
+        category: 'regular_pay',
+        isTaxable: true,
+        description: 'Basic salary component'
+      };
 
-        PayComponentService.payComponentRepository.findPayComponentByCode.mockResolvedValue(null);
-        PayComponentService.payComponentRepository.createPayComponent.mockResolvedValue({
-          id: '123',
-          ...validComponent,
-        });
-
-        await expect(
-          PayComponentService.createPayComponent(validComponent, organizationId, userId)
-        ).resolves.toBeDefined();
+      const dbComponent = createDbComponent({
+        component_code: 'BASIC_PAY',
+        component_name: 'Basic Pay'
       });
 
-      it('should reject lowercase code', async () => {
-        const invalidComponent = {
-          componentCode: 'base_salary',
-          componentName: 'Base Salary',
-          componentType: 'earning',
-          category: 'regular_pay',
-          calculationType: 'fixed_amount',
-          defaultAmount: 5000,
-        };
+      mockRepository.findPayComponentByCode.mockResolvedValue(null);
+      mockRepository.createPayComponent.mockResolvedValue(dbComponent);
 
-        await expect(
-          PayComponentService.createPayComponent(invalidComponent, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-        
-        await expect(
-          PayComponentService.createPayComponent(invalidComponent, organizationId, userId)
-        ).rejects.toThrow('uppercase letters, numbers, and underscores only');
-      });
+      const result = await service.createPayComponent(apiData, orgId, userId);
 
-      it('should reject code with special characters', async () => {
-        const invalidComponent = {
-          componentCode: 'BASE-SALARY!',
-          componentName: 'Base Salary',
-          componentType: 'earning',
-          category: 'regular_pay',
-          calculationType: 'fixed_amount',
-          defaultAmount: 5000,
-        };
-
-        await expect(
-          PayComponentService.createPayComponent(invalidComponent, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-      });
-
-      it('should reject code with spaces', async () => {
-        const invalidComponent = {
-          componentCode: 'BASE SALARY',
-          componentName: 'Base Salary',
-          componentType: 'earning',
-          category: 'regular_pay',
-          calculationType: 'fixed_amount',
-          defaultAmount: 5000,
-        };
-
-        await expect(
-          PayComponentService.createPayComponent(invalidComponent, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-      });
+      expect(result).toEqual(mapComponentDbToApi(dbComponent));
+      expect(result.componentCode).toBe('BASIC_PAY');
+      expect(result.componentName).toBe('Basic Pay');
     });
 
-    describe('Duplicate Code Prevention', () => {
-      it('should prevent creating component with duplicate code', async () => {
-        const existingComponent = {
-          id: '456',
-          component_code: 'BASE',
-          component_name: 'Base Salary',
-        };
+    it('should throw ConflictError if component code already exists', async () => {
+      const apiData = {
+        componentCode: 'BASIC_PAY',
+        componentName: 'Basic Pay',
+        componentType: 'earning',
+        calculationType: 'fixed_amount'
+      };
 
-        const newComponent = {
-          componentCode: 'BASE',
-          componentName: 'Base Pay',
-          componentType: 'earning',
-          category: 'regular_pay',
-          calculationType: 'fixed_amount',
-          defaultAmount: 5000,
-        };
+      const existingComponent = createDbComponent({ component_code: 'BASIC_PAY' });
+      mockRepository.findPayComponentByCode.mockResolvedValue(existingComponent);
 
-        PayComponentService.payComponentRepository.findPayComponentByCode
-          .mockResolvedValue(existingComponent);
-
-        await expect(
-          PayComponentService.createPayComponent(newComponent, organizationId, userId)
-        ).rejects.toThrow(ConflictError);
-
-        await expect(
-          PayComponentService.createPayComponent(newComponent, organizationId, userId)
-        ).rejects.toThrow("already exists");
-      });
-
-      it('should provide helpful error message for duplicate code', async () => {
-        const existingComponent = {
-          id: '456',
-          component_code: 'BONUS',
-        };
-
-        const newComponent = {
-          componentCode: 'BONUS',
-          componentName: 'Performance Bonus',
-          componentType: 'earning',
-          category: 'bonus',
-          calculationType: 'fixed_amount',
-          defaultAmount: 1000,
-        };
-
-        PayComponentService.payComponentRepository.findPayComponentByCode
-          .mockResolvedValue(existingComponent);
-
-        await expect(
-          PayComponentService.createPayComponent(newComponent, organizationId, userId)
-        ).rejects.toThrow("Component codes must be unique");
-      });
+      await expect(
+        service.createPayComponent(apiData, orgId, userId)
+      ).rejects.toThrow('already exists');
     });
 
-    describe('Category Validation for Component Type', () => {
-      it('should accept valid earning categories for earning type', async () => {
-        const earningCategories = ['regular', 'regular_pay', 'overtime', 'bonus', 'commission', 'allowance'];
+    it('should throw ValidationError for invalid data', async () => {
+      const invalidData = {
+        componentCode: 'TEST',
+        // Missing required componentName
+        componentType: 'earning'
+      };
 
-        for (const category of earningCategories) {
-          const component = {
-            componentCode: `EARN_${category.toUpperCase()}`,
-            componentName: `Test ${category}`,
-            componentType: 'earning',
-            category: category,
-            calculationType: 'fixed_amount',
-            defaultAmount: 100,
-          };
-
-          PayComponentService.payComponentRepository.findPayComponentByCode.mockResolvedValue(null);
-          PayComponentService.payComponentRepository.createPayComponent.mockResolvedValue({
-            id: '123',
-            ...component,
-          });
-
-          await expect(
-            PayComponentService.createPayComponent(component, organizationId, userId)
-          ).resolves.toBeDefined();
-        }
-      });
-
-      it('should accept valid deduction categories for deduction type', async () => {
-        const deductionCategories = ['tax', 'benefit', 'garnishment', 'loan'];
-
-        for (const category of deductionCategories) {
-          const component = {
-            componentCode: `DED_${category.toUpperCase()}`,
-            componentName: `Test ${category}`,
-            componentType: 'deduction',
-            category: category,
-            calculationType: 'fixed_amount',
-            defaultAmount: 50,
-          };
-
-          PayComponentService.payComponentRepository.findPayComponentByCode.mockResolvedValue(null);
-          PayComponentService.payComponentRepository.createPayComponent.mockResolvedValue({
-            id: '123',
-            ...component,
-          });
-
-          await expect(
-            PayComponentService.createPayComponent(component, organizationId, userId)
-          ).resolves.toBeDefined();
-        }
-      });
-
-      it('should reject deduction category for earning type', async () => {
-        const component = {
-          componentCode: 'INVALID_EARN',
-          componentName: 'Invalid Earning',
-          componentType: 'earning',
-          category: 'tax', // Tax is a deduction category
-          calculationType: 'fixed_amount',
-          defaultAmount: 100,
-        };
-
-        await expect(
-          PayComponentService.createPayComponent(component, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-
-        await expect(
-          PayComponentService.createPayComponent(component, organizationId, userId)
-        ).rejects.toThrow("Invalid category 'tax' for earning component");
-      });
-
-      it('should reject earning category for deduction type', async () => {
-        const component = {
-          componentCode: 'INVALID_DED',
-          componentName: 'Invalid Deduction',
-          componentType: 'deduction',
-          category: 'overtime', // Overtime is an earning category
-          calculationType: 'fixed_amount',
-          defaultAmount: 50,
-        };
-
-        await expect(
-          PayComponentService.createPayComponent(component, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-
-        await expect(
-          PayComponentService.createPayComponent(component, organizationId, userId)
-        ).rejects.toThrow("Invalid category 'overtime' for deduction component");
-      });
-
-      it('should allow "other" category for both types', async () => {
-        const earningComponent = {
-          componentCode: 'OTHER_EARN',
-          componentName: 'Other Earning',
-          componentType: 'earning',
-          category: 'other',
-          calculationType: 'fixed_amount',
-          defaultAmount: 100,
-        };
-
-        const deductionComponent = {
-          componentCode: 'OTHER_DED',
-          componentName: 'Other Deduction',
-          componentType: 'deduction',
-          category: 'other',
-          calculationType: 'fixed_amount',
-          defaultAmount: 50,
-        };
-
-        PayComponentService.payComponentRepository.findPayComponentByCode.mockResolvedValue(null);
-        PayComponentService.payComponentRepository.createPayComponent.mockResolvedValue({
-          id: '123',
-        });
-
-        await expect(
-          PayComponentService.createPayComponent(earningComponent, organizationId, userId)
-        ).resolves.toBeDefined();
-
-        await expect(
-          PayComponentService.createPayComponent(deductionComponent, organizationId, userId)
-        ).resolves.toBeDefined();
-      });
+      await expect(
+        service.createPayComponent(invalidData, orgId, userId)
+      ).rejects.toThrow('"componentName" is required');
     });
 
-    describe('Required Field Validation', () => {
-      it('should reject component without code', async () => {
-        const component = {
-          componentName: 'Base Salary',
-          componentType: 'earning',
-          calculationType: 'fixed_amount',
-          defaultAmount: 5000,
-        };
+    it('should throw ValidationError for invalid formula', async () => {
+      const apiData = {
+        componentCode: 'FORMULA_PAY',
+        componentName: 'Formula Pay',
+        componentType: 'earning',
+        calculationType: 'formula',
+        formula: 'invalid formula syntax @@'
+      };
 
-        await expect(
-          PayComponentService.createPayComponent(component, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-      });
+      await expect(
+        service.createPayComponent(apiData, orgId, userId)
+      ).rejects.toThrow('Invalid formula');
+    });
+  });
 
-      it('should reject component without name', async () => {
-        const component = {
-          componentCode: 'BASE',
-          componentType: 'earning',
-          calculationType: 'fixed_amount',
-          defaultAmount: 5000,
-        };
+  describe('getPayComponents', () => {
+    it('should return DTO-transformed component list', async () => {
+      const dbComponents = [
+        createDbComponent({ component_code: 'BASIC_PAY' }),
+        createDbComponent({ component_code: 'OVERTIME', component_type: 'earning' })
+      ];
 
-        await expect(
-          PayComponentService.createPayComponent(component, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-      });
+      mockRepository.findPayComponents.mockResolvedValue(dbComponents);
 
-      it('should reject component without type', async () => {
-        const component = {
-          componentCode: 'BASE',
-          componentName: 'Base Salary',
-          calculationType: 'fixed_amount',
-          defaultAmount: 5000,
-        };
+      const result = await service.getPayComponents(orgId);
 
-        await expect(
-          PayComponentService.createPayComponent(component, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-      });
+      expect(result).toEqual(mapComponentsDbToApi(dbComponents));
+      expect(result).toHaveLength(2);
+      expect(result[0].componentCode).toBe('BASIC_PAY');
+      expect(result[1].componentCode).toBe('OVERTIME');
+    });
 
-      it('should reject component without calculation type', async () => {
-        const component = {
-          componentCode: 'BASE',
-          componentName: 'Base Salary',
-          componentType: 'earning',
-          defaultAmount: 5000,
-        };
+    it('should pass filters to repository', async () => {
+      const filters = { componentType: 'earning', isActive: true };
+      mockRepository.findPayComponents.mockResolvedValue([]);
 
-        await expect(
-          PayComponentService.createPayComponent(component, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-      });
+      await service.getPayComponents(orgId, filters);
+
+      expect(mockRepository.findPayComponents).toHaveBeenCalledWith(orgId, filters);
+    });
+
+    it('should return empty array when no components found', async () => {
+      mockRepository.findPayComponents.mockResolvedValue([]);
+
+      const result = await service.getPayComponents(orgId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getPayComponentById', () => {
+    it('should return DTO-transformed component', async () => {
+      const dbComponent = createDbComponent({ component_code: 'BASIC_PAY' });
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
+
+      const result = await service.getPayComponentById('123e4567-e89b-12d3-a456-426614174001', orgId);
+
+      expect(result).toEqual(mapComponentDbToApi(dbComponent));
+      expect(result.componentCode).toBe('BASIC_PAY');
+    });
+
+    it('should throw NotFoundError when component not found', async () => {
+      mockRepository.findPayComponentById.mockResolvedValue(null);
+
+      await expect(
+        service.getPayComponentById('nonexistent', orgId)
+      ).rejects.toThrow('not found');
     });
   });
 
   describe('updatePayComponent', () => {
-    const componentId = '123e4567-e89b-12d3-a456-426614174002';
-
-    describe('System Component Protection', () => {
-      it('should prevent updating system components', async () => {
-        const systemComponent = {
-          id: componentId,
-          component_code: 'GROSS_PAY',
-          component_name: 'Gross Pay',
-          is_system_component: true,
-        };
-
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(systemComponent);
-
-        const updates = {
-          componentName: 'Modified Gross Pay',
-        };
-
-        await expect(
-          PayComponentService.updatePayComponent(componentId, updates, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-
-        await expect(
-          PayComponentService.updatePayComponent(componentId, updates, organizationId, userId)
-        ).rejects.toThrow('System components cannot be modified');
+    it('should update component and return DTO-transformed result', async () => {
+      const existingDb = createDbComponent({ is_system_defined: false });
+      const updatedDb = createDbComponent({
+        component_name: 'Updated Name',
+        description: 'Updated description'
       });
+
+      mockRepository.findPayComponentById.mockResolvedValue(existingDb);
+      mockRepository.updatePayComponent.mockResolvedValue(updatedDb);
+
+      const updates = {
+        componentName: 'Updated Name',
+        description: 'Updated description'
+      };
+
+      const result = await service.updatePayComponent('123e4567-e89b-12d3-a456-426614174001', updates, orgId, userId);
+
+      expect(result).toEqual(mapComponentDbToApi(updatedDb));
+      expect(result.componentName).toBe('Updated Name');
     });
 
-    describe('Code Update Validation', () => {
-      it('should validate code format when updating', async () => {
-        const existingComponent = {
-          id: componentId,
-          component_code: 'OLD_CODE',
-          is_system_component: false,
-        };
+    it('should throw ValidationError when updating system component', async () => {
+      const systemComponent = createDbComponent({ is_system_defined: true });
+      mockRepository.findPayComponentById.mockResolvedValue(systemComponent);
 
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(existingComponent);
-
-        const updates = {
-          componentCode: 'new-code', // Invalid: lowercase and hyphen
-        };
-
-        await expect(
-          PayComponentService.updatePayComponent(componentId, updates, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
-
-        await expect(
-          PayComponentService.updatePayComponent(componentId, updates, organizationId, userId)
-        ).rejects.toThrow('uppercase letters, numbers, and underscores only');
-      });
-
-      it('should prevent updating to duplicate code', async () => {
-        const existingComponent = {
-          id: componentId,
-          component_code: 'OLD_CODE',
-          is_system_component: false,
-        };
-
-        const duplicateComponent = {
-          id: 'different-id',
-          component_code: 'NEW_CODE',
-        };
-
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(existingComponent);
-        PayComponentService.payComponentRepository.findPayComponentByCode
-          .mockResolvedValue(duplicateComponent);
-
-        const updates = {
-          componentCode: 'NEW_CODE',
-        };
-
-        await expect(
-          PayComponentService.updatePayComponent(componentId, updates, organizationId, userId)
-        ).rejects.toThrow(ConflictError);
-      });
-
-      it('should allow updating to same code (no change)', async () => {
-        const existingComponent = {
-          id: componentId,
-          component_code: 'SAME_CODE',
-          is_system_component: false,
-        };
-
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(existingComponent);
-        PayComponentService.payComponentRepository.findPayComponentByCode
-          .mockResolvedValue(existingComponent); // Same component
-        PayComponentService.payComponentRepository.updatePayComponent
-          .mockResolvedValue(existingComponent);
-
-        const updates = {
-          componentCode: 'SAME_CODE',
-          componentName: 'Updated Name',
-        };
-
-        await expect(
-          PayComponentService.updatePayComponent(componentId, updates, organizationId, userId)
-        ).resolves.toBeDefined();
-      });
+      await expect(
+        service.updatePayComponent('123e4567-e89b-12d3-a456-426614174001', { componentName: 'New' }, orgId, userId)
+      ).rejects.toThrow('System components cannot be modified');
     });
 
-    describe('Category Update Validation', () => {
-      it('should validate category when updating', async () => {
-        const existingComponent = {
-          id: componentId,
-          component_code: 'BONUS',
-          component_type: 'earning',
-          category: 'bonus',
-          is_system_component: false,
-        };
-
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(existingComponent);
-
-        const updates = {
-          category: 'tax', // Invalid: tax is for deductions
-        };
-
-        await expect(
-          PayComponentService.updatePayComponent(componentId, updates, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
+    it('should throw ConflictError when new code already exists', async () => {
+      const existingDb = createDbComponent({
+        id: '123e4567-e89b-12d3-a456-426614174001',
+        component_code: 'OLD_CODE',
+        is_system_defined: false
       });
+      const duplicate = createDbComponent({
+        id: '123e4567-e89b-12d3-a456-426614174002',
+        component_code: 'NEW_CODE'
+      });
+
+      mockRepository.findPayComponentById.mockResolvedValue(existingDb);
+      mockRepository.findPayComponentByCode.mockResolvedValue(duplicate);
+
+      await expect(
+        service.updatePayComponent('123e4567-e89b-12d3-a456-426614174001', { componentCode: 'NEW_CODE' }, orgId, userId)
+      ).rejects.toThrow('already exists');
+    });
+
+    it('should allow updating code to same value', async () => {
+      const existingDb = createDbComponent({
+        id: '123e4567-e89b-12d3-a456-426614174001',
+        component_code: 'SAME_CODE',
+        is_system_defined: false
+      });
+      const updatedDb = createDbComponent({ component_code: 'SAME_CODE' });
+
+      mockRepository.findPayComponentById.mockResolvedValue(existingDb);
+      mockRepository.findPayComponentByCode.mockResolvedValue(existingDb);
+      mockRepository.updatePayComponent.mockResolvedValue(updatedDb);
+
+      const result = await service.updatePayComponent(
+        '123e4567-e89b-12d3-a456-426614174001',
+        { componentCode: 'SAME_CODE' },
+        orgId,
+        userId
+      );
+
+      expect(result.componentCode).toBe('SAME_CODE');
+    });
+
+    it('should throw ValidationError for invalid component code format', async () => {
+      const existingDb = createDbComponent({ is_system_defined: false });
+      mockRepository.findPayComponentById.mockResolvedValue(existingDb);
+
+      await expect(
+        service.updatePayComponent('123e4567-e89b-12d3-a456-426614174001', { componentCode: 'invalid code!' }, orgId, userId)
+      ).rejects.toThrow('uppercase letters, numbers, and underscores only');
+    });
+
+    it('should validate category for component type', async () => {
+      const existingDb = createDbComponent({
+        component_type: 'earning',
+        is_system_defined: false
+      });
+      mockRepository.findPayComponentById.mockResolvedValue(existingDb);
+
+      await expect(
+        service.updatePayComponent('123e4567-e89b-12d3-a456-426614174001', { category: 'invalid_category' }, orgId, userId)
+      ).rejects.toThrow();
     });
   });
 
   describe('deletePayComponent', () => {
-    const componentId = '123e4567-e89b-12d3-a456-426614174002';
+    it('should delete non-system component', async () => {
+      const existingDb = createDbComponent({ is_system_defined: false });
+      mockRepository.findPayComponentById.mockResolvedValue(existingDb);
+      mockRepository.deletePayComponent.mockResolvedValue(true);
 
-    describe('System Component Protection', () => {
-      it('should prevent deleting system components', async () => {
-        const systemComponent = {
-          id: componentId,
-          component_code: 'NET_PAY',
-          is_system_component: true,
-        };
+      const result = await service.deletePayComponent('123e4567-e89b-12d3-a456-426614174001', orgId, userId);
 
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(systemComponent);
+      expect(result).toBe(true);
+      expect(mockRepository.deletePayComponent).toHaveBeenCalledWith('123e4567-e89b-12d3-a456-426614174001', orgId, userId);
+    });
 
-        await expect(
-          PayComponentService.deletePayComponent(componentId, organizationId, userId)
-        ).rejects.toThrow(ValidationError);
+    it('should throw ValidationError when deleting system component', async () => {
+      const systemComponent = createDbComponent({ is_system_defined: true });
+      mockRepository.findPayComponentById.mockResolvedValue(systemComponent);
 
-        await expect(
-          PayComponentService.deletePayComponent(componentId, organizationId, userId)
-        ).rejects.toThrow('System components cannot be deleted');
+      await expect(
+        service.deletePayComponent('123e4567-e89b-12d3-a456-426614174001', orgId, userId)
+      ).rejects.toThrow('System components cannot be deleted');
+    });
+
+    it('should return false when delete fails', async () => {
+      const existingDb = createDbComponent({ is_system_defined: false });
+      mockRepository.findPayComponentById.mockResolvedValue(existingDb);
+      mockRepository.deletePayComponent.mockResolvedValue(false);
+
+      const result = await service.deletePayComponent('123e4567-e89b-12d3-a456-426614174001', orgId, userId);
+
+      expect(result).toBe(false);
+    });
+
+    it('should throw ConflictError when component is assigned to employees', async () => {
+      const existingDb = createDbComponent({ is_system_defined: false });
+      mockRepository.findPayComponentById.mockResolvedValue(existingDb);
+      mockRepository.deletePayComponent.mockRejectedValue(
+        new Error('Cannot delete: assigned to employees')
+      );
+
+      await expect(
+        service.deletePayComponent('123e4567-e89b-12d3-a456-426614174001', orgId, userId)
+      ).rejects.toThrow('assigned to');
+    });
+  });
+
+  // ==================== BULK OPERATIONS ====================
+
+  describe('bulkCreatePayComponents', () => {
+    it('should create multiple components successfully', async () => {
+      const components = [
+        { componentCode: 'COMP1', componentName: 'Component 1', componentType: 'earning', calculationType: 'fixed_amount' },
+        { componentCode: 'COMP2', componentName: 'Component 2', componentType: 'deduction', calculationType: 'fixed_amount' }
+      ];
+
+      const dbComp1 = createDbComponent({ component_code: 'COMP1' });
+      const dbComp2 = createDbComponent({ component_code: 'COMP2', component_type: 'deduction' });
+
+      mockRepository.findPayComponentByCode.mockResolvedValue(null);
+      mockRepository.createPayComponent
+        .mockResolvedValueOnce(dbComp1)
+        .mockResolvedValueOnce(dbComp2);
+
+      const result = await service.bulkCreatePayComponents(components, orgId, userId);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].success).toBe(true);
+      expect(result[0].data.componentCode).toBe('COMP1');
+      expect(result[1].success).toBe(true);
+      expect(result[1].data.componentCode).toBe('COMP2');
+    });
+
+    it('should handle partial failures', async () => {
+      const components = [
+        { componentCode: 'COMP1', componentName: 'Component 1', componentType: 'earning', calculationType: 'fixed_amount' },
+        { componentCode: 'INVALID' } // Missing required fields
+      ];
+
+      const dbComp1 = createDbComponent({ component_code: 'COMP1' });
+      mockRepository.findPayComponentByCode.mockResolvedValue(null);
+      mockRepository.createPayComponent.mockResolvedValue(dbComp1);
+
+      const result = await service.bulkCreatePayComponents(components, orgId, userId);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].success).toBe(true);
+      expect(result[1].success).toBe(false);
+      expect(result[1].error).toBeDefined();
+    });
+
+    it('should return empty array for empty input', async () => {
+      const result = await service.bulkCreatePayComponents([], orgId, userId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  // ==================== FORMULA OPERATIONS ====================
+
+  describe('createComponentFormula', () => {
+    it('should create formula for existing component', async () => {
+      const formulaData = {
+        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
+        formulaName: 'Bonus Formula',
+        formulaExpression: 'gross_pay * 0.10'
+      };
+
+      const dbComponent = createDbComponent();
+      const dbFormula = createDbFormula();
+
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
+      mockRepository.createComponentFormula.mockResolvedValue(dbFormula);
+
+      const result = await service.createComponentFormula(formulaData, orgId, userId);
+
+      expect(result).toEqual(dbFormula);
+      expect(mockRepository.createComponentFormula).toHaveBeenCalled();
+    });
+
+    it('should validate formula expression', async () => {
+      const dbComponent = createDbComponent();
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
+
+      const formulaData = {
+        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
+        formulaName: 'Invalid Formula',
+        formulaExpression: 'invalid@@formula'
+      };
+
+      await expect(
+        service.createComponentFormula(formulaData, orgId, userId)
+      ).rejects.toThrow('Invalid formula expression');
+    });
+
+    it('should check for balanced parentheses', async () => {
+      const dbComponent = createDbComponent();
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
+
+      const formulaData = {
+        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
+        formulaName: 'Unbalanced Formula',
+        formulaExpression: '(gross_pay * 0.10'
+      };
+
+      await expect(
+        service.createComponentFormula(formulaData, orgId, userId)
+      ).rejects.toThrow('Unbalanced parentheses');
+    });
+  });
+
+  describe('getFormulasByComponent', () => {
+    it('should return formulas for component', async () => {
+      const formulas = [createDbFormula(), createDbFormula({ id: '123e4567-e89b-12d3-a456-426614174008' })];
+      mockRepository.findFormulasByComponent.mockResolvedValue(formulas);
+
+      const result = await service.getFormulasByComponent('123e4567-e89b-12d3-a456-426614174001', orgId);
+
+      expect(result).toEqual(formulas);
+      expect(result).toHaveLength(2);
+    });
+
+    it('should return empty array when no formulas found', async () => {
+      mockRepository.findFormulasByComponent.mockResolvedValue([]);
+
+      const result = await service.getFormulasByComponent('123e4567-e89b-12d3-a456-426614174001', orgId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('validateFormulaExpression', () => {
+    it('should validate simple arithmetic expressions', () => {
+      expect(() => service.validateFormulaExpression('5 + 10')).not.toThrow();
+      expect(() => service.validateFormulaExpression('gross_pay * 0.15')).not.toThrow();
+      expect(() => service.validateFormulaExpression('(hours * rate) + 100')).not.toThrow();
+    });
+
+    it('should reject expressions with invalid characters', () => {
+      expect(() => service.validateFormulaExpression('5 @ 10')).toThrow();
+      expect(() => service.validateFormulaExpression('test$variable')).toThrow();
+    });
+
+    it('should detect unbalanced parentheses', () => {
+      expect(() => service.validateFormulaExpression('(5 + 10')).toThrow('Unbalanced');
+      expect(() => service.validateFormulaExpression('5 + 10)')).toThrow('Unbalanced');
+      expect(() => service.validateFormulaExpression(')5 + 10(')).toThrow('Unbalanced');
+    });
+  });
+
+  // ==================== CUSTOM COMPONENT OPERATIONS ====================
+
+  describe('assignCustomComponent', () => {
+    it('should assign custom component to employee', async () => {
+      const customData = {
+        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
+        employeeRecordId: '123e4567-e89b-12d3-a456-426614174007',
+        customRate: 25.50,
+        effectiveFrom: new Date('2024-01-01')
+      };
+
+      const dbComponent = createDbComponent();
+      const dbCustom = createDbCustomComponent();
+
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
+      mockRepository.assignCustomComponent.mockResolvedValue(dbCustom);
+
+      const result = await service.assignCustomComponent(customData, orgId, userId);
+
+      expect(result).toEqual(dbCustom);
+      expect(mockRepository.assignCustomComponent).toHaveBeenCalled();
+    });
+
+    it('should throw ValidationError if effectiveTo is before effectiveFrom', async () => {
+      const customData = {
+        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
+        employeeRecordId: '123e4567-e89b-12d3-a456-426614174007',
+        customRate: 25.50,
+        effectiveFrom: new Date('2024-02-01'),
+        effectiveTo: new Date('2024-01-01')
+      };
+
+      await expect(
+        service.assignCustomComponent(customData, orgId, userId)
+      ).rejects.toThrow('Effective to date must be after effective from date');
+    });
+
+    it('should throw ValidationError if neither customRate nor customAmount provided', async () => {
+      const customData = {
+        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
+        employeeRecordId: '123e4567-e89b-12d3-a456-426614174007',
+        effectiveFrom: new Date('2024-01-01')
+      };
+
+      await expect(
+        service.assignCustomComponent(customData, orgId, userId)
+      ).rejects.toThrow('must have either custom rate or custom amount');
+    });
+  });
+
+  describe('getCustomComponentsByEmployee', () => {
+    it('should return custom components for employee', async () => {
+      const customComponents = [
+        createDbCustomComponent(),
+        createDbCustomComponent({ id: '123e4567-e89b-12d3-a456-426614174009' })
+      ];
+      mockRepository.findCustomComponentsByEmployee.mockResolvedValue(customComponents);
+
+      const result = await service.getCustomComponentsByEmployee('123e4567-e89b-12d3-a456-426614174007', orgId);
+
+      expect(result).toEqual(customComponents);
+      expect(result).toHaveLength(2);
+    });
+
+    it('should pass filters to repository', async () => {
+      const filters = { isActive: true };
+      mockRepository.findCustomComponentsByEmployee.mockResolvedValue([]);
+
+      await service.getCustomComponentsByEmployee('123e4567-e89b-12d3-a456-426614174007', orgId, filters);
+
+      expect(mockRepository.findCustomComponentsByEmployee).toHaveBeenCalledWith(
+        '123e4567-e89b-12d3-a456-426614174007',
+        orgId,
+        filters
+      );
+    });
+  });
+
+  describe('updateCustomComponent', () => {
+    it('should update custom component', async () => {
+      const updates = { customRate: 30.00 };
+      const updatedDb = createDbCustomComponent({ custom_rate: 30.00 });
+
+      mockRepository.updateCustomComponent.mockResolvedValue(updatedDb);
+
+      const result = await service.updateCustomComponent('123e4567-e89b-12d3-a456-426614174006', updates, orgId, userId);
+
+      expect(result).toEqual(updatedDb);
+      expect(mockRepository.updateCustomComponent).toHaveBeenCalledWith(
+        '123e4567-e89b-12d3-a456-426614174006',
+        updates,
+        orgId,
+        userId
+      );
+    });
+  });
+
+  describe('deactivateCustomComponent', () => {
+    it('should deactivate custom component', async () => {
+      const deactivatedDb = createDbCustomComponent({ is_active: false });
+      mockRepository.deactivateCustomComponent.mockResolvedValue(deactivatedDb);
+
+      const result = await service.deactivateCustomComponent('123e4567-e89b-12d3-a456-426614174006', orgId, userId);
+
+      expect(result).toEqual(deactivatedDb);
+      expect(result.is_active).toBe(false);
+    });
+  });
+
+  // ==================== PAYROLL OPERATIONS ====================
+
+  describe('getActivePayComponentsForPayroll', () => {
+    it('should return DTO-transformed active components', async () => {
+      const dbComponents = [
+        createDbComponent({ component_code: 'BASIC', is_active: true }),
+        createDbComponent({ component_code: 'OVERTIME', is_active: true })
+      ];
+
+      mockRepository.findActivePayComponentsForPayroll.mockResolvedValue(dbComponents);
+
+      const result = await service.getActivePayComponentsForPayroll(orgId);
+
+      expect(result).toEqual(mapComponentsDbToApi(dbComponents));
+      expect(result).toHaveLength(2);
+      expect(result[0].isActive).toBe(true);
+      expect(result[1].isActive).toBe(true);
+    });
+
+    it('should return empty array when no active components', async () => {
+      mockRepository.findActivePayComponentsForPayroll.mockResolvedValue([]);
+
+      const result = await service.getActivePayComponentsForPayroll(orgId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('executeComponentFormula', () => {
+    it('should execute formula with variables', async () => {
+      const dbComponent = createDbComponent({
+        component_code: 'BONUS',
+        calculation_type: 'formula',
+        formula: 'gross_pay * 0.10'
       });
+
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
+
+      const variables = { gross_pay: 5000 };
+      const result = await service.executeComponentFormula('123e4567-e89b-12d3-a456-426614174001', variables, orgId);
+
+      expect(result).toHaveProperty('value');
+      expect(result).toHaveProperty('executionTime');
+      expect(result).toHaveProperty('variablesUsed');
+      expect(result.componentCode).toBe('BONUS');
     });
 
-    describe('Usage Validation', () => {
-      it('should prevent deleting component assigned to employees', async () => {
-        const component = {
-          id: componentId,
-          component_code: 'CUSTOM',
-          is_system_component: false,
-        };
-
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(component);
-        PayComponentService.payComponentRepository.deletePayComponent
-          .mockRejectedValue(new Error('assigned to employees'));
-
-        await expect(
-          PayComponentService.deletePayComponent(componentId, organizationId, userId)
-        ).rejects.toThrow(ConflictError);
-
-        await expect(
-          PayComponentService.deletePayComponent(componentId, organizationId, userId)
-        ).rejects.toThrow('remove all employee assignments');
+    it('should throw ValidationError for non-formula component', async () => {
+      const dbComponent = createDbComponent({
+        calculation_type: 'fixed_amount',
+        formula: null
       });
 
-      it('should provide helpful error message when component is in use', async () => {
-        const component = {
-          id: componentId,
-          component_code: 'USED',
-          is_system_component: false,
-        };
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
 
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(component);
-        PayComponentService.payComponentRepository.deletePayComponent
-          .mockRejectedValue(new Error('assigned to employees'));
+      await expect(
+        service.executeComponentFormula('123e4567-e89b-12d3-a456-426614174001', {}, orgId)
+      ).rejects.toThrow('Component is not a formula-based component');
+    });
 
-        try {
-          await PayComponentService.deletePayComponent(componentId, organizationId, userId);
-          expect.fail('Should have thrown error');
-        } catch (error) {
-          expect(error.message).toContain('deactivate the component instead');
-        }
+    it('should throw ValidationError when formula is not defined', async () => {
+      const dbComponent = createDbComponent({
+        component_code: 'BONUS',
+        calculation_type: 'formula',
+        formula: null
       });
-    });
 
-    describe('Successful Deletion', () => {
-      it('should delete component when not in use', async () => {
-        const component = {
-          id: componentId,
-          component_code: 'UNUSED',
-          is_system_component: false,
-        };
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
 
-        PayComponentService.payComponentRepository.findPayComponentById
-          .mockResolvedValue(component);
-        PayComponentService.payComponentRepository.deletePayComponent
-          .mockResolvedValue(true);
-
-        const result = await PayComponentService.deletePayComponent(
-          componentId,
-          organizationId,
-          userId
-        );
-
-        expect(result).toBe(true);
-      });
+      await expect(
+        service.executeComponentFormula('123e4567-e89b-12d3-a456-426614174001', {}, orgId)
+      ).rejects.toThrow('does not have a formula defined');
     });
   });
 
-  describe('validateCategoryForType', () => {
-    it('should allow null/undefined category', () => {
-      expect(() => {
-        PayComponentService.validateCategoryForType('earning', null);
-      }).not.toThrow();
+  describe('validateFormula', () => {
+    it('should validate valid formula', () => {
+      const result = service.validateFormula('gross_pay * 0.15');
 
-      expect(() => {
-        PayComponentService.validateCategoryForType('earning', undefined);
-      }).not.toThrow();
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
     });
 
-    it('should normalize benefit type to deduction', () => {
-      expect(() => {
-        PayComponentService.validateCategoryForType('benefit', 'benefit');
-      }).not.toThrow();
-    });
+    it('should return errors for invalid formula', () => {
+      const result = service.validateFormula('invalid syntax @@');
 
-    it('should normalize tax type to deduction', () => {
-      expect(() => {
-        PayComponentService.validateCategoryForType('tax', 'tax');
-      }).not.toThrow();
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
     });
   });
 
-  // ==================== NEW COMPREHENSIVE VALIDATION TESTS ====================
-  
-  describe('isActive Field Validation', () => {
-    it('should accept isActive=true', async () => {
-      const component = {
-        componentCode: 'TEST_ACTIVE',
-        componentName: 'Test Active',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        isActive: true,
-      };
+  describe('testFormula', () => {
+    it('should test formula with sample data', async () => {
+      const result = service.testFormula('gross_pay * 0.10');
 
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
+      expect(result).toHaveProperty('formula');
+      expect(result.formula).toBe('gross_pay * 0.10');
+      expect(result).toHaveProperty('testCases');
+      expect(result.testCases.length).toBeGreaterThan(0);
     });
 
-    it('should accept isActive=false', async () => {
-      const component = {
-        componentCode: 'TEST_INACTIVE',
-        componentName: 'Test Inactive',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        isActive: false,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should default isActive to true when not provided', async () => {
-      const component = {
-        componentCode: 'TEST_DEFAULT',
-        componentName: 'Test Default',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-      };
-
-      const { error, value } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-      expect(value.isActive).toBe(true);
-    });
-
-    it('should reject non-boolean isActive values', async () => {
-      const component = {
-        componentCode: 'TEST_INVALID',
-        componentName: 'Test Invalid',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        isActive: 'yes', // Invalid: string instead of boolean
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('boolean');
-    });
-  });
-
-  describe('componentType Field Validation', () => {
-    const validTypes = ['earning', 'deduction', 'benefit', 'tax', 'reimbursement'];
-
-    validTypes.forEach(type => {
-      it(`should accept valid componentType: ${type}`, async () => {
-        const component = {
-          componentCode: `TEST_${type.toUpperCase()}`,
-          componentName: `Test ${type}`,
-          componentType: type,
-          category: type === 'earning' ? 'regular_pay' : 'other',
-          calculationType: 'fixed_amount',
-          defaultAmount: 1000,
-        };
-
-        const { error } = PayComponentService.payComponentSchema.validate(component);
-        expect(error).toBeUndefined();
-      });
-    });
-
-    it('should reject invalid componentType', async () => {
-      const component = {
-        componentCode: 'TEST_INVALID',
-        componentName: 'Test Invalid',
-        componentType: 'invalid_type',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('must be one of');
-    });
-
-    it('should require componentType field', async () => {
-      const component = {
-        componentCode: 'TEST_MISSING',
-        componentName: 'Test Missing Type',
-        // componentType: missing
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].path).toContain('componentType');
-    });
-  });
-
-  describe('formula Field Validation', () => {
-    it('should accept valid formula with calculationType=formula', async () => {
-      const component = {
-        componentCode: 'FORMULA_TEST',
-        componentName: 'Formula Test',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'formula',
-        formula: 'hours * rate',
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept null formula for non-formula calculationType', async () => {
-      const component = {
-        componentCode: 'FIXED_TEST',
-        componentName: 'Fixed Test',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        formula: null,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept empty string formula', async () => {
-      const component = {
-        componentCode: 'EMPTY_FORMULA',
-        componentName: 'Empty Formula',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        formula: '',
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should reject formula exceeding 1000 characters', async () => {
-      const longFormula = 'a'.repeat(1001);
-      const component = {
-        componentCode: 'LONG_FORMULA',
-        componentName: 'Long Formula',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'formula',
-        formula: longFormula,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('less than or equal to 1000');
-    });
-
-    it('should accept complex formula expressions', async () => {
-      const component = {
-        componentCode: 'COMPLEX_FORMULA',
-        componentName: 'Complex Formula',
-        componentType: 'earning',
-        category: 'bonus',
-        calculationType: 'formula',
-        formula: '(hours * rate) + (overtime_hours * rate * 1.5)',
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-  });
-
-  describe('metadata Field Validation', () => {
-    it('should accept null metadata', async () => {
-      const component = {
-        componentCode: 'NULL_META',
-        componentName: 'Null Metadata',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        metadata: null,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept empty metadata object', async () => {
-      const component = {
-        componentCode: 'EMPTY_META',
-        componentName: 'Empty Metadata',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        metadata: {},
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept metadata with string values', async () => {
-      const component = {
-        componentCode: 'STRING_META',
-        componentName: 'String Metadata',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        metadata: {
-          description: 'Additional info',
-          department: 'Engineering',
-        },
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept metadata with number values', async () => {
-      const component = {
-        componentCode: 'NUMBER_META',
-        componentName: 'Number Metadata',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        metadata: {
-          priority: 1,
-          order: 100,
-        },
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept metadata with boolean values', async () => {
-      const component = {
-        componentCode: 'BOOL_META',
-        componentName: 'Boolean Metadata',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        metadata: {
-          isVisible: true,
-          requiresApproval: false,
-        },
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept metadata with nested objects', async () => {
-      const component = {
-        componentCode: 'NESTED_META',
-        componentName: 'Nested Metadata',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        metadata: {
-          settings: {
-            displayName: 'Base Pay',
-            icon: 'dollar-sign',
-          },
-          validation: {
-            minValue: 0,
-            maxValue: 100000,
-          },
-        },
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept metadata with arrays', async () => {
-      const component = {
-        componentCode: 'ARRAY_META',
-        componentName: 'Array Metadata',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        metadata: {
-          tags: ['salary', 'monthly', 'fixed'],
-          allowedRoles: ['employee', 'contractor'],
-        },
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should reject non-object metadata', async () => {
-      const component = {
-        componentCode: 'INVALID_META',
-        componentName: 'Invalid Metadata',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        metadata: 'invalid string',
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('object');
-    });
-  });
-
-  describe('calculationType Field Validation', () => {
-    const validCalculationTypes = [
-      'fixed', 'fixed_amount', 'percentage', 
-      'hours_based', 'hourly_rate', 'formula', 'unit_based'
-    ];
-
-    validCalculationTypes.forEach(calcType => {
-      it(`should accept valid calculationType: ${calcType}`, async () => {
-        const component = {
-          componentCode: `CALC_${calcType.toUpperCase()}`,
-          componentName: `Calculation ${calcType}`,
-          componentType: 'earning',
-          category: 'regular_pay',
-          calculationType: calcType,
-          defaultAmount: calcType.includes('formula') ? undefined : 1000,
-          formula: calcType.includes('formula') ? 'hours * rate' : undefined,
-        };
-
-        const { error } = PayComponentService.payComponentSchema.validate(component);
-        expect(error).toBeUndefined();
-      });
-    });
-
-    it('should reject invalid calculationType', async () => {
-      const component = {
-        componentCode: 'INVALID_CALC',
-        componentName: 'Invalid Calculation',
-        componentType: 'earning',
-        category: 'regular_pay',
-        calculationType: 'invalid_type',
-        defaultAmount: 5000,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('must be one of');
-    });
-  });
-
-  describe('Combined Field Validation', () => {
-    it('should accept component with all optional fields', async () => {
-      const component = {
-        componentCode: 'FULL_COMPONENT',
-        componentName: 'Full Component',
-        componentType: 'earning',
-        category: 'bonus',
-        calculationType: 'percentage',
-        defaultRate: 10.5,
-        defaultAmount: 1000,
-        formula: '',
-        isTaxable: true,
-        isRecurring: false,
-        isPreTax: false,
-        isActive: true,
-        isSystemComponent: false,
-        appliesToGross: true,
-        appliesToOvertime: true,
-        affectsTaxableIncome: true,
-        description: 'A comprehensive test component',
-        metadata: {
-          category: 'performance',
-          frequency: 'quarterly',
-        },
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept component with minimum required fields', async () => {
-      const component = {
-        componentCode: 'MIN_COMPONENT',
-        componentName: 'Minimal Component',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should validate earning type with deduction category combination', async () => {
-      const component = {
-        componentCode: 'INVALID_COMBO',
-        componentName: 'Invalid Combination',
-        componentType: 'earning',
-        category: 'tax', // tax is deduction category
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-      };
-
-      // Schema validation passes, but business logic should reject
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
+    it('should return error for invalid formula', () => {
+      const result = service.testFormula('@@@invalid');
       
-      // Business rule validation should catch this
-      expect(() => {
-        PayComponentService.validateCategoryForType(component.componentType, component.category);
-      }).toThrow(ValidationError);
-    });
-
-    it('should accept benefit type (normalized to deduction) with benefit category', async () => {
-      const component = {
-        componentCode: 'BENEFIT_TEST',
-        componentName: 'Benefit Test',
-        componentType: 'benefit',
-        category: 'benefit',
-        calculationType: 'fixed_amount',
-        defaultAmount: 500,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept tax type (normalized to deduction) with tax category', async () => {
-      const component = {
-        componentCode: 'TAX_TEST',
-        componentName: 'Tax Test',
-        componentType: 'tax',
-        category: 'tax',
-        calculationType: 'percentage',
-        defaultRate: 15,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
+      expect(result).toHaveProperty('success');
+      expect(result.success).toBe(false);
+      expect(result).toHaveProperty('error');
     });
   });
 
-  describe('Edge Cases and Boundary Testing', () => {
-    it('should accept componentCode at minimum length (2 characters)', async () => {
-      const component = {
-        componentCode: 'AB',
-        componentName: 'Short Code',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-      };
+  // ==================== ALIAS METHODS ====================
 
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
+  describe('getPayComponentsByOrganization', () => {
+    it('should call getPayComponents', async () => {
+      const dbComponents = [createDbComponent()];
+      mockRepository.findPayComponents.mockResolvedValue(dbComponents);
+
+      const result = await service.getPayComponentsByOrganization(orgId);
+
+      expect(result).toEqual(mapComponentsDbToApi(dbComponents));
+      expect(mockRepository.findPayComponents).toHaveBeenCalledWith(orgId, {});
     });
+  });
 
-    it('should accept componentCode at maximum length (50 characters)', async () => {
-      const component = {
-        componentCode: 'A'.repeat(50),
-        componentName: 'Long Code',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
+  describe('createEmployeePayComponent', () => {
+    it('should map employeeId to employeeRecordId', async () => {
+      const componentData = {
+        organizationId: orgId,
+        createdBy: userId,
+        employeeId: '123e4567-e89b-12d3-a456-426614174007',
+        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
+        customRate: 25.00,
+        effectiveFrom: new Date('2024-01-01')
       };
 
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
+      const dbComponent = createDbComponent();
+      const dbCustom = createDbCustomComponent();
+
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
+      mockRepository.assignCustomComponent.mockResolvedValue(dbCustom);
+
+      const result = await service.createEmployeePayComponent(componentData);
+
+      expect(result).toEqual(dbCustom);
+      expect(mockRepository.assignCustomComponent).toHaveBeenCalled();
     });
+  });
 
-    it('should reject componentCode below minimum length', async () => {
-      const component = {
-        componentCode: 'A',
-        componentName: 'Too Short',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-      };
+  describe('getPayComponentsByEmployee', () => {
+    it('should call getCustomComponentsByEmployee', async () => {
+      const customComponents = [createDbCustomComponent()];
+      mockRepository.findCustomComponentsByEmployee.mockResolvedValue(customComponents);
 
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('at least 2 characters');
+      const result = await service.getPayComponentsByEmployee('123e4567-e89b-12d3-a456-426614174007', orgId);
+
+      expect(result).toEqual(customComponents);
     });
+  });
 
-    it('should reject componentCode exceeding maximum length', async () => {
-      const component = {
-        componentCode: 'A'.repeat(51),
-        componentName: 'Too Long',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-      };
+  describe('updateEmployeePayComponent', () => {
+    it('should call updateCustomComponent', async () => {
+      const updates = { customRate: 30.00 };
+      const updatedDb = createDbCustomComponent({ custom_rate: 30.00 });
 
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('less than or equal to 50');
+      mockRepository.updateCustomComponent.mockResolvedValue(updatedDb);
+
+      const result = await service.updateEmployeePayComponent('123e4567-e89b-12d3-a456-426614174006', orgId, updates, userId);
+
+      expect(result).toEqual(updatedDb);
     });
+  });
 
-    it('should accept defaultAmount of 0', async () => {
-      const component = {
-        componentCode: 'ZERO_AMOUNT',
-        componentName: 'Zero Amount',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 0,
-      };
+  describe('deleteEmployeePayComponent', () => {
+    it('should call deactivateCustomComponent', async () => {
+      const deactivatedDb = createDbCustomComponent({ is_active: false });
+      mockRepository.deactivateCustomComponent.mockResolvedValue(deactivatedDb);
 
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
+      const result = await service.deleteEmployeePayComponent('123e4567-e89b-12d3-a456-426614174006', orgId, userId);
 
-    it('should reject negative defaultAmount', async () => {
-      const component = {
-        componentCode: 'NEG_AMOUNT',
-        componentName: 'Negative Amount',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: -100,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('greater than or equal to 0');
-    });
-
-    it('should accept defaultRate of 0', async () => {
-      const component = {
-        componentCode: 'ZERO_RATE',
-        componentName: 'Zero Rate',
-        componentType: 'earning',
-        calculationType: 'percentage',
-        defaultRate: 0,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should reject negative defaultRate', async () => {
-      const component = {
-        componentCode: 'NEG_RATE',
-        componentName: 'Negative Rate',
-        componentType: 'earning',
-        calculationType: 'percentage',
-        defaultRate: -5,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('greater than or equal to 0');
-    });
-
-    it('should accept very large defaultAmount', async () => {
-      const component = {
-        componentCode: 'LARGE_AMOUNT',
-        componentName: 'Large Amount',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 9999999.99,
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should accept description at maximum length (500 characters)', async () => {
-      const component = {
-        componentCode: 'MAX_DESC',
-        componentName: 'Max Description',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        description: 'A'.repeat(500),
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeUndefined();
-    });
-
-    it('should reject description exceeding maximum length', async () => {
-      const component = {
-        componentCode: 'LONG_DESC',
-        componentName: 'Long Description',
-        componentType: 'earning',
-        calculationType: 'fixed_amount',
-        defaultAmount: 5000,
-        description: 'A'.repeat(501),
-      };
-
-      const { error } = PayComponentService.payComponentSchema.validate(component);
-      expect(error).toBeDefined();
-      expect(error.details[0].message).toContain('less than or equal to 500');
+      expect(result).toEqual(deactivatedDb);
     });
   });
 });

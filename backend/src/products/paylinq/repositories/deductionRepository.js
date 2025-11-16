@@ -11,6 +11,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class DeductionRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   /**
    * Create employee deduction
    * @param {Object} deductionData - Employee deduction data
@@ -19,7 +23,7 @@ class DeductionRepository {
    * @returns {Promise<Object>} Created employee deduction
    */
   async createEmployeeDeduction(deductionData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.employee_deduction 
       (organization_id, employee_id, deduction_type, deduction_name,
        deduction_code, calculation_type, deduction_amount, deduction_percentage,
@@ -105,7 +109,7 @@ class DeductionRepository {
       params.push(criteria.effectiveDate);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT ed.*,
               e.employee_number,
               e.id as employee_id,
@@ -130,7 +134,7 @@ class DeductionRepository {
    * @returns {Promise<Object|null>} Employee deduction or null
    */
   async findEmployeeDeductionById(deductionId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT ed.*,
               e.employee_number,
               e.id as employee_id,
@@ -189,7 +193,7 @@ class DeductionRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.employee_deduction 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -210,7 +214,7 @@ class DeductionRepository {
    * @returns {Promise<Object>} Updated employee deduction
    */
   async deactivateEmployeeDeduction(deductionId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.employee_deduction 
        SET is_active = false,
            effective_to = CURRENT_DATE,
@@ -234,7 +238,7 @@ class DeductionRepository {
    * @returns {Promise<Array>} Active employee deductions
    */
   async findActiveDeductionsForPayroll(employeeId, payrollDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT * 
        FROM payroll.employee_deduction
        WHERE employee_id = $1
@@ -316,7 +320,7 @@ class DeductionRepository {
    * @returns {Promise<Array>} Deduction history
    */
   async findDeductionHistory(employeeId, fromDate, toDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT ed.*,
               COUNT(pc.id) as times_applied,
               COALESCE(SUM(prc.amount), 0) as total_amount_deducted
@@ -348,7 +352,7 @@ class DeductionRepository {
    * @returns {Promise<Array>} YTD deduction totals by type
    */
   async getYTDDeductionTotals(employeeId, year, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
          ed.deduction_type,
          ed.deduction_code,
@@ -384,7 +388,7 @@ class DeductionRepository {
    * @returns {Promise<Object>} Annual maximum status
    */
   async checkAnnualMaximum(deductionId, year, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
          ed.max_annual,
          COALESCE(SUM(prc.amount), 0) as ytd_total,
@@ -426,7 +430,7 @@ class DeductionRepository {
    * @returns {Promise<Object>} Deleted employee deduction
    */
   async softDeleteEmployeeDeduction(deductionId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.employee_deduction 
        SET deleted_at = NOW(),
            deleted_by = $1,

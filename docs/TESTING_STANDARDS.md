@@ -78,6 +78,403 @@
 
 ## Unit Testing Standards
 
+### ES Modules Requirements
+
+**CRITICAL:** All test files MUST follow ES modules syntax:
+
+```javascript
+// ✅ CORRECT: Import with .js extension (REQUIRED for ES modules)
+import JobService from '../../src/services/jobs/JobService.js';
+import JobRepository from '../../src/repositories/JobRepository.js';
+import { ValidationError } from '../../src/utils/errors.js';
+
+// ❌ WRONG: Missing .js extension
+import JobService from '../../src/services/jobs/JobService';
+
+// ✅ CORRECT: Jest imports from @jest/globals (REQUIRED for ES modules)
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// ❌ WRONG: Jest without import (causes "jest is not defined" error)
+jest.mock('../../src/repositories/JobRepository.js'); // ← jest not imported!
+
+// ❌ WRONG: CommonJS syntax
+const JobService = require('../../src/services/jobs/JobService');
+```
+
+### Pre-Implementation Verification (CRITICAL)
+
+**MANDATORY STEP:** Before writing any test for a service, repository, or controller, you MUST verify the actual method names and signatures in the source code.
+
+**❌ NEVER:**
+- Assume method names follow generic patterns (e.g., `create()`, `list()`, `getById()`)
+- Write tests based on what you think the methods should be called
+- Copy method names from similar services without verification
+
+**✅ ALWAYS:**
+1. **Read the complete source file** to understand the service's actual API
+2. **Use grep/search** to extract ALL method names: `grep "async \w+\(" ServiceName.js`
+3. **Document the verified method names** before writing any tests
+4. **Match method signatures exactly** including parameter names and order
+
+**Example - Correct Process:**
+
+```bash
+# Step 1: Search for all methods in the service
+grep "async \w+\(" src/services/AllowanceService.js
+
+# Output shows ACTUAL methods:
+# - calculateTaxFreeAllowance(grossPay, payDate, payPeriod, organizationId)
+# - getAvailableHolidayAllowance(employeeId, year, organizationId)
+# - getAllAllowances(organizationId)  ← NOT list()!
+```
+
+```javascript
+// Step 2: Use ONLY the verified method names in tests
+
+// ✅ CORRECT: Uses actual method name from source
+const result = await service.getAllAllowances(organizationId);
+
+// ❌ WRONG: Assumes generic name without verification
+const result = await service.list(organizationId);
+```
+
+**Why This Matters:**
+- Prevents "method not found" errors that waste time and resources
+- Ensures tests actually validate the implemented functionality
+- Maintains accuracy between tests and implementation
+- Critical for multi-tenant systems where method names may vary
+
+**Acceptance Criteria:**
+- ✅ **ZERO** `TypeError: service.methodName is not a function` errors
+- ✅ All test method calls match source code exactly
+- ✅ Method signatures (parameters, order) match implementation
+
+### Export Pattern Verification & Refactoring (MANDATORY)
+
+**CRITICAL:** When scanning a service/controller for method names, you MUST also verify the export pattern. If the service does not export the class, you MUST refactor it immediately before writing tests.
+
+**✅ CORRECT Export Pattern (Industry Standard):**
+
+```javascript
+class MyService {
+  constructor(repository = null) {
+    this.repository = repository || new Repository();
+  }
+  
+  async myMethod() { /* ... */ }
+}
+
+// ✅ Export the class - allows dependency injection and testing
+export default MyService;
+```
+
+**❌ WRONG Export Patterns (Must Refactor):**
+
+```javascript
+// ❌ ANTI-PATTERN 1: Singleton instance only
+class MyService {
+  constructor() {
+    this.repository = new Repository(); // Hard-coded
+  }
+}
+export default new MyService(); // Singleton - NOT TESTABLE
+
+// ❌ ANTI-PATTERN 2: Singleton as default (even with class export)
+const myService = new MyService();
+export default myService;        // Singleton as default
+export { MyService };            // Class as named export - CONFUSING
+```
+
+**REFACTORING REQUIREMENT:**
+
+When you encounter a service with singleton export pattern:
+
+1. **STOP** - Do not write tests yet
+2. **REFACTOR** the service immediately:
+   - Remove singleton instance creation
+   - Export only the class as default
+   - Ensure constructor accepts optional dependencies for testing
+3. **VERIFY** the refactoring works with existing code
+4. **THEN** proceed with writing tests
+
+**Example Refactoring:**
+
+```javascript
+// BEFORE (Anti-pattern) ❌
+class WorkerTypeService {
+  constructor() {
+    this.repository = new WorkerTypeRepository(); // Hard-coded
+  }
+}
+export default new WorkerTypeService(); // Singleton
+
+// AFTER (Industry standard) ✅
+class WorkerTypeService {
+  constructor(repository = null) {
+    this.repository = repository || new WorkerTypeRepository();
+  }
+}
+export default WorkerTypeService; // Class export
+```
+
+**Why This Must Be Done Immediately:**
+
+1. **Testability**: Singleton exports cannot be mocked - tests will fail or be meaningless
+2. **Best Practices**: Industry standard is to export classes, not instances
+3. **Maintainability**: Dependency injection makes code easier to refactor
+4. **Multi-tenant Safety**: Singletons with state are dangerous in multi-tenant systems
+5. **IoC Principles**: Follows Inversion of Control and SOLID principles
+
+**Frameworks That Follow This Pattern:**
+- NestJS (TypeScript)
+- Spring Boot (Java)
+- ASP.NET Core (C#)
+- Laravel (PHP)
+- Django (Python)
+
+**Acceptance Criteria:**
+- ✅ All services export the **class**, not singleton instances
+- ✅ Constructor accepts optional dependencies for testing
+- ✅ No `export default new ServiceName()` patterns exist
+- ✅ Tests can inject mock dependencies successfully
+
+### DTO (Data Transfer Object) Testing Requirements (MANDATORY)
+
+**CRITICAL:** When testing services that use DTOs, you MUST account for data transformation between the repository layer (database format) and the service layer (API format).
+
+**Three-Layer Architecture:**
+
+```
+Repository Layer → Returns snake_case (DB format)
+     ↓
+DTO Layer → Transforms DB ↔ API format
+     ↓
+Service Layer → Returns camelCase (API format)
+```
+
+**When to Use DTO Testing Pattern:**
+
+Services MUST use DTOs when they:
+- Return data directly to API/controllers
+- Transform database field names (snake_case → camelCase)
+- Have a corresponding `*Dto.js` file in `src/products/[product]/dto/`
+
+**Example DTO Files in Codebase:**
+- `payrollRunTypeDto.js` - transforms run type records
+- `componentDto.js` - transforms component records
+- `taxRuleDto.js` - transforms tax rule records
+- `complianceDto.js` - transforms compliance records
+
+**Verifying DTO Usage in Services:**
+
+Before writing tests, check if the service imports and uses DTO mappers:
+
+```javascript
+// Search for DTO imports
+grep "from '../dto" src/products/paylinq/services/ServiceName.js
+
+// ✅ Service USES DTOs - must test with DTO pattern
+import { mapRunTypeDbToApi, mapRunTypesDbToApi } from '../dto/payrollRunTypeDto.js';
+
+// ❌ Service DOES NOT use DTOs - test without DTO pattern
+// (no DTO imports found)
+```
+
+**DTO Testing Pattern (MANDATORY when DTOs are used):**
+
+```javascript
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import PayrollRunTypeService from '../../../../src/products/paylinq/services/PayrollRunTypeService.js';
+import PayrollRunTypeRepository from '../../../../src/products/paylinq/repositories/PayrollRunTypeRepository.js';
+import { mapRunTypeDbToApi, mapRunTypesDbToApi } from '../../../../src/products/paylinq/dto/payrollRunTypeDto.js';
+
+describe('PayrollRunTypeService', () => {
+  let service;
+  let mockRepository;
+
+  // Helper function to generate DB format data (snake_case)
+  const createDbRunType = (overrides = {}) => ({
+    id: 'type-123e4567-e89b-12d3-a456-426614174000',
+    organization_id: 'org-123e4567-e89b-12d3-a456-426614174000',
+    type_code: 'TEST_CODE',              // snake_case (DB format)
+    type_name: 'Test Type',              // snake_case (DB format)
+    component_override_mode: 'explicit', // snake_case (DB format)
+    allowed_components: [],
+    excluded_components: [],
+    is_active: true,
+    created_by: 'user-123',
+    created_at: new Date(),
+    // ... all DB fields in snake_case
+    ...overrides
+  });
+
+  beforeEach(() => {
+    mockRepository = {
+      create: jest.fn(),
+      findByCode: jest.fn(),
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      update: jest.fn(),
+      softDelete: jest.fn()
+    };
+    service = new PayrollRunTypeService(mockRepository);
+  });
+
+  describe('getByCode', () => {
+    it('should return DTO-transformed payroll run type', async () => {
+      const orgId = 'org-123e4567-e89b-12d3-a456-426614174000';
+      
+      // Arrange: Mock returns DB format (snake_case)
+      const dbType = createDbRunType({
+        type_code: 'REGULAR_PAY',
+        type_name: 'Regular Payroll'
+      });
+      mockRepository.findByCode.mockResolvedValue(dbType);
+
+      // Act: Service method is called
+      const result = await service.getByCode('REGULAR_PAY', orgId);
+
+      // Assert: Expect DTO-transformed result (camelCase)
+      expect(result).toEqual(mapRunTypeDbToApi(dbType));
+      expect(result.typeCode).toBe('REGULAR_PAY');    // camelCase (API format)
+      expect(result.typeName).toBe('Regular Payroll'); // camelCase (API format)
+      expect(result.type_code).toBeUndefined();        // DB field should not exist
+    });
+  });
+
+  describe('list', () => {
+    it('should return array of DTO-transformed types', async () => {
+      const orgId = 'org-123e4567-e89b-12d3-a456-426614174000';
+      
+      // Arrange: Mock returns array of DB format records
+      const dbTypes = [
+        createDbRunType({ type_code: 'TYPE1', is_active: true }),
+        createDbRunType({ type_code: 'TYPE2', is_active: true })
+      ];
+      mockRepository.findAll.mockResolvedValue(dbTypes);
+
+      // Act
+      const result = await service.list(orgId);
+
+      // Assert: Expect array DTO transformation
+      expect(result).toEqual(mapRunTypesDbToApi(dbTypes));
+      expect(result[0].typeCode).toBe('TYPE1'); // camelCase
+      expect(result[1].typeCode).toBe('TYPE2'); // camelCase
+    });
+  });
+});
+```
+
+**Testing Services WITHOUT DTOs:**
+
+Some services may return data directly without DTO transformation. Test these normally:
+
+```javascript
+describe('SimpleService', () => {
+  it('should return data in same format as repository', async () => {
+    const mockData = { id: '123', status: 'active' };
+    mockRepository.findById.mockResolvedValue(mockData);
+
+    const result = await service.getById('123');
+
+    // No DTO transformation - direct comparison
+    expect(result).toEqual(mockData);
+  });
+});
+```
+
+**Methods That May NOT Use DTOs:**
+
+Some business logic methods return plain values, not DTO-transformed objects:
+
+```javascript
+// Example: resolveAllowedComponents returns string[]
+async resolveAllowedComponents(typeCode, orgId) {
+  const runType = await this.repository.findByCode(typeCode, orgId);
+  // Business logic processes the data
+  return components; // Returns ['COMP1', 'COMP2'] - no DTO
+}
+
+// Test pattern - expect plain array
+it('should resolve components without DTO', async () => {
+  const dbType = createDbRunType({
+    component_override_mode: 'explicit',
+    allowed_components: ['COMP1', 'COMP2']
+  });
+  mockRepository.findByCode.mockResolvedValue(dbType);
+
+  const result = await service.resolveAllowedComponents('TEST', orgId);
+
+  // Expect plain array, not DTO object
+  expect(Array.isArray(result)).toBe(true);
+  expect(result).toEqual(['COMP1', 'COMP2']);
+});
+```
+
+**Refactoring Services to Use DTOs:**
+
+If you discover a service has a DTO file but doesn't use it, you MUST refactor before writing tests:
+
+1. ✅ **Verify DTO file exists**: `src/products/[product]/dto/[entity]Dto.js`
+2. ✅ **Add DTO imports** to the service
+3. ✅ **Transform all CRUD method returns** through DTO mappers
+4. ✅ **Update controller** if needed (usually no changes required)
+5. ✅ **Then write tests** with proper DTO expectations
+
+**Common DTO Transformation Points:**
+
+```javascript
+// ✅ CRUD operations that MUST use DTOs:
+async create(data, orgId, userId) {
+  const dbData = mapEntityApiToDb(data);          // API → DB
+  const created = await this.repository.create(dbData, orgId, userId);
+  return mapEntityDbToApi(created);               // DB → API ✓
+}
+
+async getById(id, orgId) {
+  const entity = await this.repository.findById(id, orgId);
+  return mapEntityDbToApi(entity);                // DB → API ✓
+}
+
+async list(orgId, filters) {
+  const entities = await this.repository.findAll(orgId, filters);
+  return mapEntitiesDbToApi(entities);            // DB[] → API[] ✓
+}
+
+async update(id, data, orgId, userId) {
+  const dbData = mapEntityApiToDb(data);          // API → DB
+  const updated = await this.repository.update(id, dbData, orgId, userId);
+  return mapEntityDbToApi(updated);               // DB → API ✓
+}
+
+// ❌ Business logic methods may NOT use DTOs:
+async calculateTotal(id, orgId) {
+  const entity = await this.repository.findById(id, orgId);
+  return entity.amount * entity.quantity;         // Returns number - no DTO
+}
+
+async validateEntity(code, orgId) {
+  const entity = await this.repository.findByCode(code, orgId);
+  return { isValid: !!entity, errors: [] };       // Returns object - no DTO
+}
+```
+
+**Acceptance Criteria:**
+- ✅ All tests for services with DTOs use DB format mocks (snake_case)
+- ✅ All test expectations use DTO-mapped results (camelCase)
+- ✅ Helper functions like `createDb[Entity]()` generate DB format data
+- ✅ Tests import DTO mapper functions and use them in assertions
+- ✅ Services without DTOs are tested with direct format comparisons
+- ✅ Business logic methods that return non-DTO values are tested appropriately
+- ✅ ZERO field mismatch errors (e.g., `expected typeCode, got type_code`)
+
+**Why This Matters:**
+- **Industry Standard**: Follows Clean Architecture, DDD, and REST best practices
+- **Separation of Concerns**: Repository = DB, Service = Business Logic, DTO = Transformation
+- **API Consistency**: Ensures API always returns camelCase format
+- **Test Accuracy**: Tests verify actual transformation logic, not just data pass-through
+- **Multi-tenant Safety**: Proper DTO usage prevents DB schema leakage to API consumers
+
 ### Service Unit Test Template
 
 ```javascript
@@ -467,7 +864,7 @@ describe('JobService', () => {
 ```javascript
 import request from 'supertest';
 import app from '../../src/app.js';
-import { query } from '../../src/config/database.js';
+import pool from '../../src/config/database.js'; // Import pool for cleanup
 import { generateTestToken } from '../helpers/auth.js';
 
 describe('Jobs API - Integration Tests', () => {
@@ -477,7 +874,7 @@ describe('Jobs API - Integration Tests', () => {
   let workspaceId;
 
   beforeAll(async () => {
-    // Setup: Create test organization and user
+    // Setup: Create test organization and user with schema-qualified table names
     const orgResult = await pool.query(`
       INSERT INTO organizations (id, name)
       VALUES (uuid_generate_v4(), 'Test Org')
@@ -485,9 +882,10 @@ describe('Jobs API - Integration Tests', () => {
     `);
     organizationId = orgResult.rows[0].id;
 
+    // Use schema-qualified names (e.g., hris.user_account)
     const userResult = await pool.query(`
-      INSERT INTO users (id, email, name, organization_id, role)
-      VALUES (uuid_generate_v4(), 'test@example.com', 'Test User', $1, 'admin')
+      INSERT INTO hris.user_account (id, email, password_hash, organization_id)
+      VALUES (uuid_generate_v4(), 'test@example.com', '$2b$10$dummyhash', $1)
       RETURNING id
     `, [organizationId]);
     userId = userResult.rows[0].id;
@@ -499,16 +897,19 @@ describe('Jobs API - Integration Tests', () => {
     `, [organizationId, userId]);
     workspaceId = workspaceResult.rows[0].id;
 
-    // Generate auth token
+    // Generate auth token (cookie-based or Bearer based on your auth system)
     authToken = generateTestToken({ id: userId, organizationId, role: 'admin' });
   });
 
   afterAll(async () => {
-    // Cleanup: Delete test data
+    // Cleanup: Delete test data in correct order (respect foreign keys)
     await pool.query('DELETE FROM jobs WHERE organization_id = $1', [organizationId]);
     await pool.query('DELETE FROM workspaces WHERE organization_id = $1', [organizationId]);
-    await pool.query('DELETE FROM users WHERE organization_id = $1', [organizationId]);
+    await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [organizationId]);
     await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
+    
+    // CRITICAL: Close database connection to prevent hanging tests
+    await pool.end();
   });
 
   describe('POST /api/jobs', () => {
@@ -525,10 +926,10 @@ describe('Jobs API - Integration Tests', () => {
         salaryMax: 150000
       };
 
-      // Act
+      // Act - Use cookie-based auth if applicable
       const response = await request(app)
         .post('/api/jobs')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${authToken}`) // Or set cookie
         .send(jobData)
         .expect(201);
 
@@ -566,7 +967,7 @@ describe('Jobs API - Integration Tests', () => {
         workspaceId
       };
 
-      // Act
+      // Act - No auth token
       await request(app)
         .post('/api/jobs')
         .send(jobData)
@@ -755,10 +1156,14 @@ describe('Jobs API - Integration Tests', () => {
 **EVERY integration test suite MUST:**
 
 - [ ] **Use real database** (test database)
-- [ ] **Setup test data** in beforeAll/beforeEach
-- [ ] **Cleanup test data** in afterAll/afterEach
+- [ ] **Import pool from database config** for cleanup
+- [ ] **Setup test data** in beforeAll/beforeEach (with async/await)
+- [ ] **Cleanup test data** in afterAll/afterEach (with async/await)
+- [ ] **Close database connections** with `await pool.end()` in afterAll
+- [ ] **Use schema-qualified table names** (e.g., `hris.user_account`)
+- [ ] **Delete in correct order** (children before parents, respect FK constraints)
 - [ ] **Test full request-response cycle**
-- [ ] **Test authentication** requirements
+- [ ] **Test authentication** requirements (Bearer or cookie-based)
 - [ ] **Test authorization** rules
 - [ ] **Test tenant isolation**
 - [ ] **Test HTTP status codes**
@@ -767,7 +1172,392 @@ describe('Jobs API - Integration Tests', () => {
 
 ---
 
+## Database Connection Management
+
+### CRITICAL: Always Close Database Connections
+
+**PROBLEM:** Hanging tests, connection pool exhaustion, tests that never finish.
+
+**SOLUTION:** Always close database connections in `afterAll`:
+
+```javascript
+import pool from '../../src/config/database.js';
+
+describe('Integration Test Suite', () => {
+  afterAll(async () => {
+    // Clean up test data first
+    await pool.query('DELETE FROM test_table WHERE organization_id = $1', [testOrgId]);
+    
+    // CRITICAL: Close the pool to allow tests to exit
+    await pool.end();
+  });
+});
+```
+
+### Multi-Suite Test Files
+
+If you have multiple describe blocks sharing a connection:
+
+```javascript
+import pool from '../../src/config/database.js';
+
+describe('Jobs API Tests', () => {
+  // Tests...
+});
+
+describe('Candidates API Tests', () => {
+  // Tests...
+});
+
+// Close connection ONCE after all suites
+afterAll(async () => {
+  await pool.end();
+});
+```
+
+---
+
+## Test File Naming Conventions
+
+### Integration Tests
+
+```javascript
+// ✅ CORRECT: Kebab-case for integration tests
+tests/integration/tenant-isolation.test.js
+tests/integration/license-restrictions.test.js
+tests/integration/user-api.test.js
+
+// ❌ WRONG: CamelCase
+tests/integration/tenantIsolation.test.js
+```
+
+### Unit Tests
+
+```javascript
+// ✅ CORRECT: Match source file structure
+tests/unit/services/JobService.test.js
+tests/unit/repositories/JobRepository.test.js
+
+// ❌ WRONG: Different naming
+tests/unit/services/job-service.test.js
+```
+
+---
+
+## Authentication in Tests
+
+### Cookie-Based Authentication (PREFERRED)
+
+**Current Migration Status:** The codebase is migrating from Bearer token to cookie-based authentication.
+
+```javascript
+import request from 'supertest';
+import app from '../../src/app.js';
+
+describe('API with Cookie Auth', () => {
+  let authCookie;
+
+  beforeAll(async () => {
+    // Login to get session cookie
+    const loginResponse = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'test@example.com',
+        password: 'password123'
+      });
+
+    // Extract Set-Cookie header
+    authCookie = loginResponse.headers['set-cookie'];
+  });
+
+  it('should access protected route with cookie', async () => {
+    const response = await request(app)
+      .get('/api/protected-resource')
+      .set('Cookie', authCookie) // Pass cookie
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+  });
+});
+```
+
+### Bearer Token Authentication (LEGACY)
+
+**Status:** Being phased out, but still used in some tests.
+
+```javascript
+import jwt from 'jsonwebtoken';
+import config from '../../src/config/index.js';
+
+describe('API with Bearer Token', () => {
+  let authToken;
+
+  beforeAll(async () => {
+    // Generate JWT token
+    authToken = jwt.sign(
+      { 
+        id: userId, 
+        email: userEmail,
+        organizationId: orgId,
+        role: 'admin'
+      },
+      config.jwt.secret,
+      { expiresIn: '1h' }
+    );
+  });
+
+  it('should access protected route with Bearer token', async () => {
+    const response = await request(app)
+      .get('/api/protected-resource')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+  });
+});
+```
+
+### Test Helper for Authentication
+
+Create a reusable helper:
+
+```javascript
+// tests/helpers/auth.js
+import jwt from 'jsonwebtoken';
+import config from '../../src/config/index.js';
+
+/**
+ * Generate test JWT token
+ * @param {Object} payload - Token payload
+ * @returns {string} JWT token
+ */
+export function generateTestToken(payload) {
+  return jwt.sign(payload, config.jwt.secret, { expiresIn: '1h' });
+}
+
+/**
+ * Login and get auth cookie
+ * @param {Object} app - Express app
+ * @param {string} email - User email
+ * @param {string} password - User password
+ * @returns {Promise<string>} Cookie string
+ */
+export async function loginWithCookie(app, email, password) {
+  const response = await request(app)
+    .post('/api/auth/login')
+    .send({ email, password });
+  
+  return response.headers['set-cookie'];
+}
+```
+
+---
+
+## Dependency Injection for Testability
+
+### Requirement
+
+**ALL services MUST support dependency injection to enable clean testing without complex mocking.**
+
+### Service Constructor Pattern
+
+```javascript
+// ✅ CORRECT: Service accepts dependencies via constructor
+class JobService {
+  /**
+   * @param {JobRepository} repository - Optional repository instance for testing
+   */
+  constructor(repository = null) {
+    this.repository = repository || new JobRepository();
+  }
+
+  async create(data, organizationId, userId) {
+    // Use this.repository - works with real or mock
+    return await this.repository.create(data);
+  }
+}
+
+// Production usage (no parameter)
+const jobService = new JobService();
+
+// Test usage (inject mock)
+const mockRepository = { create: jest.fn() };
+const jobService = new JobService(mockRepository);
+```
+
+### Service Architecture: Classes vs Functions
+
+**RULE: All services MUST be class-based for consistency and testability.**
+
+```javascript
+// ✅ CORRECT: Class-based service (stateful, DI-friendly)
+class PayrollService {
+  constructor(repository = null) {
+    this.repository = repository || new PayrollRepository();
+  }
+
+  async calculatePayroll(data) {
+    return await this.repository.save(data);
+  }
+}
+
+export default PayrollService;
+
+// Usage in controller
+import PayrollService from '../services/PayrollService.js';
+const payrollService = new PayrollService();
+await payrollService.calculatePayroll(data);
+
+// ❌ WRONG: Functional service (harder to inject dependencies)
+async function calculatePayroll(data) {
+  return await payrollRepository.save(data); // Can't inject mock
+}
+
+export default { calculatePayroll };
+```
+
+**Why Classes?**
+- ✅ Supports dependency injection
+- ✅ Can hold state/config when needed
+- ✅ Consistent pattern across codebase
+- ✅ Industry standard (OOP principles)
+- ✅ Easy to extend/inherit
+
+### Multiple Dependencies
+
+```javascript
+class PayrollService {
+  /**
+   * @param {PayrollRepository} payrollRepo - Optional for testing
+   * @param {TaxService} taxService - Optional for testing
+   * @param {EmailService} emailService - Optional for testing
+   */
+  constructor(payrollRepo = null, taxService = null, emailService = null) {
+    this.payrollRepo = payrollRepo || new PayrollRepository();
+    this.taxService = taxService || new TaxService();
+    this.emailService = emailService || new EmailService();
+  }
+}
+```
+
+### Why Dependency Injection?
+
+✅ **Clean Testing** - No jest.mock() gymnastics  
+✅ **Industry Standard** - Used by Spring, NestJS, Angular, etc.  
+✅ **Flexibility** - Easy to swap implementations  
+✅ **Explicit Dependencies** - Clear what service needs  
+✅ **SOLID Principles** - Follows Dependency Inversion  
+✅ **ES Modules Compatible** - No mocking issues  
+
+### Anti-Patterns to Avoid
+
+```javascript
+// ❌ BAD: Hard-coded dependency (not testable)
+class JobService {
+  constructor() {
+    this.repository = new JobRepository(); // Hard-coded!
+  }
+}
+// Must use complex jest.mock() to test
+
+// ❌ BAD: Importing and using directly
+import jobRepository from './repositories/jobRepository.js';
+
+async function createJob(data) {
+  return await jobRepository.create(data); // Can't inject mock
+}
+
+// ❌ BAD: Service instantiates other services internally
+class PayrollService {
+  constructor() {
+    this.taxService = new TaxService(); // Hard-coded!
+    this.emailService = new EmailService(); // Hard-coded!
+  }
+}
+```
+
+---
+
 ## Mocking Standards
+
+### With Dependency Injection (PREFERRED)
+
+When services use dependency injection, mocking is simple and clean:
+
+```javascript
+describe('JobService', () => {
+  let service;
+  let mockRepository;
+
+  beforeEach(() => {
+    // Create mock repository object
+    mockRepository = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      update: jest.fn(),
+      softDelete: jest.fn()
+    };
+
+    // Inject mock into service - no jest.mock() needed!
+    service = new JobService(mockRepository);
+  });
+
+  it('should create a job', async () => {
+    // Setup mock behavior
+    mockRepository.create.mockResolvedValue({ id: '123', title: 'Job' });
+
+    // Test service
+    const result = await service.create({ title: 'Job' }, 'org-id', 'user-id');
+
+    // Verify
+    expect(result.id).toBe('123');
+    expect(mockRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Job' })
+    );
+  });
+});
+```
+
+### Legacy Jest Mocking (AVOID IF POSSIBLE)
+
+Only use `jest.mock()` when you cannot modify the service to use DI:
+
+```javascript
+// Only if service doesn't support DI
+jest.mock('../../src/repositories/JobRepository.js');
+
+import JobRepository from '../../src/repositories/JobRepository.js';
+
+beforeEach(() => {
+  // ✅ CORRECT: Mock implementation for constructor
+  JobRepository.mockImplementation(() => ({
+    create: jest.fn(),
+    findById: jest.fn()
+  }));
+});
+```
+
+### Common Jest Mock Patterns (ES Modules)
+
+```javascript
+// ✅ CORRECT: Mocking a module method
+jest.spyOn(userAccountRepository, 'findByEmail').mockResolvedValue(null);
+
+// ✅ CORRECT: Mocking bcrypt
+jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed_password');
+
+// ❌ WRONG: Using "mockName" as second argument
+jest.spyOn(userAccountRepository.findByEmail, "mockName").mockResolvedValue(null);
+
+// ✅ CORRECT: Mock entire module
+jest.mock('../../src/config/database.js');
+jest.mock('bcryptjs');
+
+// ✅ CORRECT: Restore mocks in afterEach
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.clearAllMocks();
+});
+```
 
 ### Mock Patterns
 
@@ -811,6 +1601,181 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 ```
+
+---
+
+## Common Test Errors and Solutions
+
+### 1. SyntaxError: Cannot use import statement outside a module
+
+**Problem:**
+```
+SyntaxError: Cannot use import statement outside a module
+```
+
+**Solution:**
+- Ensure `"type": "module"` is in `package.json`
+- Run tests with: `cross-env NODE_OPTIONS=--experimental-vm-modules jest`
+- Use `.js` extension in all imports
+
+### 2. Jest Spy Wrong Syntax
+
+**Problem:**
+```javascript
+// ❌ WRONG: Using "mockName" as second parameter
+jest.spyOn(repository.findById, "mockName").mockResolvedValue(null);
+```
+
+**Solution:**
+```javascript
+// ✅ CORRECT: Method name as second parameter
+jest.spyOn(repository, 'findById').mockResolvedValue(null);
+```
+
+### 3. Tests Never Finish / Hanging
+
+**Problem:** Tests run but never complete, Jest hangs.
+
+**Solution:** Close database connections:
+```javascript
+afterAll(async () => {
+  await pool.end(); // Close connection pool
+});
+```
+
+### 4. Module Not Found with ES Modules
+
+**Problem:**
+```
+Cannot find module './JobService' from 'JobService.test.js'
+```
+
+**Solution:** Add `.js` extension:
+```javascript
+// ✅ CORRECT
+import JobService from './JobService.js';
+
+// ❌ WRONG
+import JobService from './JobService';
+```
+
+### 5. Async Functions Not Awaited
+
+**Problem:**
+```javascript
+beforeAll(() => {
+  pool.query('DELETE FROM...'); // Not awaited!
+});
+```
+
+**Solution:**
+```javascript
+beforeAll(async () => {
+  await pool.query('DELETE FROM...'); // Properly awaited
+});
+```
+
+### 6. Foreign Key Constraint Violations
+
+**Problem:**
+```
+ERROR: update or delete on table "organizations" violates foreign key constraint
+```
+
+**Solution:** Delete in correct order (children first):
+```javascript
+afterAll(async () => {
+  // ✅ CORRECT ORDER: Delete children first
+  await pool.query('DELETE FROM jobs WHERE organization_id = $1', [orgId]);
+  await pool.query('DELETE FROM workspaces WHERE organization_id = $1', [orgId]);
+  await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [orgId]);
+  await pool.query('DELETE FROM organizations WHERE id = $1', [orgId]); // Parent last
+});
+```
+
+### 7. Test Data Pollution
+
+**Problem:** Tests pass individually but fail when run together.
+
+**Solution:** Use unique test data or proper cleanup:
+```javascript
+beforeEach(async () => {
+  // Create fresh test data with unique identifiers
+  testOrg = await createTestOrg({ name: `Test Org ${Date.now()}` });
+});
+
+afterEach(async () => {
+  // Clean up after each test
+  await cleanupTestData(testOrg.id);
+});
+```
+
+### 8. Missing Schema Qualification
+
+**Problem:**
+```
+ERROR: relation "user_account" does not exist
+```
+
+**Solution:** Use schema-qualified table names:
+```javascript
+// ✅ CORRECT
+await pool.query('SELECT * FROM hris.user_account WHERE id = $1', [userId]);
+
+// ❌ WRONG
+await pool.query('SELECT * FROM user_account WHERE id = $1', [userId]);
+```
+
+### 9. Incorrect Mock Expectations
+
+**Problem:**
+```javascript
+expect(mockRepository.create).toHaveBeenCalledWith({ title: 'Job' });
+// Fails because actual call includes more fields
+```
+
+**Solution:** Use partial matchers:
+```javascript
+expect(mockRepository.create).toHaveBeenCalledWith(
+  expect.objectContaining({ title: 'Job' })
+);
+```
+
+### 10. Authentication Token Missing Required Fields
+
+**Problem:**
+```
+TypeError: Cannot read property 'organizationId' of undefined
+```
+
+**Solution:** Include all required token fields:
+```javascript
+// ✅ CORRECT: All required fields
+const token = jwt.sign({
+  id: userId,
+  userId: userId, // Some middleware checks this
+  email: userEmail,
+  organizationId: orgId,
+  role: 'admin'
+}, config.jwt.secret, { expiresIn: '1h' });
+```
+
+---
+
+## Test Debugging Checklist
+
+When a test fails, check:
+
+- [ ] All imports have `.js` extensions
+- [ ] `async`/`await` used in all lifecycle hooks
+- [ ] Database connections closed in `afterAll`
+- [ ] Test data cleaned up in correct order (FK constraints)
+- [ ] Schema-qualified table names used (e.g., `hris.user_account`)
+- [ ] JWT tokens include all required fields
+- [ ] Mocks cleared between tests (`jest.clearAllMocks()`)
+- [ ] No hard-coded test data that could conflict
+- [ ] Authentication method matches API expectations (cookie vs Bearer)
+- [ ] Mock syntax correct: `jest.spyOn(obj, 'method')`
 
 ---
 
@@ -1108,4 +2073,184 @@ test('should get job', async () => {
 
 ---
 
+---
+
+## Jest Configuration Requirements
+
+### Required jest.config.js Settings
+
+```javascript
+export default {
+  // REQUIRED for ES modules
+  testEnvironment: 'node',
+  transform: {},
+
+  // Setup/teardown files
+  globalSetup: './tests/setup.js',
+  globalTeardown: './tests/teardown.js',
+
+  // Coverage configuration
+  collectCoverageFrom: [
+    'src/**/*.js',
+    '!src/server.js',
+    '!src/**/__tests__/**',
+    '!src/**/*.test.js',
+  ],
+
+  // Test file patterns
+  testMatch: [
+    '**/__tests__/**/*.js',
+    '**/*.test.js',
+  ],
+
+  // Clear mocks between tests (IMPORTANT)
+  clearMocks: true,
+  resetMocks: true,
+  restoreMocks: true,
+
+  // Timeout (increase for integration tests)
+  testTimeout: 10000,
+
+  // Coverage thresholds
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  },
+};
+```
+
+### Required package.json Settings
+
+```json
+{
+  "type": "module",
+  "scripts": {
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:integration": "cross-env NODE_OPTIONS=--experimental-vm-modules jest tests/integration"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.0.0",
+    "jest": "^30.0.0",
+    "supertest": "^7.0.0",
+    "cross-env": "^10.0.0"
+  }
+}
+```
+
+### Global Setup File (tests/setup.js)
+
+```javascript
+/**
+ * Global test setup - runs once before all tests
+ */
+export default async function globalSetup() {
+  console.log('Setting up test environment...');
+  
+  // Set test environment variables
+  process.env.NODE_ENV = 'test';
+  process.env.DB_NAME = 'recruitiq_test';
+  
+  // Any other global setup
+}
+```
+
+### Global Teardown File (tests/teardown.js)
+
+```javascript
+/**
+ * Global test teardown - runs once after all tests
+ */
+export default async function globalTeardown() {
+  console.log('Tearing down test environment...');
+  
+  // Close any remaining connections
+  // Clean up global resources
+}
+```
+
+---
+
+## Quick Reference: Test Template Checklist
+
+### Unit Test Template
+
+```javascript
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import ServiceClass from '../../src/services/ServiceClass.js'; // .js extension!
+import Repository from '../../src/repositories/Repository.js';
+
+describe('ServiceClass', () => {
+  let service;
+  let mockRepository;
+
+  beforeEach(() => {
+    mockRepository = {
+      create: jest.fn(),
+      findById: jest.fn(),
+    };
+    service = new ServiceClass(mockRepository); // Dependency injection
+  });
+
+  it('should do something', async () => {
+    // Arrange
+    mockRepository.findById.mockResolvedValue({ id: '123' });
+
+    // Act
+    const result = await service.doSomething('123');
+
+    // Assert
+    expect(result).toBeDefined();
+    expect(mockRepository.findById).toHaveBeenCalledWith('123');
+  });
+});
+```
+
+### Integration Test Template
+
+```javascript
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import request from 'supertest';
+import app from '../../src/server.js';
+import pool from '../../src/config/database.js'; // For cleanup!
+
+describe('API Integration Tests', () => {
+  let testOrgId;
+  let authToken;
+
+  beforeAll(async () => {
+    // Create test data
+    const result = await pool.query('INSERT INTO organizations...');
+    testOrgId = result.rows[0].id;
+    authToken = generateTestToken({ organizationId: testOrgId });
+  });
+
+  afterAll(async () => {
+    // Clean up test data (correct order!)
+    await pool.query('DELETE FROM child_table WHERE org_id = $1', [testOrgId]);
+    await pool.query('DELETE FROM organizations WHERE id = $1', [testOrgId]);
+    
+    // CRITICAL: Close connection
+    await pool.end();
+  });
+
+  it('should test API endpoint', async () => {
+    const response = await request(app)
+      .get('/api/resource')
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+  });
+});
+```
+
+---
+
 **Next:** [Security Standards](./SECURITY_STANDARDS.md)
+
+````

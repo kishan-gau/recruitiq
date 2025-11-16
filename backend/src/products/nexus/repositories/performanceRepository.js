@@ -8,7 +8,8 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class PerformanceRepository {
-  constructor() {
+  constructor(database = null) {
+    this.query = database?.query || query;
     this.reviewTable = 'hris.performance_review';
     this.goalTable = 'hris.performance_goal';
     this.feedbackTable = 'hris.feedback';
@@ -31,7 +32,7 @@ class PerformanceRepository {
         LEFT JOIN ${this.templateTable} t ON r.template_id = t.id
         WHERE r.id = $1 AND r.organization_id = $2 AND r.deleted_at IS NULL
       `;
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding review', { id, error: error.message });
@@ -65,7 +66,7 @@ class PerformanceRepository {
       sql += ` ORDER BY r.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding reviews', { error: error.message });
@@ -86,7 +87,7 @@ class PerformanceRepository {
         FROM ${this.reviewTable}
         WHERE organization_id = $1 AND deleted_at IS NULL
       `;
-      const result = await query(sql, [organizationId], organizationId);
+      const result = await this.query(sql, [organizationId], organizationId);
       return {
         total: parseInt(result.rows[0].total) || 0,
         draft: parseInt(result.rows[0].draft) || 0,
@@ -122,7 +123,7 @@ class PerformanceRepository {
         dbData.goals_for_next_period || null, dbData.status || 'draft', dbData.due_date || null,
         userId, userId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating review', { error: error.message });
@@ -152,7 +153,7 @@ class PerformanceRepository {
         dbData.overall_rating, dbData.strengths, dbData.areas_for_improvement,
         dbData.goals_for_next_period, dbData.status, userId, id, organizationId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating review', { error: error.message });
@@ -165,7 +166,7 @@ class PerformanceRepository {
   async findGoalById(id, organizationId) {
     try {
       const sql = `SELECT * FROM ${this.goalTable} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`;
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding goal', { error: error.message });
@@ -194,7 +195,7 @@ class PerformanceRepository {
       sql += ` ORDER BY target_date ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding goals', { error: error.message });
@@ -214,7 +215,7 @@ class PerformanceRepository {
         FROM ${this.goalTable}
         WHERE organization_id = $1 AND deleted_at IS NULL
       `;
-      const result = await query(sql, [organizationId], organizationId);
+      const result = await this.query(sql, [organizationId], organizationId);
       return {
         total: parseInt(result.rows[0].total) || 0,
         active: parseInt(result.rows[0].active) || 0,
@@ -246,7 +247,7 @@ class PerformanceRepository {
         dbData.target_date || null, dbData.completion_percentage || 0, dbData.status || 'active',
         dbData.measurement_criteria || null, userId, userId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating goal', { error: error.message });
@@ -269,7 +270,7 @@ class PerformanceRepository {
         RETURNING *
       `;
       const params = [dbData.goal_description, dbData.completion_percentage, dbData.status, userId, id, organizationId];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating goal', { error: error.message });
@@ -295,7 +296,7 @@ class PerformanceRepository {
         dbData.feedback_type || null, dbData.feedback_text, dbData.is_anonymous || false,
         dbData.related_goal_id || null, userId, userId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating feedback', { error: error.message });
@@ -313,7 +314,7 @@ class PerformanceRepository {
         ORDER BY f.created_at DESC
         LIMIT $3
       `;
-      const result = await query(sql, [employeeId, organizationId, limit], organizationId);
+      const result = await this.query(sql, [employeeId, organizationId, limit], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding feedback', { error: error.message });

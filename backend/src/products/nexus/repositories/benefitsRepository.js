@@ -8,7 +8,8 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class BenefitsRepository {
-  constructor() {
+  constructor(database = null) {
+    this.query = database?.query || query;
     this.planTable = 'hris.benefit_plan';
     this.enrollmentTable = 'hris.benefit_enrollment';
     this.logger = logger;
@@ -19,7 +20,7 @@ class BenefitsRepository {
   async findPlanById(id, organizationId) {
     try {
       const sql = `SELECT * FROM ${this.planTable} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`;
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding benefit plan', { id, error: error.message });
@@ -54,7 +55,7 @@ class BenefitsRepository {
       sql += ` GROUP BY p.id ORDER BY p.plan_name ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding benefit plans', { error: error.message });
@@ -82,7 +83,7 @@ class BenefitsRepository {
         dbData.is_active !== undefined ? dbData.is_active : true,
         userId, userId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating benefit plan', { error: error.message });
@@ -115,7 +116,7 @@ class BenefitsRepository {
         dbData.enrollment_rules ? JSON.stringify(dbData.enrollment_rules) : null,
         dbData.is_active, userId, id, organizationId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating benefit plan', { error: error.message });
@@ -136,7 +137,7 @@ class BenefitsRepository {
         LEFT JOIN hris.employee emp ON e.employee_id = emp.id
         WHERE e.id = $1 AND e.organization_id = $2 AND e.deleted_at IS NULL
       `;
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding enrollment', { error: error.message });
@@ -155,7 +156,7 @@ class BenefitsRepository {
         WHERE e.employee_id = $1 AND e.organization_id = $2 AND e.deleted_at IS NULL
         ORDER BY e.enrollment_date DESC
       `;
-      const result = await query(sql, [employeeId, organizationId], organizationId);
+      const result = await this.query(sql, [employeeId, organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding enrollments by employee', { error: error.message });
@@ -186,7 +187,7 @@ class BenefitsRepository {
 
       sql += ` ORDER BY e.enrollment_date DESC`;
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding active enrollments', { error: error.message });
@@ -215,7 +216,7 @@ class BenefitsRepository {
         dbData.status || 'pending', dbData.start_date, dbData.end_date || null,
         userId, userId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating enrollment', { error: error.message });
@@ -246,7 +247,7 @@ class BenefitsRepository {
         dbData.employee_contribution, dbData.employer_contribution,
         dbData.status, dbData.end_date, userId, id, organizationId
       ];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating enrollment', { error: error.message });
@@ -266,7 +267,7 @@ class BenefitsRepository {
         WHERE id = $3 AND organization_id = $4 AND deleted_at IS NULL
         RETURNING *
       `;
-      const result = await query(sql, [endDate, userId, id, organizationId], organizationId);
+      const result = await this.query(sql, [endDate, userId, id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error terminating enrollment', { error: error.message });

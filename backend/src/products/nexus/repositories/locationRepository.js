@@ -8,7 +8,8 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class LocationRepository {
-  constructor() {
+  constructor(database = null) {
+    this.query = database?.query || query;
     this.tableName = 'hris.location';
     this.logger = logger;
   }
@@ -27,7 +28,7 @@ class LocationRepository {
           AND l.deleted_at IS NULL
       `;
 
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding location by ID', { id, organizationId, error: error.message });
@@ -73,7 +74,7 @@ class LocationRepository {
       sql += ` ORDER BY ${orderBy} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding all locations', { filters, organizationId, error: error.message });
@@ -93,7 +94,7 @@ class LocationRepository {
           AND deleted_at IS NULL
       `;
 
-      const result = await query(sql, [locationCode, organizationId], organizationId);
+      const result = await this.query(sql, [locationCode, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding location by code', { locationCode, organizationId, error: error.message });
@@ -135,7 +136,7 @@ class LocationRepository {
         userId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating location', { locationData, organizationId, error: error.message });
@@ -189,7 +190,7 @@ class LocationRepository {
         organizationId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating location', { id, locationData, organizationId, error: error.message });
@@ -209,7 +210,7 @@ class LocationRepository {
         RETURNING id
       `;
 
-      const result = await query(sql, [userId, id, organizationId], organizationId);
+      const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rowCount > 0;
     } catch (error) {
       this.logger.error('Error deleting location', { id, organizationId, error: error.message });

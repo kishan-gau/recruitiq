@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '../lib/apiClient';
+import { usePaylinqAPI } from './usePaylinqAPI';
 
 // Types
 export interface ExchangeRate {
@@ -82,7 +82,7 @@ export const currencyKeys = {
     [...currencyKeys.rates(), from, to, date] as const,
   historical: (from: string, to: string) => 
     [...currencyKeys.rates(), 'historical', from, to] as const,
-  conversions: (type: string, id: string) => 
+  conversions: (type?: string, id?: string) => 
     [...currencyKeys.all, 'conversions', type, id] as const,
   config: () => [...currencyKeys.all, 'config'] as const,
   cacheStats: () => [...currencyKeys.all, 'cache', 'stats'] as const,
@@ -90,11 +90,13 @@ export const currencyKeys = {
 
 // Hook for exchange rates
 export function useExchangeRates() {
+  const { paylinq } = usePaylinqAPI();
+  
   return useQuery({
     queryKey: currencyKeys.rates(),
     queryFn: async () => {
-      const response = await apiClient.get('/currency/');
-      return response.data.data as ExchangeRate[];
+      const response = await paylinq.getExchangeRates();
+      return (response.data.data || []) as ExchangeRate[];
     },
   });
 }
@@ -105,12 +107,14 @@ export function useCurrentExchangeRate(
   toCurrency: string,
   date?: string
 ) {
+  const { paylinq } = usePaylinqAPI();
+  
   return useQuery({
     queryKey: currencyKeys.rate(fromCurrency, toCurrency, date),
     queryFn: async () => {
-      const url = `/currency/current/${fromCurrency}/${toCurrency}`;
-      const params = date ? { date } : {};
-      const response = await apiClient.get(url, { params });
+      const params: any = { fromCurrency, toCurrency };
+      if (date) params.date = date;
+      const response = await paylinq.getExchangeRates(params);
       return response.data.data as ExchangeRate;
     },
     enabled: !!fromCurrency && !!toCurrency,
@@ -128,11 +132,17 @@ export function useHistoricalExchangeRates(
     offset?: number;
   }
 ) {
+  const { paylinq } = usePaylinqAPI();
+  
   return useQuery({
     queryKey: [...currencyKeys.historical(fromCurrency, toCurrency), options],
     queryFn: async () => {
-      const url = `/currency/historical/${fromCurrency}/${toCurrency}`;
-      const response = await apiClient.get(url, { params: options });
+      const params = {
+        fromCurrency,
+        toCurrency,
+        ...options,
+      };
+      const response = await paylinq.getExchangeRateHistory(params);
       return response.data.data as ExchangeRate[];
     },
     enabled: !!fromCurrency && !!toCurrency,
@@ -141,11 +151,12 @@ export function useHistoricalExchangeRates(
 
 // Hook for creating exchange rate
 export function useCreateExchangeRate() {
+  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: Partial<ExchangeRate>) => {
-      const response = await apiClient.post('/currency/', data);
+      const response = await paylinq.createExchangeRate(data);
       return response.data.data as ExchangeRate;
     },
     onSuccess: () => {
@@ -156,11 +167,12 @@ export function useCreateExchangeRate() {
 
 // Hook for updating exchange rate
 export function useUpdateExchangeRate() {
+  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<ExchangeRate> }) => {
-      const response = await apiClient.put(`/currency/${id}`, data);
+      const response = await paylinq.updateExchangeRate(id.toString(), data);
       return response.data.data as ExchangeRate;
     },
     onSuccess: () => {
@@ -171,11 +183,12 @@ export function useUpdateExchangeRate() {
 
 // Hook for deleting exchange rate
 export function useDeleteExchangeRate() {
+  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiClient.delete(`/currency/${id}`);
+      const response = await paylinq.deleteExchangeRate(id.toString());
       return response.data.data;
     },
     onSuccess: () => {
@@ -186,11 +199,12 @@ export function useDeleteExchangeRate() {
 
 // Hook for bulk importing rates
 export function useBulkImportRates() {
+  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (rates: Partial<ExchangeRate>[]) => {
-      const response = await apiClient.post('/currency/bulk-import', { rates });
+      const response = await paylinq.bulkImportExchangeRates(rates);
       return response.data.data as ExchangeRate[];
     },
     onSuccess: () => {
@@ -201,21 +215,34 @@ export function useBulkImportRates() {
 
 // Hook for currency conversion
 export function useCurrencyConversion() {
+  const { paylinq } = usePaylinqAPI();
+  
   return useMutation({
     mutationFn: async (data: ConversionRequest) => {
-      const response = await apiClient.post('/currency/convert', data);
+      const response = await paylinq.convertCurrency({
+        fromCurrency: data.fromCurrency,
+        toCurrency: data.toCurrency,
+        amount: data.amount,
+        asOfDate: data.date,
+        referenceType: data.referenceType,
+        referenceId: data.referenceId,
+      });
       return response.data.data as ConversionResult;
     },
   });
 }
 
 // Hook for conversion history
-export function useConversionHistory(referenceType: string, referenceId: string) {
+export function useConversionHistory(referenceType?: string, referenceId?: string) {
+  const { paylinq } = usePaylinqAPI();
+  
   return useQuery({
     queryKey: currencyKeys.conversions(referenceType, referenceId),
     queryFn: async () => {
-      const url = `/currency/conversions/${referenceType}/${referenceId}`;
-      const response = await apiClient.get(url);
+      const params: any = {};
+      if (referenceType) params.referenceType = referenceType;
+      if (referenceId) params.referenceId = referenceId;
+      const response = await paylinq.getConversionHistory(params);
       return response.data.data as CurrencyConversion[];
     },
     enabled: !!referenceType && !!referenceId,
@@ -224,22 +251,25 @@ export function useConversionHistory(referenceType: string, referenceId: string)
 
 // Hook for organization currency config
 export function useCurrencyConfig() {
+  const { paylinq } = usePaylinqAPI();
+  
   return useQuery({
     queryKey: currencyKeys.config(),
     queryFn: async () => {
-      const response = await apiClient.get('/currency/config');
-      return response.data.data as OrganizationCurrencyConfig;
+      const response = await paylinq.getCurrencyConfig();
+      return (response.data.data || {}) as OrganizationCurrencyConfig;
     },
   });
 }
 
 // Hook for updating currency config
 export function useUpdateCurrencyConfig() {
+  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (data: Partial<OrganizationCurrencyConfig>) => {
-      const response = await apiClient.put('/currency/config', data);
+      const response = await paylinq.updateCurrencyConfig(data);
       return response.data.data as OrganizationCurrencyConfig;
     },
     onSuccess: () => {
@@ -250,22 +280,26 @@ export function useUpdateCurrencyConfig() {
 
 // Hook for cache statistics
 export function useCacheStats() {
+  const { paylinq } = usePaylinqAPI();
+  
   return useQuery({
     queryKey: currencyKeys.cacheStats(),
     queryFn: async () => {
-      const response = await apiClient.get('/currency/cache/stats');
-      return response.data.data;
+      const response = await paylinq.getCacheStats();
+      return response.data.data || {};
     },
+    enabled: false, // Disabled by default since it requires admin permission
   });
 }
 
 // Hook for clearing cache
 export function useClearCache() {
+  const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async () => {
-      const response = await apiClient.post('/currency/cache/clear');
+      const response = await paylinq.clearCurrencyCache();
       return response.data;
     },
     onSuccess: () => {

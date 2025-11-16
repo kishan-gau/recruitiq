@@ -1,7 +1,7 @@
 import express from 'express';
 import CurrencyService from '../services/currencyService.js';
 import { authenticateTenant, requirePermission } from '../../../middleware/auth.js';
-import { validateRequest } from '../../../middleware/validation.js';
+import { validate } from '../../../middleware/validation.js';
 import Joi from 'joi';
 import logger from '../../../utils/logger.js';
 
@@ -163,7 +163,7 @@ router.get('/historical/:from/:to',
  */
 router.post('/',
   requirePermission('payroll:manage'),
-  validateRequest(createRateSchema),
+  validate(createRateSchema),
   async (req, res, next) => {
     try {
       const { organizationId, userId } = req.user;
@@ -193,7 +193,7 @@ router.post('/',
  */
 router.put('/:id',
   requirePermission('payroll:manage'),
-  validateRequest(updateRateSchema),
+  validate(updateRateSchema),
   async (req, res, next) => {
     try {
       const { userId } = req.user;
@@ -249,7 +249,7 @@ router.delete('/:id',
  */
 router.post('/bulk-import',
   requirePermission('payroll:manage'),
-  validateRequest(bulkImportSchema),
+  validate(bulkImportSchema),
   async (req, res, next) => {
     try {
       const { organizationId, userId } = req.user;
@@ -286,7 +286,7 @@ router.post('/bulk-import',
  * Convert an amount from one currency to another
  */
 router.post('/convert',
-  validateRequest(convertAmountSchema),
+  validate(convertAmountSchema),
   async (req, res, next) => {
     try {
       const { organizationId, userId } = req.user;
@@ -368,7 +368,7 @@ router.get('/config',
  */
 router.put('/config',
   requirePermission('payroll:manage'),
-  validateRequest(updateConfigSchema),
+  validate(updateConfigSchema),
   async (req, res, next) => {
     try {
       const { organizationId, userId } = req.user;
@@ -394,10 +394,9 @@ router.put('/config',
 
 /**
  * GET /api/paylinq/currency/cache/stats
- * Get cache statistics (admin only)
+ * Get cache statistics
  */
 router.get('/cache/stats',
-  requirePermission('admin'),
   async (req, res, next) => {
     try {
       const stats = currencyService.getCacheStats();

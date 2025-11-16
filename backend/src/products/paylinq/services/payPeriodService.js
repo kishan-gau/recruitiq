@@ -9,6 +9,13 @@ import { ValidationError, NotFoundError } from '../../../middleware/errorHandler
 import Joi from 'joi';
 
 class PayPeriodService {
+  /**
+   * @param {Object} database - Optional database instance for testing
+   */
+  constructor(database = null) {
+    this.db = database || { query };
+  }
+
   // Validation schemas
   payPeriodConfigSchema = Joi.object({
     payFrequency: Joi.string().valid('weekly', 'bi-weekly', 'semi-monthly', 'monthly').required(),
@@ -32,7 +39,7 @@ class PayPeriodService {
    */
   async getPayPeriodConfig(organizationId) {
     try {
-      const result = await query(
+      const result = await this.db.query(
         `SELECT 
            id,
            pay_frequency as "payFrequency",
@@ -73,7 +80,7 @@ class PayPeriodService {
 
       if (existing) {
         // Update existing
-        const result = await query(
+        const result = await this.db.query(
           `UPDATE payroll.pay_period_config
            SET pay_frequency = $1,
                period_start_date = $2,
@@ -113,7 +120,7 @@ class PayPeriodService {
         return result.rows[0];
       } else {
         // Create new
-        const result = await query(
+        const result = await this.db.query(
           `INSERT INTO payroll.pay_period_config (
              organization_id,
              pay_frequency,
@@ -181,8 +188,9 @@ class PayPeriodService {
     const current = await this.getCurrentPayPeriod(organizationId);
     const config = await this.getPayPeriodConfig(organizationId);
     
-    const nextPeriodStart = this.addDays(new Date(current.periodEnd), 1);
-    const startDate = new Date(config.periodStartDate);
+    // Parse dates with time component to avoid timezone shift issues
+    const nextPeriodStart = this.addDays(new Date(current.periodEnd + 'T12:00:00'), 1);
+    const startDate = new Date(config.periodStartDate + 'T12:00:00');
     
     return this.calculatePayPeriod(config, nextPeriodStart, startDate);
   }
@@ -276,7 +284,7 @@ class PayPeriodService {
       
       sql += ` ORDER BY holiday_date ASC`;
 
-      const result = await query(sql, params, organizationId, { operation: 'SELECT', table: 'company_holiday' });
+      const result = await this.db.query(sql, params, organizationId, { operation: 'SELECT', table: 'company_holiday' });
       
       return result.rows;
     } catch (err) {
@@ -295,7 +303,7 @@ class PayPeriodService {
     }
 
     try {
-      const result = await query(
+      const result = await this.db.query(
         `INSERT INTO payroll.company_holiday (
            organization_id,
            holiday_name,
@@ -341,7 +349,7 @@ class PayPeriodService {
    */
   async deleteHoliday(holidayId, organizationId) {
     try {
-      const result = await query(
+      const result = await this.db.query(
         `UPDATE payroll.company_holiday
          SET is_active = false, updated_at = NOW()
          WHERE id = $1 AND organization_id = $2
@@ -375,4 +383,4 @@ class PayPeriodService {
   }
 }
 
-export default new PayPeriodService();
+export default PayPeriodService;

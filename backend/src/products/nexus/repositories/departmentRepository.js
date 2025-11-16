@@ -8,7 +8,8 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class DepartmentRepository {
-  constructor() {
+  constructor(database = null) {
+    this.query = database?.query || query;
     this.tableName = 'hris.department';
     this.logger = logger;
   }
@@ -29,7 +30,7 @@ class DepartmentRepository {
           AND d.deleted_at IS NULL
       `;
 
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding department by ID', { id, organizationId, error: error.message });
@@ -71,7 +72,7 @@ class DepartmentRepository {
       sql += ` ORDER BY ${orderBy} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding all departments', { filters, organizationId, error: error.message });
@@ -91,7 +92,7 @@ class DepartmentRepository {
           AND deleted_at IS NULL
       `;
 
-      const result = await query(sql, [departmentCode, organizationId], organizationId);
+      const result = await this.query(sql, [departmentCode, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding department by code', { departmentCode, organizationId, error: error.message });
@@ -125,7 +126,7 @@ class DepartmentRepository {
         userId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating department', { departmentData, organizationId, error: error.message });
@@ -165,7 +166,7 @@ class DepartmentRepository {
         organizationId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating department', { id, departmentData, organizationId, error: error.message });
@@ -185,7 +186,7 @@ class DepartmentRepository {
         RETURNING id
       `;
 
-      const result = await query(sql, [userId, id, organizationId], organizationId);
+      const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rowCount > 0;
     } catch (error) {
       this.logger.error('Error deleting department', { id, organizationId, error: error.message });
@@ -228,7 +229,7 @@ class DepartmentRepository {
         ORDER BY path
       `;
 
-      const result = await query(sql, [organizationId], organizationId);
+      const result = await this.query(sql, [organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error getting department hierarchy', { organizationId, error: error.message });

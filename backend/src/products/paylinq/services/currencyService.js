@@ -3,7 +3,7 @@ import ApprovalService from './approvalService.js';
 import logger from '../../../utils/logger.js';
 import NodeCache from 'node-cache';
 import { createClient } from 'redis';
-import { pool } from '../../../config/database.js';
+import pool from '../../../config/database.js';
 
 /**
  * Currency Service - Handles all currency conversion operations

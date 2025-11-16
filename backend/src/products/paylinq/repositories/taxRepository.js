@@ -5,10 +5,11 @@
 
 import pool from '../../../config/database.js';
 
-/**
- * Get tax rates for a jurisdiction
- */
-export async function getTaxRates(jurisdictionId, effectiveDate) {
+class TaxRepository {
+  /**
+   * Get tax rates for a jurisdiction
+   */
+  async getTaxRates(jurisdictionId, effectiveDate) {
   const query = `
     SELECT * FROM tax_rates
     WHERE jurisdiction_id = $1
@@ -24,7 +25,7 @@ export async function getTaxRates(jurisdictionId, effectiveDate) {
 /**
  * Get all tax jurisdictions
  */
-export async function getAllJurisdictions() {
+  async getAllJurisdictions() {
   const query = `
     SELECT * FROM tax_jurisdictions
     ORDER BY jurisdiction_name
@@ -37,7 +38,7 @@ export async function getAllJurisdictions() {
 /**
  * Get tax jurisdiction by ID
  */
-export async function getJurisdictionById(jurisdictionId) {
+  async getJurisdictionById(jurisdictionId) {
   const query = `
     SELECT * FROM tax_jurisdictions
     WHERE id = $1
@@ -47,8 +48,6 @@ export async function getJurisdictionById(jurisdictionId) {
   return result.rows[0];
 }
 
-export default {
-  getTaxRates,
-  getAllJurisdictions,
-  getJurisdictionById
-};
+}
+
+export default TaxRepository;

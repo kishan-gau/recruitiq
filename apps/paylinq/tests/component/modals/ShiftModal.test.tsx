@@ -546,13 +546,15 @@ describe('ShiftModal', () => {
       })
     })
 
-    it('creates shift with notes', async () => {
+    it('handles overtime shift with notes', async () => {
       const user = userEvent.setup()
       renderWithProviders(
         <ShiftModal 
           isOpen={true} 
           onClose={mockOnClose} 
           onSuccess={mockOnSuccess}
+          employeeId="EMP003"
+          date="2025-11-14"
         />
       )
       
@@ -710,6 +712,8 @@ describe('ShiftModal', () => {
           isOpen={true} 
           onClose={mockOnClose} 
           onSuccess={mockOnSuccess}
+          employeeId="EMP001"
+          date="2025-11-15"
         />
       )
       
@@ -737,6 +741,8 @@ describe('ShiftModal', () => {
           isOpen={true} 
           onClose={mockOnClose} 
           onSuccess={mockOnSuccess}
+          employeeId="EMP002"
+          date="2025-11-15"
         />
       )
       

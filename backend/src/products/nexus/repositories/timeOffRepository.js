@@ -8,7 +8,8 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class TimeOffRepository {
-  constructor() {
+  constructor(database = null) {
+    this.query = database?.query || query;
     this.requestTable = 'hris.time_off_request';
     this.balanceTable = 'hris.employee_time_off_balance';
     this.typeTable = 'hris.time_off_type';
@@ -29,7 +30,7 @@ class TimeOffRepository {
         ORDER BY type_name
       `;
 
-      const result = await query(sql, [organizationId], organizationId);
+      const result = await this.query(sql, [organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding time-off types', { organizationId, error: error.message });
@@ -47,7 +48,7 @@ class TimeOffRepository {
         WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
       `;
 
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding time-off type', { id, organizationId, error: error.message });
@@ -92,7 +93,7 @@ class TimeOffRepository {
         userId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating time-off type', { typeData, organizationId, error: error.message });
@@ -119,7 +120,7 @@ class TimeOffRepository {
           AND b.organization_id = $4
       `;
 
-      const result = await query(sql, [employeeId, typeId, year, organizationId], organizationId);
+      const result = await this.query(sql, [employeeId, typeId, year, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding balance', { employeeId, typeId, year, organizationId, error: error.message });
@@ -145,7 +146,7 @@ class TimeOffRepository {
         ORDER BY t.type_name
       `;
 
-      const result = await query(sql, [employeeId, year, organizationId], organizationId);
+      const result = await this.query(sql, [employeeId, year, organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding balances by employee', { employeeId, year, organizationId, error: error.message });
@@ -191,7 +192,7 @@ class TimeOffRepository {
         dbData.carryover_expires_at || null
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error upserting balance', { balanceData, organizationId, error: error.message });
@@ -228,7 +229,7 @@ class TimeOffRepository {
         organizationId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating balance', { employeeId, typeId, year, updates, organizationId, error: error.message });
@@ -259,7 +260,7 @@ class TimeOffRepository {
           AND r.deleted_at IS NULL
       `;
 
-      const result = await query(sql, [id, organizationId], organizationId);
+      const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding request by ID', { id, organizationId, error: error.message });
@@ -315,7 +316,7 @@ class TimeOffRepository {
       sql += ` ORDER BY ${orderBy} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding all requests', { filters, organizationId, error: error.message });
@@ -352,7 +353,7 @@ class TimeOffRepository {
         userId
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating request', { requestData, organizationId, error: error.message });
@@ -381,7 +382,7 @@ class TimeOffRepository {
       `;
 
       const params = [status, approverId, rejectionReason, userId, id, organizationId];
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating request status', { id, status, organizationId, error: error.message });
@@ -401,7 +402,7 @@ class TimeOffRepository {
         RETURNING id
       `;
 
-      const result = await query(sql, [userId, id, organizationId], organizationId);
+      const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rowCount > 0;
     } catch (error) {
       this.logger.error('Error deleting request', { id, organizationId, error: error.message });
@@ -437,7 +438,7 @@ class TimeOffRepository {
         dbData.balance_after_accrual
       ];
 
-      const result = await query(sql, params, organizationId);
+      const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating accrual history', { accrualData, organizationId, error: error.message });
@@ -459,7 +460,7 @@ class TimeOffRepository {
         LIMIT $4
       `;
 
-      const result = await query(sql, [employeeId, typeId, organizationId, limit], organizationId);
+      const result = await this.query(sql, [employeeId, typeId, organizationId, limit], organizationId);
       return result.rows.map(row => mapDbToApi(row));
     } catch (error) {
       this.logger.error('Error getting accrual history', { employeeId, typeId, organizationId, error: error.message });

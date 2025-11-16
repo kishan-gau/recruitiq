@@ -14,6 +14,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class SchedulingRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   // ==================== WORK SCHEDULES ====================
   
   /**
@@ -24,7 +28,7 @@ class SchedulingRepository {
    * @returns {Promise<Object>} Created work schedule
    */
   async createWorkSchedule(scheduleData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.work_schedule 
       (organization_id, employee_id, shift_type_id, schedule_date,
        start_time, end_time, duration_hours, status, notes, created_by)
@@ -90,7 +94,7 @@ class SchedulingRepository {
       params.push(criteria.shiftTypeId);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT ws.*,
               e.employee_number,
               e.id as employee_id,
@@ -170,7 +174,7 @@ class SchedulingRepository {
     const orderClause = `ORDER BY ${sortField} ${sortOrder}, ws.start_time ASC`;
     
     // Get total count
-    const countResult = await query(
+    const countResult = await this.query(
       `SELECT COUNT(*) as total
        FROM payroll.work_schedule ws
        INNER JOIN hris.employee e ON e.id = ws.employee_id
@@ -189,7 +193,7 @@ class SchedulingRepository {
     paramCount++;
     const offsetParam = paramCount;
     
-    const result = await query(
+    const result = await this.query(
       `SELECT ws.*,
               e.employee_number,
               e.id as employee_id,
@@ -228,7 +232,7 @@ class SchedulingRepository {
    * @returns {Promise<Object|null>} Work schedule or null
    */
   async findWorkScheduleById(scheduleId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT ws.*,
               e.employee_number,
               e.first_name,
@@ -275,7 +279,7 @@ class SchedulingRepository {
     // If no valid fields to update, fetch and return the unchanged record
     // This allows API to gracefully accept fields that database doesn't store yet
     if (setClause.length === 0) {
-      const existingResult = await query(
+      const existingResult = await this.query(
         `SELECT * FROM payroll.work_schedule 
          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
         [scheduleId, organizationId],
@@ -295,7 +299,7 @@ class SchedulingRepository {
     paramCount++;
     params.push(organizationId);
     
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.work_schedule 
        SET ${setClause.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
@@ -334,7 +338,7 @@ class SchedulingRepository {
    * @returns {Promise<boolean>} Success status
    */
   async deleteWorkSchedule(scheduleId, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.work_schedule 
        SET deleted_at = NOW(), 
            deleted_by = $1,
@@ -358,7 +362,7 @@ class SchedulingRepository {
    * @returns {Promise<Object>} Created schedule change request
    */
   async createScheduleChangeRequest(requestData, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `INSERT INTO payroll.schedule_change_request 
       (organization_id, work_schedule_id, requested_by, request_type,
        original_date, proposed_date, original_shift_type_id, 
@@ -414,7 +418,7 @@ class SchedulingRepository {
       params.push(criteria.requestType);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT scr.*,
               ws.schedule_date as original_schedule_date,
               e.employee_number,
@@ -479,7 +483,7 @@ class SchedulingRepository {
     const orderClause = `ORDER BY ${sortField} ${sortOrder}`;
     
     // Get total count
-    const countResult = await query(
+    const countResult = await this.query(
       `SELECT COUNT(*) as total
        FROM payroll.schedule_change_request scr
        LEFT JOIN hris.employee e ON e.id = scr.requested_by
@@ -498,7 +502,7 @@ class SchedulingRepository {
     paramCount++;
     const offsetParam = paramCount;
     
-    const result = await query(
+    const result = await this.query(
       `SELECT scr.*,
               ws.schedule_date as original_schedule_date,
               e.employee_number,
@@ -536,7 +540,7 @@ class SchedulingRepository {
    * @returns {Promise<Object|null>} Schedule change request or null
    */
   async findScheduleChangeRequestById(requestId, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT scr.*,
               ws.schedule_date,
               ws.employee_id,
@@ -564,7 +568,7 @@ class SchedulingRepository {
    * @returns {Promise<Object>} Updated schedule change request
    */
   async updateScheduleChangeRequestStatus(requestId, status, organizationId, userId) {
-    const result = await query(
+    const result = await this.query(
       `UPDATE payroll.schedule_change_request 
        SET status = $1::VARCHAR,
            reviewed_by = CASE WHEN $1::VARCHAR IN ('approved', 'rejected') THEN $2 ELSE reviewed_by END,
@@ -589,7 +593,7 @@ class SchedulingRepository {
    * @returns {Promise<Object>} Schedule statistics
    */
   async getScheduleStatistics(startDate, endDate, organizationId) {
-    const result = await query(
+    const result = await this.query(
       `SELECT 
         COUNT(DISTINCT ws.employee_id) as total_employees_scheduled,
         COUNT(ws.id) as total_shifts,
@@ -641,7 +645,7 @@ class SchedulingRepository {
       params.push(excludeScheduleId);
     }
     
-    const result = await query(
+    const result = await this.query(
       `SELECT * FROM payroll.work_schedule
        ${whereClause}`,
       params,

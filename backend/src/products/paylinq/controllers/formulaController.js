@@ -1,5 +1,7 @@
-import payComponentService from '../services/payComponentService.js';
+import PayComponentService from '../services/payComponentService.js';
 import logger from '../../../utils/logger.js';
+
+const payComponentService = new PayComponentService();
 
 /**
  * Validate a formula expression

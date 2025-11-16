@@ -9,14 +9,19 @@
 import db from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
-/**
- * Get payroll metrics for dashboard
+class DashboardRepository {
+  constructor(database = null) {
+    this.db = database || db;
+  }
+
+  /**
+   * Get payroll metrics for dashboard
  * @param {string} organizationId 
  * @param {Date} startDate 
  * @param {Date} endDate 
  * @returns {Promise<Object>}
  */
-async function getPayrollMetrics(organizationId, startDate, endDate) {
+  async getPayrollMetrics(organizationId, startDate, endDate) {
   try {
     const query = `
       SELECT 
@@ -48,7 +53,7 @@ async function getPayrollMetrics(organizationId, startDate, endDate) {
         AND pr.deleted_at IS NULL
     `;
 
-    const result = await db.query(query, [organizationId, startDate, endDate]);
+    const result = await this.db.query(query, [organizationId, startDate, endDate]);
     
     return {
       totalPayrollRuns: parseInt(result.rows[0].total_payroll_runs) || 0,
@@ -74,7 +79,7 @@ async function getPayrollMetrics(organizationId, startDate, endDate) {
  * @param {string} organizationId 
  * @returns {Promise<Object>}
  */
-async function getEmployeeMetrics(organizationId) {
+  async getEmployeeMetrics(organizationId) {
   try {
     const query = `
       SELECT 
@@ -88,7 +93,7 @@ async function getEmployeeMetrics(organizationId) {
         AND e.deleted_at IS NULL
     `;
 
-    const result = await db.query(query, [organizationId]);
+    const result = await this.db.query(query, [organizationId]);
     
     // Get worker type breakdown
     const workerTypeQuery = `
@@ -105,7 +110,7 @@ async function getEmployeeMetrics(organizationId) {
       ORDER BY count DESC
     `;
 
-    const workerTypeResult = await db.query(workerTypeQuery, [organizationId]);
+    const workerTypeResult = await this.db.query(workerTypeQuery, [organizationId]);
 
     return {
       totalEmployees: parseInt(result.rows[0].total_employees) || 0,
@@ -130,7 +135,7 @@ async function getEmployeeMetrics(organizationId) {
  * @param {Date} endDate 
  * @returns {Promise<Object>}
  */
-async function getTimesheetMetrics(organizationId, startDate, endDate) {
+  async getTimesheetMetrics(organizationId, startDate, endDate) {
   try {
     const query = `
       SELECT 
@@ -151,7 +156,7 @@ async function getTimesheetMetrics(organizationId, startDate, endDate) {
         AND deleted_at IS NULL
     `;
 
-    const result = await db.query(query, [organizationId, startDate, endDate]);
+    const result = await this.db.query(query, [organizationId, startDate, endDate]);
     
     return {
       totalTimesheets: parseInt(result.rows[0].total_timesheets) || 0,
@@ -175,7 +180,7 @@ async function getTimesheetMetrics(organizationId, startDate, endDate) {
  * @param {number} limit 
  * @returns {Promise<Array>}
  */
-async function getUpcomingPayrolls(organizationId, limit = 5) {
+  async getUpcomingPayrolls(organizationId, limit = 5) {
   try {
     const query = `
       SELECT 
@@ -194,7 +199,7 @@ async function getUpcomingPayrolls(organizationId, limit = 5) {
       LIMIT $2
     `;
 
-    const result = await db.query(query, [organizationId, limit]);
+    const result = await this.db.query(query, [organizationId, limit]);
     return result.rows;
   } catch (error) {
     logger.error('Error fetching upcoming payrolls', {
@@ -211,7 +216,7 @@ async function getUpcomingPayrolls(organizationId, limit = 5) {
  * @param {number} limit 
  * @returns {Promise<Array>}
  */
-async function getRecentActivity(organizationId, limit = 10) {
+  async getRecentActivity(organizationId, limit = 10) {
   try {
     // Combine multiple activity sources
     const query = `
@@ -254,7 +259,7 @@ async function getRecentActivity(organizationId, limit = 10) {
       LIMIT $2
     `;
 
-    const result = await db.query(query, [organizationId, limit]);
+    const result = await this.db.query(query, [organizationId, limit]);
     return result.rows;
   } catch (error) {
     logger.error('Error fetching recent activity', {
@@ -265,10 +270,6 @@ async function getRecentActivity(organizationId, limit = 10) {
   }
 }
 
-export default {
-  getPayrollMetrics,
-  getEmployeeMetrics,
-  getTimesheetMetrics,
-  getUpcomingPayrolls,
-  getRecentActivity
-};
+}
+
+export default DashboardRepository;
