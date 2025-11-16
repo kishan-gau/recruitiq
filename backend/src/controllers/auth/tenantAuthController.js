@@ -322,20 +322,23 @@ export const logout = async (req, res) => {
     }
 
     // SECURITY: Clear httpOnly cookies (must match cookie options used in login)
-    res.clearCookie('tenant_access_token', {
+    // Use res.cookie with maxAge: 0 instead of clearCookie to ensure Max-Age=0 in response
+    res.cookie('tenant_access_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined,
-      path: '/'
+      path: '/',
+      maxAge: 0
     });
 
-    res.clearCookie('tenant_refresh_token', {
+    res.cookie('tenant_refresh_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined,
-      path: '/'
+      path: '/',
+      maxAge: 0
     });
 
     res.json({

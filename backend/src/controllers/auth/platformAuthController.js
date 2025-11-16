@@ -260,18 +260,21 @@ export const logout = async (req, res) => {
     }
 
     // SECURITY: Clear httpOnly cookies (must match cookie options used in login)
-    res.clearCookie('platform_access_token', {
+    // Use res.cookie with maxAge: 0 instead of clearCookie to ensure Max-Age=0 in response
+    res.cookie('platform_access_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/'
+      path: '/',
+      maxAge: 0
     });
 
-    res.clearCookie('platform_refresh_token', {
+    res.cookie('platform_refresh_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/'
+      path: '/',
+      maxAge: 0
     });
 
     res.json({
