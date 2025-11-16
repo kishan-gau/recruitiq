@@ -6,7 +6,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+// Use .env.test for E2E tests to ensure test database isolation
+const envFile = process.env.NODE_ENV === 'e2e' ? '.env.test' : '.env';
+dotenv.config({ path: path.join(__dirname, '../../', envFile) });
 
 const config = {
   // Application

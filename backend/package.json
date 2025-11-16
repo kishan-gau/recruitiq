@@ -10,6 +10,7 @@
     "start:loadtest": "cross-env LOAD_TEST=true node src/server.js",
     "start:prod": "NODE_ENV=production node src/server.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:e2e": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config=jest.e2e.config.js",
     "test:all": "powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1",
     "test:all:jest": "powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1 -JestOnly",
     "test:all:bdd": "powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1 -BDDOnly",

@@ -1,8 +1,8 @@
 # Testing Standards
 
 **Part of:** [RecruitIQ Coding Standards](../CODING_STANDARDS.md)  
-**Version:** 1.0  
-**Last Updated:** November 3, 2025
+**Version:** 1.1  
+**Last Updated:** November 16, 2025
 
 ---
 
@@ -1212,6 +1212,519 @@ describe('Candidates API Tests', () => {
 // Close connection ONCE after all suites
 afterAll(async () => {
   await pool.end();
+});
+```
+
+---
+
+## E2E Testing Standards
+
+### E2E Test Philosophy
+
+End-to-End (E2E) tests validate complete user journeys across the full application stack:
+- Real browser interactions (or API requests)
+- Full backend server running
+- Real database (test database)
+- Complete authentication flows
+- Cross-application scenarios (SSO)
+
+**When to write E2E tests:**
+- Critical user journeys (login, checkout, data submission)
+- Cross-application workflows (SSO across multiple apps)
+- Integration points between frontend and backend
+- Complex multi-step processes
+
+**When NOT to write E2E tests:**
+- Simple CRUD operations (use integration tests)
+- Edge cases and error conditions (use unit tests)
+- Internal service logic (use unit tests)
+
+### Automated Server Lifecycle with Jest
+
+**CRITICAL:** E2E tests should manage their own backend server lifecycle automatically using Jest's `globalSetup` and `globalTeardown`.
+
+#### Jest E2E Configuration
+
+```javascript
+// jest.e2e.config.js
+export default {
+  displayName: 'E2E Tests',
+  testEnvironment: 'node',
+  
+  // Set environment variables for test process
+  setupFiles: ['<rootDir>/tests/e2e/jest-setup-env.js'],
+  
+  // Use ES modules
+  transform: {},
+  
+  // Global setup/teardown for server lifecycle
+  globalSetup: '<rootDir>/tests/e2e/setup.js',
+  globalTeardown: '<rootDir>/tests/e2e/teardown.js',
+  
+  // Only run E2E tests
+  testMatch: [
+    '<rootDir>/tests/e2e/**/*.test.js'
+  ],
+  
+  // Increase timeout for E2E tests (server startup + test execution)
+  testTimeout: 60000,
+  
+  // Run tests serially (not in parallel) to avoid port conflicts
+  maxWorkers: 1,
+  
+  // Don't collect coverage for E2E tests (too slow)
+  collectCoverage: false,
+  
+  // Clear mocks between tests
+  clearMocks: true,
+  resetMocks: true,
+  restoreMocks: true,
+  
+  // Verbose output
+  verbose: true
+};
+```
+
+#### Environment Setup File
+
+```javascript
+// tests/e2e/jest-setup-env.js
+/**
+ * Jest E2E Environment Setup
+ * Sets environment variables for the Jest test process
+ * This ensures test database is used when importing database config
+ */
+
+// Force test database for Jest test process
+process.env.NODE_ENV = 'e2e';
+process.env.DATABASE_NAME = 'recruitiq_test';
+process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/recruitiq_test';
+
+console.log('📝 Jest E2E environment configured:', {
+  NODE_ENV: process.env.NODE_ENV,
+  DATABASE_NAME: process.env.DATABASE_NAME
+});
+```
+
+#### Global Setup (Server Start)
+
+```javascript
+// tests/e2e/setup.js
+import { spawn } from 'child_process';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = join(__filename, '..');
+
+let serverProcess;
+
+/**
+ * Starts backend server before E2E tests
+ * Server will use .env.test configuration automatically when NODE_ENV=e2e
+ */
+export default async function globalSetup() {
+  console.log('🚀 Starting backend server for E2E tests...');
+
+  return new Promise((resolve, reject) => {
+    const serverPath = join(__dirname, '../../src/server.js');
+    
+    // Start server with e2e environment
+    // Config will automatically load .env.test when NODE_ENV=e2e
+    serverProcess = spawn('node', [serverPath], {
+      env: {
+        ...process.env,
+        NODE_ENV: 'e2e',
+        PORT: '4000'
+      },
+      stdio: 'pipe'
+    });
+
+    let serverOutput = '';
+    let serverReady = false;
+
+    serverProcess.stdout.on('data', (data) => {
+      const output = data.toString();
+      serverOutput += output;
+      
+      // Check if server is ready (look for actual startup message)
+      if (output.includes('RecruitIQ API Server started')) {
+        if (!serverReady) {
+          serverReady = true;
+          console.log('✅ Backend server ready on port 4000');
+          
+          // Store PID for cleanup
+          global.__SERVER_PID__ = serverProcess.pid;
+          
+          // Give server a moment to fully initialize
+          setTimeout(resolve, 1000);
+        }
+      }
+    });
+
+    serverProcess.stderr.on('data', (data) => {
+      console.error('Server error:', data.toString());
+    });
+
+    serverProcess.on('error', (error) => {
+      console.error('Failed to start server:', error);
+      reject(error);
+    });
+
+    serverProcess.on('exit', (code) => {
+      if (code !== 0 && !serverReady) {
+        console.error('Server exited with code:', code);
+        console.error('Server output:', serverOutput);
+        reject(new Error(`Server failed to start. Exit code: ${code}`));
+      }
+    });
+
+    // Timeout if server doesn't start within 30 seconds
+    setTimeout(() => {
+      if (!serverReady) {
+        serverProcess.kill();
+        reject(new Error('Server startup timeout'));
+      }
+    }, 30000);
+  });
+}
+```
+
+#### Global Teardown (Server Stop)
+
+```javascript
+// tests/e2e/teardown.js
+/**
+ * Stops backend server after E2E tests
+ */
+export default async function globalTeardown() {
+  console.log('🛑 Stopping backend server...');
+  
+  const pid = global.__SERVER_PID__;
+  
+  if (pid) {
+    try {
+      process.kill(pid, 'SIGTERM');
+      console.log('✅ Backend server stopped');
+    } catch (error) {
+      console.error('Error stopping server:', error);
+    }
+  }
+}
+```
+
+### Configuration Loading for E2E Tests
+
+**CRITICAL:** Ensure your backend configuration loads `.env.test` when `NODE_ENV=e2e`:
+
+```javascript
+// src/config/index.js
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+// Use .env.test for E2E tests to ensure test database isolation
+const envFile = process.env.NODE_ENV === 'e2e' ? '.env.test' : '.env';
+dotenv.config({ path: path.join(__dirname, '../../', envFile) });
+
+// Rest of config...
+```
+
+### Test Database Setup
+
+**CRITICAL:** E2E tests require a properly initialized test database with schema and seed data.
+
+```bash
+# Run database setup script with test database name
+.\backend\src\database\setup-database.ps1 -DBName recruitiq_test
+```
+
+**`.env.test` Configuration:**
+
+```env
+# Test Database (using test database for E2E tests)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/recruitiq_test
+DATABASE_NAME=recruitiq_test
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+
+# Other test-specific settings...
+NODE_ENV=e2e
+PORT=4000
+```
+
+### E2E Test Template
+
+```javascript
+// tests/e2e/sso-integration.test.js
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import request from 'supertest';
+import pool from '../../src/config/database.js';
+
+const API_URL = 'http://localhost:4000';
+
+describe('SSO Integration - E2E Tests', () => {
+  let cookies = {};
+  const testUsers = {
+    tenant: {
+      email: 'tenant@testcompany.com',
+      password: 'Admin123!'
+    }
+  };
+
+  // Setup test data before all tests
+  beforeAll(async () => {
+    console.log('🔧 Setting up E2E test data...');
+    
+    // Verify test users exist (created by database seed)
+    const userCheck = await pool.query(
+      'SELECT email FROM hris.user_account WHERE email = $1',
+      [testUsers.tenant.email]
+    );
+    
+    if (userCheck.rows.length === 0) {
+      throw new Error(`Test user ${testUsers.tenant.email} not found. Run database setup.`);
+    }
+    
+    console.log('✅ Test data verified');
+  });
+
+  // Clean up after all tests
+  afterAll(async () => {
+    console.log('🧹 Cleaning up E2E test data...');
+    // Note: Don't close pool here - let Jest handle it
+  });
+
+  describe('Cross-App Authentication', () => {
+    it('should login successfully and set cookies', async () => {
+      // Act
+      const response = await request(API_URL)
+        .post('/api/auth/login')
+        .send(testUsers.tenant)
+        .expect(200);
+
+      // Assert
+      expect(response.body.success).toBe(true);
+      expect(response.body.user).toBeDefined();
+      expect(response.headers['set-cookie']).toBeDefined();
+      
+      // Store cookies for subsequent tests
+      cookies.auth = response.headers['set-cookie'];
+    });
+
+    it('should access protected route with session cookie', async () => {
+      // Act
+      const response = await request(API_URL)
+        .get('/api/auth/me')
+        .set('Cookie', cookies.auth)
+        .expect(200);
+
+      // Assert
+      expect(response.body.success).toBe(true);
+      expect(response.body.user.email).toBe(testUsers.tenant.email);
+    });
+
+    it('should maintain session across multiple requests', async () => {
+      // First request
+      const response1 = await request(API_URL)
+        .get('/api/auth/me')
+        .set('Cookie', cookies.auth)
+        .expect(200);
+
+      // Second request with same cookie
+      const response2 = await request(API_URL)
+        .get('/api/auth/me')
+        .set('Cookie', cookies.auth)
+        .expect(200);
+
+      // Assert both requests succeed with same user
+      expect(response1.body.user.id).toBe(response2.body.user.id);
+    });
+
+    it('should logout and clear cookies', async () => {
+      // Act
+      const response = await request(API_URL)
+        .post('/api/auth/logout')
+        .set('Cookie', cookies.auth)
+        .expect(200);
+
+      // Assert
+      expect(response.body.success).toBe(true);
+      
+      // Verify cookies are cleared (maxAge=0 or expired)
+      const setCookieHeader = response.headers['set-cookie'];
+      expect(setCookieHeader).toBeDefined();
+      expect(setCookieHeader.some(c => 
+        c.includes('Max-Age=0') || c.includes('Expires=Thu, 01 Jan 1970')
+      )).toBe(true);
+    });
+
+    it('should reject requests after logout', async () => {
+      // Act
+      await request(API_URL)
+        .get('/api/auth/me')
+        .set('Cookie', cookies.auth)
+        .expect(401);
+    });
+  });
+});
+```
+
+### E2E Test Best Practices
+
+```javascript
+// ✅ CORRECT: Test complete user journeys
+describe('Job Application Flow - E2E', () => {
+  it('should complete entire application process', async () => {
+    // 1. Login
+    const loginRes = await request(API_URL).post('/api/auth/login').send(...);
+    const cookies = loginRes.headers['set-cookie'];
+    
+    // 2. Browse jobs
+    const jobsRes = await request(API_URL).get('/api/jobs').set('Cookie', cookies);
+    const jobId = jobsRes.body.jobs[0].id;
+    
+    // 3. View job details
+    await request(API_URL).get(`/api/jobs/${jobId}`).set('Cookie', cookies);
+    
+    // 4. Submit application
+    const appRes = await request(API_URL)
+      .post(`/api/jobs/${jobId}/apply`)
+      .set('Cookie', cookies)
+      .send({ resume: '...', coverLetter: '...' });
+    
+    // 5. Verify application created
+    expect(appRes.body.application).toBeDefined();
+    
+    // 6. Verify in database
+    const dbCheck = await pool.query('SELECT * FROM applications WHERE id = $1', [appRes.body.application.id]);
+    expect(dbCheck.rows.length).toBe(1);
+  });
+});
+
+// ❌ WRONG: Testing implementation details
+it('should call the correct repository method', async () => {
+  // This is a unit test, not E2E
+});
+
+// ❌ WRONG: No connection to real backend
+it('should handle login with mocked API', async () => {
+  // E2E tests must use real backend
+});
+```
+
+### E2E Test Standards Checklist
+
+**EVERY E2E test suite MUST:**
+
+- [ ] **Use automated server lifecycle** (globalSetup/globalTeardown)
+- [ ] **Use test database** (recruitiq_test with proper schema)
+- [ ] **Run against real backend server**
+- [ ] **Test complete user journeys** (not isolated operations)
+- [ ] **Use actual HTTP requests** (supertest or real browser)
+- [ ] **Verify database state** when necessary
+- [ ] **Clean up test data** (if creating data beyond seeds)
+- [ ] **Run serially** (maxWorkers: 1 to avoid port conflicts)
+- [ ] **Have reasonable timeouts** (60s for server startup + tests)
+- [ ] **Be idempotent** (can run multiple times)
+- [ ] **Use seed data** (don't rely on manual data creation)
+
+### Running E2E Tests
+
+```bash
+# Single command - server starts automatically
+npm run test:e2e
+
+# The script handles:
+# 1. Starting backend server (NODE_ENV=e2e, port 4000)
+# 2. Running all E2E tests
+# 3. Stopping backend server
+# 4. Exit with appropriate code
+```
+
+### Common E2E Test Patterns
+
+#### Testing SSO Across Apps
+
+```javascript
+describe('SSO Cross-App Navigation', () => {
+  let sessionCookie;
+
+  it('should login in PayLinQ', async () => {
+    const response = await request(API_URL)
+      .post('/api/auth/login')
+      .send({ product: 'paylinq', ...credentials });
+    
+    sessionCookie = response.headers['set-cookie'];
+    expect(response.body.user.currentProduct).toBe('paylinq');
+  });
+
+  it('should access Nexus without re-login', async () => {
+    const response = await request(API_URL)
+      .post('/api/auth/switch-product')
+      .set('Cookie', sessionCookie)
+      .send({ product: 'nexus' })
+      .expect(200);
+    
+    expect(response.body.user.currentProduct).toBe('nexus');
+  });
+
+  it('should access RecruitIQ with same session', async () => {
+    const response = await request(API_URL)
+      .post('/api/auth/switch-product')
+      .set('Cookie', sessionCookie)
+      .send({ product: 'recruitiq' })
+      .expect(200);
+    
+    expect(response.body.user.currentProduct).toBe('recruitiq');
+  });
+});
+```
+
+#### Testing CSRF Protection
+
+```javascript
+describe('CSRF Protection - E2E', () => {
+  let cookies, csrfToken;
+
+  beforeAll(async () => {
+    // Login to get session
+    const loginRes = await request(API_URL)
+      .post('/api/auth/login')
+      .send(credentials);
+    
+    cookies = loginRes.headers['set-cookie'];
+    
+    // Get CSRF token
+    const csrfRes = await request(API_URL)
+      .get('/api/csrf-token')
+      .set('Cookie', cookies);
+    
+    csrfToken = csrfRes.body.csrfToken;
+  });
+
+  it('should reject POST without CSRF token', async () => {
+    await request(API_URL)
+      .post('/api/jobs')
+      .set('Cookie', cookies)
+      .send({ title: 'Test Job' })
+      .expect(403);
+  });
+
+  it('should accept POST with valid CSRF token', async () => {
+    await request(API_URL)
+      .post('/api/jobs')
+      .set('Cookie', cookies)
+      .set('X-CSRF-Token', csrfToken)
+      .send({ title: 'Test Job' })
+      .expect(201);
+  });
 });
 ```
 

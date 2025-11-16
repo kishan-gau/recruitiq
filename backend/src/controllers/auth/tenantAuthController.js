@@ -20,6 +20,7 @@ export const login = async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({
+        success: false,
         error: 'Email and password are required'
       });
     }
@@ -39,6 +40,7 @@ export const login = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({
+        success: false,
         error: 'Invalid credentials'
       });
     }
@@ -46,6 +48,7 @@ export const login = async (req, res) => {
     // Check if account is locked
     if (TenantUser.isAccountLocked(user)) {
       return res.status(403).json({
+        success: false,
         error: 'Account is locked due to too many failed login attempts. Please try again later.'
       });
     }
@@ -53,6 +56,7 @@ export const login = async (req, res) => {
     // Check if account is active
     if (!user.is_active) {
       return res.status(403).json({
+        success: false,
         error: 'Account is inactive. Please contact your administrator.'
       });
     }
@@ -65,6 +69,7 @@ export const login = async (req, res) => {
       await TenantUser.incrementFailedLogins(email, organizationId);
       
       return res.status(401).json({
+        success: false,
         error: 'Invalid credentials'
       });
     }
@@ -165,6 +170,7 @@ export const login = async (req, res) => {
 
     // Return success with user info only (tokens are in httpOnly cookies)
     res.json({
+      success: true,
       user: {
         id: user.id,
         email: user.email,
@@ -183,6 +189,7 @@ export const login = async (req, res) => {
   } catch (error) {
     console.error('Tenant login error:', error);
     res.status(500).json({
+      success: false,
       error: 'An error occurred during login'
     });
   }
@@ -195,10 +202,11 @@ export const login = async (req, res) => {
 export const refresh = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie instead of request body
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.tenant_refresh_token;
 
     if (!refreshToken) {
       return res.status(400).json({
+        success: false,
         error: 'Refresh token is required'
       });
     }
@@ -209,6 +217,7 @@ export const refresh = async (req, res) => {
       decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     } catch (error) {
       return res.status(401).json({
+        success: false,
         error: 'Invalid or expired refresh token'
       });
     }
@@ -216,6 +225,7 @@ export const refresh = async (req, res) => {
     // Verify token type
     if (decoded.type !== 'tenant') {
       return res.status(403).json({
+        success: false,
         error: 'Invalid token type'
       });
     }
@@ -230,6 +240,7 @@ export const refresh = async (req, res) => {
 
     if (tokenResult.rows.length === 0) {
       return res.status(401).json({
+        success: false,
         error: 'Refresh token not found'
       });
     }
@@ -238,6 +249,7 @@ export const refresh = async (req, res) => {
 
     if (tokenRecord.revoked_at) {
       return res.status(401).json({
+        success: false,
         error: 'Refresh token has been revoked'
       });
     }
@@ -254,6 +266,7 @@ export const refresh = async (req, res) => {
 
     if (!user || !user.is_active) {
       return res.status(403).json({
+        success: false,
         error: 'User account is not active'
       });
     }
@@ -297,6 +310,7 @@ export const refresh = async (req, res) => {
   } catch (error) {
     console.error('Tenant token refresh error:', error);
     res.status(500).json({
+      success: false,
       error: 'An error occurred during token refresh'
     });
   }
@@ -309,7 +323,7 @@ export const refresh = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.tenant_refresh_token;
 
     if (refreshToken) {
       // Revoke the refresh token
@@ -366,11 +380,13 @@ export const getProfile = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
+        success: false,
         error: 'User not found'
       });
     }
 
     res.json({
+      success: true,
       user: {
         id: user.id,
         email: user.email,
@@ -394,6 +410,7 @@ export const getProfile = async (req, res) => {
   } catch (error) {
     console.error('Get tenant profile error:', error);
     res.status(500).json({
+      success: false,
       error: 'An error occurred while fetching profile'
     });
   }
