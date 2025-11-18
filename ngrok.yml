@@ -1,0 +1,71 @@
+# ngrok Configuration for RecruitIQ Multi-Tenant Platform
+# Enterprise development setup with reserved domains
+# 
+# Prerequisites:
+# 1. Sign up at https://dashboard.ngrok.com/signup
+# 2. Upgrade to paid plan ($8/month) for reserved domains
+# 3. Reserve domains in dashboard:
+#    - nexus-dev.ngrok.app (or your custom domain)
+#    - paylinq-dev.ngrok.app
+#    - recruitiq-dev.ngrok.app
+#    - portal-dev.ngrok.app
+# 4. Get authtoken from https://dashboard.ngrok.com/get-started/your-authtoken
+# 5. Run: ngrok config add-authtoken YOUR_AUTH_TOKEN
+#
+# Usage:
+#   ngrok start --all --config ngrok.yml
+#
+# This will start all 4 tunnels simultaneously with stable URLs
+
+version: "2"
+authtoken: 35aBvc2xJ2WKmcVRwWdHvamtX71_3VWyFQcP3wd2pgoezGMM6  # Replace with your actual token
+
+tunnels:
+  backend:
+    addr: 4000
+    proto: http
+    hostname: recruitiq-be-dev.ngrok.app
+    inspect: true
+    schemes:
+      - https
+  
+  nexus:
+    addr: 5175
+    proto: http
+    # After reserving domain in dashboard, replace with: domain: nexus-dev.ngrok.app
+    hostname: nexus-dev.ngrok.app
+    inspect: true
+    schemes:
+      - https
+    
+  paylinq:
+    addr: 5174
+    proto: http
+    # After reserving domain in dashboard, replace with: domain: paylinq-dev.ngrok.app
+    hostname: paylinq-dev.ngrok.app
+    inspect: true
+    schemes:
+      - https
+    
+  recruitiq:
+    addr: 5173
+    proto: http
+    # After reserving domain in dashboard, replace with: domain: recruitiq-dev.ngrok.app
+    hostname: recruitiq-dev.ngrok.app
+    inspect: true
+    schemes:
+      - https
+    
+  portal:
+    addr: 5176
+    proto: http
+    hostname: portal-dev.ngrok.pro
+    inspect: true
+    schemes:
+      - https
+
+# Optional: Web interface configuration
+web_addr: 127.0.0.1:4040
+console_ui: true
+
+
