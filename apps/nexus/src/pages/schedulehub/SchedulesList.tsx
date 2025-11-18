@@ -2,11 +2,18 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Calendar, Eye, FileText, Archive } from 'lucide-react';
 import { useSchedules, usePublishSchedule } from '@/hooks/schedulehub/useScheduleStats';
+import { useToast } from '@/contexts/ToastContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Schedule } from '@/types/schedulehub';
 
 export default function SchedulesList() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [page, setPage] = useState(1);
+  const [publishDialogState, setPublishDialogState] = useState<{ isOpen: boolean; id: string }>({ 
+    isOpen: false, 
+    id: '' 
+  });
+  const toast = useToast();
 
   const { data, isLoading, error } = useSchedules({
     page,
@@ -17,13 +24,17 @@ export default function SchedulesList() {
   const publishSchedule = usePublishSchedule();
 
   const handlePublish = async (id: string) => {
-    if (confirm('Are you sure you want to publish this schedule? Workers will be notified.')) {
-      try {
-        await publishSchedule.mutateAsync(id);
-        alert('Schedule published successfully!');
-      } catch (error) {
-        alert('Failed to publish schedule');
-      }
+    setPublishDialogState({ isOpen: true, id });
+  };
+
+  const confirmPublish = async () => {
+    try {
+      await publishSchedule.mutateAsync(publishDialogState.id);
+      toast.success('Schedule published successfully!');
+      setPublishDialogState({ isOpen: false, id: '' });
+    } catch (error) {
+      toast.error('Failed to publish schedule');
+      setPublishDialogState({ isOpen: false, id: '' });
     }
   };
 
@@ -261,6 +272,17 @@ export default function SchedulesList() {
           </div>
         </div>
       )}
+
+      {/* Publish Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={publishDialogState.isOpen}
+        onClose={() => setPublishDialogState({ isOpen: false, id: '' })}
+        onConfirm={confirmPublish}
+        title="Publish Schedule"
+        message="Are you sure you want to publish this schedule? Workers will be notified."
+        confirmText="Publish"
+        variant="info"
+      />
     </div>
   );
 }

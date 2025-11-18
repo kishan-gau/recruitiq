@@ -112,24 +112,15 @@ export const authenticatePlatform = async (req, res, next) => {
  */
 export const authenticateTenant = async (req, res, next) => {
   try {
-    // SECURITY: Support both httpOnly cookies (production) and Bearer tokens (tests)
-    // Priority: Cookie > Bearer token
-    let token = req.cookies.tenant_access_token;
-    
-    // Fallback to Bearer token for testing (when cookies aren't used)
-    if (!token && req.headers.authorization) {
-      const authHeader = req.headers.authorization;
-      if (authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7); // Remove 'Bearer ' prefix
-      }
-    }
+    // SECURITY: Only support httpOnly cookies (no Bearer token fallback)
+    // Tests must use cookie jar pattern per TESTING_STANDARDS.md
+    const token = req.cookies.tenant_access_token;
     
     // DEBUG: Log authentication debug info
     logger.debug('authenticateTenant - Auth debug', {
       hasCookies: !!req.cookies,
       cookieKeys: Object.keys(req.cookies || {}),
       hasAccessToken: !!token,
-      authMethod: req.cookies.tenant_access_token ? 'cookie' : (req.headers.authorization ? 'bearer' : 'none'),
       rawCookieHeader: req.headers.cookie,
       path: req.path,
       method: req.method
@@ -354,13 +345,7 @@ export const requirePlatformPermission = (...permissions) => {
  */
 export const requireProductAccess = (product) => {
   return (req, res, next) => {
-    if (!req.user || req.user.type !== 'tenant') {
-      return res.status(401).json({
-        success: false,
-        message: 'Tenant authentication required'
-      });
-    }
-    
+    // authenticateTenant already ensures req.user exists and is a tenant
     const enabledProducts = req.user.enabledProducts || [];
     
     // DEBUG: Log product access check (dev mode only)
@@ -399,13 +384,7 @@ export const requireProductAccess = (product) => {
  */
 export const requireProductRole = (product, ...roles) => {
   return (req, res, next) => {
-    if (!req.user || req.user.type !== 'tenant') {
-      return res.status(401).json({
-        success: false,
-        message: 'Tenant authentication required'
-      });
-    }
-    
+    // authenticateTenant already ensures req.user exists and is a tenant
     const productRoles = req.user.productRoles || {};
     const userRole = productRoles[product];
     

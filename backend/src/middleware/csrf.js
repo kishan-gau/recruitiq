@@ -82,13 +82,8 @@ export function csrfMiddleware(req, res, next) {
     return next();
   }
   
-  // Skip CSRF for API endpoints using Bearer token authentication
-  // CSRF is primarily a concern for cookie-based authentication
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    // Using JWT Bearer tokens - CSRF not applicable
-    return next();
-  }
+  // SECURITY: No Bearer token bypass - we use cookie-based auth exclusively
+  // All authenticated requests use httpOnly cookies, so CSRF protection is required
   
   // Apply CSRF protection
   csrfProtection(req, res, (err) => {

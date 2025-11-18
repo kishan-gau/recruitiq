@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import TenantUser from '../../models/TenantUser.js';
 import db from '../../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
+import { getTenantAccessCookieConfig, getTenantRefreshCookieConfig } from '../../config/cookie.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Tenant Authentication Controller
@@ -149,24 +151,19 @@ export const login = async (req, res) => {
     await TenantUser.updateLastLogin(user.id, user.organization_id, req.ip || req.connection.remoteAddress);
 
     // SECURITY: Set tokens as httpOnly cookies (industry standard - protects against XSS)
-    // Using 'tenant_' prefix for clarity and '.recruitiq.com' domain for SSO across tenant apps
-    res.cookie('tenant_access_token', accessToken, {
-      httpOnly: true,  // Cannot be accessed via JavaScript (XSS protection)
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: 'lax', // Allow SSO navigation between tenant apps (paylinq, nexus, recruitiq, schedulehub)
-      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined, // SSO domain in production
-      maxAge: 15 * 60 * 1000, // 15 minutes
-      path: '/' // Available for all routes
+    // Using centralized cookie configuration for consistency
+    const accessCookieConfig = getTenantAccessCookieConfig();
+    const refreshCookieConfig = getTenantRefreshCookieConfig(rememberMe);
+    
+    // DEBUG: Log cookie configurations using logger (not console.log)
+    logger.info('🔍 DEBUG Setting cookies with config:', {
+      accessConfig: accessCookieConfig,
+      refreshConfig: refreshCookieConfig,
+      email: email // For correlation
     });
-
-    res.cookie('tenant_refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // Allow SSO navigation between tenant apps
-      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined, // SSO domain in production
-      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000, // 30 days or 7 days
-      path: '/' // Available for all routes
-    });
+    
+    res.cookie('tenant_access_token', accessToken, accessCookieConfig);
+    res.cookie('tenant_refresh_token', refreshToken, refreshCookieConfig);
 
     // Return success with user info only (tokens are in httpOnly cookies)
     res.json({
@@ -298,7 +295,7 @@ export const refresh = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax', // Allow SSO navigation between tenant apps
-      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined, // SSO domain in production
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : '.localhost', // .localhost for dev subdomains
       maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/' // Available for all routes
     });
@@ -341,7 +338,7 @@ export const logout = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined,
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : '.localhost', // .localhost for dev subdomains
       path: '/',
       maxAge: 0
     });
@@ -350,7 +347,7 @@ export const logout = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined,
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : '.localhost', // .localhost for dev subdomains
       path: '/',
       maxAge: 0
     });

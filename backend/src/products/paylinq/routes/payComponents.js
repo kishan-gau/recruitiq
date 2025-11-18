@@ -10,13 +10,13 @@ import Joi from 'joi';
 const router = express.Router();
 
 // Validation schemas
-// Accept API field names (code, name, calculationMethod) - DTO mapper will translate to DB names
+// Accept proper camelCase field names per industry standards (Google, Microsoft, Stripe)
 const createPayComponentSchema = Joi.object({
-  code: Joi.string().max(50).required(),
-  name: Joi.string().max(100).required(),
+  componentCode: Joi.string().max(50).required(),
+  componentName: Joi.string().max(100).required(),
   componentType: Joi.string().valid('earning', 'deduction', 'benefit', 'tax', 'reimbursement').required(),
   category: Joi.string().valid('regular', 'regular_pay', 'overtime', 'bonus', 'commission', 'allowance', 'tax', 'benefit', 'garnishment', 'loan', 'other').allow(null, ''),
-  calculationMethod: Joi.string().valid('fixed', 'fixed_amount', 'percentage', 'hours_based', 'hourly_rate', 'formula', 'unit_based').required(),
+  calculationType: Joi.string().valid('fixed', 'fixed_amount', 'percentage', 'hours_based', 'hourly_rate', 'formula', 'unit_based').required(),
   defaultAmount: Joi.number().allow(null),
   defaultRate: Joi.number().allow(null),
   formula: Joi.string().max(500).allow(null, ''),
@@ -32,10 +32,10 @@ const createPayComponentSchema = Joi.object({
 });
 
 const updatePayComponentSchema = Joi.object({
-  code: Joi.string().max(50),
-  name: Joi.string().max(100),
+  componentCode: Joi.string().max(50),
+  componentName: Joi.string().max(100),
   category: Joi.string().valid('regular', 'regular_pay', 'overtime', 'bonus', 'commission', 'allowance', 'tax', 'benefit', 'garnishment', 'loan', 'other').allow(null, ''),
-  calculationMethod: Joi.string().valid('fixed', 'fixed_amount', 'percentage', 'hours_based', 'hourly_rate', 'formula', 'unit_based'),
+  calculationType: Joi.string().valid('fixed', 'fixed_amount', 'percentage', 'hours_based', 'hourly_rate', 'formula', 'unit_based'),
   defaultAmount: Joi.number().allow(null),
   defaultRate: Joi.number().allow(null),
   formula: Joi.string().max(500).allow(null, ''),

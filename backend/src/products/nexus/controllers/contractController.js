@@ -18,7 +18,7 @@ class ContractController {
    */
   createContract = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const contract = await this.service.createContract(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: contract });
     } catch (error) {
@@ -33,7 +33,7 @@ class ContractController {
    */
   getContract = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const contract = await this.service.getContract(id, organizationId);
       res.json({ success: true, data: contract });
@@ -50,7 +50,7 @@ class ContractController {
    */
   listContracts = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId, status, contractType, limit = 50, offset = 0 } = req.query;
 
       const filters = {};
@@ -74,7 +74,7 @@ class ContractController {
    */
   updateContract = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const contract = await this.service.updateContract(id, req.body, organizationId, userId);
       res.json({ success: true, data: contract });
@@ -91,7 +91,7 @@ class ContractController {
    */
   activateContract = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const contract = await this.service.activateContract(id, organizationId, userId);
       res.json({ success: true, data: contract });
@@ -108,7 +108,7 @@ class ContractController {
    */
   terminateContract = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const { terminationDate, reason } = req.body;
       
@@ -133,7 +133,7 @@ class ContractController {
    */
   progressSequence = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const contract = await this.service.progressSequenceStep(id, organizationId, userId);
       res.json({ success: true, data: contract });
@@ -150,7 +150,7 @@ class ContractController {
    */
   getExpiringContracts = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { daysAhead = 30 } = req.query;
       
       const contracts = await this.service.getExpiringContracts(
@@ -170,7 +170,7 @@ class ContractController {
    */
   getEmployeeContracts = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId } = req.params;
       const contracts = await this.service.getEmployeeContracts(employeeId, organizationId);
       res.json({ success: true, data: contracts });

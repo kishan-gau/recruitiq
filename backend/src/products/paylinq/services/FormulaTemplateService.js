@@ -7,7 +7,7 @@
 
 import pool from '../../../config/database.js';
 import formulaEngine from '../../../services/formula/FormulaEngine.js';
-import { ValidationError } from '../../../middleware/errorHandler.js';
+import { ValidationError, NotFoundError, ForbiddenError } from '../../../middleware/errorHandler.js';
 
 class FormulaTemplateService {
   /**
@@ -75,7 +75,7 @@ class FormulaTemplateService {
    * Get template by ID
    */
   async getTemplateById(templateId, organizationId) {
-    const query = `
+    const queryText = `
       SELECT *
       FROM payroll.formula_template
       WHERE id = $1 
@@ -83,10 +83,10 @@ class FormulaTemplateService {
         AND (is_global = true OR organization_id = $2)
     `;
     
-    const result = await pool.query(query, [templateId, organizationId]);
+    const result = await pool.query(queryText, [templateId, organizationId]);
     
     if (result.rows.length === 0) {
-      throw new ValidationError('Template not found or access denied');
+      throw new NotFoundError('Template not found or access denied');
     }
     
     return result.rows[0];
@@ -96,7 +96,7 @@ class FormulaTemplateService {
    * Get template by code
    */
   async getTemplateByCode(templateCode, organizationId) {
-    const query = `
+    const queryText = `
       SELECT *
       FROM payroll.formula_template
       WHERE template_code = $1 
@@ -104,10 +104,10 @@ class FormulaTemplateService {
         AND (is_global = true OR organization_id = $2)
     `;
     
-    const result = await pool.query(query, [templateCode, organizationId]);
+    const result = await pool.query(queryText, [templateCode, organizationId]);
     
     if (result.rows.length === 0) {
-      throw new ValidationError('Template not found');
+      throw new NotFoundError('Template not found');
     }
     
     return result.rows[0];
@@ -136,11 +136,29 @@ class FormulaTemplateService {
     }
 
     // Validate formula expression
-    const validation = await formulaEngine.validate(formula_expression);
-    if (!validation.isValid) {
-      throw new ValidationError(
-        `Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`
+    // Replace parameter placeholders with dummy values for validation
+    let formulaToValidate = formula_expression;
+    for (const param of parameters) {
+      const dummyValue = param.type === 'percentage' ? '50' : '100';
+      formulaToValidate = formulaToValidate.replace(
+        new RegExp(`\\{${param.name}\\}`, 'g'),
+        dummyValue
       );
+    }
+    
+    try {
+      const validation = await formulaEngine.validate(formulaToValidate);
+      if (!validation.valid) {
+        throw new ValidationError(
+          `Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`
+        );
+      }
+    } catch (error) {
+      // Convert FormulaParseError to ValidationError for proper 400 status
+      if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
+        throw new ValidationError(`Invalid formula syntax: ${error.message}`);
+      }
+      throw error;
     }
 
     // Check for duplicate template code
@@ -154,8 +172,14 @@ class FormulaTemplateService {
       throw new ValidationError('Template code already exists for this organization');
     }
 
-    // Parse formula to get AST
-    const parsed = await formulaEngine.parse(formula_expression);
+    // Parse formula to get AST (use substituted version for parsing)
+    let parsed;
+    try {
+      parsed = await formulaEngine.parse(formulaToValidate);
+    } catch (error) {
+      // If validation passed but parsing failed, re-throw as ValidationError
+      throw new ValidationError(`Formula parsing failed: ${error.message}`);
+    }
 
     const query = `
       INSERT INTO payroll.formula_template (
@@ -174,7 +198,7 @@ class FormulaTemplateService {
       category,
       description,
       formula_expression,
-      JSON.stringify(parsed.ast),
+      JSON.stringify(parsed),  // Fixed: parsed IS the AST, not parsed.ast
       JSON.stringify(parameters),
       JSON.stringify(example_values),
       example_calculation,
@@ -190,20 +214,28 @@ class FormulaTemplateService {
    * Update custom template (only org-specific, not global)
    */
   async updateTemplate(templateId, data, organizationId, userId) {
-    // Verify template exists and belongs to org (not global)
-    const existing = await pool.query(
-      `SELECT id, is_global 
+    // DEBUG: Log all inputs
+    console.log('🔍 FormulaTemplateService.updateTemplate called with:');
+    console.log('  templateId:', templateId);
+    console.log('  organizationId:', organizationId);
+    console.log('  userId:', userId);
+    console.log('  data:', JSON.stringify(data, null, 2));
+
+    try {
+      // Verify template exists and belongs to org (not global)
+      const existing = await pool.query(
+      `SELECT id, is_global, organization_id 
        FROM payroll.formula_template 
-       WHERE id = $1 AND organization_id = $2 AND is_active = true`,
+       WHERE id = $1 AND (organization_id = $2 OR is_global = true) AND is_active = true`,
       [templateId, organizationId]
     );
 
     if (existing.rows.length === 0) {
-      throw new ValidationError('Template not found or access denied');
+      throw new NotFoundError('Template not found or access denied');
     }
 
     if (existing.rows[0].is_global) {
-      throw new ValidationError('Cannot modify global templates');
+      throw new ForbiddenError('Cannot modify global templates');
     }
 
     const updates = [];
@@ -220,24 +252,54 @@ class FormulaTemplateService {
     for (const field of allowedFields) {
       if (data[field] !== undefined) {
         if (field === 'formula_expression') {
-          // Validate new formula
-          const validation = await formulaEngine.validate(data[field]);
-          if (!validation.isValid) {
-            throw new ValidationError(`Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`);
+          // Validate new formula - replace parameters with dummy values
+          let formulaToValidate = data[field];
+          const paramsList = data.parameters || existing.rows[0].parameters || [];
+          for (const param of paramsList) {
+            const dummyValue = param.type === 'percentage' ? '50' : '100';
+            formulaToValidate = formulaToValidate.replace(
+              new RegExp(`\\{${param.name}\\}`, 'g'),
+              dummyValue
+            );
           }
           
-          // Parse and store AST
-          const parsed = await formulaEngine.parse(data[field]);
+          try {
+            const validation = await formulaEngine.validate(formulaToValidate);
+            if (!validation.valid) {
+              throw new ValidationError(`Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`);
+            }
+          } catch (error) {
+            // Convert FormulaParseError to ValidationError
+            if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
+              throw new ValidationError(`Invalid formula syntax: ${error.message}`);
+            }
+            throw error;
+          }
+          
+          // Parse and store AST (with dummy values for parameters)
+          let parsed;
+          try {
+            parsed = await formulaEngine.parse(formulaToValidate);
+          } catch (error) {
+            throw new ValidationError(`Formula parsing failed: ${error.message}`);
+          }
           updates.push(`formula_ast = $${paramIndex++}`);
-          params.push(JSON.stringify(parsed.ast));
+          params.push(JSON.stringify(parsed));  // Fixed: parsed IS the AST
         }
 
         updates.push(`${field} = $${paramIndex++}`);
-        params.push(
-          typeof data[field] === 'object' 
-            ? JSON.stringify(data[field]) 
-            : data[field]
-        );
+        
+        // Special handling for different data types
+        if (field === 'tags') {
+          // tags is a text[] array - pass as-is, not JSON.stringify
+          params.push(data[field]);
+        } else {
+          params.push(
+            typeof data[field] === 'object' 
+              ? JSON.stringify(data[field]) 
+              : data[field]
+          );
+        }
       }
     }
 
@@ -258,7 +320,15 @@ class FormulaTemplateService {
     `;
 
     const result = await pool.query(query, params);
+    console.log('✅ FormulaTemplateService.updateTemplate succeeded');
     return result.rows[0];
+    } catch (error) {
+      console.error('❌ FormulaTemplateService.updateTemplate ERROR:');
+      console.error('  Error type:', error.constructor.name);
+      console.error('  Error message:', error.message);
+      console.error('  Error stack:', error.stack);
+      throw error;
+    }
   }
 
   /**
@@ -267,18 +337,18 @@ class FormulaTemplateService {
   async deleteTemplate(templateId, organizationId, userId) {
     // Verify template exists and belongs to org (not global)
     const existing = await pool.query(
-      `SELECT id, is_global 
+      `SELECT id, is_global, organization_id 
        FROM payroll.formula_template 
-       WHERE id = $1 AND organization_id = $2 AND is_active = true`,
+       WHERE id = $1 AND (organization_id = $2 OR is_global = true) AND is_active = true`,
       [templateId, organizationId]
     );
 
     if (existing.rows.length === 0) {
-      throw new ValidationError('Template not found or access denied');
+      throw new NotFoundError('Template not found or access denied');
     }
 
     if (existing.rows[0].is_global) {
-      throw new ValidationError('Cannot delete global templates');
+      throw new ForbiddenError('Cannot delete global templates');
     }
 
     const query = `
@@ -296,7 +366,14 @@ class FormulaTemplateService {
    * Apply template to create formula with parameter substitution
    */
   async applyTemplate(templateId, parameterValues, organizationId) {
-    const template = await this.getTemplateById(templateId, organizationId);
+    // DEBUG: Log all inputs
+    console.log('🔍 FormulaTemplateService.applyTemplate called with:');
+    console.log('  templateId:', templateId);
+    console.log('  organizationId:', organizationId);
+    console.log('  parameterValues:', JSON.stringify(parameterValues, null, 2));
+
+    try {
+      const template = await this.getTemplateById(templateId, organizationId);
     
     // Increment usage count
     await pool.query(
@@ -340,22 +417,33 @@ class FormulaTemplateService {
     }
 
     // Validate resulting formula
-    const validation = await formulaEngine.validate(formula);
-    if (!validation.isValid) {
-      throw new ValidationError(
-        `Generated formula is invalid: ${validation.errors.map(e => e.message).join(', ')}`
-      );
+    try {
+      const validation = await formulaEngine.validate(formula);
+      if (!validation.valid) {
+        throw new ValidationError(
+          `Generated formula is invalid: ${validation.errors.map(e => e.message).join(', ')}`
+        );
+      }
+    } catch (error) {
+      // Convert FormulaParseError to ValidationError
+      if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
+        throw new ValidationError(`Invalid formula syntax in generated formula: ${error.message}`);
+      }
+      throw error;
     }
 
+    console.log('✅ FormulaTemplateService.applyTemplate succeeded');
     return {
       formula,
+      template_id: templateId,
       template_code: template.template_code,
       template_name: template.template_name,
       parameters: parameterValues
-    };
-  }
-
-  /**
+      };
+    } catch (error) {
+      throw error;
+    }
+  }  /**
    * Get popular templates
    */
   async getPopularTemplates(organizationId, limit = 10) {
@@ -381,9 +469,9 @@ class FormulaTemplateService {
   async getRecommendedTemplates(category, organizationId) {
     const query = `
       SELECT 
-        id, template_code, template_name, description,
+        id, template_code, template_name, category, description,
         formula_expression, parameters, example_calculation,
-        complexity_level, tags
+        complexity_level, tags, is_recommended
       FROM payroll.formula_template
       WHERE is_active = true
         AND category = $1

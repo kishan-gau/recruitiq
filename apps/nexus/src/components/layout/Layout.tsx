@@ -1,5 +1,6 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@recruitiq/auth';
 import {
   LayoutDashboard,
   Users,
@@ -18,124 +19,131 @@ import {
   Menu,
   X,
   CalendarClock,
-  ChevronDown,
-  ChevronRight,
   Target,
-  LucideIcon,
+  UserCircle2,
+  Briefcase,
+  HeartPulse,
+  LogOut,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
+import NavigationGroup, { NavigationItem } from './NavigationGroup';
 
-// Types
-type NavigationItem = {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-  badge?: number;
+// Main navigation structure with logical grouping
+const dashboardItem: NavigationItem = {
+  name: 'Dashboard',
+  href: '/dashboard',
+  icon: LayoutDashboard,
+  description: 'Overview of HR operations',
 };
 
-type NavigationSection = {
-  id: string;
-  label?: string;
-  collapsible?: boolean;
-  defaultOpen?: boolean;
-  items: NavigationItem[];
-};
-
-// Navigation structure with grouped sections
-const navigationSections: NavigationSection[] = [
+const peopleItems: NavigationItem[] = [
   {
-    id: 'dashboard',
-    items: [
-      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    ],
+    name: 'Employees',
+    href: '/employees',
+    icon: Users,
+    description: 'Manage employee profiles and details',
   },
   {
-    id: 'people',
-    label: 'PEOPLE',
-    collapsible: true,
-    defaultOpen: true,
-    items: [
-      { name: 'Employees', href: '/employees', icon: Users },
-      { name: 'Departments', href: '/departments', icon: Building2 },
-      { name: 'Locations', href: '/locations', icon: MapPin },
-    ],
+    name: 'Departments',
+    href: '/departments',
+    icon: Building2,
+    description: 'Organize by departments',
   },
   {
-    id: 'workforce',
-    label: 'WORKFORCE',
-    collapsible: true,
-    defaultOpen: true,
-    items: [
-      { name: 'Contracts', href: '/contracts', icon: FileText },
-      { name: 'Attendance', href: '/attendance', icon: Clock },
-      { name: 'Time Off', href: '/time-off/requests', icon: Calendar, badge: 3 },
-    ],
-  },
-  {
-    id: 'scheduling',
-    label: 'SCHEDULING',
-    collapsible: true,
-    defaultOpen: true,
-    items: [
-      { name: 'ScheduleHub', href: '/schedulehub', icon: CalendarClock },
-    ],
-  },
-  {
-    id: 'performance',
-    label: 'PERFORMANCE',
-    collapsible: true,
-    defaultOpen: true,
-    items: [
-      { name: 'Reviews', href: '/performance/reviews', icon: Award },
-      { name: 'Goals', href: '/performance/goals', icon: Target },
-    ],
-  },
-  {
-    id: 'benefits',
-    label: 'BENEFITS',
-    collapsible: true,
-    defaultOpen: true,
-    items: [
-      { name: 'Plans', href: '/benefits/plans', icon: Heart },
-    ],
-  },
-  {
-    id: 'documents',
-    items: [
-      { name: 'Documents', href: '/documents', icon: FolderOpen },
-    ],
-  },
-  {
-    id: 'bottom',
-    items: [
-      { name: 'Reports', href: '/reports', icon: BarChart3 },
-      { name: 'Settings', href: '/settings', icon: Settings },
-    ],
+    name: 'Locations',
+    href: '/locations',
+    icon: MapPin,
+    description: 'Manage office locations',
   },
 ];
 
-export default function Layout() {
-  const location = useLocation();
-  const { theme, toggleTheme } = useTheme();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  // Track which sections are collapsed
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
-    const initial: Record<string, boolean> = {};
-    navigationSections.forEach(section => {
-      if (section.collapsible) {
-        initial[section.id] = !section.defaultOpen;
-      }
-    });
-    return initial;
-  });
+const workforceItems: NavigationItem[] = [
+  {
+    name: 'Contracts',
+    href: '/contracts',
+    icon: FileText,
+    description: 'Employment contracts',
+  },
+  {
+    name: 'Attendance',
+    href: '/attendance',
+    icon: Clock,
+    description: 'Track attendance records',
+  },
+  {
+    name: 'Time Off',
+    href: '/time-off/requests',
+    icon: Calendar,
+    description: 'Manage time off requests',
+    badge: 3,
+  },
+];
 
-  const toggleSection = (sectionId: string) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
+const schedulingItems: NavigationItem[] = [
+  {
+    name: 'ScheduleHub',
+    href: '/schedulehub',
+    icon: CalendarClock,
+    description: 'Work schedules and shifts',
+  },
+];
+
+const performanceItems: NavigationItem[] = [
+  {
+    name: 'Reviews',
+    href: '/performance/reviews',
+    icon: Award,
+    description: 'Performance reviews',
+  },
+  {
+    name: 'Goals',
+    href: '/performance/goals',
+    icon: Target,
+    description: 'Employee goals and objectives',
+  },
+];
+
+const benefitsItems: NavigationItem[] = [
+  {
+    name: 'Plans',
+    href: '/benefits/plans',
+    icon: Heart,
+    description: 'Employee benefits plans',
+  },
+];
+
+const documentsItem: NavigationItem = {
+  name: 'Documents',
+  href: '/documents',
+  icon: FolderOpen,
+  description: 'Document management',
+};
+
+const reportsItem: NavigationItem = {
+  name: 'Reports',
+  href: '/reports',
+  icon: BarChart3,
+  description: 'Analytics and reporting',
+};
+
+const settingsItem: NavigationItem = {
+  name: 'Settings',
+  href: '/settings',
+  icon: Settings,
+  description: 'System configuration',
+};
+
+export default function Layout() {
+  const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
   return (
@@ -175,88 +183,89 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-          {navigationSections.map((section, sectionIndex) => {
-            const isCollapsed = section.collapsible && collapsedSections[section.id];
+        <nav className="flex-1 px-4 py-6 space-y-4 overflow-y-auto">
+          {/* Dashboard - Top level */}
+          <NavigationGroup
+            items={[dashboardItem]}
+            onItemClick={() => setSidebarOpen(false)}
+          />
 
-            return (
-              <div key={section.id}>
-                {/* Section divider */}
-                {sectionIndex > 0 && section.label && (
-                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-4" />
-                )}
-                
-                {/* Section label with collapse toggle */}
-                {section.label && (
-                  <button
-                    onClick={() => section.collapsible && toggleSection(section.id)}
-                    className={clsx(
-                      'w-full flex items-center justify-between px-3 py-2 mb-1',
-                      'text-xs font-semibold tracking-wider',
-                      section.collapsible
-                        ? 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300 cursor-pointer'
-                        : 'text-slate-500 dark:text-slate-400 cursor-default'
-                    )}
-                  >
-                    <span>{section.label}</span>
-                    {section.collapsible && (
-                      <>
-                        {isCollapsed ? (
-                          <ChevronRight className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        )}
-                      </>
-                    )}
-                  </button>
-                )}
+          <div className="border-t border-slate-200 dark:border-slate-700 my-2" />
 
-                {/* Section items */}
-                {!isCollapsed && (
-                  <div className="space-y-1">
-                    {section.items.map((item) => {
-                      const isActive = location.pathname.startsWith(item.href);
-                      const Icon = item.icon;
+          {/* People Group */}
+          <NavigationGroup
+            title="People"
+            icon={UserCircle2}
+            items={peopleItems}
+            collapsible
+            isOpen={expandedGroup === 'people'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'people' ? null : 'people')}
+            onItemClick={() => setSidebarOpen(false)}
+          />
 
-                      return (
-                        <Link
-                          key={item.name}
-                          to={item.href}
-                          onClick={() => setSidebarOpen(false)}
-                          className={clsx(
-                            'flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                            isActive
-                              ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-                              : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
-                          )}
-                        >
-                          <div className="flex items-center">
-                            <Icon className="w-5 h-5 mr-3" />
-                            {item.name}
-                          </div>
-                          {item.badge && item.badge > 0 && (
-                            <span className={clsx(
-                              'px-2 py-0.5 text-xs font-semibold rounded-full',
-                              isActive
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300'
-                                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                            )}>
-                              {item.badge}
-                            </span>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
+          {/* Workforce Group */}
+          <NavigationGroup
+            title="Workforce"
+            icon={Briefcase}
+            items={workforceItems}
+            collapsible
+            isOpen={expandedGroup === 'workforce'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'workforce' ? null : 'workforce')}
+            onItemClick={() => setSidebarOpen(false)}
+          />
 
-                {/* Bottom section divider */}
-                {section.label && sectionIndex < navigationSections.length - 1 && (
-                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-4" />
-                )}
-              </div>
-            );
-          })}
+          {/* Scheduling Group */}
+          <NavigationGroup
+            title="Scheduling"
+            icon={CalendarClock}
+            items={schedulingItems}
+            collapsible
+            isOpen={expandedGroup === 'scheduling'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'scheduling' ? null : 'scheduling')}
+            onItemClick={() => setSidebarOpen(false)}
+          />
+
+          {/* Performance Group */}
+          <NavigationGroup
+            title="Performance"
+            icon={Target}
+            items={performanceItems}
+            collapsible
+            isOpen={expandedGroup === 'performance'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'performance' ? null : 'performance')}
+            onItemClick={() => setSidebarOpen(false)}
+          />
+
+          {/* Benefits Group */}
+          <NavigationGroup
+            title="Benefits"
+            icon={HeartPulse}
+            items={benefitsItems}
+            collapsible
+            isOpen={expandedGroup === 'benefits'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'benefits' ? null : 'benefits')}
+            onItemClick={() => setSidebarOpen(false)}
+          />
+
+          <div className="border-t border-slate-200 dark:border-slate-700 my-2" />
+
+          {/* Documents - Top level */}
+          <NavigationGroup
+            items={[documentsItem]}
+            onItemClick={() => setSidebarOpen(false)}
+          />
+
+          {/* Reports - Top level */}
+          <NavigationGroup
+            items={[reportsItem]}
+            onItemClick={() => setSidebarOpen(false)}
+          />
+
+          {/* Settings - Top level */}
+          <NavigationGroup
+            items={[settingsItem]}
+            onItemClick={() => setSidebarOpen(false)}
+          />
         </nav>
 
         {/* Theme toggle */}
@@ -297,14 +306,29 @@ export default function Layout() {
           <div className="flex items-center space-x-4">
             <div className="hidden sm:block text-right">
               <p className="text-sm font-medium text-slate-900 dark:text-white">
-                HR Admin
+                {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email || 'User'}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Human Resources
+                {user?.productRoles?.nexus || 'HR Administrator'}
               </p>
             </div>
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-purple-500 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">HA</span>
+            <div className="relative group">
+              <button className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-purple-500 rounded-full flex items-center justify-center hover:ring-2 hover:ring-emerald-500 hover:ring-offset-2 transition-all">
+                <span className="text-white font-semibold text-sm">
+                  {user?.firstName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </button>
+              
+              {/* Dropdown menu */}
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </header>

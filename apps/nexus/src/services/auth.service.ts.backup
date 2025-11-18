@@ -6,7 +6,9 @@
 import axios from 'axios';
 
 // SECURITY: Configure axios to send httpOnly cookies with requests
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const api = axios.create({
+  baseURL: API_BASE_URL,
   withCredentials: true, // CRITICAL: Send cookies with all requests
 });
 
@@ -54,7 +56,7 @@ interface UserProfile {
 }
 
 class AuthService {
-  private baseURL = '/api/auth/tenant';
+  private baseURL = '/auth/tenant';
 
   /**
    * Login tenant user

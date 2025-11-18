@@ -3,37 +3,48 @@
  * Database operations for ProductPermission model
  */
 
-import pool from '../../../config/database.js';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 import ProductPermission from '../models/ProductPermission.js';
 
 class ProductPermissionRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+    this.logger = logger;
+  }
+
   /**
    * Find all permissions for an organization
    */
   async findByOrganization(organizationId) {
-    const query = `
-      SELECT pp.*, p.name as product_name, p.display_name, p.slug
-      FROM product_permissions pp
-      JOIN products p ON pp.product_id = p.id
-      WHERE pp.organization_id = $1 AND pp.revoked_at IS NULL
-      ORDER BY p.is_core DESC, p.name ASC
-    `;
-    const result = await pool.query(query, [organizationId]);
-    return result.rows.map(row => new ProductPermission(row));
+    try {
+      const sql = `
+        SELECT pp.*, p.name as product_name, p.display_name, p.slug
+        FROM product_permissions pp
+        JOIN products p ON pp.product_id = p.id
+        WHERE pp.organization_id = $1 AND pp.revoked_at IS NULL
+        ORDER BY p.is_core DESC, p.name ASC
+      `;
+      const result = await this.query(sql, [organizationId], organizationId);
+      return result.rows.map(row => new ProductPermission(row));
+    } catch (error) {
+      this.logger.error('Error finding permissions by organization', { organizationId, error: error.message });
+      throw error;
+    }
   }
 
   /**
    * Find all permissions for a product
    */
   async findByProduct(productId) {
-    const query = `
+    const sql = `
       SELECT pp.*, o.name as organization_name
       FROM product_permissions pp
       JOIN organizations o ON pp.organization_id = o.id
       WHERE pp.product_id = $1 AND pp.revoked_at IS NULL
       ORDER BY o.name ASC
     `;
-    const result = await pool.query(query, [productId]);
+    const result = await this.query(sql, [productId]);
     return result.rows.map(row => new ProductPermission(row));
   }
 
@@ -41,11 +52,11 @@ class ProductPermissionRepository {
    * Find specific permission
    */
   async findByOrganizationAndProduct(organizationId, productId) {
-    const query = `
+    const sql = `
       SELECT * FROM product_permissions 
       WHERE organization_id = $1 AND product_id = $2 AND revoked_at IS NULL
     `;
-    const result = await pool.query(query, [organizationId, productId]);
+    const result = await this.query(sql, [organizationId, productId]);
     return result.rows.length > 0 ? new ProductPermission(result.rows[0]) : null;
   }
 
@@ -53,7 +64,7 @@ class ProductPermissionRepository {
    * Find enabled permissions for an organization
    */
   async findEnabledByOrganization(organizationId) {
-    const query = `
+    const sql = `
       SELECT pp.*, p.name as product_name, p.display_name, p.slug, p.base_path, p.ui_config
       FROM product_permissions pp
       JOIN products p ON pp.product_id = p.id
@@ -63,7 +74,7 @@ class ProductPermissionRepository {
         AND (pp.license_expires_at IS NULL OR pp.license_expires_at > NOW())
       ORDER BY p.is_core DESC, p.name ASC
     `;
-    const result = await pool.query(query, [organizationId]);
+    const result = await this.query(sql, [organizationId]);
     return result.rows.map(row => new ProductPermission(row));
   }
 
@@ -71,7 +82,7 @@ class ProductPermissionRepository {
    * Find expired licenses
    */
   async findExpiredLicenses() {
-    const query = `
+    const sql = `
       SELECT pp.*, o.name as organization_name, p.name as product_name
       FROM product_permissions pp
       JOIN organizations o ON pp.organization_id = o.id
@@ -80,7 +91,7 @@ class ProductPermissionRepository {
         AND pp.is_enabled = TRUE 
         AND pp.revoked_at IS NULL
     `;
-    const result = await pool.query(query);
+    const result = await this.query(sql, [], null);
     return result.rows.map(row => new ProductPermission(row));
   }
 
@@ -88,7 +99,7 @@ class ProductPermissionRepository {
    * Create or update permission
    */
   async upsert(permissionData, userId) {
-    const query = `
+    const sql = `
       INSERT INTO product_permissions (
         organization_id, product_id, is_enabled, access_level,
         license_key, license_expires_at, max_users, max_resources,
@@ -126,7 +137,7 @@ class ProductPermissionRepository {
       userId
     ];
 
-    const result = await pool.query(query, values);
+    const result = await this.query(sql, values);
     return new ProductPermission(result.rows[0]);
   }
 
@@ -181,7 +192,7 @@ class ProductPermissionRepository {
 
     values.push(organizationId, productId);
 
-    const query = `
+    const sql = `
       UPDATE product_permissions 
       SET ${updates.join(', ')} 
       WHERE organization_id = $${paramCount++} 
@@ -190,7 +201,7 @@ class ProductPermissionRepository {
       RETURNING *
     `;
 
-    const result = await pool.query(query, values);
+    const result = await this.query(sql, values);
     return result.rows.length > 0 ? new ProductPermission(result.rows[0]) : null;
   }
 
@@ -198,13 +209,13 @@ class ProductPermissionRepository {
    * Revoke permission
    */
   async revoke(organizationId, productId, userId) {
-    const query = `
+    const sql = `
       UPDATE product_permissions 
       SET revoked_at = NOW(), revoked_by = $1, is_enabled = FALSE
       WHERE organization_id = $2 AND product_id = $3 AND revoked_at IS NULL
       RETURNING *
     `;
-    const result = await pool.query(query, [userId, organizationId, productId]);
+    const result = await this.query(sql, [userId, organizationId, productId]);
     return result.rows.length > 0 ? new ProductPermission(result.rows[0]) : null;
   }
 
@@ -212,7 +223,7 @@ class ProductPermissionRepository {
    * Update usage counters
    */
   async updateUsage(organizationId, productId, usersCount, resourcesCount) {
-    const query = `
+    const sql = `
       UPDATE product_permissions 
       SET 
         users_count = $1,
@@ -221,7 +232,7 @@ class ProductPermissionRepository {
       WHERE organization_id = $3 AND product_id = $4 AND revoked_at IS NULL
       RETURNING *
     `;
-    const result = await pool.query(query, [usersCount, resourcesCount, organizationId, productId]);
+    const result = await this.query(sql, [usersCount, resourcesCount, organizationId, productId]);
     return result.rows.length > 0 ? new ProductPermission(result.rows[0]) : null;
   }
 
@@ -229,13 +240,13 @@ class ProductPermissionRepository {
    * Increment users count
    */
   async incrementUsersCount(organizationId, productId) {
-    const query = `
+    const sql = `
       UPDATE product_permissions 
       SET users_count = users_count + 1, last_accessed_at = NOW()
       WHERE organization_id = $1 AND product_id = $2 AND revoked_at IS NULL
       RETURNING *
     `;
-    const result = await pool.query(query, [organizationId, productId]);
+    const result = await this.query(sql, [organizationId, productId]);
     return result.rows.length > 0 ? new ProductPermission(result.rows[0]) : null;
   }
 
@@ -243,15 +254,16 @@ class ProductPermissionRepository {
    * Decrement users count
    */
   async decrementUsersCount(organizationId, productId) {
-    const query = `
+    const sql = `
       UPDATE product_permissions 
       SET users_count = GREATEST(users_count - 1, 0), last_accessed_at = NOW()
       WHERE organization_id = $1 AND product_id = $2 AND revoked_at IS NULL
       RETURNING *
     `;
-    const result = await pool.query(query, [organizationId, productId]);
+    const result = await this.query(sql, [organizationId, productId]);
     return result.rows.length > 0 ? new ProductPermission(result.rows[0]) : null;
   }
 }
 
-export default new ProductPermissionRepository();
+export default ProductPermissionRepository;
+

@@ -132,6 +132,13 @@ const config = {
     cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE, 10) || 900000, // 15 minutes (aligned with JWT)
   },
   
+  // Cookie Configuration (centralized for consistency)
+  cookie: {
+    secure: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
+    sameSite: process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'strict' : 'none'),
+    domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined),
+  },
+  
   // Encryption
   encryption: {
     masterKey: process.env.ENCRYPTION_MASTER_KEY,

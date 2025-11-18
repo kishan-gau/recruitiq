@@ -423,6 +423,29 @@ export function useUpdateShiftType() {
   });
 }
 
+/**
+ * Hook to delete a shift type
+ */
+export function useDeleteShiftType() {
+  const { paylinq } = usePaylinqAPI();
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await paylinq.deleteShiftType(id);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...SHIFT_TYPES_KEY, 'list'] });
+      success('Shift type deleted successfully');
+    },
+    onError: (err: any) => {
+      error(err?.response?.data?.message || 'Failed to delete shift type');
+    },
+  });
+}
+
 // ============================================================================
 // Attendance Events Queries & Mutations
 // ============================================================================

@@ -18,7 +18,7 @@ class LocationController {
    */
   createLocation = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const location = await this.service.createLocation(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: location });
     } catch (error) {
@@ -33,7 +33,7 @@ class LocationController {
    */
   getLocation = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const location = await this.service.getLocation(id, organizationId);
       res.json({ success: true, data: location });
@@ -50,7 +50,7 @@ class LocationController {
    */
   updateLocation = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const location = await this.service.updateLocation(id, req.body, organizationId, userId);
       res.json({ success: true, data: location });
@@ -67,7 +67,7 @@ class LocationController {
    */
   deleteLocation = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       await this.service.deleteLocation(id, organizationId, userId);
       res.json({ success: true, message: 'Location deleted successfully' });
@@ -84,19 +84,20 @@ class LocationController {
    */
   getLocations = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { type, isActive, limit = 50, offset = 0 } = req.query;
 
       const filters = {};
       if (type) filters.type = type;
       if (isActive !== undefined) filters.isActive = isActive === 'true';
       
-      // Add pagination to filters
-      filters.limit = parseInt(limit);
-      filters.offset = parseInt(offset);
+      const options = {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      };
 
-      const locations = await this.service.getLocations(organizationId, filters);
-      res.json({ success: true, data: locations });
+      const result = await this.service.listLocations(filters, organizationId, options);
+      res.json({ success: true, data: result.locations, total: result.total, limit: result.limit, offset: result.offset });
     } catch (error) {
       this.logger.error('Error in getLocations controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
@@ -109,7 +110,7 @@ class LocationController {
    */
   getLocationByCode = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { code } = req.params;
       const location = await this.service.getLocationByCode(code, organizationId);
       res.json({ success: true, data: location });
@@ -126,7 +127,7 @@ class LocationController {
    */
   getLocationStats = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const stats = await this.service.getLocationStats(id, organizationId);
       res.json({ success: true, data: stats });
@@ -143,7 +144,7 @@ class LocationController {
    */
   getAllLocationStats = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const stats = await this.service.getAllLocationStats(organizationId);
       res.json({ success: true, data: stats });
     } catch (error) {

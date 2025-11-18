@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Calendar, User } from 'lucide-react';
+import { Calendar, User, Save, X } from 'lucide-react';
 import { useCreatePerformanceReview, useUpdatePerformanceReview } from '@/hooks/usePerformance';
 import type { PerformanceReview, ReviewType } from '@/types/performance.types';
 import { apiClient } from '@/services/api';
@@ -127,13 +127,12 @@ export default function PerformanceReviewForm({ review, onSuccess }: Performance
   const reviewerOptions = employees.filter((emp) => emp.id !== selectedEmployeeId);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       {/* Employee & Reviewer Selection */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <User size={20} />
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
           Review Participants
-        </h3>
+        </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Employee Selection */}
@@ -187,22 +186,21 @@ export default function PerformanceReviewForm({ review, onSuccess }: Performance
       </div>
 
       {/* Review Details */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Calendar size={20} />
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+        <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
           Review Details
         </h3>
 
         <div className="space-y-6">
           {/* Review Type */}
           <div>
-            <label htmlFor="reviewType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Review Type *
+            <label htmlFor="reviewType" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Review Type <span className="text-red-500">*</span>
             </label>
             <select
               id="reviewType"
               {...register('reviewType')}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               {REVIEW_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -218,14 +216,14 @@ export default function PerformanceReviewForm({ review, onSuccess }: Performance
           {/* Review Period */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label htmlFor="reviewPeriodStart" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Review Period Start *
+              <label htmlFor="reviewPeriodStart" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Review Period Start <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 id="reviewPeriodStart"
                 {...register('reviewPeriodStart')}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
               {errors.reviewPeriodStart && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.reviewPeriodStart.message}</p>
@@ -233,14 +231,14 @@ export default function PerformanceReviewForm({ review, onSuccess }: Performance
             </div>
 
             <div>
-              <label htmlFor="reviewPeriodEnd" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Review Period End *
+              <label htmlFor="reviewPeriodEnd" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Review Period End <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 id="reviewPeriodEnd"
                 {...register('reviewPeriodEnd')}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
               {errors.reviewPeriodEnd && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.reviewPeriodEnd.message}</p>
@@ -250,19 +248,19 @@ export default function PerformanceReviewForm({ review, onSuccess }: Performance
 
           {/* Due Date */}
           <div>
-            <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Due Date *
+            <label htmlFor="dueDate" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Due Date <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
               id="dueDate"
               {...register('dueDate')}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
             {errors.dueDate && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.dueDate.message}</p>
             )}
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               The deadline for completing this review
             </p>
           </div>
@@ -270,30 +268,32 @@ export default function PerformanceReviewForm({ review, onSuccess }: Performance
       </div>
 
       {/* Help Text */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-        <p className="text-sm text-blue-800 dark:text-blue-300">
+      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4">
+        <p className="text-sm text-emerald-800 dark:text-emerald-300">
           <strong>Note:</strong> After creating the review, you can add detailed ratings, comments, and feedback on the review details page.
           This form creates the review structure and assigns the reviewer.
         </p>
       </div>
 
       {/* Form Actions */}
-      <div className="flex gap-4 justify-end">
+      <div className="flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={() => window.history.back()}
-          className="px-6 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-colors"
+          className="inline-flex items-center px-6 py-3 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
         >
+          <X size={20} className="mr-2" />
           Cancel
         </button>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-700 transition-colors disabled:opacity-50"
         >
+          <Save size={20} className="mr-2" />
           {isSubmitting ? (
             <>
-              <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+              <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent ml-2"></span>
               {isEditMode ? 'Updating...' : 'Creating...'}
             </>
           ) : (

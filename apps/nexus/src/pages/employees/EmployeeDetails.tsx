@@ -189,8 +189,8 @@ export default function EmployeeDetails() {
                 />
               ) : (
                 <div className="w-32 h-32 rounded-xl border-4 border-white dark:border-slate-900 bg-gradient-to-br from-emerald-500 to-purple-500 flex items-center justify-center text-white font-bold text-4xl shadow-lg">
-                  {employee.firstName[0]}
-                  {employee.lastName[0]}
+                  {employee.firstName?.[0] || '?'}
+                  {employee.lastName?.[0] || '?'}
                 </div>
               )}
               <div className="space-y-2">
@@ -207,13 +207,13 @@ export default function EmployeeDetails() {
                       employee.employmentStatus
                     )}`}
                   >
-                    {employee.employmentStatus.replace('_', ' ')}
+                    {employee.employmentStatus?.replace('_', ' ') || 'Unknown'}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
                   <div className="flex items-center gap-1">
                     <Mail className="w-4 h-4" />
-                    {employee.email}
+                    {employee.email || 'No email'}
                   </div>
                   {employee.phone && (
                     <div className="flex items-center gap-1">
@@ -305,14 +305,14 @@ export default function EmployeeDetails() {
                 <div>
                   <dt className="text-sm text-slate-600 dark:text-slate-400">Employment Type</dt>
                   <dd className="text-slate-900 dark:text-white font-medium">
-                    {employee.employmentType.replace('_', ' ')}
+                    {employee.employmentType?.replace('_', ' ') || '-'}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm text-slate-600 dark:text-slate-400">Hire Date</dt>
                   <dd className="text-slate-900 dark:text-white font-medium flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    {format(new Date(employee.hireDate), 'MMMM d, yyyy')}
+                    {employee.hireDate ? format(new Date(employee.hireDate), 'MMMM d, yyyy') : '-'}
                   </dd>
                 </div>
                 {employee.manager && (

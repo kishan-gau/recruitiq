@@ -11,11 +11,13 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5175, // Different port from Paylinq (5174)
+    host: 'localhost',
+    port: 5175,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000', // Backend runs on port 4000
+        target: 'http://localhost:4000',
         changeOrigin: true,
+        secure: false,
       },
     },
   },

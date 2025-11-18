@@ -35,7 +35,7 @@ class TimeOffService {
 
       const result = await client.query(
         `INSERT INTO scheduling.time_off_requests (
-          organization_id, worker_id, request_type, start_date, end_date,
+          organization_id, employee_id, request_type, start_date, end_date,
           is_full_day, start_time, end_time, total_days, reason, notes, status
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING *`,
@@ -78,12 +78,12 @@ class TimeOffService {
         const request = result.rows[0];
         await client.query(
           `INSERT INTO scheduling.worker_availability (
-            organization_id, worker_id, availability_type, specific_date,
+            organization_id, employee_id, availability_type, specific_date,
             start_time, end_time, priority, reason
           )
           SELECT $1, $2, 'unavailable', generate_series($3::date, $4::date, '1 day'::interval)::date,
                  $5, $6, 'unavailable', $7`,
-          [organizationId, request.worker_id, request.start_date, request.end_date,
+          [organizationId, request.employee_id, request.start_date, request.end_date,
            request.start_time || '00:00', request.end_time || '23:59',
            `Approved time off: ${request.request_type}`]
         );
@@ -104,7 +104,7 @@ class TimeOffService {
   async getWorkerRequests(workerId, organizationId, filters = {}) {
     try {
       const { status, startDate, endDate } = filters;
-      let query = `SELECT * FROM scheduling.time_off_requests WHERE worker_id = $1 AND organization_id = $2`;
+      let query = `SELECT * FROM scheduling.time_off_requests WHERE employee_id = $1 AND organization_id = $2`;
       const params = [workerId, organizationId];
       let paramCount = 2;
 
@@ -136,9 +136,9 @@ class TimeOffService {
   async getPendingRequests(organizationId) {
     try {
       const result = await pool.query(
-        `SELECT r.*, w.first_name || ' ' || w.last_name as worker_name
+        `SELECT r.*, e.first_name || ' ' || e.last_name as worker_name
          FROM scheduling.time_off_requests r
-         JOIN scheduling.workers w ON r.worker_id = w.id
+         JOIN hris.employee e ON r.employee_id = e.id
          WHERE r.organization_id = $1 AND r.status = 'pending'
          ORDER BY r.created_at`,
         [organizationId]

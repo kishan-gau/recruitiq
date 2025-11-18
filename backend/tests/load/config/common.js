@@ -31,11 +31,11 @@ export const STRICT_THRESHOLDS = {
   'http_reqs': ['rate>100'],
 };
 
-// Test data
+// Test data - Using seeded test tenant user
 export const TEST_USER = {
-  email: 'loadtest@recruitiq.com',
-  password: 'LoadTest123!@#',
-  name: 'Load Test User',
+  email: 'tenant@testcompany.com',
+  password: 'Admin123!',
+  name: 'Tenant Administrator',
 };
 
 export const TEST_CANDIDATE = {

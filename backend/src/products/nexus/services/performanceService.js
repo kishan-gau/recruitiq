@@ -35,13 +35,13 @@ class PerformanceService {
       const sql = `
         INSERT INTO hris.performance_review (
           organization_id, employee_id, reviewer_id,
-          review_period_start, review_period_end, review_date,
+          review_period_start, review_period_end, due_date,
           overall_rating, status, review_type,
-          goals_achieved, strengths, areas_for_improvement,
-          comments, next_review_date,
+          responses, strengths, areas_for_improvement,
+          goals_for_next_period,
           created_by, updated_by
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
         )
         RETURNING *
       `;
@@ -52,15 +52,14 @@ class PerformanceService {
         reviewData.reviewer_id || userId,
         reviewData.review_period_start,
         reviewData.review_period_end,
-        reviewData.review_date || new Date(),
+        reviewData.due_date || null,
         reviewData.overall_rating || null,
         reviewData.status || 'draft',
         reviewData.review_type || 'annual',
-        reviewData.goals_achieved || null,
+        reviewData.responses || {},
         reviewData.strengths || null,
         reviewData.areas_for_improvement || null,
-        reviewData.comments || null,
-        reviewData.next_review_date || null,
+        reviewData.goals_for_next_period || null,
         userId,
         userId
       ];
@@ -177,7 +176,7 @@ class PerformanceService {
         paramIndex++;
       }
 
-      sql += ` ORDER BY pr.review_date DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      sql += ` ORDER BY pr.completed_date DESC NULLS LAST LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
       const result = await query(sql, params, organizationId, {
@@ -268,10 +267,10 @@ class PerformanceService {
       let paramIndex = 1;
 
       const updateableFields = [
-        'reviewer_id', 'review_period_start', 'review_period_end', 'review_date',
+        'reviewer_id', 'review_period_start', 'review_period_end', 'due_date',
         'overall_rating', 'status', 'review_type',
-        'goals_achieved', 'strengths', 'areas_for_improvement',
-        'comments', 'next_review_date'
+        'responses', 'strengths', 'areas_for_improvement', 'goals_for_next_period',
+        'submitted_date', 'completed_date'
       ];
 
       updateableFields.forEach(field => {
@@ -369,6 +368,88 @@ class PerformanceService {
         id,
         organizationId,
         userId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get reviews statistics
+   */
+  async getReviewsStatistics(organizationId) {
+    try {
+      this.logger.info('Getting reviews statistics', { organizationId });
+
+      const sql = `
+        SELECT 
+          COUNT(*) as total_reviews,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_reviews,
+          COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_reviews,
+          COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_reviews,
+          AVG(CASE WHEN overall_rating IS NOT NULL THEN overall_rating END) as average_rating,
+          COUNT(CASE WHEN completed_date >= CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as recent_reviews
+        FROM hris.performance_review
+        WHERE organization_id = $1 AND deleted_at IS NULL
+      `;
+
+      const result = await query(sql, [organizationId], organizationId, {
+        operation: 'SELECT',
+        table: 'hris.performance_review'
+      });
+
+      return result.rows[0] || {
+        total_reviews: 0,
+        completed_reviews: 0,
+        pending_reviews: 0,
+        in_progress_reviews: 0,
+        average_rating: null,
+        recent_reviews: 0
+      };
+    } catch (error) {
+      this.logger.error('Error getting reviews statistics', { 
+        error: error.message,
+        organizationId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get goals statistics
+   */
+  async getGoalsStatistics(organizationId) {
+    try {
+      this.logger.info('Getting goals statistics', { organizationId });
+
+      const sql = `
+        SELECT 
+          COUNT(*) as total_goals,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_goals,
+          COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress_goals,
+          COUNT(CASE WHEN status = 'not_started' THEN 1 END) as not_started_goals,
+          COUNT(CASE WHEN target_date < CURRENT_DATE AND status != 'completed' THEN 1 END) as overdue_goals,
+          COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as recent_goals
+        FROM hris.performance_goal
+        WHERE organization_id = $1 AND deleted_at IS NULL
+      `;
+
+      const result = await query(sql, [organizationId], organizationId, {
+        operation: 'SELECT',
+        table: 'hris.performance_goal'
+      });
+
+      return result.rows[0] || {
+        total_goals: 0,
+        completed_goals: 0,
+        in_progress_goals: 0,
+        not_started_goals: 0,
+        overdue_goals: 0,
+        recent_goals: 0
+      };
+    } catch (error) {
+      this.logger.error('Error getting goals statistics', { 
+        error: error.message,
+        organizationId 
       });
       throw error;
     }

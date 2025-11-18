@@ -1,6 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import config from './config/index.js';
+import { validateConfiguration } from './config/validator.js';
 import logger from './utils/logger.js';
 import { healthCheck as dbHealthCheck, closePool } from './config/database.js';
 import { closeCentralPool } from './config/centralDatabase.js';
@@ -66,6 +67,19 @@ import { secureRequest, blockFilePathInjection } from './middleware/requestSecur
 import { timezoneMiddleware, timezoneHeaderMiddleware } from './middleware/timezone.js';
 
 const app = express();
+
+// ============================================================================
+// CONFIGURATION VALIDATION
+// ============================================================================
+
+// Validate configuration at startup
+logger.info('Validating configuration...');
+try {
+  validateConfiguration();
+} catch (error) {
+  logger.error('Configuration validation failed. Exiting...', error);
+  process.exit(1);
+}
 
 // Trust proxy if behind reverse proxy (production)
 if (config.security.trustProxy) {
@@ -353,6 +367,11 @@ if (process.env.NODE_ENV !== 'test') {
     // Initialize dynamic product loading after server starts
     await initializeProducts();
   });
+} else {
+  // In test mode, initialize products immediately without starting server
+  logger.info('🧪 Test mode: Initializing products without starting server...');
+  await initializeProducts();
+  logger.info('🧪 Test mode: Product initialization complete');
 }
 
 // ============================================================================

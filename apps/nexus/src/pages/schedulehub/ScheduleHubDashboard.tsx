@@ -1,4 +1,4 @@
-import { Calendar, Users, Clock, Repeat, AlertCircle, TrendingUp } from 'lucide-react';
+import { Calendar, Users, Clock, Repeat, AlertCircle, TrendingUp, Building2, Briefcase } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useScheduleStats } from '@/hooks/schedulehub/useScheduleStats';
 
@@ -19,6 +19,20 @@ export default function ScheduleHubDashboard() {
       href: '/schedulehub/workers',
       icon: Users,
       color: 'bg-green-500',
+    },
+    {
+      title: 'Manage Stations',
+      description: 'Configure workstations',
+      href: '/schedulehub/stations',
+      icon: Building2,
+      color: 'bg-cyan-500',
+    },
+    {
+      title: 'Manage Shift Roles',
+      description: 'Define shift roles for scheduling',
+      href: '/schedulehub/roles',
+      icon: Briefcase,
+      color: 'bg-violet-500',
     },
     {
       title: 'Time Off Requests',

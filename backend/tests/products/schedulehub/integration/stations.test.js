@@ -1,12 +1,10 @@
 /**
  * Integration Tests: Stations API
- * Tests station management and role requirements
+ * Tests station management and role requirements with cookie-based authentication
  */
 
 import { jest } from '@jest/globals';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import request from 'supertest';
-import app from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
 import {
   createTestOrganization,
@@ -21,10 +19,11 @@ import {
 // SKIPPED: Bearer token auth incomplete - migrating to cookie-based auth
 // TODO: Re-enable once cookie auth is implemented for all apps
 
-describe.skip('Integration: Stations API', () => {
+describe('Integration: Stations API', () => {
   let organizationId;
   let userId;
-  let token;
+  let agent;
+  let csrfToken;
   let locationId;
   let roleId;
   let stationId;
@@ -33,7 +32,8 @@ describe.skip('Integration: Stations API', () => {
     const org = await createTestOrganization();
     organizationId = org.organizationId;
     userId = org.userId;
-    token = org.token;
+    agent = org.agent;
+    csrfToken = org.csrfToken;
 
     const departmentId = await createTestDepartment(organizationId, userId);
     locationId = await createTestLocation(organizationId, userId);
@@ -45,12 +45,9 @@ describe.skip('Integration: Stations API', () => {
     await pool.end();
   });
 
-  describe.skip('POST /api/schedulehub/stations', () => {
+  describe('POST /api/schedulehub/stations', () => {
     it('should create a station', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/stations').set('X-CSRF-Token', csrfToken).send({
           name: 'Front Register 1',
           code: `FR1-${Date.now()}`,
           locationId,
@@ -73,20 +70,14 @@ describe.skip('Integration: Stations API', () => {
       const code = `UNIQUE-${Date.now()}`;
       
       // Create first station
-      await request(app)
-        .post('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      await agent.post('/api/products/schedulehub/stations').set('X-CSRF-Token', csrfToken).send({
           name: 'Station 1',
           code,
           locationId
         });
 
       // Try to create duplicate
-      const response = await request(app)
-        .post('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/stations').set('X-CSRF-Token', csrfToken).send({
           name: 'Station 2',
           code, // Duplicate
           locationId
@@ -97,10 +88,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should set default capacity to 1', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/stations').set('X-CSRF-Token', csrfToken).send({
           name: 'Single Station',
           code: `SINGLE-${Date.now()}`,
           locationId
@@ -113,10 +101,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should require name and code', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/stations').set('X-CSRF-Token', csrfToken).send({
           locationId
         });
 
@@ -124,10 +109,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should validate capacity > 0', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/stations').set('X-CSRF-Token', csrfToken).send({
           name: 'Invalid Station',
           code: `INV-${Date.now()}`,
           locationId,
@@ -138,11 +120,9 @@ describe.skip('Integration: Stations API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/stations', () => {
+  describe('GET /api/schedulehub/stations', () => {
     it('should list stations', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get('/api/products/schedulehub/stations')
 
       expect(response.status).toBe(200);
       expect(response.body.data).toBeInstanceOf(Array);
@@ -151,19 +131,14 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should filter by location', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ locationId });
+      const response = await agent.get('/api/products/schedulehub/stations')        .query({ locationId });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(s => s.location_id === locationId)).toBe(true);
     });
 
     it('should filter active only by default', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get('/api/products/schedulehub/stations')
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(s => s.is_active === true)).toBe(true);
@@ -173,36 +148,28 @@ describe.skip('Integration: Stations API', () => {
       // Create inactive station
       await pool.query(
         `INSERT INTO scheduling.stations (
-          organization_id, name, code, location_id,
+          organization_id, station_name, station_code, location_id,
           is_active, created_at, created_by, updated_at, updated_by
         ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, NOW(), $7)`,
         [organizationId, 'Inactive Station', `INACT-${Date.now()}`,
          locationId, false, userId, userId]
       );
 
-      const response = await request(app)
-        .get('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ includeInactive: true });
+      const response = await agent.get('/api/products/schedulehub/stations')        .query({ includeInactive: true });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.some(s => s.is_active === false)).toBe(true);
     });
 
     it('should support pagination', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ page: 1, limit: 5 });
+      const response = await agent.get('/api/products/schedulehub/stations')        .query({ page: 1, limit: 5 });
 
       expect(response.status).toBe(200);
       expect(response.body.pagination).toBeDefined();
     });
 
     it('should be ordered by name', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/stations')
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get('/api/products/schedulehub/stations')
 
       expect(response.status).toBe(200);
       expect(response.body?.data).toBeDefined();
@@ -212,11 +179,9 @@ describe.skip('Integration: Stations API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/stations/:id', () => {
+  describe('GET /api/schedulehub/stations/:id', () => {
     it('should get station by id', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/stations/${stationId}`)
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get(`/api/products/schedulehub/stations/${stationId}`)
 
       expect(response.status).toBe(200);
       expect(response.body?.data).toBeDefined();
@@ -226,20 +191,15 @@ describe.skip('Integration: Stations API', () => {
 
     it('should return 404 for non-existent station', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000';
-      const response = await request(app)
-        .get(`/api/schedulehub/stations/${fakeId}`)
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get(`/api/products/schedulehub/stations/${fakeId}`)
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe.skip('PATCH /api/schedulehub/stations/:id', () => {
+  describe('PATCH /api/schedulehub/stations/:id', () => {
     it('should update station details', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/stations/${stationId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/stations/${stationId}`).set('X-CSRF-Token', csrfToken).send({
           capacity: 3,
           floor: '2nd Floor',
           requiresSupervision: true
@@ -253,10 +213,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should update name and description', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/stations/${stationId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/stations/${stationId}`).set('X-CSRF-Token', csrfToken).send({
           name: 'Front Register 1 - Updated',
           description: 'Primary checkout station'
         });
@@ -270,10 +227,7 @@ describe.skip('Integration: Stations API', () => {
     it('should deactivate station', async () => {
       const tempStation = await createTestStation(organizationId, userId, locationId);
 
-      const response = await request(app)
-        .patch(`/api/schedulehub/stations/${tempStation}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/stations/${tempStation}`).set('X-CSRF-Token', csrfToken).send({
           isActive: false
         });
 
@@ -283,10 +237,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should validate capacity > 0', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/stations/${stationId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/stations/${stationId}`).set('X-CSRF-Token', csrfToken).send({
           capacity: -1
         });
 
@@ -294,12 +245,9 @@ describe.skip('Integration: Stations API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/stations/:stationId/requirements', () => {
+  describe('POST /api/schedulehub/stations/:stationId/requirements', () => {
     it('should add role requirement', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/stations/${stationId}/requirements`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/stations/${stationId}/requirements`).set('X-CSRF-Token', csrfToken).send({
           roleId,
           minWorkers: 1,
           maxWorkers: 2,
@@ -318,10 +266,7 @@ describe.skip('Integration: Stations API', () => {
       const newDept = await createTestDepartment(organizationId, userId);
       const newRole = await createTestRole(organizationId, userId, newDept);
 
-      const response = await request(app)
-        .post(`/api/schedulehub/stations/${stationId}/requirements`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/stations/${stationId}/requirements`).set('X-CSRF-Token', csrfToken).send({
           roleId: newRole,
           minWorkers: 5,
           maxWorkers: 2 // max < min
@@ -335,10 +280,7 @@ describe.skip('Integration: Stations API', () => {
       const newDept = await createTestDepartment(organizationId, userId);
       const newRole = await createTestRole(organizationId, userId, newDept);
 
-      const response = await request(app)
-        .post(`/api/schedulehub/stations/${stationId}/requirements`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/stations/${stationId}/requirements`).set('X-CSRF-Token', csrfToken).send({
           roleId: newRole,
           minWorkers: 1,
           priority: 'invalid_priority'
@@ -348,10 +290,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should prevent duplicate role requirement', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/stations/${stationId}/requirements`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/stations/${stationId}/requirements`).set('X-CSRF-Token', csrfToken).send({
           roleId,
           minWorkers: 1,
           priority: 'preferred'
@@ -365,10 +304,7 @@ describe.skip('Integration: Stations API', () => {
       const newDept = await createTestDepartment(organizationId, userId);
       const newRole = await createTestRole(organizationId, userId, newDept);
 
-      const response = await request(app)
-        .post(`/api/schedulehub/stations/${stationId}/requirements`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/stations/${stationId}/requirements`).set('X-CSRF-Token', csrfToken).send({
           roleId: newRole,
           priority: 'optional'
           // No min/max specified
@@ -381,11 +317,9 @@ describe.skip('Integration: Stations API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/stations/:id/requirements', () => {
+  describe('GET /api/schedulehub/stations/:id/requirements', () => {
     it('should get station requirements', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/stations/${stationId}/requirements`)
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get(`/api/products/schedulehub/stations/${stationId}/requirements`)
 
       expect(response.status).toBe(200);
       expect(response.body.data).toBeInstanceOf(Array);
@@ -394,9 +328,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should include role details', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/stations/${stationId}/requirements`)
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get(`/api/products/schedulehub/stations/${stationId}/requirements`)
 
       expect(response.status).toBe(200);
       expect(response.body.data[0]).toHaveProperty('role_name');
@@ -404,9 +336,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should be ordered by priority', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/stations/${stationId}/requirements`)
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get(`/api/products/schedulehub/stations/${stationId}/requirements`)
 
       expect(response.status).toBe(200);
       
@@ -422,21 +352,16 @@ describe.skip('Integration: Stations API', () => {
     it('should return empty array for station with no requirements', async () => {
       const emptyStation = await createTestStation(organizationId, userId, locationId);
 
-      const response = await request(app)
-        .get(`/api/schedulehub/stations/${emptyStation}/requirements`)
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.get(`/api/products/schedulehub/stations/${emptyStation}/requirements`)
 
       expect(response.status).toBe(200);
       expect(response.body.data).toEqual([]);
     });
   });
 
-  describe.skip('PATCH /api/schedulehub/stations/:stationId/requirements/:roleId', () => {
+  describe('PATCH /api/schedulehub/stations/:stationId/requirements/:roleId', () => {
     it('should update requirement', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/stations/${stationId}/requirements/${roleId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/stations/${stationId}/requirements/${roleId}`).set('X-CSRF-Token', csrfToken).send({
           minWorkers: 2,
           maxWorkers: 3,
           priority: 'preferred'
@@ -450,10 +375,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should update only priority', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/stations/${stationId}/requirements/${roleId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/stations/${stationId}/requirements/${roleId}`).set('X-CSRF-Token', csrfToken).send({
           priority: 'required'
         });
 
@@ -463,10 +385,7 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should validate min <= max', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/stations/${stationId}/requirements/${roleId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/stations/${stationId}/requirements/${roleId}`).set('X-CSRF-Token', csrfToken).send({
           minWorkers: 10,
           maxWorkers: 5
         });
@@ -476,10 +395,7 @@ describe.skip('Integration: Stations API', () => {
 
     it('should return 404 for non-existent requirement', async () => {
       const fakeRoleId = '00000000-0000-0000-0000-000000000000';
-      const response = await request(app)
-        .patch(`/api/schedulehub/stations/${stationId}/requirements/${fakeRoleId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/stations/${stationId}/requirements/${fakeRoleId}`).set('X-CSRF-Token', csrfToken).send({
           priority: 'optional'
         });
 
@@ -487,11 +403,9 @@ describe.skip('Integration: Stations API', () => {
     });
   });
 
-  describe.skip('DELETE /api/schedulehub/stations/:stationId/requirements/:roleId', () => {
+  describe('DELETE /api/schedulehub/stations/:stationId/requirements/:roleId', () => {
     it('should remove role requirement', async () => {
-      const response = await request(app)
-        .delete(`/api/schedulehub/stations/${stationId}/requirements/${roleId}`)
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.delete(`/api/products/schedulehub/stations/${stationId}/requirements/${roleId}`).set('X-CSRF-Token', csrfToken)
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
@@ -505,20 +419,17 @@ describe.skip('Integration: Stations API', () => {
     });
 
     it('should return 404 for already removed requirement', async () => {
-      const response = await request(app)
-        .delete(`/api/schedulehub/stations/${stationId}/requirements/${roleId}`)
-        .set('Authorization', `Bearer ${token}`);
+      const response = await agent.delete(`/api/products/schedulehub/stations/${stationId}/requirements/${roleId}`).set('X-CSRF-Token', csrfToken)
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe.skip('Organization Isolation', () => {
+  describe('Organization Isolation', () => {
     it('should not access stations from other organizations', async () => {
       const org2 = await createTestOrganization();
 
-      const response = await request(app)
-        .get(`/api/schedulehub/stations/${stationId}`)
+      const response = await agent.get(`/api/products/schedulehub/stations/${stationId}`)
         .set('Authorization', `Bearer ${org2.token}`);
 
       expect(response.status).toBe(404);
@@ -527,3 +438,4 @@ describe.skip('Integration: Stations API', () => {
     });
   });
 });
+

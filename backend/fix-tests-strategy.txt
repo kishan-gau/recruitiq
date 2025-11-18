@@ -1,0 +1,45 @@
+STRATEGIC FIX PLAN FOR 21 FAILING TESTS
+==========================================
+
+UNDERSTANDING THE SERVICE ARCHITECTURE:
+--------------------------------------
+The service has TWO types of methods:
+1. CORE methods that call repository directly
+2. WRAPPER methods that call other SERVICE methods
+
+CORE METHODS (call repository):
+- getTimeEntries() → this.timeAttendanceRepository.findTimeEntries()
+- getTimeEntryById() → this.timeAttendanceRepository.findTimeEntryById()
+- deleteTimeEntry() → this.timeAttendanceRepository.deleteTimeEntry() 
+- updateTimeEntry() → calls getTimeEntryById() then this.timeAttendanceRepository.updateTimeEntry()
+- approveTimeEntry() → this.timeAttendanceRepository.updateTimeEntryStatus() then createRatedTimeLines()
+- createTimeEntry() → this.timeAttendanceRepository.createTimeEntry()
+
+WRAPPER METHODS (call service methods):
+- createTimesheet() → calls createTimeEntry()
+- getTimesheetsByOrganization() → calls getTimeEntriesByOrganization() → calls getTimeEntries()
+- getTimesheetsByEmployee() → calls getTimeEntries()
+- getTimesheetsByPayrollRun() → calls getTimeEntries()
+- getTimesheetById() → calls getTimeEntryById()
+- updateTimesheet() → calls updateTimeEntry()
+- submitTimesheet() → calls getTimeEntryById() + updateTimeEntry()
+- approveTimesheet() → calls approveTimeEntry()
+- rejectTimesheet() → calls getTimeEntryById() + updateTimeEntry()
+- deleteTimesheet() → calls deleteTimeEntry()
+
+FIX STRATEGY:
+-------------
+Instead of mocking timesheet-specific repository methods (which don't exist),
+we need to mock the REPOSITORY methods that the SERVICE methods call.
+
+For wrapper tests:
+1. Mock the repository method the underlying service method uses
+2. Don't mock service methods - let them run and call the mocked repository
+
+FIXES NEEDED:
+-------------
+1. Remove all mockRepository.findTimesheetsByOrganization, .createTimesheet, etc (DON'T EXIST)
+2. Ensure mockRepository has: findTimeEntries, findTimeEntryById, updateTimeEntryStatus, createTimeEntry, deleteTimeEntry
+3. Adjust test expectations for methods that don't validate (deleteTimeEntry doesn't check if exists)
+4. Fix approveTimeEntry tests to mock the full chain: updateTimeEntryStatus + findEmployeePayComponents + createRatedTimeLine
+5. Fix createTimesheet test data: service expects employeeId property (maps to employeeRecordId)

@@ -42,13 +42,19 @@ class WorkerController {
       const organizationId = req.user.organization_id;
       const { id } = req.params;
 
-      const result = await this.workerService.getWorkerById(id, organizationId);
+      const worker = await this.workerService.getWorkerById(id, organizationId);
 
-      if (!result.success) {
-        return res.status(404).json(result);
+      if (!worker) {
+        return res.status(404).json({
+          success: false,
+          error: 'Worker not found'
+        });
       }
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: worker
+      });
     } catch (error) {
       logger.error('Error in getWorkerById controller:', error);
       next(error);
@@ -64,16 +70,22 @@ class WorkerController {
       const organizationId = req.user.organization_id;
       const { employeeId } = req.params;
 
-      const result = await this.workerService.getWorkerByEmployeeId(
+      const worker = await this.workerService.getWorkerByEmployeeId(
         employeeId,
         organizationId
       );
 
-      if (!result.success) {
-        return res.status(404).json(result);
+      if (!worker) {
+        return res.status(404).json({
+          success: false,
+          error: 'Worker not found'
+        });
       }
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: worker
+      });
     } catch (error) {
       logger.error('Error in getWorkerByEmployeeId controller:', error);
       next(error);

@@ -34,7 +34,8 @@ import pool from '../../../src/config/database.js';
 describe('PayLinQ Pay Component API Standards Integration Tests', () => {
   let testOrgId;
   let testUserId;
-  let authToken;
+  let cookieJar; // Store cookies from login
+  let csrfToken; // Store CSRF token for state-changing operations
   let testComponentId;
 
   // ================================================================
@@ -75,53 +76,67 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
     }
 
     
-    // Create test organization
+    // Create test organization with unique slug to prevent duplicate key errors
     testOrgId = uuidv4();
+    const uniqueSlug = `api-standards-test-${Date.now()}`;
     await query(
       `INSERT INTO organizations (id, name, slug, email, timezone) 
-       VALUES ($1, 'Test Org - API Standards', 'api-standards-test', 'api-test@test.com', 'America/Paramaribo')`,
-      [testOrgId],
+       VALUES ($1, 'Test Org - API Standards', $2, 'api-test@test.com', 'America/Paramaribo')`,
+      [testOrgId, uniqueSlug],
       testOrgId,
       { operation: 'INSERT', table: 'organizations' }
     );
 
     // Create test user (product_roles uses JSONB, not single 'role' column)
     testUserId = uuidv4();
+    const bcrypt = await import('bcryptjs');
+    const passwordHash = await bcrypt.default.hash('TestPassword123!', 10);
+    
     await query(
       `INSERT INTO hris.user_account (id, organization_id, email, password_hash, product_roles, enabled_products, is_active, account_status)
-       VALUES ($1, $2, 'testuser@test.com', '$2b$10$dummyhash', '{"paylinq": "admin", "nexus": "admin"}', '["paylinq", "nexus"]'::jsonb, true, 'active')`,
-      [testUserId, testOrgId],
+       VALUES ($1, $2, 'testuser@test.com', $3, '{"paylinq": "admin", "nexus": "admin"}', '["paylinq", "nexus"]'::jsonb, true, 'active')`,
+      [testUserId, testOrgId, passwordHash],
       testOrgId,
       { operation: 'INSERT', table: 'hris.user_account' }
     );
     
-    // Debug: Verify user was created with enabled_products
-    const userCheck = await query(
-      `SELECT id, email, enabled_products, product_roles FROM hris.user_account WHERE id = $1`,
-      [testUserId],
-      testOrgId,
-      { operation: 'SELECT', table: 'user_account' }
-    );
-    console.log('=== USER CREATION DEBUG ===');
-    console.log('Created user:', JSON.stringify(userCheck.rows[0], null, 2));
-    console.log('enabled_products type:', typeof userCheck.rows[0]?.enabled_products);
-    console.log('enabled_products value:', userCheck.rows[0]?.enabled_products);
-
-    // Generate auth token matching authenticateTenant middleware requirements
-    const jwt = await import('jsonwebtoken');
-    authToken = jwt.default.sign(
-      {
-        id: testUserId,                // Required by middleware
-        userId: testUserId,
-        organizationId: testOrgId,
+    // Login to get authentication cookies (proper cookie-based auth per TESTING_STANDARDS.md)
+    const loginResponse = await request(app)
+      .post('/api/auth/tenant/login')
+      .send({
         email: 'testuser@test.com',
-        type: 'tenant',                // CRITICAL: Required by authenticateTenant
-        productRoles: { paylinq: 'admin', nexus: 'admin' },
-        activeProducts: ['paylinq', 'nexus']
-      },
-      process.env.JWT_SECRET || 'test-secret-key',
-      { expiresIn: '1h' }
-    );
+        password: 'TestPassword123!'
+      });
+    
+    // Extract cookies from Set-Cookie header
+    cookieJar = loginResponse.headers['set-cookie'];
+    
+    console.log('=== AUTHENTICATION DEBUG ===');
+    console.log('Login status:', loginResponse.status);
+    console.log('Cookies received:', cookieJar ? cookieJar.length : 0);
+    
+    if (!cookieJar || cookieJar.length === 0) {
+      throw new Error('Failed to obtain authentication cookies from login');
+    }
+
+    // Get CSRF token for state-changing operations (POST, PUT, DELETE)
+    const csrfResponse = await request(app)
+      .get('/api/csrf-token')
+      .set('Cookie', cookieJar)
+      .expect(200);
+    
+    // Merge CSRF cookie with auth cookies
+    if (csrfResponse.headers['set-cookie']) {
+      cookieJar = [...cookieJar, ...csrfResponse.headers['set-cookie']];
+    }
+    
+    csrfToken = csrfResponse.body.csrfToken;
+    console.log('CSRF token obtained:', csrfToken ? 'Yes' : 'No');
+    console.log('Total cookies after CSRF:', cookieJar.length);
+    
+    if (!csrfToken) {
+      throw new Error('Failed to obtain CSRF token');
+    }
   });
 
   // ================================================================
@@ -178,12 +193,16 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .post('/api/products/paylinq/pay-components')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
+        .set('X-CSRF-Token', csrfToken)
         .send(componentData);
 
       // Debug: Log response details
-      console.log('POST /pay-components response status:', response.status);
-      console.log('POST /pay-components response body:', JSON.stringify(response.body, null, 2));
+      console.log('\n=== POST COMPONENT DEBUG ===');
+      console.log('Status:', response.status);
+      console.log('Body:', JSON.stringify(response.body, null, 2));
+      console.log('Body.details:', response.body.details ? JSON.stringify(response.body.details, null, 2) : 'N/A');
+      console.log('===========================\n');
       
       expect(response.status).toBe(201);
 
@@ -212,7 +231,8 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .post('/api/products/paylinq/pay-components')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
+        .set('X-CSRF-Token', csrfToken)
         .send(invalidData)
         .expect(400);
 
@@ -235,11 +255,11 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       const response = await request(app)
         .post('/api/products/paylinq/pay-components')
         .send(componentData)
-        .expect(401);
+        .expect(403); // CSRF middleware runs before auth, returns 403
 
-      // Assert
-      expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('errorCode', 'UNAUTHORIZED');
+      // Assert - CSRF error structure (different from API error structure)
+      expect(response.body).toHaveProperty('error', 'Forbidden');
+      expect(response.body).toHaveProperty('code', 'CSRF_INVALID');
     });
 
     it('should enforce tenant isolation (organizationId filtering)', async () => {
@@ -247,12 +267,14 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       const component1Data = {
         componentCode: 'ORG1_COMPONENT',
         componentName: 'Org 1 Component',
-        componentType: 'earning'
+        componentType: 'earning',
+        calculationType: 'fixed_amount'
       };
 
       await request(app)
         .post('/api/products/paylinq/pay-components')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
+        .set('X-CSRF-Token', csrfToken)
         .send(component1Data)
         .expect(201);
 
@@ -262,7 +284,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
 
       const listResponse = await request(app)
         .get('/api/products/paylinq/pay-components')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(200);
 
       // Assert - All components belong to test organization
@@ -282,19 +304,21 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
     beforeAll(async () => {
       // Create multiple components for pagination testing
       const components = [
-        { code: 'COMP1', name: 'Component 1', type: 'earning' },
-        { code: 'COMP2', name: 'Component 2', type: 'deduction' },
-        { code: 'COMP3', name: 'Component 3', type: 'earning' }
+        { componentCode: 'COMP1', componentName: 'Component 1', componentType: 'earning', calculationType: 'fixed' },
+        { componentCode: 'COMP2', componentName: 'Component 2', componentType: 'deduction', calculationType: 'fixed' },
+        { componentCode: 'COMP3', componentName: 'Component 3', componentType: 'earning', calculationType: 'fixed' }
       ];
 
       for (const comp of components) {
         await request(app)
           .post('/api/products/paylinq/pay-components')
-          .set('Cookie', `accessToken=${authToken}`)
+          .set('Cookie', cookieJar)
+          .set('X-CSRF-Token', csrfToken)
           .send({
-            componentCode: comp.code,
-            componentName: comp.name,
-            componentType: comp.type,
+            componentCode: comp.componentCode,
+            componentName: comp.componentName,
+            componentType: comp.componentType,
+            calculationType: comp.calculationType,
             isActive: true
           });
       }
@@ -304,7 +328,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .get('/api/products/paylinq/pay-components')
-        .set('Cookie', `accessToken=${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(200);
 
       // Assert - Response structure
@@ -318,7 +342,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .get('/api/products/paylinq/pay-components?page=1&limit=2')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(200);
 
       // Assert - Pagination structure
@@ -342,7 +366,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .get('/api/products/paylinq/pay-components?limit=2')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(200);
 
       // Assert
@@ -354,7 +378,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act - Request 999 items
       const response = await request(app)
         .get('/api/products/paylinq/pay-components?limit=999')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(200);
 
       // Assert - Should cap at 100
@@ -366,7 +390,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .get('/api/products/paylinq/pay-components?componentType=earning')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(200);
 
       // Assert - All results match filter
@@ -387,7 +411,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .get(`/api/products/paylinq/pay-components/${testComponentId}`)
-        .set('Cookie', `accessToken=${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(200);
 
       // Assert - Response structure
@@ -407,7 +431,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .get(`/api/products/paylinq/pay-components/${fakeId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(404);
 
       // Assert - Error structure
@@ -420,7 +444,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .get('/api/products/paylinq/pay-components/invalid-uuid')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(400);
 
       // Assert
@@ -446,7 +470,8 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .put(`/api/products/paylinq/pay-components/${testComponentId}`)
-        .set('Cookie', `accessToken=${authToken}`)
+        .set('Cookie', cookieJar)
+        .set('X-CSRF-Token', csrfToken)
         .send(updateData)
         .expect(200);
 
@@ -469,7 +494,8 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .put(`/api/products/paylinq/pay-components/${testComponentId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
+        .set('X-CSRF-Token', csrfToken)
         .send(emptyUpdate)
         .expect(400);
 
@@ -489,7 +515,8 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .delete(`/api/products/paylinq/pay-components/${testComponentId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
+        .set('X-CSRF-Token', csrfToken)
         .expect(200);
 
       // Assert - Response structure
@@ -501,7 +528,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const listResponse = await request(app)
         .get('/api/products/paylinq/pay-components')
-        .set('Cookie', `accessToken=${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(200);
 
       // Assert - Deleted component not in list
@@ -514,7 +541,7 @@ describe('PayLinQ Pay Component API Standards Integration Tests', () => {
       // Act
       const response = await request(app)
         .get(`/api/products/paylinq/pay-components/${testComponentId}`)
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Cookie', cookieJar)
         .expect(404);
 
       // Assert

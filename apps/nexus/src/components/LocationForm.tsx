@@ -2,7 +2,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
+import { Save, X } from 'lucide-react';
 import { useCreateLocation, useUpdateLocation } from '@/services/LocationsService';
+import { useToast } from '@/contexts/ToastContext';
 import type { Location } from '@/types/location.types';
 
 const locationSchema = z.object({
@@ -56,6 +58,7 @@ interface LocationFormProps {
 
 export default function LocationForm({ location, mode }: LocationFormProps) {
   const navigate = useNavigate();
+  const toast = useToast();
   const createMutation = useCreateLocation();
   const updateMutation = useUpdateLocation();
 
@@ -125,10 +128,11 @@ export default function LocationForm({ location, mode }: LocationFormProps) {
         };
         
         // Show user-friendly error message
-        alert(`Validation errors:\n${errors.map((e: any) => `• ${fieldLabels[e.field] || e.field}: ${e.message}`).join('\n')}`);
+        const errorMessages = errors.map((e: any) => `${fieldLabels[e.field] || e.field}: ${e.message}`).join(', ');
+        toast.error(`Validation errors: ${errorMessages}`);
       } else {
         console.error('Failed to save location:', error);
-        alert(apiError.response?.data?.message || 'Failed to save location. Please try again.');
+        toast.error(apiError.response?.data?.message || 'Failed to save location. Please try again.');
       }
     }
   };
@@ -142,296 +146,291 @@ export default function LocationForm({ location, mode }: LocationFormProps) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {mode === 'create' ? 'Create Location' : 'Edit Location'}
-          </h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {mode === 'create' 
-              ? 'Add a new location to your organization'
-              : 'Update location information'}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="px-6 py-6 space-y-6">
-          {/* Basic Information Section */}
-          <div className="space-y-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-              Basic Information
-            </h3>
-
-            {/* Location Code */}
-            <div>
-              <label htmlFor="locationCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Location Code <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="locationCode"
-                type="text"
-                {...register('locationCode')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                placeholder="e.g., HQ, NYC, LA"
-              />
-              {errors.locationCode && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.locationCode.message}
-                </p>
-              )}
-            </div>
-
-            {/* Location Name */}
-            <div>
-              <label htmlFor="locationName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Location Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="locationName"
-                type="text"
-                {...register('locationName')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                placeholder="e.g., Headquarters, New York Office"
-              />
-              {errors.locationName && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.locationName.message}
-                </p>
-              )}
-            </div>
-
-            {/* Location Type */}
-            <div>
-              <label htmlFor="locationType" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Location Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="locationType"
-                {...register('locationType')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-              >
-                <option value="headquarters">Headquarters</option>
-                <option value="branch">Branch</option>
-                <option value="remote">Remote</option>
-                <option value="warehouse">Warehouse</option>
-                <option value="store">Store</option>
-              </select>
-              {errors.locationType && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.locationType.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Address Section */}
-          <div className="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-              Address
-            </h3>
-
-            {/* Address Line 1 */}
-            <div>
-              <label htmlFor="addressLine1" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Address Line 1 <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="addressLine1"
-                type="text"
-                {...register('addressLine1')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                placeholder="Street address"
-              />
-              {errors.addressLine1 && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.addressLine1.message}
-                </p>
-              )}
-            </div>
-
-            {/* Address Line 2 */}
-            <div>
-              <label htmlFor="addressLine2" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Address Line 2
-              </label>
-              <input
-                id="addressLine2"
-                type="text"
-                {...register('addressLine2')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                placeholder="Apartment, suite, unit, building, floor, etc."
-              />
-              {errors.addressLine2 && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.addressLine2.message}
-                </p>
-              )}
-            </div>
-
-            {/* City, State, Postal Code */}
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-              <div>
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  City
-                </label>
-                <input
-                  id="city"
-                  type="text"
-                  {...register('city')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                  placeholder="City"
-                />
-                {errors.city && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {errors.city.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="stateProvince" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  State/Province
-                </label>
-                <input
-                  id="stateProvince"
-                  type="text"
-                  {...register('stateProvince')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                  placeholder="State"
-                />
-                {errors.stateProvince && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {errors.stateProvince.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Postal Code
-                </label>
-                <input
-                  id="postalCode"
-                  type="text"
-                  {...register('postalCode')}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                  placeholder="ZIP"
-                />
-                {errors.postalCode && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                    {errors.postalCode.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Country */}
-            <div>
-              <label htmlFor="country" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Country <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="country"
-                type="text"
-                {...register('country')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                placeholder="Country"
-              />
-              {errors.country && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.country.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Contact Information Section */}
-          <div className="space-y-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-              Contact Information
-            </h3>
-
-            {/* Phone */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Phone
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                {...register('phone')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                placeholder="+1-555-0100"
-              />
-              {errors.phone && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.phone.message}
-                </p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                {...register('email')}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                placeholder="location@company.com"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Status */}
-          <div className="flex items-start pt-6 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center h-5">
-              <input
-                id="isActive"
-                type="checkbox"
-                {...register('isActive')}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-            </div>
-            <div className="ml-3 text-sm">
-              <label htmlFor="isActive" className="font-medium text-gray-700 dark:text-gray-300">
-                Active
-              </label>
-              <p className="text-gray-500 dark:text-gray-400">
-                Inactive locations are hidden from most views but can be reactivated
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      {/* Basic Information */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+          Basic Information
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Location Code */}
+          <div>
+            <label htmlFor="locationCode" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Location Code <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="locationCode"
+              type="text"
+              {...register('locationCode')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="e.g., HQ, NYC, LA"
+            />
+            {errors.locationCode && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.locationCode.message}
               </p>
+            )}
+          </div>
+
+          {/* Location Name */}
+          <div>
+            <label htmlFor="locationName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Location Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="locationName"
+              type="text"
+              {...register('locationName')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="e.g., Headquarters, New York Office"
+            />
+            {errors.locationName && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.locationName.message}
+              </p>
+            )}
+          </div>
+
+          {/* Location Type */}
+          <div>
+            <label htmlFor="locationType" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Location Type <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="locationType"
+              {...register('locationType')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            >
+              <option value="headquarters">Headquarters</option>
+              <option value="branch">Branch</option>
+              <option value="remote">Remote</option>
+              <option value="warehouse">Warehouse</option>
+              <option value="store">Store</option>
+            </select>
+            {errors.locationType && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.locationType.message}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Address */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+          Address
+        </h2>
+        <div className="space-y-6">
+          {/* Address Line 1 */}
+          <div>
+            <label htmlFor="addressLine1" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Address Line 1 <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="addressLine1"
+              type="text"
+              {...register('addressLine1')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="Street address"
+            />
+            {errors.addressLine1 && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.addressLine1.message}
+              </p>
+            )}
+          </div>
+
+          {/* Address Line 2 */}
+          <div>
+            <label htmlFor="addressLine2" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Address Line 2
+            </label>
+            <input
+              id="addressLine2"
+              type="text"
+              {...register('addressLine2')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="Apartment, suite, unit, building, floor, etc."
+            />
+            {errors.addressLine2 && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.addressLine2.message}
+              </p>
+            )}
+          </div>
+
+          {/* City, State, Postal Code */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label htmlFor="city" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                City
+              </label>
+              <input
+                id="city"
+                type="text"
+                {...register('city')}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="City"
+              />
+              {errors.city && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.city.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="stateProvince" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                State/Province
+              </label>
+              <input
+                id="stateProvince"
+                type="text"
+                {...register('stateProvince')}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="State"
+              />
+              {errors.stateProvince && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.stateProvince.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="postalCode" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Postal Code
+              </label>
+              <input
+                id="postalCode"
+                type="text"
+                {...register('postalCode')}
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="ZIP"
+              />
+              {errors.postalCode && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                  {errors.postalCode.message}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting 
-                ? (mode === 'create' ? 'Creating...' : 'Saving...') 
-                : (mode === 'create' ? 'Create Location' : 'Save Changes')}
-            </button>
+          {/* Country */}
+          <div>
+            <label htmlFor="country" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Country <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="country"
+              type="text"
+              {...register('country')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="Country"
+            />
+            {errors.country && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.country.message}
+              </p>
+            )}
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+
+      {/* Contact Information */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+          Contact Information
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Phone */}
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Phone
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              {...register('phone')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="+1-555-0100"
+            />
+            {errors.phone && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.phone.message}
+              </p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              {...register('email')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="location@company.com"
+            />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.email.message}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Status */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
+          Status
+        </h2>
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="isActive"
+              type="checkbox"
+              {...register('isActive')}
+              className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-slate-300 rounded"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="isActive" className="font-medium text-slate-700 dark:text-slate-300">
+              Active
+            </label>
+            <p className="text-slate-500 dark:text-slate-400">
+              Inactive locations are hidden from most views but can be reactivated
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Form Actions */}
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={isSubmitting}
+          className="inline-flex items-center px-6 py-3 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-50"
+        >
+          <X className="w-5 h-5 mr-2" />
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-700 transition-colors disabled:opacity-50"
+        >
+          <Save className="w-5 h-5 mr-2" />
+          {isSubmitting 
+            ? (mode === 'create' ? 'Creating...' : 'Saving...') 
+            : (mode === 'create' ? 'Create Location' : 'Save Changes')}
+        </button>
+      </div>
+    </form>
   );
 }

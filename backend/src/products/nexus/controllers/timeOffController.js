@@ -18,7 +18,7 @@ class TimeOffController {
    */
   createRequest = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const request = await this.service.createTimeOffRequest(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: request });
     } catch (error) {
@@ -33,7 +33,7 @@ class TimeOffController {
    */
   reviewRequest = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const request = await this.service.reviewTimeOffRequest(id, req.body, organizationId, userId);
       res.json({ success: true, data: request });
@@ -50,7 +50,7 @@ class TimeOffController {
    */
   cancelRequest = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const request = await this.service.cancelTimeOffRequest(id, organizationId, userId);
       res.json({ success: true, data: request });
@@ -67,7 +67,7 @@ class TimeOffController {
    */
   getRequests = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId, status, startDate, endDate, limit = 50, offset = 0 } = req.query;
 
       const filters = {};
@@ -95,7 +95,7 @@ class TimeOffController {
    */
   getBalances = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId } = req.params;
       const balances = await this.service.getEmployeeTimeOffBalance(employeeId, organizationId);
       res.json({ success: true, data: balances });
@@ -111,7 +111,7 @@ class TimeOffController {
    */
   createType = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const type = await this.service.createTimeOffType(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: type });
     } catch (error) {
@@ -126,7 +126,7 @@ class TimeOffController {
    */
   accrueTimeOff = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { employeeId, timeOffTypeId, daysAccrued, accrualPeriod } = req.body;
 
       if (!employeeId || !timeOffTypeId || !daysAccrued) {

@@ -20,10 +20,10 @@ export const employeesService = {
    * Get list of employees with optional filters
    */
   list: async (filters?: EmployeeFilters): Promise<EmployeeListItem[]> => {
-    const result = await apiClient.get<PaginatedResponse<EmployeeListItem>>('/employees', {
+    const result = await apiClient.get<EmployeeListItem[]>('/employees', {
       params: { page: 1, limit: 50, ...filters },
     });
-    return result.data;
+    return result;
   },
 
   /**

@@ -104,6 +104,113 @@ class TimeAttendanceRepository {
     return result.rows[0] || null;
   }
 
+  /**
+   * Update shift type
+   * @param {string} shiftTypeId - Shift type UUID
+   * @param {Object} updateData - Update data
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User performing update
+   * @returns {Promise<Object>} Updated shift type
+   */
+  async updateShiftType(shiftTypeId, updateData, organizationId, userId) {
+    const fields = [];
+    const values = [shiftTypeId, organizationId, userId];
+    let paramCount = 3;
+
+    if (updateData.shiftName !== undefined) {
+      paramCount++;
+      fields.push(`shift_name = $${paramCount}`);
+      values.push(updateData.shiftName);
+    }
+    if (updateData.shiftCode !== undefined) {
+      paramCount++;
+      fields.push(`shift_code = $${paramCount}`);
+      values.push(updateData.shiftCode);
+    }
+    if (updateData.startTime !== undefined) {
+      paramCount++;
+      fields.push(`start_time = $${paramCount}`);
+      values.push(updateData.startTime);
+    }
+    if (updateData.endTime !== undefined) {
+      paramCount++;
+      fields.push(`end_time = $${paramCount}`);
+      values.push(updateData.endTime);
+    }
+    if (updateData.durationHours !== undefined) {
+      paramCount++;
+      fields.push(`duration_hours = $${paramCount}`);
+      values.push(updateData.durationHours);
+    }
+    if (updateData.isOvernight !== undefined) {
+      paramCount++;
+      fields.push(`is_overnight = $${paramCount}`);
+      values.push(updateData.isOvernight);
+    }
+    if (updateData.breakDurationMinutes !== undefined) {
+      paramCount++;
+      fields.push(`break_duration_minutes = $${paramCount}`);
+      values.push(updateData.breakDurationMinutes);
+    }
+    if (updateData.isPaidBreak !== undefined) {
+      paramCount++;
+      fields.push(`is_paid_break = $${paramCount}`);
+      values.push(updateData.isPaidBreak);
+    }
+    if (updateData.shiftDifferentialRate !== undefined) {
+      paramCount++;
+      fields.push(`shift_differential_rate = $${paramCount}`);
+      values.push(updateData.shiftDifferentialRate);
+    }
+    if (updateData.description !== undefined) {
+      paramCount++;
+      fields.push(`description = $${paramCount}`);
+      values.push(updateData.description);
+    }
+    if (updateData.status !== undefined) {
+      paramCount++;
+      fields.push(`status = $${paramCount}`);
+      values.push(updateData.status);
+    }
+
+    if (fields.length === 0) {
+      throw new Error('No fields to update');
+    }
+
+    fields.push(`updated_at = NOW()`);
+    fields.push(`updated_by = $3`);
+
+    const result = await this.query(
+      `UPDATE payroll.shift_type
+       SET ${fields.join(', ')}
+       WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+       RETURNING *`,
+      values,
+      organizationId,
+      { operation: 'UPDATE', table: 'payroll.shift_type' }
+    );
+
+    return result.rows[0];
+  }
+
+  /**
+   * Soft delete shift type
+   * @param {string} shiftTypeId - Shift type UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User performing delete
+   * @returns {Promise<void>}
+   */
+  async deleteShiftType(shiftTypeId, organizationId, userId) {
+    await this.query(
+      `UPDATE payroll.shift_type
+       SET deleted_at = NOW(), deleted_by = $3, status = 'inactive'
+       WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+      [shiftTypeId, organizationId, userId],
+      organizationId,
+      { operation: 'DELETE', table: 'payroll.shift_type' }
+    );
+  }
+
   // ==================== TIME ATTENDANCE EVENTS ====================
   
   /**

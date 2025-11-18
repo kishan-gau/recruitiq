@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
-import { AuthProvider, ProtectedRoute } from '@recruitiq/auth';
+import { ProtectedRoute, AuthProvider } from '@recruitiq/auth';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import Layout from '@/components/layout/Layout';
@@ -78,6 +78,8 @@ const SchedulesList = lazy(() => import('@/pages/schedulehub/SchedulesList'));
 const ScheduleBuilder = lazy(() => import('@/pages/schedulehub/ScheduleBuilder'));
 const ScheduleHubTimeOff = lazy(() => import('@/pages/schedulehub/TimeOffRequests'));
 const ShiftSwapMarketplace = lazy(() => import('@/pages/schedulehub/ShiftSwapMarketplace'));
+const StationsList = lazy(() => import('@/pages/schedulehub/StationsList'));
+const RolesList = lazy(() => import('@/pages/schedulehub/RolesList'));
 
 function App() {
   return (
@@ -197,6 +199,8 @@ function App() {
                     <Route path="schedules" element={<SchedulesList />} />
                     <Route path="schedules/builder" element={<ScheduleBuilder />} />
                     <Route path="schedules/create" element={<ScheduleBuilder />} />
+                    <Route path="stations" element={<StationsList />} />
+                    <Route path="roles" element={<RolesList />} />
                     <Route path="time-off" element={<ScheduleHubTimeOff />} />
                     <Route path="shift-swaps" element={<ShiftSwapMarketplace />} />
                   </Route>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, Users } from 'lucide-react';
 import { useEmployees, useDeleteEmployee } from '@/hooks/useEmployees';
 import { useToast } from '@/contexts/ToastContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { EmployeeFilters, EmploymentStatus, EmploymentType } from '@/types/employee.types';
 
 export default function EmployeesList() {
@@ -11,6 +12,11 @@ export default function EmployeesList() {
   const [filters, setFilters] = useState<EmployeeFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteDialogState, setDeleteDialogState] = useState<{ isOpen: boolean; id: string; name: string }>({ 
+    isOpen: false, 
+    id: '', 
+    name: '' 
+  });
 
   // Fetch employees with filters
   const { data: employees, isLoading, error } = useEmployees(filters);
@@ -21,28 +27,41 @@ export default function EmployeesList() {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
-      employee.firstName.toLowerCase().includes(query) ||
-      employee.lastName.toLowerCase().includes(query) ||
-      employee.email.toLowerCase().includes(query) ||
-      employee.employeeNumber.toLowerCase().includes(query) ||
+      employee.firstName?.toLowerCase().includes(query) ||
+      employee.lastName?.toLowerCase().includes(query) ||
+      employee.email?.toLowerCase().includes(query) ||
+      employee.employeeNumber?.toLowerCase().includes(query) ||
       employee.jobTitle?.toLowerCase().includes(query)
     );
   });
 
   const handleDelete = (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete ${name}?`)) {
-      deleteEmployee(id, {
-        onSuccess: () => {
-          toast.success('Employee deleted successfully');
-        },
-        onError: (error) => {
-          toast.error(error.message || 'Failed to delete employee');
-        },
-      });
-    }
+    setDeleteDialogState({ isOpen: true, id, name });
+  };
+
+  const confirmDelete = () => {
+    const { id } = deleteDialogState;
+    deleteEmployee(id, {
+      onSuccess: () => {
+        toast.success('Employee deleted successfully');
+        setDeleteDialogState({ isOpen: false, id: '', name: '' });
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to delete employee');
+        setDeleteDialogState({ isOpen: false, id: '', name: '' });
+      },
+    });
   };
 
   const getStatusBadge = (status: EmploymentStatus) => {
+    if (!status) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+          unknown
+        </span>
+      );
+    }
+
     const styles = {
       active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
       on_leave: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -58,6 +77,14 @@ export default function EmployeesList() {
   };
 
   const getTypeBadge = (type: EmploymentType) => {
+    if (!type) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+          unknown
+        </span>
+      );
+    }
+
     return (
       <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
         {type.replace('_', ' ')}
@@ -248,8 +275,8 @@ export default function EmployeesList() {
                             />
                           ) : (
                             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                              {employee.firstName[0]}
-                              {employee.lastName[0]}
+                              {employee.firstName?.[0] || '?'}
+                              {employee.lastName?.[0] || '?'}
                             </div>
                           )}
                         </div>
@@ -321,6 +348,17 @@ export default function EmployeesList() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteDialogState.isOpen}
+        onClose={() => setDeleteDialogState({ isOpen: false, id: '', name: '' })}
+        onConfirm={confirmDelete}
+        title="Delete Employee"
+        message={`Are you sure you want to delete ${deleteDialogState.name}?`}
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

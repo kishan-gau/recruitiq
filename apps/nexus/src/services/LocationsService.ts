@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Location, CreateLocationDTO, UpdateLocationDTO, LocationFilters } from '../types/location.types';
 
-const API_BASE = '/api/nexus/locations';
+const API_BASE = '/api/products/nexus/locations';
 
 /**
  * Query Keys for TanStack Query
@@ -30,7 +30,9 @@ async function fetchLocations(filters?: LocationFilters): Promise<Location[]> {
   if (filters?.country) params.append('country', filters.country);
 
   const url = params.toString() ? `${API_BASE}?${params}` : API_BASE;
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    credentials: 'include',
+  });
   
   if (!response.ok) {
     throw new Error(`Failed to fetch locations: ${response.statusText}`);
@@ -41,7 +43,9 @@ async function fetchLocations(filters?: LocationFilters): Promise<Location[]> {
 }
 
 async function fetchLocationById(id: string): Promise<Location> {
-  const response = await fetch(`${API_BASE}/${id}`);
+  const response = await fetch(`${API_BASE}/${id}`, {
+    credentials: 'include',
+  });
   
   if (!response.ok) {
     if (response.status === 404) {
@@ -57,6 +61,7 @@ async function fetchLocationById(id: string): Promise<Location> {
 async function createLocation(data: CreateLocationDTO): Promise<Location> {
   const response = await fetch(API_BASE, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
@@ -72,6 +77,7 @@ async function createLocation(data: CreateLocationDTO): Promise<Location> {
 async function updateLocation(id: string, data: UpdateLocationDTO): Promise<Location> {
   const response = await fetch(`${API_BASE}/${id}`, {
     method: 'PATCH',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
@@ -87,6 +93,7 @@ async function updateLocation(id: string, data: UpdateLocationDTO): Promise<Loca
 async function deleteLocation(id: string): Promise<void> {
   const response = await fetch(`${API_BASE}/${id}`, {
     method: 'DELETE',
+    credentials: 'include',
   });
   
   if (!response.ok) {

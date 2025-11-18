@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import PlatformUser from '../../models/PlatformUser.js';
 import db from '../../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
+import { getPlatformAccessCookieConfig, getPlatformRefreshCookieConfig, getClearCookieConfig } from '../../config/cookie.js';
 
 /**
  * Platform Authentication Controller
@@ -106,22 +107,9 @@ export const login = async (req, res) => {
     await PlatformUser.updateLastLogin(user.id, req.ip || req.connection.remoteAddress);
 
     // SECURITY: Set tokens as httpOnly cookies (industry standard - protects against XSS)
-    // Using 'platform_' prefix for clarity, strict sameSite (no SSO for platform admin)
-    res.cookie('platform_access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // Strict for platform security (no cross-origin)
-      maxAge: 15 * 60 * 1000, // 15 minutes
-      path: '/'
-    });
-
-    res.cookie('platform_refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // Strict for platform security
-      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000,
-      path: '/'
-    });
+    // Using centralized cookie configuration for consistency
+    res.cookie('platform_access_token', accessToken, getPlatformAccessCookieConfig());
+    res.cookie('platform_refresh_token', refreshToken, getPlatformRefreshCookieConfig(rememberMe));
 
     // Return success with user info only (tokens are in httpOnly cookies)
     res.json({
@@ -220,13 +208,7 @@ export const refresh = async (req, res) => {
     );
 
     // SECURITY: Set new access token as httpOnly cookie
-    res.cookie('platform_access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // Strict for platform security
-      maxAge: 15 * 60 * 1000,
-      path: '/'
-    });
+    res.cookie('platform_access_token', accessToken, getPlatformAccessCookieConfig());
 
     res.json({
       success: true

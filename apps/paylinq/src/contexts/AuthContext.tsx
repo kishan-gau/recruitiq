@@ -84,6 +84,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Backend returns { user: {...} }, extract the user object
         const userData = response.user || response;
         
+        // CRITICAL: Validate that we got valid user data
+        // If no email or id, treat as unauthenticated
+        if (!userData || !userData.email || !userData.id) {
+          console.log('[AuthContext] Invalid user data received (missing email/id), treating as unauthenticated');
+          setUser(null);
+          return;
+        }
+        
         console.log('[AuthContext] Session valid:', userData.email);
         setUser(userData);
         

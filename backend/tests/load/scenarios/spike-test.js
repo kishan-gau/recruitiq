@@ -29,7 +29,7 @@ export const options = {
 export default function() {
   // Simplified test to focus on system resilience
   const res = http.post(
-    `${BASE_URL}/api/auth/login`,
+    `${BASE_URL}/api/auth/tenant/login`,
     JSON.stringify({
       email: TEST_USER.email,
       password: TEST_USER.password,
@@ -41,20 +41,16 @@ export default function() {
     'system responsive': (r) => r.status < 500, // Accept any non-500 error
   });
   
-  if (res.status === 200 && res.json('token')) {
-    const token = res.json('token');
-    const authHeaders = {
-      ...HEADERS,
-      'Authorization': `Bearer ${token}`,
-    };
+  if (res.status === 200) {
+    // Cookie-based authentication - cookies are automatically handled by k6
     
-    // Quick API call
-    const jobsRes = http.get(`${BASE_URL}/api/jobs`, { 
-      headers: authHeaders,
-      tags: TAGS.jobs 
+    // Quick API call to test authenticated endpoints
+    const profileRes = http.get(`${BASE_URL}/api/auth/tenant/me`, { 
+      headers: HEADERS,
+      tags: TAGS.users 
     });
     
-    check(jobsRes, { 
+    check(profileRes, { 
       'API available': (r) => r.status < 500 || r.status === 429, // Rate limiting is OK
     });
   }

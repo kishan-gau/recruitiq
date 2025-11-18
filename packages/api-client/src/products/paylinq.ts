@@ -105,7 +105,7 @@ import type {
  * Complete API client for all 19 Paylinq modules with 149 endpoints
  */
 export class PaylinqClient {
-  private readonly basePath = '/products/paylinq';
+  private readonly basePath = '/api/products/paylinq';
 
   constructor(private client: APIClient) {}
 
@@ -409,7 +409,7 @@ export class PaylinqClient {
   async getShiftTypes(params?: PaginationParams & { status?: string }) {
     const query = new URLSearchParams(params as any).toString();
     return this.client.get<PaginatedResponse<ShiftType>>(
-      `${this.basePath}/shift-types${query ? '?' + query : ''}`
+      `${this.basePath}/time-attendance/shift-types${query ? '?' + query : ''}`
     );
   }
 
@@ -418,7 +418,7 @@ export class PaylinqClient {
    */
   async getShiftType(id: string) {
     return this.client.get<ApiResponse<ShiftType>>(
-      `${this.basePath}/shift-types/${id}`
+      `${this.basePath}/time-attendance/shift-types/${id}`
     );
   }
 
@@ -427,7 +427,7 @@ export class PaylinqClient {
    */
   async createShiftType(data: CreateShiftTypeRequest) {
     return this.client.post<ApiResponse<ShiftType>>(
-      `${this.basePath}/shift-types`,
+      `${this.basePath}/time-attendance/shift-types`,
       data
     );
   }
@@ -437,7 +437,7 @@ export class PaylinqClient {
    */
   async updateShiftType(id: string, data: UpdateShiftTypeRequest) {
     return this.client.put<ApiResponse<ShiftType>>(
-      `${this.basePath}/shift-types/${id}`,
+      `${this.basePath}/time-attendance/shift-types/${id}`,
       data
     );
   }
@@ -447,7 +447,7 @@ export class PaylinqClient {
    */
   async deleteShiftType(id: string) {
     return this.client.delete<ApiResponse<void>>(
-      `${this.basePath}/shift-types/${id}`
+      `${this.basePath}/time-attendance/shift-types/${id}`
     );
   }
 

@@ -46,7 +46,7 @@ export default function Login() {
       try {
         // Try to get current user using cookie-based auth
         // Cookies are automatically sent with the request
-        const response = await axios.get('/api/auth/me');
+        const response = await axios.get('/api/auth/platform/me');
         const user = response.data.user;
         
         // Check if user has platform access

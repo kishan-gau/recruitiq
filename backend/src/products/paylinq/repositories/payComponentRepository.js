@@ -10,6 +10,7 @@
 
 import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import { ValidationError } from '../../../middleware/errorHandler.js';
 
 class PayComponentRepository {
   constructor(database = null) {
@@ -26,6 +27,7 @@ class PayComponentRepository {
    * @returns {Promise<Object>} Created pay component
    */
   async createPayComponent(componentData, organizationId, userId) {
+    // componentData is already in snake_case from DTO transformation
     const result = await this.query(
       `INSERT INTO payroll.pay_component 
       (organization_id, component_code, component_name, component_type,
@@ -36,18 +38,18 @@ class PayComponentRepository {
       RETURNING *`,
       [
         organizationId,
-        componentData.componentCode,
-        componentData.componentName,
-        componentData.componentType, // 'earning' or 'deduction'
+        componentData.component_code,       // snake_case (from DTO)
+        componentData.component_name,       // snake_case (from DTO)
+        componentData.component_type,       // snake_case (from DTO)
         componentData.category,
-        componentData.calculationType, // 'fixed_amount', 'percentage', 'hourly_rate', 'formula'
-        componentData.defaultRate,
-        componentData.defaultAmount,
-        componentData.isTaxable !== false,
-        componentData.isRecurring || false,
-        componentData.isPreTax || false,
-        componentData.isSystemComponent || false,
-        componentData.appliesToGross || false,
+        componentData.calculation_type,     // snake_case (from DTO)
+        componentData.default_rate,         // snake_case (from DTO)
+        componentData.default_amount,       // snake_case (from DTO)
+        componentData.is_taxable !== false, // snake_case (from DTO)
+        componentData.is_recurring || false,        // snake_case (from DTO)
+        componentData.is_pre_tax || false,         // snake_case (from DTO)
+        componentData.is_system_component || false, // snake_case (from DTO)
+        componentData.applies_to_gross || false,    // snake_case (from DTO)
         componentData.description,
         userId
       ],
@@ -198,7 +200,7 @@ class PayComponentRepository {
     });
     
     if (setClause.length === 0) {
-      throw new Error('No valid fields to update');
+      throw new ValidationError('No valid fields to update');
     }
     
     paramCount++;
@@ -310,8 +312,8 @@ class PayComponentRepository {
       `INSERT INTO payroll.custom_pay_component 
       (organization_id, employee_id, pay_component_id, 
        custom_rate, custom_amount, effective_from, effective_to,
-       is_active, notes, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       notes, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *`,
       [
         organizationId,
@@ -321,7 +323,6 @@ class PayComponentRepository {
         assignmentData.customAmount,
         assignmentData.effectiveFrom,
         assignmentData.effectiveTo,
-        assignmentData.isActive !== false,
         assignmentData.notes,
         userId
       ],
@@ -346,10 +347,11 @@ class PayComponentRepository {
     const params = [employeeId, organizationId];
     let paramCount = 2;
     
+    // Note: custom_pay_component table has no is_active column
+    // Status is tracked via deleted_at only
     if (filters.isActive !== undefined) {
-      paramCount++;
-      whereClause += ` AND cpc.is_active = $${paramCount}`;
-      params.push(filters.isActive);
+      // Filter ignored - custom_pay_component uses deleted_at for active/inactive status
+      // Already filtered by deleted_at IS NULL above
     }
     
     if (filters.effectiveDate) {
@@ -399,7 +401,8 @@ class PayComponentRepository {
       'defaultAmount': 'custom_amount',  // Alias for customAmount
       'effectiveFrom': 'effective_from',
       'effectiveTo': 'effective_to',
-      'isActive': 'is_active',
+      // Note: isActive removed - custom_pay_component has no is_active or status column
+      // Active status is managed via deleted_at only
       'notes': 'notes',
       'description': 'notes'             // Alias for notes
     };
@@ -418,7 +421,7 @@ class PayComponentRepository {
     });
     
     if (setClause.length === 0) {
-      throw new Error('No valid fields to update');
+      throw new ValidationError('No valid fields to update');
     }
     
     paramCount++;
@@ -458,8 +461,7 @@ class PayComponentRepository {
   async deactivateCustomComponent(customComponentId, organizationId, userId) {
     const result = await this.query(
       `UPDATE payroll.custom_pay_component 
-       SET is_active = false,
-           effective_to = NOW(),
+       SET effective_to = NOW(),
            updated_by = $1,
            updated_at = NOW()
        WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL
@@ -539,7 +541,6 @@ class PayComponentRepository {
        FROM payroll.custom_pay_component
        WHERE pay_component_id = $1 
          AND organization_id = $2 
-         AND is_active = true
          AND deleted_at IS NULL`,
       [componentId, organizationId],
       organizationId,
@@ -555,32 +556,41 @@ class PayComponentRepository {
 
     // Business rule: Check if component was used in any payroll runs
     // This provides audit trail preservation - don't delete if used historically
-    const payrollUsageCheck = await this.query(
-      `SELECT COUNT(*) as usage_count
-       FROM payroll.paycheck_earning
-       WHERE pay_component_id = $1 
-         AND organization_id = $2
-       UNION ALL
-       SELECT COUNT(*) as usage_count
-       FROM payroll.paycheck_deduction
-       WHERE pay_component_id = $1 
-         AND organization_id = $2`,
-      [componentId, organizationId],
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.paycheck_earning' }
-    );
-    
-    const totalUsage = payrollUsageCheck.rows.reduce(
-      (sum, row) => sum + parseInt(row.usage_count), 
-      0
-    );
-    
-    if (totalUsage > 0) {
-      throw new Error(
-        'Cannot delete pay component. It has been used in payroll processing. ' +
-        'Deleting it would compromise payroll history and audit trails. ' +
-        'Consider deactivating it instead.'
+    // Note: These tables may not exist yet, so we wrap in a try-catch
+    try {
+      const payrollUsageCheck = await this.query(
+        `SELECT COUNT(*) as usage_count
+         FROM payroll.paycheck_earning
+         WHERE pay_component_id = $1 
+           AND organization_id = $2
+         UNION ALL
+         SELECT COUNT(*) as usage_count
+         FROM payroll.paycheck_deduction
+         WHERE pay_component_id = $1 
+           AND organization_id = $2`,
+        [componentId, organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'payroll.paycheck_earning' }
       );
+      
+      const totalUsage = payrollUsageCheck.rows.reduce(
+        (sum, row) => sum + parseInt(row.usage_count), 
+        0
+      );
+      
+      if (totalUsage > 0) {
+        throw new Error(
+          'Cannot delete pay component. It has been used in payroll processing. ' +
+          'Deleting it would compromise payroll history and audit trails. ' +
+          'Consider deactivating it instead.'
+        );
+      }
+    } catch (error) {
+      // If tables don't exist yet (early development), allow deletion
+      // In production, these tables should exist
+      if (!error.message.includes('does not exist')) {
+        throw error; // Re-throw if it's a different error
+      }
     }
     
     // Soft delete the component
@@ -628,3 +638,5 @@ class PayComponentRepository {
 }
 
 export default PayComponentRepository;
+
+

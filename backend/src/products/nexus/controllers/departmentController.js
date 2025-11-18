@@ -18,7 +18,7 @@ class DepartmentController {
    */
   createDepartment = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const department = await this.service.createDepartment(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: department });
     } catch (error) {
@@ -33,7 +33,7 @@ class DepartmentController {
    */
   getDepartment = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const department = await this.service.getDepartment(id, organizationId);
       res.json({ success: true, data: department });
@@ -50,7 +50,7 @@ class DepartmentController {
    */
   updateDepartment = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const department = await this.service.updateDepartment(id, req.body, organizationId, userId);
       res.json({ success: true, data: department });
@@ -67,7 +67,7 @@ class DepartmentController {
    */
   deleteDepartment = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       await this.service.deleteDepartment(id, organizationId, userId);
       res.json({ success: true, message: 'Department deleted successfully' });
@@ -84,7 +84,7 @@ class DepartmentController {
    */
   getDepartments = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { locationId, managerId, limit = 50, offset = 0 } = req.query;
 
       const filters = {};
@@ -109,7 +109,7 @@ class DepartmentController {
    */
   getDepartmentHierarchy = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const hierarchy = await this.service.getDepartmentHierarchy(id, organizationId);
       res.json({ success: true, data: hierarchy });
@@ -125,7 +125,7 @@ class DepartmentController {
    */
   getOrganizationStructure = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const structure = await this.service.getOrganizationStructure(organizationId);
       res.json({ success: true, data: structure });
     } catch (error) {
@@ -140,7 +140,7 @@ class DepartmentController {
    */
   getDepartmentEmployees = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const { includeSubdepartments = 'false' } = req.query;
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
+import CurrencySelector from '@/components/ui/CurrencySelector';
 import { useToast } from '@/contexts/ToastContext';
 import FormulaBuilder from './FormulaBuilder';
 
@@ -17,6 +18,8 @@ interface PayComponent {
   isTaxable: boolean;
   status: 'active' | 'inactive';
   description: string;
+  defaultCurrency?: string;
+  allowCurrencyOverride?: boolean;
 }
 
 interface PayComponentFormModalProps {
@@ -39,6 +42,8 @@ const initialFormData: Omit<PayComponent, 'id'> = {
   isTaxable: true,
   status: 'active',
   description: '',
+  defaultCurrency: 'SRD',
+  allowCurrencyOverride: true,
 };
 
 export default function PayComponentFormModal({
@@ -67,6 +72,8 @@ export default function PayComponentFormModal({
         isTaxable: component.isTaxable,
         status: component.status,
         description: component.description,
+        defaultCurrency: component.defaultCurrency || 'SRD',
+        allowCurrencyOverride: component.allowCurrencyOverride !== false,
       });
     } else {
       setFormData(initialFormData);
@@ -293,6 +300,35 @@ export default function PayComponentFormModal({
             )}
           </div>
         )}
+
+        {/* Currency Settings */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <FormField label="Default Currency" required>
+            <CurrencySelector
+              value={formData.defaultCurrency || 'SRD'}
+              onChange={(currency) => handleChange('defaultCurrency', currency)}
+              disabled={isLoading}
+              supportedCurrencies={['SRD', 'USD', 'EUR', 'GBP', 'CAD', 'AUD']}
+            />
+          </FormField>
+
+          <FormField label="Currency Override">
+            <div className="flex items-center h-10">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.allowCurrencyOverride !== false}
+                  onChange={(e) => handleChange('allowCurrencyOverride', e.target.checked)}
+                  disabled={isLoading}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-emerald-500"
+                />
+                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                  Allow currency override at worker level
+                </span>
+              </label>
+            </div>
+          </FormField>
+        </div>
 
         <FormField label="Description" required error={errors.description}>
           <TextArea

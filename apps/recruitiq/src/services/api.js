@@ -19,7 +19,7 @@ const REQUEST_TIMEOUT = 30000 // 30 seconds
 
 class APIClient {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || '/api'
+    this.baseURL = '/api'
     this.isRefreshing = false
     this.refreshSubscribers = []
     // Store CSRF token in memory (safe to store in JS, not secret like access tokens)

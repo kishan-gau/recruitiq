@@ -10,7 +10,7 @@ import { RecruitIQPlatformAPI } from '@recruitiq/api-client';
 // Create singleton instance
 // IMPORTANT: Use relative path to go through Vite proxy for cookie support
 const api = new RecruitIQPlatformAPI({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: '/api',
   timeout: 30000,
 });
 

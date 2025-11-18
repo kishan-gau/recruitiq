@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, Clock, Plus, X, Save, ArrowLeft } from 'lucide-react';
-import { useCreateSchedule } from '@/hooks/schedulehub/useScheduleStats';
+import { useCreateSchedule, useRoles, useStations } from '@/hooks/schedulehub/useScheduleStats';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { Role, Station } from '@/types/schedulehub';
 
 interface ShiftTemplate {
   id: string;
@@ -16,6 +18,11 @@ interface ShiftTemplate {
 export default function ScheduleBuilder() {
   const navigate = useNavigate();
   const createSchedule = useCreateSchedule();
+  const { data: rolesData } = useRoles();
+  const { data: stationsData } = useStations();
+
+  const roles = (rolesData?.roles || []) as Role[];
+  const stations = (stationsData?.stations || []) as Station[];
 
   const [formData, setFormData] = useState({
     name: '',
@@ -31,6 +38,12 @@ export default function ScheduleBuilder() {
     endTime: '17:00',
     workersNeeded: 1,
   });
+
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [showFormValidationDialog, setShowFormValidationDialog] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const daysOfWeek = [
     { value: 1, label: 'Monday' },
@@ -53,7 +66,7 @@ export default function ScheduleBuilder() {
 
   const addShift = () => {
     if (!currentShift.roleId || !currentShift.stationId) {
-      alert('Please fill in all shift details');
+      setShowValidationDialog(true);
       return;
     }
 
@@ -84,7 +97,7 @@ export default function ScheduleBuilder() {
     e.preventDefault();
 
     if (!formData.name || !formData.startDate || !formData.endDate) {
-      alert('Please fill in all required fields');
+      setShowFormValidationDialog(true);
       return;
     }
 
@@ -103,11 +116,11 @@ export default function ScheduleBuilder() {
       };
 
       await createSchedule.mutateAsync(scheduleData);
-      alert(`Schedule ${asDraft ? 'saved as draft' : 'created and published'} successfully!`);
-      navigate('/schedulehub/schedules');
+      setSuccessMessage(`Schedule ${asDraft ? 'saved as draft' : 'created and published'} successfully!`);
+      setShowSuccessDialog(true);
     } catch (error) {
       console.error('Error creating schedule:', error);
-      alert('Failed to create schedule. Please try again.');
+      setShowErrorDialog(true);
     }
   };
 
@@ -130,7 +143,7 @@ export default function ScheduleBuilder() {
       </div>
 
       {/* Main Form */}
-      <div className="bg-white dark:bg-slate-800 shadow rounded-lg">
+      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
         <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 space-y-6">
           {/* Basic Info */}
           <div className="space-y-4">
@@ -151,7 +164,7 @@ export default function ScheduleBuilder() {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                   placeholder="e.g., Week of Nov 7-13"
                 />
               </div>
@@ -167,7 +180,7 @@ export default function ScheduleBuilder() {
                   value={formData.startDate}
                   onChange={handleInputChange}
                   required
-                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 />
               </div>
 
@@ -182,7 +195,7 @@ export default function ScheduleBuilder() {
                   value={formData.endDate}
                   onChange={handleInputChange}
                   required
-                  className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 />
               </div>
             </div>
@@ -197,7 +210,7 @@ export default function ScheduleBuilder() {
                 value={formData.notes}
                 onChange={handleInputChange}
                 rows={3}
-                className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
+                className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                 placeholder="Additional notes or instructions..."
               />
             </div>
@@ -224,7 +237,7 @@ export default function ScheduleBuilder() {
                   <select
                     value={currentShift.dayOfWeek}
                     onChange={(e) => handleShiftChange('dayOfWeek', parseInt(e.target.value))}
-                    className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                   >
                     {daysOfWeek.map(day => (
                       <option key={day.value} value={day.value}>{day.label}</option>
@@ -240,7 +253,7 @@ export default function ScheduleBuilder() {
                     type="time"
                     value={currentShift.startTime}
                     onChange={(e) => handleShiftChange('startTime', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                   />
                 </div>
 
@@ -252,34 +265,44 @@ export default function ScheduleBuilder() {
                     type="time"
                     value={currentShift.endTime}
                     onChange={(e) => handleShiftChange('endTime', e.target.value)}
-                    className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Role ID *
+                    Shift Role *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={currentShift.roleId || ''}
                     onChange={(e) => handleShiftChange('roleId', e.target.value)}
-                    placeholder="Enter role ID"
-                    className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
-                  />
+                    className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                  >
+                    <option value="">Select a shift role...</option>
+                    {roles.filter(role => role.is_active).map(role => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Station ID *
+                    Station *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={currentShift.stationId || ''}
                     onChange={(e) => handleShiftChange('stationId', e.target.value)}
-                    placeholder="Enter station ID"
-                    className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
-                  />
+                    className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                  >
+                    <option value="">Select a station...</option>
+                    {stations.filter(station => station.is_active).map(station => (
+                      <option key={station.id} value={station.id}>
+                        {station.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -291,7 +314,7 @@ export default function ScheduleBuilder() {
                     min="1"
                     value={currentShift.workersNeeded}
                     onChange={(e) => handleShiftChange('workersNeeded', parseInt(e.target.value))}
-                    className="mt-1 block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                   />
                 </div>
               </div>
@@ -299,7 +322,7 @@ export default function ScheduleBuilder() {
               <button
                 type="button"
                 onClick={addShift}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Shift
@@ -326,10 +349,10 @@ export default function ScheduleBuilder() {
                           {shift.startTime} - {shift.endTime}
                         </span>
                         <span className="text-slate-600 dark:text-slate-400">
-                          Role: {shift.roleId}
+                          Shift Role: {roles.find(r => r.id === shift.roleId)?.name || shift.roleId}
                         </span>
                         <span className="text-slate-600 dark:text-slate-400">
-                          Station: {shift.stationId}
+                          Station: {stations.find(s => s.id === shift.stationId)?.name || shift.stationId}
                         </span>
                         <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1">
                           <Users className="w-4 h-4" />
@@ -356,7 +379,7 @@ export default function ScheduleBuilder() {
               type="button"
               onClick={(e) => handleSubmit(e as any, true)}
               disabled={createSchedule.isPending}
-              className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 text-sm font-medium rounded-md text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50"
+              className="inline-flex items-center px-4 py-2 border border-slate-300 dark:border-slate-600 text-sm font-medium rounded-lg text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4 mr-2" />
               Save as Draft
@@ -364,7 +387,7 @@ export default function ScheduleBuilder() {
             <button
               type="submit"
               disabled={createSchedule.isPending || shifts.length === 0}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {createSchedule.isPending ? (
                 <>
@@ -381,6 +404,53 @@ export default function ScheduleBuilder() {
           </div>
         </form>
       </div>
+
+      {/* Validation Dialog */}
+      <ConfirmDialog
+        isOpen={showValidationDialog}
+        onClose={() => setShowValidationDialog(false)}
+        onConfirm={() => setShowValidationDialog(false)}
+        title="Missing Shift Details"
+        message="Please fill in all shift details (Shift Role and Station) before adding the shift."
+        confirmText="OK"
+        variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={showFormValidationDialog}
+        onClose={() => setShowFormValidationDialog(false)}
+        onConfirm={() => setShowFormValidationDialog(false)}
+        title="Missing Required Fields"
+        message="Please fill in all required fields (Name, Start Date, and End Date) before creating the schedule."
+        confirmText="OK"
+        variant="warning"
+      />
+
+      <ConfirmDialog
+        isOpen={showSuccessDialog}
+        onClose={() => {
+          setShowSuccessDialog(false);
+          navigate('/schedulehub/schedules');
+        }}
+        onConfirm={() => {
+          setShowSuccessDialog(false);
+          navigate('/schedulehub/schedules');
+        }}
+        title="Success"
+        message={successMessage}
+        confirmText="OK"
+        variant="info"
+      />
+
+      <ConfirmDialog
+        isOpen={showErrorDialog}
+        onClose={() => setShowErrorDialog(false)}
+        onConfirm={() => setShowErrorDialog(false)}
+        title="Error"
+        message="Failed to create schedule. Please try again."
+        confirmText="OK"
+        variant="danger"
+      />
     </div>
   );
 }

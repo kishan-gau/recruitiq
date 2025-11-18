@@ -33,7 +33,7 @@ export default function() {
   
   // Login
   const loginRes = http.post(
-    `${BASE_URL}/api/auth/login`,
+    `${BASE_URL}/api/auth/tenant/login`,
     JSON.stringify({
       email: TEST_USER.email,
       password: TEST_USER.password,

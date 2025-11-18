@@ -28,12 +28,12 @@ class AttendanceService {
 
       // Check if employee has an open attendance record
       const checkSql = `
-        SELECT id FROM hris.attendance 
+        SELECT id FROM hris.attendance_record 
         WHERE employee_id = $1 
           AND organization_id = $2
           AND clock_out_time IS NULL
-          AND DATE(clock_in_time) = CURRENT_DATE
-          AND deleted_at IS NULL
+          AND attendance_date = CURRENT_DATE
+
       `;
       const checkResult = await query(checkSql, [clockInData.employee_id, organizationId], organizationId);
 
@@ -41,11 +41,14 @@ class AttendanceService {
         throw new Error('Employee already has an active clock-in for today');
       }
 
+      const clockInTime = clockInData.clock_in_time || new Date();
+      const attendanceDate = clockInData.attendance_date || new Date().toISOString().split('T')[0];
+      
       const sql = `
-        INSERT INTO hris.attendance (
-          organization_id, employee_id,
-          clock_in_time, clock_in_location, clock_in_notes,
-          work_type, created_by, updated_by
+        INSERT INTO hris.attendance_record (
+          organization_id, employee_id, attendance_date,
+          clock_in_time, clock_in_location, clock_in_ip,
+          status, notes
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8
         )
@@ -55,17 +58,17 @@ class AttendanceService {
       const params = [
         organizationId,
         clockInData.employee_id,
-        clockInData.clock_in_time || new Date(),
+        attendanceDate,
+        clockInTime,
         clockInData.clock_in_location || null,
-        clockInData.clock_in_notes || null,
-        clockInData.work_type || 'regular',
-        userId,
-        userId
+        clockInData.clock_in_ip || null,
+        clockInData.status || 'present',
+        clockInData.notes || null
       ];
 
       const result = await query(sql, params, organizationId, {
         operation: 'create',
-        table: 'hris.attendance'
+        table: 'hris.attendance_record'
       });
 
       this.logger.info('Employee clocked in successfully', { 
@@ -97,12 +100,12 @@ class AttendanceService {
 
       // Find the active attendance record
       const findSql = `
-        SELECT * FROM hris.attendance 
+        SELECT * FROM hris.attendance_record 
         WHERE employee_id = $1 
           AND organization_id = $2
           AND clock_out_time IS NULL
-          AND DATE(clock_in_time) = CURRENT_DATE
-          AND deleted_at IS NULL
+          AND attendance_date = CURRENT_DATE
+
         ORDER BY clock_in_time DESC
         LIMIT 1
       `;
@@ -121,7 +124,7 @@ class AttendanceService {
       const totalHours = (totalMinutes / 60).toFixed(2);
 
       const sql = `
-        UPDATE hris.attendance 
+        UPDATE hris.attendance_record 
         SET clock_out_time = $1,
             clock_out_location = $2,
             clock_out_notes = $3,
@@ -144,7 +147,7 @@ class AttendanceService {
 
       const result = await query(sql, params, organizationId, {
         operation: 'update',
-        table: 'hris.attendance'
+        table: 'hris.attendance_record'
       });
 
       this.logger.info('Employee clocked out successfully', { 
@@ -177,7 +180,7 @@ class AttendanceService {
                e.first_name || ' ' || e.last_name as employee_name,
                e.email as employee_email,
                e.employee_number
-        FROM hris.attendance a
+        FROM hris.attendance_record a
         LEFT JOIN hris.employee e ON a.employee_id = e.id
         WHERE a.id = $1 
           AND a.organization_id = $2
@@ -186,7 +189,7 @@ class AttendanceService {
 
       const result = await query(sql, [id, organizationId], organizationId, {
         operation: 'findById',
-        table: 'hris.attendance'
+        table: 'hris.attendance_record'
       });
       
       if (result.rows.length === 0) {
@@ -220,7 +223,7 @@ class AttendanceService {
       let sql = `
         SELECT a.*, 
                e.first_name || ' ' || e.last_name as employee_name
-        FROM hris.attendance a
+        FROM hris.attendance_record a
         LEFT JOIN hris.employee e ON a.employee_id = e.id
         WHERE a.employee_id = $1 
           AND a.organization_id = $2
@@ -253,7 +256,7 @@ class AttendanceService {
 
       const result = await query(sql, params, organizationId, {
         operation: 'findAll',
-        table: 'hris.attendance'
+        table: 'hris.attendance_record'
       });
 
       return result.rows;
@@ -288,14 +291,14 @@ class AttendanceService {
         FROM hris.attendance
         WHERE employee_id = $1 
           AND organization_id = $2
-          AND DATE(clock_in_time) >= $3
-          AND DATE(clock_in_time) <= $4
-          AND deleted_at IS NULL
+          AND attendance_date >= $3
+          AND attendance_date <= $4
+
       `;
 
       const result = await query(sql, [employeeId, organizationId, startDate, endDate], organizationId, {
         operation: 'summary',
-        table: 'hris.attendance'
+        table: 'hris.attendance_record'
       });
 
       return result.rows[0];
@@ -327,20 +330,19 @@ class AttendanceService {
                e.employee_number,
                d.department_name,
                l.location_name
-        FROM hris.attendance a
+        FROM hris.attendance_record a
         LEFT JOIN hris.employee e ON a.employee_id = e.id
-        LEFT JOIN hris.department d ON e.department_id = d.id AND d.deleted_at IS NULL
-        LEFT JOIN hris.location l ON e.location_id = l.id AND l.deleted_at IS NULL
+        LEFT JOIN hris.department d ON e.department_id = d.id
+        LEFT JOIN hris.location l ON e.location_id = l.id
         WHERE a.organization_id = $1
-          AND DATE(a.clock_in_time) = $2
-          AND a.deleted_at IS NULL
+          AND a.attendance_date = $2
         ORDER BY a.clock_in_time DESC
         LIMIT $3 OFFSET $4
       `;
 
       const result = await query(sql, [organizationId, date, limit, offset], organizationId, {
         operation: 'findAll',
-        table: 'hris.attendance'
+        table: 'hris.attendance_record'
       });
 
       return result.rows;
@@ -367,8 +369,8 @@ class AttendanceService {
 
       // Check if record exists
       const checkSql = `
-        SELECT * FROM hris.attendance 
-        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+        SELECT * FROM hris.attendance_record 
+        WHERE id = $1 AND organization_id = $2
       `;
       const checkResult = await query(checkSql, [id, organizationId], organizationId);
       
@@ -424,7 +426,7 @@ class AttendanceService {
       params.push(id, organizationId);
 
       const sql = `
-        UPDATE hris.attendance 
+        UPDATE hris.attendance_record 
         SET ${updates.join(', ')}
         WHERE id = $${paramIndex} AND organization_id = $${paramIndex + 1}
         RETURNING *
@@ -432,7 +434,7 @@ class AttendanceService {
 
       const result = await query(sql, params, organizationId, {
         operation: 'update',
-        table: 'hris.attendance'
+        table: 'hris.attendance_record'
       });
 
       this.logger.info('Attendance record updated successfully', { 
@@ -465,8 +467,8 @@ class AttendanceService {
 
       // Check if record exists
       const checkSql = `
-        SELECT id FROM hris.attendance 
-        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+        SELECT id FROM hris.attendance_record 
+        WHERE id = $1 AND organization_id = $2
       `;
       const checkResult = await query(checkSql, [id, organizationId], organizationId);
       
@@ -475,14 +477,14 @@ class AttendanceService {
       }
 
       const sql = `
-        UPDATE hris.attendance 
+        UPDATE hris.attendance_record 
         SET deleted_at = CURRENT_TIMESTAMP, deleted_by = $3
         WHERE id = $1 AND organization_id = $2
       `;
 
       await query(sql, [id, organizationId, userId], organizationId, {
         operation: 'softDelete',
-        table: 'hris.attendance'
+        table: 'hris.attendance_record'
       });
 
       this.logger.info('Attendance record deleted successfully', { 
@@ -497,6 +499,78 @@ class AttendanceService {
         id,
         organizationId,
         userId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get today's attendance records
+   */
+  async getTodayAttendance(organizationId) {
+    try {
+      this.logger.debug('Getting today\'s attendance', { organizationId });
+
+      const today = new Date().toISOString().split('T')[0];
+      return await this.getDailyAttendance(today, organizationId);
+    } catch (error) {
+      this.logger.error('Error getting today\'s attendance', { 
+        error: error.message,
+        organizationId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get attendance statistics for organization
+   */
+  async getAttendanceStatistics(organizationId) {
+    try {
+      this.logger.debug('Getting attendance statistics', { organizationId });
+
+      const sql = `
+        SELECT 
+          COUNT(DISTINCT a.employee_id) as total_employees_today,
+          COUNT(DISTINCT CASE WHEN a.clock_out_time IS NOT NULL THEN a.employee_id END) as clocked_out,
+          COUNT(DISTINCT CASE WHEN a.clock_out_time IS NULL THEN a.employee_id END) as currently_clocked_in,
+          ROUND(AVG(a.total_hours)::numeric, 2) as avg_hours_today,
+          (SELECT COUNT(DISTINCT id) FROM hris.employee 
+           WHERE organization_id = $1 
+           AND employment_status = 'active') as total_active_employees
+        FROM hris.attendance_record a
+        WHERE a.organization_id = $1
+          AND a.attendance_date = CURRENT_DATE
+      `;
+
+      const result = await query(sql, [organizationId], organizationId, {
+        operation: 'select',
+        table: 'hris.attendance_record'
+      });
+
+      const stats = result.rows[0] || {
+        total_employees_today: 0,
+        clocked_out: 0,
+        currently_clocked_in: 0,
+        avg_hours_today: 0,
+        total_active_employees: 0
+      };
+
+      // Calculate attendance rate
+      stats.attendance_rate = stats.total_active_employees > 0 
+        ? ((stats.total_employees_today / stats.total_active_employees) * 100).toFixed(1)
+        : 0;
+
+      this.logger.debug('Attendance statistics retrieved', { 
+        organizationId,
+        stats 
+      });
+
+      return stats;
+    } catch (error) {
+      this.logger.error('Error getting attendance statistics', { 
+        error: error.message,
+        organizationId 
       });
       throw error;
     }

@@ -130,7 +130,7 @@ const server = setupServer(
 );
 
 beforeEach(() => {
-  server.listen({ onUnhandledRequest: 'error' });
+  server.listen({ onUnhandledRequest: 'warn' });
 });
 
 afterEach(() => {

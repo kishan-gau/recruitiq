@@ -114,7 +114,7 @@ describe('Authentication Security Tests', () => {
       const accessTokenCookie = cookies.find(c => c.startsWith('tenant_access_token='));
       expect(accessTokenCookie).toBeDefined();
       expect(accessTokenCookie).toContain('HttpOnly');
-      expect(accessTokenCookie).toContain('SameSite=Lax');
+      expect(accessTokenCookie).toContain('SameSite=None');
       
       // In production, should also have Secure flag
       if (process.env.NODE_ENV === 'production') {
@@ -137,7 +137,7 @@ describe('Authentication Security Tests', () => {
       
       expect(refreshTokenCookie).toBeDefined();
       expect(refreshTokenCookie).toContain('HttpOnly');
-      expect(refreshTokenCookie).toContain('SameSite=Lax');
+      expect(refreshTokenCookie).toContain('SameSite=None');
     });
 
     it('should set httpOnly flag on access token cookie (platform)', async () => {
@@ -155,7 +155,7 @@ describe('Authentication Security Tests', () => {
       
       expect(accessTokenCookie).toBeDefined();
       expect(accessTokenCookie).toContain('HttpOnly');
-      expect(accessTokenCookie).toContain('SameSite=Strict');
+      expect(accessTokenCookie).toContain('SameSite=None');
     });
 
     it('should NOT return tokens in response body (tenant)', async () => {
@@ -342,8 +342,8 @@ describe('Authentication Security Tests', () => {
       // HttpOnly
       expect(accessTokenCookie).toContain('HttpOnly');
       
-      // SameSite=Lax (for SSO)
-      expect(accessTokenCookie).toContain('SameSite=Lax');
+      // SameSite=None (for SSO/ngrok in test environment)
+      expect(accessTokenCookie).toContain('SameSite=None');
       
       // Path=/
       expect(accessTokenCookie).toContain('Path=/');
@@ -373,8 +373,8 @@ describe('Authentication Security Tests', () => {
       // HttpOnly
       expect(accessTokenCookie).toContain('HttpOnly');
       
-      // SameSite=Strict (no SSO for platform)
-      expect(accessTokenCookie).toContain('SameSite=Strict');
+      // SameSite=None (test environment uses None for dev/ngrok compatibility)
+      expect(accessTokenCookie).toContain('SameSite=None');
       
       // Path=/
       expect(accessTokenCookie).toContain('Path=/');

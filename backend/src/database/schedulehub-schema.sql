@@ -142,7 +142,7 @@ CREATE TABLE scheduling.stations (
   station_code VARCHAR(50) NOT NULL,
   station_name VARCHAR(100) NOT NULL,
   description TEXT,
-  location_id UUID, -- References hris.location(id)
+  location_id UUID REFERENCES hris.location(id) ON DELETE SET NULL,
   
   -- Physical details
   floor_level VARCHAR(20),

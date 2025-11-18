@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Calendar } from 'lucide-react';
+import { Calendar, Save, X } from 'lucide-react';
 import { useCreateTimeOffRequest, useUpdateTimeOffRequest } from '@/hooks/useTimeOff';
 import type { TimeOffRequest, TimeOffType } from '@/types/timeOff.types';
 import { apiClient } from '@/services/api';
@@ -165,9 +165,9 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
           {isEditMode ? 'Edit Request' : 'New Time-Off Request'}
         </h2>
 
@@ -175,15 +175,15 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
           {/* Employee Selector */}
           {!isEditMode && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Employee *
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Employee <span className="text-red-500">*</span>
               </label>
               {loadingEmployees ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400">Loading employees...</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400">Loading employees...</div>
               ) : (
                 <select
                   {...register('employeeId')}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 >
                   <option value="">Select an employee</option>
                   {employees.map((employee) => (
@@ -201,13 +201,13 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
 
           {/* Time Off Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Type *
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Type <span className="text-red-500">*</span>
             </label>
             <select
               {...register('timeOffType')}
               disabled={isEditMode}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50"
             >
               {TIME_OFF_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -223,13 +223,13 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
           {/* Date Range */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Start Date *
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Start Date <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 {...register('startDate')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
               {errors.startDate && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.startDate.message}</p>
@@ -237,13 +237,13 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                End Date *
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                End Date <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 {...register('endDate')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               />
               {errors.endDate && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.endDate.message}</p>
@@ -253,9 +253,9 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
 
           {/* Days Calculation */}
           {startDate && endDate && (
-            <div className="flex items-center gap-2 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <Calendar size={20} className="text-blue-600 dark:text-blue-400" />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
+            <div className="flex items-center gap-2 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+              <Calendar size={20} className="text-emerald-600 dark:text-emerald-400" />
+              <span className="text-sm text-slate-700 dark:text-slate-300">
                 Total days requested: <span className="font-semibold">{calculateDays()}</span>
               </span>
             </div>
@@ -263,14 +263,14 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
 
           {/* Reason */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Reason (Optional)
             </label>
             <textarea
               {...register('reason')}
               rows={4}
               placeholder="Enter reason for time-off request..."
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
             />
             {errors.reason && (
               <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.reason.message}</p>
@@ -279,19 +279,21 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
         </div>
 
         {/* Form Actions */}
-        <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="inline-flex items-center px-6 py-3 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
+            <X size={20} className="mr-2" />
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting || createMutation.isPending || updateMutation.isPending}
-            className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-700 transition-colors disabled:opacity-50"
           >
+            <Save size={20} className="mr-2" />
             {isSubmitting || createMutation.isPending || updateMutation.isPending
               ? 'Saving...'
               : isEditMode

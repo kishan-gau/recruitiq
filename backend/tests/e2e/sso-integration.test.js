@@ -17,7 +17,6 @@
 import { describe, test, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
 import request from 'supertest';
 import pool from '../../src/config/database.js';
-import bcrypt from 'bcryptjs';
 
 // Test configuration
 const BACKEND_URL = process.env.TEST_BACKEND_URL || 'http://localhost:4000';
@@ -25,11 +24,11 @@ const PAYLINQ_URL = process.env.PAYLINQ_URL || 'http://localhost:5174';
 const NEXUS_URL = process.env.NEXUS_URL || 'http://localhost:5173';
 const RECRUITIQ_URL = process.env.RECRUITIQ_URL || 'http://localhost:5175';
 
-// Test user credentials
+// Test user credentials (use seeded test data)
 const testUser = {
-  email: 'sso-test@example.com',
-  password: 'SecurePassword123!@#',
-  name: 'SSO Test User'
+  email: 'tenant@testcompany.com',
+  password: 'Admin123!',
+  name: 'Tenant User'
 };
 
 let testOrganizationId;
@@ -38,47 +37,40 @@ let testWorkspaceId;
 
 describe('SSO Integration Tests', () => {
   beforeAll(async () => {
-    // Create test organization with unique slug to avoid conflicts
-    const uniqueSlug = `sso-test-org-${Date.now()}`;
-    const orgResult = await pool.query(`
-      INSERT INTO organizations (id, name, slug, created_at)
-      VALUES (gen_random_uuid(), 'SSO Test Org', $1, NOW())
-      RETURNING id
-    `, [uniqueSlug]);
-    testOrganizationId = orgResult.rows[0].id;
-
-    // Create test workspace (slug is required)
-    const workspaceResult = await pool.query(`
-      INSERT INTO workspaces (id, name, slug, organization_id, created_at)
-      VALUES (gen_random_uuid(), 'SSO Test Workspace', 'sso-test-workspace', $1, NOW())
-      RETURNING id
-    `, [testOrganizationId]);
-    testWorkspaceId = workspaceResult.rows[0].id;
-
-    // Create test user with hashed password (no name column, no role column)
-    const passwordHash = await bcrypt.hash(testUser.password, 12);
+    // Use existing seeded test data instead of creating new data
+    // This prevents unique constraint violations and uses proper test database setup
+    
+    // Find the test user (seeded in database setup)
     const userResult = await pool.query(`
-      INSERT INTO hris.user_account (
-        id, email, password_hash, organization_id,
-        is_active, created_at
-      )
-      VALUES (
-        gen_random_uuid(), $1, $2, $3,
-        true, NOW()
-      )
-      RETURNING id
-    `, [testUser.email, passwordHash, testOrganizationId]);
+      SELECT id, organization_id
+      FROM hris.user_account
+      WHERE email = $1 AND deleted_at IS NULL
+    `, [testUser.email]);
+    
+    if (userResult.rows.length === 0) {
+      throw new Error(`Test user ${testUser.email} not found. Run database setup: .\\backend\\src\\database\\setup-database.ps1 -DBName recruitiq_test`);
+    }
+    
     testUserId = userResult.rows[0].id;
+    testOrganizationId = userResult.rows[0].organization_id;
 
-    // Note: workspace_members table is commented out in schema
-    // Workspace access controlled by organization_id
+    // Find a workspace for this organization
+    const workspaceResult = await pool.query(`
+      SELECT id
+      FROM workspaces
+      WHERE organization_id = $1 AND deleted_at IS NULL
+      LIMIT 1
+    `, [testOrganizationId]);
+    
+    if (workspaceResult.rows.length === 0) {
+      throw new Error(`No workspace found for organization ${testOrganizationId}. Run database setup.`);
+    }
+    
+    testWorkspaceId = workspaceResult.rows[0].id;
   });
 
   afterAll(async () => {
-    // Cleanup test data (workspace_members doesn't exist)
-    await pool.query('DELETE FROM hris.user_account WHERE id = $1', [testUserId]);
-    await pool.query('DELETE FROM workspaces WHERE id = $1', [testWorkspaceId]);
-    await pool.query('DELETE FROM organizations WHERE id = $1', [testOrganizationId]);
+    // No cleanup needed - using seeded test data
     await pool.end();
   });
 

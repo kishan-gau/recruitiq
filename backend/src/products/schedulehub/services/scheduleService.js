@@ -114,7 +114,7 @@ class ScheduleService {
           u1.email as created_by_email,
           u2.email as updated_by_email,
           (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id) as total_shifts,
-          (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id AND worker_id IS NULL) as unassigned_shifts
+          (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id AND employee_id IS NULL) as unassigned_shifts
         FROM scheduling.schedules s
         LEFT JOIN users u1 ON s.created_by = u1.id
         LEFT JOIN users u2 ON s.updated_by = u2.id
@@ -135,7 +135,7 @@ class ScheduleService {
           r.color as role_color,
           st.station_name
         FROM scheduling.shifts s
-        LEFT JOIN scheduling.workers w ON s.worker_id = w.id
+        LEFT JOIN hris.employee w ON s.employee_id = w.id
         LEFT JOIN scheduling.roles r ON s.role_id = r.id
         LEFT JOIN scheduling.stations st ON s.station_id = st.id
         WHERE s.schedule_id = $1
@@ -167,7 +167,7 @@ class ScheduleService {
       let query = `
         SELECT s.*,
           (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id) as total_shifts,
-          (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id AND worker_id IS NULL) as unassigned_shifts
+          (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id AND employee_id IS NULL) as unassigned_shifts
         FROM scheduling.schedules s
         WHERE s.organization_id = $1
       `;
@@ -262,7 +262,7 @@ class ScheduleService {
       // Verify worker exists if assigned
       if (value.workerId) {
         const workerCheck = await client.query(
-          `SELECT id, status FROM scheduling.workers 
+          `SELECT id, employment_status FROM hris.employee 
            WHERE id = $1 AND organization_id = $2`,
           [value.workerId, organizationId]
         );
@@ -271,7 +271,7 @@ class ScheduleService {
           throw new Error('Worker not found');
         }
 
-        if (workerCheck.rows[0].status !== 'active') {
+        if (workerCheck.rows[0].employment_status !== 'active') {
           throw new Error('Worker is not active');
         }
       }
@@ -290,7 +290,7 @@ class ScheduleService {
       const result = await client.query(
         `INSERT INTO scheduling.shifts (
           organization_id, schedule_id, shift_date, start_time, end_time,
-          worker_id, role_id, station_id, break_duration_minutes, break_paid,
+          employee_id, role_id, station_id, break_duration_minutes, break_paid,
           shift_type, status, notes, created_by, updated_by
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *`,
@@ -427,7 +427,7 @@ class ScheduleService {
 
       // Verify shift exists and is unassigned
       const shiftCheck = await client.query(
-        `SELECT id, worker_id, role_id, shift_date, start_time, end_time 
+        `SELECT id, employee_id, role_id, shift_date, start_time, end_time 
          FROM scheduling.shifts 
          WHERE id = $1 AND organization_id = $2`,
         [shiftId, organizationId]
@@ -439,7 +439,7 @@ class ScheduleService {
 
       // Verify worker exists and is active
       const workerCheck = await client.query(
-        `SELECT id, status FROM scheduling.workers 
+        `SELECT id, employment_status FROM hris.employee 
          WHERE id = $1 AND organization_id = $2`,
         [workerId, organizationId]
       );
@@ -448,14 +448,14 @@ class ScheduleService {
         throw new Error('Worker not found');
       }
 
-      if (workerCheck.rows[0].status !== 'active') {
+      if (workerCheck.rows[0].employment_status !== 'active') {
         throw new Error('Worker is not active');
       }
 
       // Assign worker to shift
       const result = await client.query(
         `UPDATE scheduling.shifts
-         SET worker_id = $1, status = 'confirmed', updated_by = $2
+         SET employee_id = $1, status = 'confirmed', updated_by = $2
          WHERE id = $3 AND organization_id = $4
          RETURNING *`,
         [workerId, userId, shiftId, organizationId]
@@ -494,7 +494,7 @@ class ScheduleService {
 
       const result = await client.query(
         `UPDATE scheduling.shifts
-         SET worker_id = NULL, status = 'scheduled', updated_by = $1
+         SET employee_id = NULL, status = 'scheduled', updated_by = $1
          WHERE id = $2 AND organization_id = $3
          RETURNING *`,
         [userId, shiftId, organizationId]
@@ -673,7 +673,7 @@ class ScheduleService {
         LEFT JOIN scheduling.roles r ON s.role_id = r.id
         LEFT JOIN scheduling.stations st ON s.station_id = st.id
         LEFT JOIN scheduling.schedules sc ON s.schedule_id = sc.id
-        WHERE s.worker_id = $1 
+        WHERE s.employee_id = $1 
         AND s.organization_id = $2
         AND s.shift_date BETWEEN $3 AND $4
         ORDER BY s.shift_date, s.start_time`,

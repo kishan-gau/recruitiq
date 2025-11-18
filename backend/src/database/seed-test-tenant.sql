@@ -67,6 +67,7 @@ BEGIN
     last_name,
     email,
     employment_status,
+    employment_type,
     hire_date,
     created_at
   ) VALUES (
@@ -77,6 +78,7 @@ BEGIN
     'Administrator',
     'tenant@testcompany.com',
     'active',
+    'full_time',
     NOW(),
     NOW()
   ) ON CONFLICT (organization_id, employee_number) DO NOTHING;
@@ -221,6 +223,7 @@ BEGIN
     last_name,
     email,
     employment_status,
+    employment_type,
     hire_date,
     created_at
   ) VALUES (
@@ -231,6 +234,7 @@ BEGIN
     'Manager',
     'payroll@testcompany.com',
     'active',
+    'full_time',
     NOW(),
     NOW()
   ) ON CONFLICT (organization_id, employee_number) DO NOTHING;
@@ -372,6 +376,7 @@ BEGIN
     last_name,
     email,
     employment_status,
+    employment_type,
     hire_date,
     created_at
   ) VALUES (
@@ -382,6 +387,7 @@ BEGIN
     'Employee',
     'employee@testcompany.com',
     'active',
+    'part_time',
     NOW(),
     NOW()
   ) ON CONFLICT (organization_id, employee_number) DO NOTHING;

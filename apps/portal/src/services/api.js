@@ -5,7 +5,7 @@
 import axios from 'axios'
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+const API_BASE_URL = '/api'
 
 // Store CSRF token in memory (safe to store in JS, not secret like access tokens)
 let csrfToken = null

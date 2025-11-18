@@ -1,8 +1,8 @@
 # Testing Standards
 
 **Part of:** [RecruitIQ Coding Standards](../CODING_STANDARDS.md)  
-**Version:** 1.1  
-**Last Updated:** November 16, 2025
+**Version:** 1.2  
+**Last Updated:** November 18, 2025
 
 ---
 
@@ -1136,10 +1136,11 @@ describe('Jobs API - Integration Tests', () => {
       const jobId = result.rows[0].id;
 
       // Act: Try to access with org2 user
+      // Should return 403 Forbidden (not 404) - don't reveal resource existence
       await request(app)
         .get(`/api/jobs/${jobId}`)
         .set('Authorization', `Bearer ${token2}`)
-        .expect(404);
+        .expect(403);
     });
 
     afterAll(async () => {
@@ -1169,6 +1170,184 @@ describe('Jobs API - Integration Tests', () => {
 - [ ] **Test HTTP status codes**
 - [ ] **Test response structure**
 - [ ] **Test database state** changes
+
+---
+
+## Security Response Testing
+
+### HTTP Status Codes for Security Scenarios (CRITICAL)
+
+**IMPORTANT:** When testing organization/tenant isolation and authorization, use the **correct HTTP status codes** that match security best practices.
+
+### Status Code Guidelines
+
+```javascript
+// 401 Unauthorized - No authentication credentials or invalid credentials
+// Use when: User is not logged in or has invalid token
+
+// 403 Forbidden - Valid credentials but insufficient permissions
+// Use when: Authenticated user lacks permission for the resource
+
+// 404 Not Found - Resource doesn't exist
+// WARNING: Can reveal information about resource existence!
+```
+
+### Organization Isolation Pattern (MANDATORY)
+
+**When testing cross-organization access attempts:**
+
+```javascript
+// ✅ CORRECT: Expect 403 Forbidden
+describe('Organization Isolation', () => {
+  it('should not access resources from other organizations', async () => {
+    // Arrange: Create resource in org1
+    const resource = await createResourceInOrg1();
+    
+    // Act: User from org2 tries to access org1's resource
+    const response = await authenticatedUserOrg2
+      .get(`/api/resources/${resource.id}`);
+    
+    // Assert: Should get 403 Forbidden (not 404)
+    // Reason: Don't reveal resource existence to unauthorized users
+    expect(response.status).toBe(403);
+    expect(response.body.errorCode).toBe('FORBIDDEN');
+  });
+});
+
+// ❌ WRONG: Expecting 404 reveals information
+describe('Organization Isolation', () => {
+  it('should not access resources from other organizations', async () => {
+    const resource = await createResourceInOrg1();
+    
+    const response = await authenticatedUserOrg2
+      .get(`/api/resources/${resource.id}`);
+    
+    // ❌ WRONG: 404 confirms resource exists in system
+    expect(response.status).toBe(404);
+  });
+});
+```
+
+### Security Rationale
+
+**Why 403 (Forbidden) instead of 404 (Not Found)?**
+
+1. **Information Disclosure Prevention**
+   - 404 confirms the resource exists in the system
+   - Attackers can enumerate resources across organizations
+   - Violates principle of least privilege
+
+2. **Proper HTTP Semantics**
+   - User **is authenticated** (not 401)
+   - User **lacks permission** (403 is correct)
+   - Resource existence is not the issue
+
+3. **Security Best Practice**
+   - OWASP recommends minimizing information leakage
+   - Don't reveal resource IDs from other organizations
+   - Consistent denial response prevents enumeration
+
+### Complete Status Code Matrix for Tests
+
+| Scenario | User State | Resource State | Expected Status | Error Code |
+|----------|-----------|----------------|-----------------|------------|
+| No credentials | Not authenticated | Exists | **401** | UNAUTHORIZED |
+| Invalid token | Not authenticated | Exists | **401** | UNAUTHORIZED |
+| Valid token, wrong org | Authenticated | Exists in other org | **403** | FORBIDDEN |
+| Valid token, own org | Authenticated | Not found in own org | **404** | NOT_FOUND |
+| Valid token, no permission | Authenticated | Exists, lacks role | **403** | FORBIDDEN |
+| Valid token, with permission | Authenticated | Exists | **200** | - |
+
+### Test Examples
+
+```javascript
+describe('Security Response Tests', () => {
+  describe('Authentication', () => {
+    it('should return 401 when not authenticated', async () => {
+      await request(app)
+        .get('/api/resources/123')
+        .expect(401);
+    });
+
+    it('should return 401 with invalid token', async () => {
+      await request(app)
+        .get('/api/resources/123')
+        .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+    });
+  });
+
+  describe('Cross-Organization Access', () => {
+    it('should return 403 for cross-org access (not 404)', async () => {
+      // User2 from org2 tries to access org1's resource
+      const response = await agent2
+        .get(`/api/resources/${org1ResourceId}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body.success).toBe(false);
+      expect(response.body.errorCode).toBe('FORBIDDEN');
+      // Should NOT reveal if resource exists
+    });
+  });
+
+  describe('Role-Based Access', () => {
+    it('should return 403 when user lacks required role', async () => {
+      // Regular user tries to access admin endpoint
+      await regularUserAgent
+        .delete(`/api/admin/users/${userId}`)
+        .expect(403);
+    });
+  });
+
+  describe('Resource Not Found in Own Organization', () => {
+    it('should return 404 when resource not found in own org', async () => {
+      const fakeId = uuidv4();
+      
+      // User searches in their own organization
+      await authenticatedAgent
+        .get(`/api/resources/${fakeId}`)
+        .expect(404);
+    });
+  });
+});
+```
+
+### Anti-Patterns to Avoid
+
+```javascript
+// ❌ WRONG: Reveals resource existence across organizations
+it('should not find resource from other org', async () => {
+  const response = await agent2.get(`/api/resources/${org1ResourceId}`);
+  expect(response.status).toBe(404); // ❌ Information leakage!
+});
+
+// ❌ WRONG: Generic error message
+it('should deny access', async () => {
+  const response = await agent2.get(`/api/resources/${org1ResourceId}`);
+  expect(response.body.error).toBe('Error'); // ❌ Not specific!
+});
+
+// ✅ CORRECT: Proper security response
+it('should return 403 for cross-org access', async () => {
+  const response = await agent2.get(`/api/resources/${org1ResourceId}`);
+  expect(response.status).toBe(403);
+  expect(response.body.errorCode).toBe('FORBIDDEN');
+  expect(response.body.error).toBe('Access denied');
+});
+```
+
+### Testing Checklist for Security
+
+**When writing organization isolation tests:**
+
+- [ ] ✅ User from org2 accessing org1 resource → **Expect 403**
+- [ ] ✅ User accessing non-existent resource in own org → **Expect 404**
+- [ ] ✅ Unauthenticated request → **Expect 401**
+- [ ] ✅ User with insufficient role → **Expect 403**
+- [ ] ✅ Valid access → **Expect 200/201**
+- [ ] ❌ Never use 404 for cross-org denial (information leakage)
+- [ ] ✅ Include errorCode in assertions for clarity
+- [ ] ✅ Verify error messages don't reveal sensitive info
 
 ---
 
@@ -2114,6 +2293,149 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 ```
+
+### Advanced Pattern: Proxy-Based Mocks for Functions with Methods
+
+**Use Case:** When mocking a function that also has methods attached (e.g., `query()` function with `query.getClient()` method), standard property assignment doesn't work with ES Modules.
+
+**The Challenge:**
+```javascript
+// ❌ WRONG: Property assignment doesn't survive ESM module system
+const mockDbQuery = jest.fn().mockResolvedValue({ rows: [] });
+mockDbQuery.getClient = jest.fn().mockResolvedValue(mockClient);
+// After import: query.getClient is undefined!
+
+// ❌ WRONG: Object.assign also fails
+const mockDbQuery = Object.assign(jest.fn(), {
+  getClient: jest.fn().mockResolvedValue(mockClient)
+});
+// After import: query.getClient is still undefined!
+```
+
+**The Solution: Proxy Pattern**
+```javascript
+// ✅ CORRECT: Use Proxy to intercept both function calls and property access
+const mockClient = {
+  query: jest.fn(),
+  release: jest.fn()
+};
+
+// Proxy intercepts both () calls and .property access
+const mockDbQuery = new Proxy(jest.fn().mockResolvedValue({ rows: [] }), {
+  get(target, prop) {
+    // Intercept property access before ESM processes it
+    if (prop === 'getClient') {
+      return jest.fn().mockResolvedValue(mockClient);
+    }
+    return target[prop];
+  },
+  apply(target, thisArg, args) {
+    // Handle function invocation
+    return target.apply(thisArg, args);
+  }
+});
+
+jest.unstable_mockModule('../../../../src/config/database.js', () => ({
+  query: mockDbQuery
+}));
+
+// Now both patterns work:
+const result = await query('SELECT * FROM table');        // ✅ Works via apply trap
+const client = await query.getClient();                   // ✅ Works via get trap
+await client.query('BEGIN');                              // ✅ Works
+client.release();                                         // ✅ Works
+```
+
+**Why This Works:**
+1. **`get` trap**: Intercepts property access (`query.getClient`) before ESM module system processes it
+2. **`apply` trap**: Handles function calls (`query(sql, params)`)
+3. **Dynamic Interception**: Works at runtime, survives module export/import cycle
+4. **ESM Compatible**: Proxy object persists through module boundaries
+
+**Real-World Example:**
+```javascript
+// Service code that requires both patterns
+async terminateEmployee(employeeId, organizationId, userId) {
+  const client = await query.getClient();  // Property access
+  try {
+    await client.query('BEGIN');           // Transaction method
+    
+    // Update operations using regular query()
+    await query('UPDATE employees...', [employeeId], organizationId);
+    await query('INSERT INTO employment_history...', [...], organizationId);
+    
+    await client.query('COMMIT');
+    return { success: true };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Test using Proxy pattern
+describe('terminateEmployee', () => {
+  let service, mockClient;
+
+  beforeEach(async () => {
+    mockClient = {
+      query: jest.fn().mockResolvedValue({ rows: [] }),
+      release: jest.fn()
+    };
+
+    const mockDbQuery = new Proxy(jest.fn().mockResolvedValue({ rows: [] }), {
+      get(target, prop) {
+        if (prop === 'getClient') {
+          return jest.fn().mockResolvedValue(mockClient);
+        }
+        return target[prop];
+      },
+      apply(target, thisArg, args) {
+        return target.apply(thisArg, args);
+      }
+    });
+
+    jest.unstable_mockModule('../../../../src/config/database.js', () => ({
+      query: mockDbQuery
+    }));
+
+    const { default: Service } = await import('../../../../src/services/EmployeeService.js');
+    service = new Service();
+  });
+
+  it('should commit transaction on success', async () => {
+    await service.terminateEmployee('emp-id', 'org-id', 'user-id');
+
+    // Verify transaction flow
+    expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+
+  it('should rollback on error', async () => {
+    mockClient.query.mockImplementation((sql) => {
+      if (sql === 'BEGIN') return Promise.resolve();
+      if (sql.includes('UPDATE')) throw new Error('Database error');
+    });
+
+    await expect(
+      service.terminateEmployee('emp-id', 'org-id', 'user-id')
+    ).rejects.toThrow();
+
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+});
+```
+
+**When to Use Proxy Pattern:**
+- Function needs both direct invocation AND method access
+- Transaction patterns (`db.query()` and `db.getClient()`)
+- API clients with helper methods (`api()` and `api.setToken()`)
+- Any dual-purpose function+object pattern in ESM
+
+**Performance Note:** Proxy adds minimal overhead and is the **only reliable solution** for ESM modules with attached methods.
 
 ---
 

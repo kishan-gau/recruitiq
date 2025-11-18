@@ -58,8 +58,10 @@ class StationService {
     try {
       let query = `
         SELECT s.*,
+          l.location_name,
           (SELECT COUNT(*) FROM scheduling.shifts WHERE station_id = s.id) as shift_count
         FROM scheduling.stations s
+        LEFT JOIN hris.location l ON s.location_id = l.id
         WHERE s.organization_id = $1
       `;
       const params = [organizationId];
@@ -79,8 +81,10 @@ class StationService {
     try {
       const result = await pool.query(
         `SELECT s.*,
+          l.location_name,
           (SELECT COUNT(*) FROM scheduling.station_role_requirements WHERE station_id = s.id) as role_requirement_count
         FROM scheduling.stations s
+        LEFT JOIN hris.location l ON s.location_id = l.id
         WHERE s.id = $1 AND s.organization_id = $2`,
         [stationId, organizationId]
       );

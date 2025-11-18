@@ -4,10 +4,12 @@ import {
   useTimeOffRequests,
   useReviewTimeOff,
 } from '@/hooks/schedulehub/useScheduleStats';
+import { useToast } from '@/contexts/ToastContext';
 import type { TimeOffRequest } from '@/types/schedulehub';
 
 export default function TimeOffRequests() {
   const [showPending, setShowPending] = useState(false);
+  const toast = useToast();
 
   const { data, isLoading, error } = useTimeOffRequests({
     pending: showPending,
@@ -18,9 +20,9 @@ export default function TimeOffRequests() {
   const handleReview = async (id: string, decision: 'approved' | 'denied') => {
     try {
       await reviewTimeOff.mutateAsync({ id, decision });
-      alert(`Request ${decision} successfully!`);
+      toast.success(`Request ${decision} successfully!`);
     } catch (error) {
-      alert('Failed to review request');
+      toast.error('Failed to review request');
     }
   };
 
@@ -55,7 +57,7 @@ export default function TimeOffRequests() {
           </p>
         </div>
         <button
-          onClick={() => alert('Time off request form coming soon')}
+          onClick={() => toast.info('Time off request form coming soon')}
           className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
           <Plus className="h-4 w-4 mr-2" />

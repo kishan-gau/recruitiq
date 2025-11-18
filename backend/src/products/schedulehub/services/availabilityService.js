@@ -49,9 +49,9 @@ class AvailabilityService {
         throw new Error(`Validation error: ${error.details[0].message}`);
       }
 
-      // Verify worker exists
+      // Verify worker exists in hris.employee
       const workerCheck = await client.query(
-        `SELECT id FROM scheduling.workers WHERE id = $1 AND organization_id = $2`,
+        `SELECT id FROM hris.employee WHERE id = $1 AND organization_id = $2`,
         [value.workerId, organizationId]
       );
 
@@ -62,7 +62,7 @@ class AvailabilityService {
       // Insert availability
       const result = await client.query(
         `INSERT INTO scheduling.worker_availability (
-          organization_id, worker_id, availability_type,
+          organization_id, employee_id, availability_type,
           day_of_week, specific_date, start_time, end_time,
           effective_from, effective_to, priority, reason
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -113,7 +113,7 @@ class AvailabilityService {
 
       let query = `
         SELECT * FROM scheduling.worker_availability
-        WHERE worker_id = $1 AND organization_id = $2
+        WHERE employee_id = $1 AND organization_id = $2
       `;
       const params = [workerId, organizationId];
       let paramCount = 2;
@@ -293,7 +293,7 @@ class AvailabilityService {
       for (const hours of defaultHours) {
         const result = await client.query(
           `INSERT INTO scheduling.worker_availability (
-            organization_id, worker_id, availability_type,
+            organization_id, employee_id, availability_type,
             day_of_week, start_time, end_time, priority
           ) VALUES ($1, $2, $3, $4, $5, $6, $7)
           RETURNING *`,
@@ -342,7 +342,7 @@ class AvailabilityService {
       // Check for specific unavailability on this date
       const unavailableCheck = await pool.query(
         `SELECT id FROM scheduling.worker_availability
-         WHERE worker_id = $1 
+         WHERE employee_id = $1 
          AND organization_id = $2
          AND availability_type = 'unavailable'
          AND specific_date = $3
@@ -365,7 +365,7 @@ class AvailabilityService {
       // Check for one-time availability
       const oneTimeCheck = await pool.query(
         `SELECT id, priority FROM scheduling.worker_availability
-         WHERE worker_id = $1 
+         WHERE employee_id = $1 
          AND organization_id = $2
          AND availability_type = 'one_time'
          AND specific_date = $3
@@ -386,7 +386,7 @@ class AvailabilityService {
       // Check for recurring availability
       const recurringCheck = await pool.query(
         `SELECT id, priority FROM scheduling.worker_availability
-         WHERE worker_id = $1 
+         WHERE employee_id = $1 
          AND organization_id = $2
          AND availability_type = 'recurring'
          AND day_of_week = $3
@@ -426,13 +426,21 @@ class AvailabilityService {
       const dayOfWeek = new Date(date).getDay();
 
       let query = `
-        SELECT DISTINCT w.*,
+        SELECT DISTINCT 
+          e.id,
+          e.employee_number as worker_number,
+          e.first_name,
+          e.last_name,
+          e.email,
+          e.phone,
+          e.employment_type,
+          e.employment_status as status,
           wa.priority,
           wa.availability_type
-        FROM scheduling.workers w
-        INNER JOIN scheduling.worker_availability wa ON w.id = wa.worker_id
-        WHERE w.organization_id = $1
-        AND w.status = 'active'
+        FROM hris.employee e
+        INNER JOIN scheduling.worker_availability wa ON e.id = wa.employee_id
+        WHERE e.organization_id = $1
+        AND e.employment_status = 'active'
         AND (
           (wa.availability_type = 'one_time' 
            AND wa.specific_date = $2 
@@ -447,7 +455,7 @@ class AvailabilityService {
         )
         AND NOT EXISTS (
           SELECT 1 FROM scheduling.worker_availability ua
-          WHERE ua.worker_id = w.id
+          WHERE ua.employee_id = e.id
           AND ua.availability_type = 'unavailable'
           AND ua.specific_date = $2
           AND ua.start_time < $4
@@ -462,7 +470,7 @@ class AvailabilityService {
         paramCount++;
         query += ` AND EXISTS (
           SELECT 1 FROM scheduling.worker_roles wr
-          WHERE wr.worker_id = w.id 
+          WHERE wr.employee_id = w.id 
           AND wr.role_id = $${paramCount}
           AND wr.removed_date IS NULL
         )`;

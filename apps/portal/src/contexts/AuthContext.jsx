@@ -17,11 +17,19 @@ export function AuthProvider({ children }) {
         // Validate session via httpOnly cookies (sent automatically by browser)
         const userData = await apiService.getMe();
         
-        // Verify platform access
-        if (userData.user_type === 'platform' && userData.permissions?.includes('portal.view')) {
-          setUser(userData);
-          // REMOVED: localStorage.setItem() - unnecessary security risk
+        // CRITICAL: Validate that we got valid user data
+        // If no email or id, treat as unauthenticated
+        if (!userData || !userData.email || !userData.id) {
+          console.log('[AuthContext] Invalid user data received (missing email/id), treating as unauthenticated');
+          setUser(null);
+          setLoading(false);
+          return;
         }
+        
+        // Backend /api/auth/platform/me already enforces platform auth
+        // If we get user data, they're authenticated as platform user
+        setUser(userData);
+        // REMOVED: localStorage.setItem() - unnecessary security risk
       } catch (error) {
         // Not authenticated, clear state
         setUser(null);
@@ -48,15 +56,17 @@ export function AuthProvider({ children }) {
       const userData = response.user;
       // Tokens are automatically set as HTTP-only cookies by the backend
 
-      // Verify user is a platform user with portal.view permission
-      if (userData.user_type !== 'platform') {
-        throw new Error('Access denied. This portal is for platform administrators only.');
+      // CRITICAL: Validate user data before setting state
+      if (!userData || !userData.email || !userData.id) {
+        throw new Error('Invalid user data received from server');
       }
 
-      if (!userData.permissions || !userData.permissions.includes('portal.view')) {
-        throw new Error('Access denied. You do not have permission to access this portal.');
-      }
-
+      // Backend already enforces platform auth via /api/auth/platform/* endpoints
+      // No need to check user_type here - if they authenticated, they're platform users
+      
+      // Optional: Check for specific permissions if needed for UI features
+      // For now, if they can login to platform auth, they can access portal
+      
       setUser(userData);
       
       // Store MFA warning if present (grace period)

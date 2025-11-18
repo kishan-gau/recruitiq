@@ -20,6 +20,7 @@ const TaxRules = lazy(() => import('@/pages/tax-rules/TaxRulesList'));
 const PayComponents = lazy(() => import('@/pages/pay-components/PayComponentsList'));
 const PayStructureTemplateDetail = lazy(() => import('@/pages/pay-structures/PayStructureTemplateDetail'));
 const TimeEntries = lazy(() => import('@/pages/time-attendance/TimeEntries'));
+const ShiftTypes = lazy(() => import('@/pages/time-attendance/ShiftTypes'));
 const Scheduling = lazy(() => import('@/pages/scheduling/ScheduleCalendar'));
 const PayrollRuns = lazy(() => import('@/pages/payroll/PayrollRunsList'));
 const PayrollRunDetails = lazy(() => import('@/pages/payroll/PayrollRunDetails'));
@@ -101,6 +102,7 @@ function App() {
             <Route path="settings/email" element={<EmailSettings />} />
             <Route path="settings/notifications" element={<NotificationSettings />} />
             <Route path="settings/worker-types" element={<WorkerTypes />} />
+            <Route path="settings/shift-types" element={<ShiftTypes />} />
             <Route path="settings/payroll-defaults" element={<PayrollDefaultsSettings />} />
             <Route path="settings/pay-periods" element={<PayPeriodConfigPage />} />
             <Route path="settings/tax-settings" element={<TaxSettingsPage />} />

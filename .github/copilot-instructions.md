@@ -32,18 +32,48 @@ Products are dynamically loaded at runtime via `backend/src/products/core/Produc
 ```javascript
 // Each product exports this structure (backend/src/products/{product}/index.js)
 export default {
-  config: { name, version, description, features },
-  routes: router,           // Express router mounted at /api/products/{product}
+  config: { name, version, description, features, slug },
+  routes: router,           // Express router mounted at /api/products/{slug}
   middleware: [],          // Product-specific middleware
   hooks: { onLoad, onUnload, onStartup, onShutdown }
 };
 ```
 
 **Available Products:**
-- `paylinq` - Payroll management with multi-currency support
-- `nexus` - Product/workspace management (admin)
-- `schedulehub` - Scheduling and time tracking
-- `core` - Core platform utilities and shared logic
+- `paylinq` - Payroll management with multi-currency support (slug: `paylinq`)
+- `nexus` - HRIS/workspace management (slug: `nexus`)
+- `schedulehub` - Scheduling and time tracking (slug: `schedulehub`)
+- `recruitiq` - Recruitment management (slug: `recruitiq`)
+
+**⚠️ CRITICAL: Product API Paths**
+
+All product routes MUST be accessed via `/api/products/{slug}`:
+
+```javascript
+// ✅ CORRECT: Product API paths
+GET /api/products/nexus/locations           // Nexus locations
+GET /api/products/paylinq/worker-types      // PayLinQ worker types
+GET /api/products/schedulehub/stations      // ScheduleHub stations
+
+// ❌ WRONG: Missing /products prefix (will return 404!)
+GET /api/nexus/locations                    // Missing /products
+GET /api/paylinq/worker-types               // Missing /products
+```
+
+**Frontend API Services:**
+```typescript
+// ✅ CORRECT: Include /products in API base path
+const API_BASE = '/api/products/nexus/locations';
+const API_BASE = '/api/products/paylinq/worker-types';
+
+// ❌ WRONG: Direct product path
+const API_BASE = '/api/nexus/locations';    // 404 error!
+```
+
+**Core Platform Routes (no /products prefix):**
+- `/api/auth/*` - Authentication
+- `/api/organizations` - Organization management
+- `/api/admin/products` - Product metadata management
 
 ### 3. Multi-Tenant Data Isolation (CRITICAL SECURITY)
 
@@ -270,8 +300,13 @@ Frontends use `packages/api-client` for all API calls:
 // apps/paylinq/src/services/api.js
 import { apiClient } from '@recruitiq/api-client';
 
+// ✅ CORRECT: Use full product path
 export const getWorkerTypes = () => 
   apiClient.get('/api/products/paylinq/worker-types');
+
+// For TanStack Query services, always include /products prefix
+const API_BASE = '/api/products/paylinq/worker-types';  // ✅ CORRECT
+const API_BASE = '/api/paylinq/worker-types';           // ❌ WRONG - 404!
 ```
 
 ### 2. Shared Packages
@@ -326,6 +361,7 @@ packages/
 8. **❌ Business logic in controllers** → Move to services
 9. **❌ HTTP handling in services** → Services return data, controllers handle req/res
 10. **❌ Assuming method names without verification** → Read source code first before writing tests
+11. **❌ Wrong product API paths** → Use `/api/products/{slug}/*` not `/api/{slug}/*` (will 404!)
 
 ## Key Files Reference
 

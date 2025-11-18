@@ -18,7 +18,7 @@ class DocumentController {
    */
   createDocument = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const document = await this.service.createDocument(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: document });
     } catch (error) {
@@ -33,7 +33,7 @@ class DocumentController {
    */
   getDocument = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const document = await this.service.getDocument(id, organizationId);
       res.json({ success: true, data: document });
@@ -50,7 +50,7 @@ class DocumentController {
    */
   updateDocument = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const document = await this.service.updateDocument(id, req.body, organizationId, userId);
       res.json({ success: true, data: document });
@@ -67,7 +67,7 @@ class DocumentController {
    */
   deleteDocument = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       await this.service.deleteDocument(id, organizationId, userId);
       res.json({ success: true, message: 'Document deleted successfully' });
@@ -84,7 +84,7 @@ class DocumentController {
    */
   getEmployeeDocuments = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId } = req.params;
       const { type, isConfidential, limit = 50, offset = 0 } = req.query;
 
@@ -110,7 +110,7 @@ class DocumentController {
    */
   getDocumentsByType = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { type } = req.params;
       const { limit = 50, offset = 0 } = req.query;
 
@@ -132,7 +132,7 @@ class DocumentController {
    */
   getExpiringDocuments = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { days = 30 } = req.params;
       const documents = await this.service.getExpiringDocuments(parseInt(days), organizationId);
       res.json({ success: true, data: documents });
@@ -148,7 +148,7 @@ class DocumentController {
    */
   getExpiredDocuments = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const documents = await this.service.getExpiredDocuments(organizationId);
       res.json({ success: true, data: documents });
     } catch (error) {
@@ -163,7 +163,7 @@ class DocumentController {
    */
   searchDocuments = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { q: searchTerm, type, limit = 50, offset = 0 } = req.query;
 
       if (!searchTerm) {
@@ -194,7 +194,7 @@ class DocumentController {
    */
   getEmployeeDocumentStats = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId } = req.params;
       const stats = await this.service.getEmployeeDocumentStats(employeeId, organizationId);
       res.json({ success: true, data: stats });
@@ -210,7 +210,7 @@ class DocumentController {
    */
   getOrganizationDocumentStats = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const stats = await this.service.getOrganizationDocumentStats(organizationId);
       res.json({ success: true, data: stats });
     } catch (error) {
