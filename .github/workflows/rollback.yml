@@ -1,0 +1,178 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      commit_sha:
+        description: 'Commit SHA to rollback to (leave empty for previous deployment)'
+        required: false
+        type: string
+
+jobs:
+  rollback:
+    name: Rollback to Previous Version
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history
+
+      - name: Determine rollback target
+        id: target
+        run: |
+          if [ -n "${{ github.event.inputs.commit_sha }}" ]; then
+            TARGET_SHA="${{ github.event.inputs.commit_sha }}"
+          else
+            # Get previous commit
+            TARGET_SHA=$(git rev-parse HEAD~1)
+          fi
+          
+          echo "target_sha=$TARGET_SHA" >> $GITHUB_OUTPUT
+          echo "Rolling back to: $TARGET_SHA"
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create backup before rollback
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/recruitiq && /opt/recruitiq/backup.sh"
+
+      - name: Pull rollback images
+        run: |
+          REGISTRY="ghcr.io"
+          REPO="${{ github.repository }}"
+          ENV="${{ github.event.inputs.environment }}"
+          SHA="${{ steps.target.outputs.target_sha }}"
+          
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << EOF
+            cd /opt/recruitiq
+            
+            # Pull images for target commit
+            docker pull ${REGISTRY}/${REPO}/backend:${ENV}-${SHA}
+            docker pull ${REGISTRY}/${REPO}/nexus:${ENV}-${SHA}
+            docker pull ${REGISTRY}/${REPO}/paylinq:${ENV}-${SHA}
+            docker pull ${REGISTRY}/${REPO}/portal:${ENV}-${SHA}
+            docker pull ${REGISTRY}/${REPO}/recruitiq:${ENV}-${SHA}
+            
+            # Tag as latest
+            docker tag ${REGISTRY}/${REPO}/backend:${ENV}-${SHA} recruitiq_backend:latest
+            docker tag ${REGISTRY}/${REPO}/nexus:${ENV}-${SHA} recruitiq_nexus:latest
+            docker tag ${REGISTRY}/${REPO}/paylinq:${ENV}-${SHA} recruitiq_paylinq:latest
+            docker tag ${REGISTRY}/${REPO}/portal:${ENV}-${SHA} recruitiq_portal:latest
+            docker tag ${REGISTRY}/${REPO}/recruitiq:${ENV}-${SHA} recruitiq_recruitiq:latest
+          EOF
+
+      - name: Stop services
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/recruitiq && docker-compose down"
+
+      - name: Note about database rollback
+        run: |
+          echo "⚠️  Note: Database rollback should be done manually if needed"
+          echo "Latest backup available at: /opt/recruitiq/backups/"
+          # Database rollback should be done manually with caution
+
+      - name: Start services
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/recruitiq && docker-compose up -d"
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to start..."
+          sleep 30
+
+      - name: Health check
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            # Check if services are running
+            cd /opt/recruitiq
+            docker-compose ps
+            
+            # Test backend health
+            max_attempts=5
+            attempt=0
+            
+            while [ $attempt -lt $max_attempts ]; do
+              if curl -f http://localhost:3001/health; then
+                echo "✅ Health check passed"
+                exit 0
+              fi
+              
+              attempt=$((attempt + 1))
+              echo "Health check attempt $attempt failed, retrying..."
+              sleep 10
+            done
+            
+            echo "❌ Health check failed after $max_attempts attempts"
+            exit 1
+          EOF
+
+      - name: Verify rollback
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/recruitiq && docker-compose ps"
+
+      - name: Notify rollback complete
+        if: success()
+        run: |
+          echo "✅ Rollback to ${{ steps.target.outputs.target_sha }} complete!"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+
+      - name: Rollback failed - restore from backup
+        if: failure()
+        run: |
+          echo "❌ Rollback failed, attempting to restore from backup"
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            cd /opt/recruitiq
+            
+            # Get latest backup
+            LATEST_BACKUP=$(ls -t backups/db_*.sql.gz | head -1)
+            
+            if [ -f "$LATEST_BACKUP" ]; then
+              echo "Restoring from backup: $LATEST_BACKUP"
+              gunzip < "$LATEST_BACKUP" | \
+                docker-compose exec -T postgres psql -U $POSTGRES_USER $POSTGRES_DB
+              
+              docker-compose restart backend
+            else
+              echo "No backup found to restore"
+            fi
+          EOF
+
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: rollback
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: needs.rollback.result == 'success'
+        run: |
+          echo "✅ Rollback successful!"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+
+      - name: Notify failure
+        if: needs.rollback.result == 'failure'
+        run: |
+          echo "❌ Rollback failed!"
+          echo "Manual intervention may be required"
+          exit 1

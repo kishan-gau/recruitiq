@@ -32,14 +32,14 @@ class WorkerTypeService {
   workerTypeTemplateSchema = Joi.object({
     name: Joi.string().min(2).max(100).required(),
     code: Joi.string().min(2).max(50).required(),
-    description: Joi.string().max(500).allow(null, ''),
+    description: Joi.string().max(500).optional().allow(null, ''),
     defaultPayFrequency: Joi.string().valid('weekly', 'bi-weekly', 'semi-monthly', 'monthly').required(),
     defaultPaymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash').required(),
-    benefitsEligible: Joi.boolean().default(false),
-    overtimeEligible: Joi.boolean().default(true),
-    ptoEligible: Joi.boolean().default(false),
-    sickLeaveEligible: Joi.boolean().default(false),
-    vacationAccrualRate: Joi.number().min(0).max(1).allow(null)
+    benefitsEligible: Joi.boolean().optional().default(false),
+    overtimeEligible: Joi.boolean().optional().default(true),
+    ptoEligible: Joi.boolean().optional().default(false),
+    sickLeaveEligible: Joi.boolean().optional().default(false),
+    vacationAccrualRate: Joi.number().min(0).max(1).optional().allow(null)
   });
 
   workerTypeAssignmentSchema = Joi.object({
@@ -63,7 +63,10 @@ class WorkerTypeService {
    */
   async createWorkerTypeTemplate(templateData, organizationId, userId) {
     // Validate input
-    const { error, value } = this.workerTypeTemplateSchema.validate(templateData);
+    const { error, value } = this.workerTypeTemplateSchema.validate(templateData, {
+      stripUnknown: true,
+      abortEarly: false
+    });
     if (error) {
       throw new ValidationError(error.details[0].message);
     }

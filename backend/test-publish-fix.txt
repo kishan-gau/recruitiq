@@ -1,0 +1,662 @@
+﻿
+> recruitiq-backend@1.0.0 test
+> cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --coverage payTemplateWorkflow-scenario8.e2e.test.js
+
+[dotenv@17.2.3] injecting env (45) from .env.test -- tip: ≡ƒùé∩╕Å backup and recover secrets: https://dotenvx.com/ops
+node.exe : ≡ƒº¬ Jest global setup complete
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (≡ƒº¬ Jest global setup complete:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  console.log
+    [dotenv@17.2.3] injecting env (25) from .env -- tip: ≡ƒöæ add access controls to secrets: https://dotenvx.com/ops
+
+      at _log (node_modules/dotenv/lib/main.js:142:11)
+
+  console.warn
+    ΓÜá∩╕Å  WARNING: JWT_SECRET appears to be weak or test data
+
+    [0m [90m 283 |[39m weakPatterns[33m.[39mforEach(pattern [33m=>[39m {
+     [90m 284 |[39m   [36mif[39m (pattern[33m.[39mtest(config[33m.[39mjwt[33m.[39msecret)) {
+    [31m[1m>[22m[39m[90m 285 |[39m     console[33m.[39mwarn([32m'ΓÜá∩╕Å  WARNING: JWT_SECRET appears to be weak or test data'[39m)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 286 |[39m     console[33m.[39mwarn([32m'   Use cryptographically random secrets in production'[39m)[33m;[39m
+     [90m 287 |[39m   }
+     [90m 288 |[39m   [36mif[39m (pattern[33m.[39mtest(config[33m.[39mjwt[33m.[39mrefreshSecret)) {[0m
+
+      at warn (src/config/index.js:285:13)
+          at Array.forEach (<anonymous>)
+      at forEach (src/config/index.js:283:14)
+
+  console.warn
+       Use cryptographically random secrets in production
+
+    [0m [90m 284 |[39m   [36mif[39m (pattern[33m.[39mtest(config[33m.[39mjwt[33m.[39msecret)) {
+     [90m 285 |[39m     console[33m.[39mwarn([32m'ΓÜá∩╕Å  WARNING: JWT_SECRET appears to be weak or test data'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 286 |[39m     console[33m.[39mwarn([32m'   Use cryptographically random secrets in production'[39m)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 287 |[39m   }
+     [90m 288 |[39m   [36mif[39m (pattern[33m.[39mtest(config[33m.[39mjwt[33m.[39mrefreshSecret)) {
+     [90m 289 |[39m     console[33m.[39mwarn([32m'ΓÜá∩╕Å  WARNING: JWT_REFRESH_SECRET appears to be weak or test data'[39m)[33m;[39m[0m
+
+      at warn (src/config/index.js:286:13)
+          at Array.forEach (<anonymous>)
+      at forEach (src/config/index.js:283:14)
+
+  console.warn
+    ΓÜá∩╕Å  WARNING: JWT_REFRESH_SECRET appears to be weak or test data
+
+    [0m [90m 287 |[39m   }
+     [90m 288 |[39m   [36mif[39m (pattern[33m.[39mtest(config[33m.[39mjwt[33m.[39mrefreshSecret)) {
+    [31m[1m>[22m[39m[90m 289 |[39m     console[33m.[39mwarn([32m'ΓÜá∩╕Å  WARNING: JWT_REFRESH_SECRET appears to be weak or test data'[39m)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 290 |[39m     console[33m.[39mwarn([32m'   Use cryptographically random secrets in production'[39m)[33m;[39m
+     [90m 291 |[39m   }
+     [90m 292 |[39m })[33m;[39m[0m
+
+      at warn (src/config/index.js:289:13)
+          at Array.forEach (<anonymous>)
+      at forEach (src/config/index.js:283:14)
+
+  console.warn
+       Use cryptographically random secrets in production
+
+    [0m [90m 288 |[39m   [36mif[39m (pattern[33m.[39mtest(config[33m.[39mjwt[33m.[39mrefreshSecret)) {
+     [90m 289 |[39m     console[33m.[39mwarn([32m'ΓÜá∩╕Å  WARNING: JWT_REFRESH_SECRET appears to be weak or test data'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 290 |[39m     console[33m.[39mwarn([32m'   Use cryptographically random secrets in production'[39m)[33m;[39m
+     [90m     |[39m             [31m[1m^[22m[39m
+     [90m 291 |[39m   }
+     [90m 292 |[39m })[33m;[39m
+     [90m 293 |[39m[0m
+
+      at warn (src/config/index.js:290:13)
+          at Array.forEach (<anonymous>)
+      at forEach (src/config/index.js:283:14)
+
+{"level":"info","message":"Central logging pool initialized","metadata":{"metadata":{"database":"recruitiq_dev","enabled":true,"environment":"test","host":"localhost","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.477"},"timestamp":"2025-11-19 08:51:16.482"}}
+{"level":"info","message":"Rate limiting using memory store (development mode)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.498"},"timestamp":"2025-11-19 08:51:16.499"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.501"},"timestamp":"2025-11-19 08:51:16.501"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.540"},"timestamp":"2025-11-19 08:51:16.540"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.543"},"timestamp":"2025-11-19 08:51:16.545"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.548"},"timestamp":"2025-11-19 08:51:16.548"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.553"},"timestamp":"2025-11-19 08:51:16.553"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.558"},"timestamp":"2025-11-19 08:51:16.558"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.561"},"timestamp":"2025-11-19 08:51:16.562"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.677"},"timestamp":"2025-11-19 08:51:16.677"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.681"},"timestamp":"2025-11-19 08:51:16.681"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.683"},"timestamp":"2025-11-19 08:51:16.683"}}
+{"level":"info","message":"Security Monitor initialized","metadata":{"metadata":{"enabled":true,"environment":"test","failedLoginThreshold":5,"hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.758"},"timestamp":"2025-11-19 08:51:16.758"}}
+{"level":"info","message":"ΓÜá∩╕Å  TransIP service initialized (API integration pending)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.768"},"timestamp":"2025-11-19 08:51:16.769"}}
+{"level":"info","message":"Validating configuration...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.866"},"timestamp":"2025-11-19 08:51:16.866"}}
+{"level":"info","message":"=== Configuration Validation ===","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.866"},"timestamp":"2025-11-19 08:51:16.866"}}
+{"level":"info","message":"Γ£ô Required environment variables validated","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.866"},"timestamp":"2025-11-19 08:51:16.866"}}
+{"level":"info","message":"Γ£ô Database configured: postgres@localhost:5432/recruitiq_test (pool: 2-10)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.867"},"timestamp":"2025-11-19 08:51:16.867"}}
+{"level":"info","message":"Γ£ô CORS configured with 5 allowed origin(s)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.867"},"timestamp":"2025-11-19 08:51:16.867"}}
+{"level":"info","message":"≡ƒöì DEBUG Cookie ENV values:","metadata":{"metadata":{"COOKIE_DOMAIN":"","COOKIE_SAME_SITE":"lax","COOKIE_SECURE":"false","NODE_ENV":"test","environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.868"},"timestamp":"2025-11-19 08:51:16.868"}}
+{"level":"info","message":"≡ƒöì DEBUG Cookie config.cookie values:","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","sameSite":"lax","secure":false,"service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.868"},"timestamp":"2025-11-19 08:51:16.868"}}
+{"level":"info","message":"Γ£ô Cookie config: secure=false, sameSite=lax, domain=none","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.868"},"timestamp":"2025-11-19 08:51:16.868"}}
+{"level":"info","message":"Γä╣ Redis disabled (rate limiting will use in-memory store)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.869"},"timestamp":"2025-11-19 08:51:16.869"}}
+{"level":"info","message":"Γ£ô All tenant app .env files exist","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.870"},"timestamp":"2025-11-19 08:51:16.870"}}
+{"level":"warn","message":"ΓÜá Frontend API URL mismatches detected:","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.871"},"timestamp":"2025-11-19 08:51:16.872"}}
+{"level":"warn","message":"  nexus: configured=/api, expected=http://localhost:4000/api","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.872"},"timestamp":"2025-11-19 08:51:16.872"}}
+{"level":"warn","message":"  paylinq: configured=/api, expected=http://localhost:4000/api","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.872"},"timestamp":"2025-11-19 08:51:16.872"}}
+{"level":"warn","message":"  recruitiq: configured=/api, expected=http://localhost:4000/api","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.872"},"timestamp":"2025-11-19 08:51:16.872"}}
+{"level":"warn","message":"  This may cause CORS or connectivity issues","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.873"},"timestamp":"2025-11-19 08:51:16.873"}}
+{"level":"info","message":"=== Configuration Validation Complete ===\n","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.873"},"timestamp":"2025-11-19 08:51:16.873"}}
+{"level":"info","message":"Security headers initialized","metadata":{"metadata":{"csp":false,"env":"test","environment":"test","hostname":"localhost","hsts":false,"instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.873"},"timestamp":"2025-11-19 08:51:16.873"}}
+{"level":"info","message":"CORS initialized","metadata":{"metadata":{"allowedOrigins":["http://localhost:3000","http://localhost:5173","http://localhost:5174","http://localhost:5175","http://localhost:5176"],"credentials":true,"env":"test","environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.875"},"timestamp":"2025-11-19 08:51:16.876"}}
+{"level":"info","message":"≡ƒº¬ Test mode: Initializing products without starting server...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.879"},"timestamp":"2025-11-19 08:51:16.879"}}
+{"level":"info","message":"≡ƒöº Initializing Dynamic Product System...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.880"},"timestamp":"2025-11-19 08:51:16.880"}}
+{"level":"info","message":"≡ƒÄ» Initializing Product Manager...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.880"},"timestamp":"2025-11-19 08:51:16.880"}}
+{"level":"info","message":"ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.881"},"timestamp":"2025-11-19 08:51:16.881"}}
+{"level":"info","message":"Step 1/3: Loading products...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.881"},"timestamp":"2025-11-19 08:51:16.882"}}
+{"level":"info","message":"≡ƒÜÇ Initializing Product Loader...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.882"},"timestamp":"2025-11-19 08:51:16.882"}}
+(node:31116) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"level":"info","message":"Token blacklist Redis connected","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.920"},"timestamp":"2025-11-19 08:51:16.920"}}
+{"level":"info","message":"Γ£à PostgreSQL connected","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.993"},"timestamp":"2025-11-19 08:51:16.993"}}
+{"level":"info","message":"Γ£à License Manager database connected successfully","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:16.997"},"timestamp":"2025-11-19 08:51:16.997"}}
+{"level":"info","message":"≡ƒôª Found 5 active products","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.006"},"timestamp":"2025-11-19 08:51:17.006"}}
+{"level":"info","message":"≡ƒôª Loading product: nexus (nexus)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.007"},"timestamp":"2025-11-19 08:51:17.007"}}
+{"level":"info","message":"  Γ£ô Resolved local path: C:\\RecruitIQ\\backend\\src\\products\\nexus\\index.js","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.008"},"timestamp":"2025-11-19 08:51:17.008"}}
+{"level":"info","message":"Γ£à Successfully loaded product: nexus","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.101"},"timestamp":"2025-11-19 08:51:17.101"}}
+{"level":"info","message":"≡ƒôª Loading product: portal (portal)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.101"},"timestamp":"2025-11-19 08:51:17.101"}}
+{"level":"info","message":"  Γèÿ No module resolution found for portal","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.102"},"timestamp":"2025-11-19 08:51:17.102"}}
+{"level":"info","message":"  Γèÿ No backend module found for portal - skipping (frontend-only product)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.103"},"timestamp":"2025-11-19 08:51:17.103"}}
+{"level":"info","message":"≡ƒôª Loading product: paylinq (paylinq)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.103"},"timestamp":"2025-11-19 08:51:17.104"}}
+{"level":"info","message":"  Γ£ô Resolved local path: C:\\RecruitIQ\\backend\\src\\products\\paylinq\\index.js","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:17.104"},"timestamp":"2025-11-19 08:51:17.105"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.449"},"timestamp":"2025-11-19 08:51:18.450"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.485"},"timestamp":"2025-11-19 08:51:18.485"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.573"},"timestamp":"2025-11-19 08:51:18.573"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.583"},"timestamp":"2025-11-19 08:51:18.584"}}
+{"level":"warn","message":"Redis disabled or unavailable, using memory store for rate limiting","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.729"},"timestamp":"2025-11-19 08:51:18.729"}}
+{"level":"info","message":"Redis caching disabled via environment variable","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.758"},"timestamp":"2025-11-19 08:51:18.758"}}
+{"level":"info","message":"Γ£à Successfully loaded product: paylinq","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.765"},"timestamp":"2025-11-19 08:51:18.765"}}
+{"level":"info","message":"≡ƒôª Loading product: recruitiq (recruitiq)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.765"},"timestamp":"2025-11-19 08:51:18.765"}}
+{"level":"info","message":"  Γèÿ No module resolution found for recruitiq","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.766"},"timestamp":"2025-11-19 08:51:18.766"}}
+{"level":"info","message":"  Γèÿ No backend module found for recruitiq - skipping (frontend-only product)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.766"},"timestamp":"2025-11-19 08:51:18.766"}}
+{"level":"info","message":"≡ƒôª Loading product: schedulehub (schedulehub)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.766"},"timestamp":"2025-11-19 08:51:18.766"}}
+{"level":"info","message":"  Γ£ô Resolved local path: C:\\RecruitIQ\\backend\\src\\products\\schedulehub\\index.js","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.767"},"timestamp":"2025-11-19 08:51:18.767"}}
+{"level":"info","message":"Γ£à Successfully loaded product: schedulehub","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.846"},"timestamp":"2025-11-19 08:51:18.846"}}
+{"level":"info","message":"Γ£à Product Loader initialized. Loaded 3 products.","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.847"},"timestamp":"2025-11-19 08:51:18.847"}}
+{"level":"info","message":"Γ£ô Loaded 3 products\n","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.847"},"timestamp":"2025-11-19 08:51:18.847"}}
+{"level":"info","message":"Step 2/3: Registering routes...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.848"},"timestamp":"2025-11-19 08:51:18.848"}}
+{"level":"info","message":"≡ƒ¢ú∩╕Å  Initializing Route Registry...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.848"},"timestamp":"2025-11-19 08:51:18.848"}}
+{"level":"info","message":"  ≡ƒôì Registering routes for: nexus","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.849"},"timestamp":"2025-11-19 08:51:18.849"}}
+{"level":"info","message":"     Base path: /nexus","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.849"},"timestamp":"2025-11-19 08:51:18.849"}}
+{"level":"info","message":"     Applying 1 middleware(s)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.849"},"timestamp":"2025-11-19 08:51:18.849"}}
+{"level":"info","message":"  Γ£à Registered routes for nexus at /nexus","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.850"},"timestamp":"2025-11-19 08:51:18.850"}}
+{"level":"info","message":"  ≡ƒôì Registering routes for: paylinq","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.850"},"timestamp":"2025-11-19 08:51:18.850"}}
+{"level":"info","message":"     Base path: /paylinq","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.850"},"timestamp":"2025-11-19 08:51:18.850"}}
+{"level":"info","message":"     Applying 1 middleware(s)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.850"},"timestamp":"2025-11-19 08:51:18.851"}}
+{"level":"info","message":"  Γ£à Registered routes for paylinq at /paylinq","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.851"},"timestamp":"2025-11-19 08:51:18.851"}}
+{"level":"info","message":"  ≡ƒôì Registering routes for: schedulehub","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.851"},"timestamp":"2025-11-19 08:51:18.851"}}
+{"level":"info","message":"     Base path: /schedulehub","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.851"},"timestamp":"2025-11-19 08:51:18.851"}}
+{"level":"info","message":"     Applying 1 middleware(s)","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.851"},"timestamp":"2025-11-19 08:51:18.851"}}
+{"level":"info","message":"  Γ£à Registered routes for schedulehub at /schedulehub","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.852"},"timestamp":"2025-11-19 08:51:18.852"}}
+{"level":"info","message":"Γ£à Route Registry initialized. Registered 3 product routes.","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.852"},"timestamp":"2025-11-19 08:51:18.853"}}
+{"level":"info","message":"Γ£ô Registered routes for 3 products\n","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.853"},"timestamp":"2025-11-19 08:51:18.853"}}
+{"level":"info","message":"Step 3/3: Validating configuration...","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.854"},"timestamp":"2025-11-19 08:51:18.854"}}
+{"level":"info","message":"Γ£ô All routes validated successfully\n","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.855"},"timestamp":"2025-11-19 08:51:18.855"}}
+{"level":"info","message":"≡ƒôè PRODUCT MANAGER SUMMARY","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.855"},"timestamp":"2025-11-19 08:51:18.855"}}
+{"level":"info","message":"ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.856"},"timestamp":"2025-11-19 08:51:18.856"}}
+{"level":"info","message":"Products:","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.856"},"timestamp":"2025-11-19 08:51:18.856"}}
+{"level":"info","message":"  ΓÇó Total loaded: 3","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.856"},"timestamp":"2025-11-19 08:51:18.856"}}
+{"level":"info","message":"  ΓÇó With routes: 3","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.857"},"timestamp":"2025-11-19 08:51:18.857"}}
+{"level":"info","message":"  ΓÇó With middleware: 3","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.857"},"timestamp":"2025-11-19 08:51:18.857"}}
+{"level":"info","message":"\nRoutes:","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.857"},"timestamp":"2025-11-19 08:51:18.857"}}
+{"level":"info","message":"  ΓÇó Total registered: 3","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.857"},"timestamp":"2025-11-19 08:51:18.857"}}
+{"level":"info","message":"\nRegistered Endpoints:","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.857"},"timestamp":"2025-11-19 08:51:18.858"}}
+{"level":"info","message":"  ΓÇó /nexus ΓåÆ nexus (active) [1 middleware]","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.858"},"timestamp":"2025-11-19 08:51:18.858"}}
+{"level":"info","message":"  ΓÇó /paylinq ΓåÆ paylinq (active) [1 middleware]","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.858"},"timestamp":"2025-11-19 08:51:18.859"}}
+{"level":"info","message":"  ΓÇó /schedulehub ΓåÆ schedulehub (active) [1 middleware]","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.859"},"timestamp":"2025-11-19 08:51:18.859"}}
+{"level":"info","message":"","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.859"},"timestamp":"2025-11-19 08:51:18.859"}}
+{"level":"info","message":"ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.859"},"timestamp":"2025-11-19 08:51:18.859"}}
+{"level":"info","message":"Γ£à Product Manager initialized successfully\n","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.859"},"timestamp":"2025-11-19 08:51:18.860"}}
+{"level":"info","message":"Γ£à Dynamic Product System ready","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.860"},"timestamp":"2025-11-19 08:51:18.860"}}
+{"level":"info","message":"≡ƒôì Dynamic product routes available at /api/products","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.860"},"timestamp":"2025-11-19 08:51:18.860"}}
+{"level":"info","message":"≡ƒº¬ Test mode: Product initialization complete","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:18.860"},"timestamp":"2025-11-19 08:51:18.860"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/auth/tenant/login","query":{},"requestId":"1763553079036-51btg64r1","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.036"},"timestamp":"2025-11-19 08:51:19.037"}}
+{"level":"info","message":"≡ƒöì DEBUG Setting cookies with config:","metadata":{"metadata":{"accessConfig":{"httpOnly":true,"maxAge":900000,"path":"/","sameSite":"lax","secure":false},"email":"admin@testsrtax.com","environment":"test","hostname":"localhost","instanceId":"unknown","refreshConfig":{"httpOnly":true,"maxAge":604800000,"path":"/","rememberMe":false,"sameSite":"lax","secure":false},"service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.156"},"timestamp":"2025-11-19 08:51:19.156"}}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"125ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/tenant/login","requestId":"1763553079036-51btg64r1","responseSize":"0KB","service":"recruitiq-api","status":200,"timestamp":"2025-11-19 08:51:19.161"},"timestamp":"2025-11-19 08:51:19.161"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"GET","path":"/api/csrf-token","query":{},"requestId":"1763553079175-3id854jl4","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.176"},"timestamp":"2025-11-19 08:51:19.176"}}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"4ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"GET","path":"/csrf-token","requestId":"1763553079175-3id854jl4","responseSize":"0KB","service":"recruitiq-api","status":200,"timestamp":"2025-11-19 08:51:19.179"},"timestamp":"2025-11-19 08:51:19.179"}}
+  console.log
+    CSRF Token obtained: Yes
+
+      at Object.<anonymous> (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:95:13)
+
+  console.log
+    Auth cookies count after CSRF: 3
+
+      at Object.<anonymous> (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:96:13)
+
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/workers","query":{},"requestId":"1763553079196-z9l3a58tl","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.196"},"timestamp":"2025-11-19 08:51:19.197"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+{"level":"info","message":"Received employee data for creation","metadata":{"metadata":{"employeeData":"{\"hrisEmployeeId\":\"EMP-SR-001\",\"employeeNumber\":\"EMP-SR-001\",\"firstName\":\"Jan\",\"lastName\":\"Suriname\",\"email\":\"jan.suriname@testsrtax.com\",\"hireDate\":\"2024-01-01T00:00:00.000Z\",\"status\":\"active\",\"paymentMethod\":\"direct_deposit\"}","environment":"test","hireDate":"2024-01-01T00:00:00.000Z","hireDateType":"string","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.246"},"timestamp":"2025-11-19 08:51:19.246"}}
+{"level":"info","message":"Created hris.employee record","metadata":{"metadata":{"employeeId":"6598ac45-6470-4ee8-9a0f-6f2d394e3b5f","employeeNumber":"EMP-SR-001","environment":"test","hostname":"localhost","instanceId":"unknown","organizationId":"91f6a159-6601-4ee2-a40a-61cf59268ee3","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.252"},"timestamp":"2025-11-19 08:51:19.252"}}
+{"level":"info","message":"Employee payroll record created","metadata":{"metadata":{"employeeId":"6b5842b8-e4a1-4a6f-90f4-97622b24884f","environment":"test","hostname":"localhost","instanceId":"unknown","organizationId":"91f6a159-6601-4ee2-a40a-61cf59268ee3","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.262"},"timestamp":"2025-11-19 08:51:19.262"}}
+{"level":"info","message":"Employee payroll record created","metadata":{"metadata":{"employeeId":"6b5842b8-e4a1-4a6f-90f4-97622b24884f","environment":"test","hostname":"localhost","instanceId":"unknown","organizationId":"91f6a159-6601-4ee2-a40a-61cf59268ee3","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.262","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.262"}}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"69ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/","requestId":"1763553079196-z9l3a58tl","responseSize":"1KB","service":"recruitiq-api","status":201,"timestamp":"2025-11-19 08:51:19.265","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.265"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/templates","query":{},"requestId":"1763553079279-vdooyjnre","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.279"},"timestamp":"2025-11-19 08:51:19.279"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: undefined,
+      assignedWorkerCount: undefined
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"info","message":"Pay structure template created","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","organizationId":"91f6a159-6601-4ee2-a40a-61cf59268ee3","service":"recruitiq-api","templateCode":"SR_TAX_TEMPLATE","templateId":"a2438067-486f-43c7-8e0f-4b33c98db18f","timestamp":"2025-11-19 08:51:19.376","userId":"668d892c-852c-43cb-9183-96c6a7a388ae","version":"1.0.0"},"timestamp":"2025-11-19 08:51:19.376"}}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"99ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/templates","requestId":"1763553079279-vdooyjnre","responseSize":"1KB","service":"recruitiq-api","status":201,"timestamp":"2025-11-19 08:51:19.378","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.378"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","query":{},"requestId":"1763553079390-k8dv8atus","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.390"},"timestamp":"2025-11-19 08:51:19.390"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: 0,
+      assignedWorkerCount: 0
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"38ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","requestId":"1763553079390-k8dv8atus","responseSize":"1KB","service":"recruitiq-api","status":201,"timestamp":"2025-11-19 08:51:19.428","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.428"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","query":{},"requestId":"1763553079438-umqai904b","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.438"},"timestamp":"2025-11-19 08:51:19.438"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: 1,
+      assignedWorkerCount: 0
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"24ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","requestId":"1763553079438-umqai904b","responseSize":"1KB","service":"recruitiq-api","status":201,"timestamp":"2025-11-19 08:51:19.462","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.462"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","query":{},"requestId":"1763553079472-1ya0tzzpv","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.472"},"timestamp":"2025-11-19 08:51:19.472"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: 2,
+      assignedWorkerCount: 0
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"25ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","requestId":"1763553079472-1ya0tzzpv","responseSize":"1KB","service":"recruitiq-api","status":201,"timestamp":"2025-11-19 08:51:19.497","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.497"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","query":{},"requestId":"1763553079512-za47vekc6","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.512"},"timestamp":"2025-11-19 08:51:19.512"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: 3,
+      assignedWorkerCount: 0
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"27ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","requestId":"1763553079512-za47vekc6","responseSize":"1KB","service":"recruitiq-api","status":201,"timestamp":"2025-11-19 08:51:19.539","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.539"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","query":{},"requestId":"1763553079552-potmrzs1d","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.552"},"timestamp":"2025-11-19 08:51:19.552"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: 4,
+      assignedWorkerCount: 0
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"32ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","requestId":"1763553079552-potmrzs1d","responseSize":"1KB","service":"recruitiq-api","status":201,"timestamp":"2025-11-19 08:51:19.584","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.584"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","query":{},"requestId":"1763553079596-x4y6gqy44","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.596"},"timestamp":"2025-11-19 08:51:19.596"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: 5,
+      assignedWorkerCount: 0
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"info","message":"Request completed","metadata":{"metadata":{"duration":"32ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/components","requestId":"1763553079596-x4y6gqy44","responseSize":"3KB","service":"recruitiq-api","status":201,"timestamp":"2025-11-19 08:51:19.628","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.628"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/publish","query":{},"requestId":"1763553079644-phsd6naxd","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.645"},"timestamp":"2025-11-19 08:51:19.645"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: 6,
+      assignedWorkerCount: 0
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"error","message":"Database query error","metadata":{"metadata":{"code":"23514","environment":"test","error":"new row for relation \"pay_structure_template\" violates check constraint \"pay_structure_template_status_check\"","hostname":"localhost","instanceId":"unknown","metadata":{"userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"params":"[3 parameters]","potentialInjection":false,"query":"UPDATE payroll.pay_structure_template\n       SET status = 'published',\n           published_at = NOW(),\n           published_by = $3,\n           updated_at = NOW(),\n           updated_by = $3\n       W","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.696"},"timestamp":"2025-11-19 08:51:19.696"}}
+{"level":"error","message":"Database query error:","metadata":{"metadata":{"environment":"test","error":"new row for relation \"pay_structure_template\" violates check constraint \"pay_structure_template_status_check\"","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","text":"UPDATE payroll.pay_structure_template\n       SET status = 'published',\n           published_at = NOW(),\n           published_by = $3,\n           updated_at = NOW(),\n           updated_by = $3\n       WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL\n       RETURNING *, version_string","timestamp":"2025-11-19 08:51:19.697"},"timestamp":"2025-11-19 08:51:19.697"}}
+{"level":"error","message":"Error publishing pay structure template","metadata":{"metadata":{"environment":"test","error":"new row for relation \"pay_structure_template\" violates check constraint \"pay_structure_template_status_check\"","hostname":"localhost","instanceId":"unknown","organizationId":"91f6a159-6601-4ee2-a40a-61cf59268ee3","service":"recruitiq-api","templateId":"a2438067-486f-43c7-8e0f-4b33c98db18f","timestamp":"2025-11-19 08:51:19.698","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.699"}}
+{"level":"error","message":"Request failed","metadata":{"metadata":{"duration":"55ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/templates/a2438067-486f-43c7-8e0f-4b33c98db18f/publish","requestId":"1763553079644-phsd6naxd","responseSize":"0KB","service":"recruitiq-api","status":500,"timestamp":"2025-11-19 08:51:19.700","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.700"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/pay-structures/workers/6b5842b8-e4a1-4a6f-90f4-97622b24884f/assignments","query":{},"requestId":"1763553079718-39deik66r","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.718"},"timestamp":"2025-11-19 08:51:19.718"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+{"level":"info","message":"Γ£à PostgreSQL connected","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.789"},"timestamp":"2025-11-19 08:51:19.789"}}
+  console.log
+    After parseInt conversion: {
+      componentsCount: undefined,
+      activeWorkersCount: undefined,
+      componentCount: 6,
+      assignedWorkerCount: 0
+    }
+
+      at log (src/products/paylinq/utils/dtoMapper.js:953:11)
+
+{"level":"error","message":"Error assigning pay structure to worker","metadata":{"metadata":{"code":"VALIDATION_ERROR","employeeId":"6b5842b8-e4a1-4a6f-90f4-97622b24884f","environment":"test","error":"Only active templates can be assigned to workers","hostname":"localhost","instanceId":"unknown","organizationId":"91f6a159-6601-4ee2-a40a-61cf59268ee3","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.834","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.834"}}
+{"level":"warn","message":"Request error","metadata":{"metadata":{"duration":"117ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/workers/6b5842b8-e4a1-4a6f-90f4-97622b24884f/assignments","requestId":"1763553079718-39deik66r","responseSize":"0KB","service":"recruitiq-api","status":400,"timestamp":"2025-11-19 08:51:19.835","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.835"}}
+  console.log
+    
+    === ASSIGNMENT FAILED ===
+
+      at assignTemplateToWorker (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:219:15)
+
+  console.log
+    Status: 400
+
+      at assignTemplateToWorker (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:220:15)
+
+  console.log
+    Error details: {
+      "success": false,
+      "error": "ValidationError",
+      "message": "Only active templates can be assigned to workers",
+      "rateLimit": {
+        "limit": 100000,
+        "remaining": 99988,
+        "reset": "900"
+      }
+    }
+
+      at assignTemplateToWorker (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:221:15)
+
+  console.log
+    Sent data: {
+      "templateId": "a2438067-486f-43c7-8e0f-4b33c98db18f",
+      "effectiveFrom": "2024-11-01"
+    }
+
+      at assignTemplateToWorker (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:222:15)
+
+  console.log
+    ========================
+
+      at assignTemplateToWorker (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:223:15)
+
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/api/products/paylinq/payroll-runs","query":{},"requestId":"1763553079849-o7bud46qv","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.849"},"timestamp":"2025-11-19 08:51:19.849"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+{"level":"warn","message":"Validation failed","metadata":{"metadata":{"environment":"test","errors":[{"field":"payrollName","message":"Payroll name is required","type":"any.required"},{"field":"paymentDate","message":"Payment date is required","type":"any.required"}],"hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"POST","path":"/","service":"recruitiq-api","source":"body","timestamp":"2025-11-19 08:51:19.872"},"timestamp":"2025-11-19 08:51:19.872"}}
+{"level":"warn","message":"Request error","metadata":{"metadata":{"duration":"24ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"POST","path":"/","requestId":"1763553079849-o7bud46qv","responseSize":"0KB","service":"recruitiq-api","status":400,"timestamp":"2025-11-19 08:51:19.873","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.873"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"GET","path":"/api/products/paylinq/payroll-runs/undefined/paychecks","query":{},"requestId":"1763553079885-jnhfhueqh","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.885"},"timestamp":"2025-11-19 08:51:19.886"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+{"level":"warn","message":"Validation failed","metadata":{"metadata":{"environment":"test","errors":[{"field":"id","message":"\"id\" must be a valid GUID","type":"string.guid"}],"hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"GET","path":"/undefined/paychecks","service":"recruitiq-api","source":"params","timestamp":"2025-11-19 08:51:19.905"},"timestamp":"2025-11-19 08:51:19.905"}}
+{"level":"warn","message":"Request error","metadata":{"metadata":{"duration":"21ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"GET","path":"/undefined/paychecks","requestId":"1763553079885-jnhfhueqh","responseSize":"0KB","service":"recruitiq-api","status":400,"timestamp":"2025-11-19 08:51:19.906","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.907"}}
+{"level":"info","message":"Incoming request","metadata":{"metadata":{"environment":"test","hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"GET","path":"/api/products/paylinq/payroll-runs/undefined/paychecks","query":{},"requestId":"1763553079916-np2o42rdv","service":"recruitiq-api","timestamp":"2025-11-19 08:51:19.916"},"timestamp":"2025-11-19 08:51:19.916"}}
+  console.log
+    Signed cookies: [Object: null prototype] { _csrf: 'KZbiOWnL1UiZCrVJ5tQ64bKH' }
+
+      at log (src/products/paylinq/routes/routes.js:48:11)
+
+  console.log
+    Raw cookie header: tenant_access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsImVtYWlsIjoiYWRtaW5AdGVzdHNydGF4LmNvbSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwiZW1wbG95ZWVJZCI6bnVsbCwidHlwZSI6InRlbmFudCIsImVuYWJsZWRQcm9kdWN0cyI6WyJuZXh1cyIsInBheWxpbnEiXSwicHJvZHVjdFJvbGVzIjp7Im5leHVzIjoiYWRtaW4iLCJwYXlsaW5xIjoiYWRtaW4ifSwib3JnYW5pemF0aW9uVGllciI6InByb2Zlc3Npb25hbCIsImlhdCI6MTc2MzU1MzA3OSwiZXhwIjoxNzYzNTUzOTc5fQ.QdupdgGyFScJfjZjgshsk_IInv5f43zyvrI9oOuP_Ow; Max-Age=900; Path=/; Expires=Wed, 19 Nov 2025 12:06:19 GMT; HttpOnly; SameSite=Lax; tenant_refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2OGQ4OTJjLTg1MmMtNDNjYi05MTgzLTk2YzZhN2EzODhhZSIsIm9yZ2FuaXphdGlvbklkIjoiOTFmNmExNTktNjYwMS00ZWUyLWE0MGEtNjFjZjU5MjY4ZWUzIiwidG9rZW5JZCI6IjgxN2VjNjBhLTFhMGQtNGE0Zi1hYWNmLThjOGU1NWVkOTQzOCIsInR5cGUiOiJ0ZW5hbnQiLCJpYXQiOjE3NjM1NTMwNzksImV4cCI6MTc2NDE1Nzg3OX0.6_m9Kb7Ozhi4zggo0wmEKqzrIkgE0Q1yONO8YphPY8I; Max-Age=604800; Path=/; Expires=Wed, 26 Nov 2025 11:51:19 GMT; HttpOnly; SameSite=Lax; _csrf=s%3AKZbiOWnL1UiZCrVJ5tQ64bKH.TkxMydPt7hEgo%2FfeYbtKcVAtFTF%2Bh6EY4pkEd3FmcSk; Max-Age=3600000; Path=/; HttpOnly; SameSite=Lax
+
+      at log (src/products/paylinq/routes/routes.js:49:11)
+
+  console.log
+    =========================
+
+      at log (src/products/paylinq/routes/routes.js:50:11)
+
+{"level":"warn","message":"Validation failed","metadata":{"metadata":{"environment":"test","errors":[{"field":"id","message":"\"id\" must be a valid GUID","type":"string.guid"}],"hostname":"localhost","instanceId":"unknown","ip":"::ffff:127.0.0.1","method":"GET","path":"/undefined/paychecks","service":"recruitiq-api","source":"params","timestamp":"2025-11-19 08:51:19.937"},"timestamp":"2025-11-19 08:51:19.938"}}
+{"level":"warn","message":"Request error","metadata":{"metadata":{"duration":"23ms","environment":"test","hostname":"localhost","instanceId":"unknown","method":"GET","path":"/undefined/paychecks","requestId":"1763553079916-np2o42rdv","responseSize":"0KB","service":"recruitiq-api","status":400,"timestamp":"2025-11-19 08:51:19.939","userId":"668d892c-852c-43cb-9183-96c6a7a388ae"},"timestamp":"2025-11-19 08:51:19.940"}}
+FAIL tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js (8.876 s)
+  Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting)
+    ΓêÜ should create worker with children for kinderbijslag (83 ms)
+    ΓêÜ should create Surinamese tax-compliant pay template (112 ms)
+    ΓêÜ should add basic salary component (taxable) (48 ms)
+    ΓêÜ should add vakantiegeld component (tax-free up to SRD 10,016/year - Art 10.i) (34 ms)
+    ΓêÜ should add kinderbijslag component (child benefit - Art 10.h) (35 ms)
+    ΓêÜ should add gratificatie component (bonus - Art 10.j) (41 ms)
+    ΓêÜ should add pre-tax pension contribution (Art 10.f) (46 ms)
+    ΓêÜ should add Surinamese wage tax component (Progressive brackets - Art 14) (43 ms)
+    ├ù should publish template (77 ms)
+    ├ù should assign template to worker (130 ms)
+    ├ù should run payroll with Surinamese tax calculations (35 ms)
+    ├ù should validate Surinamese tax calculation on paycheck (31 ms)
+    ├ù should verify compliance with Wet Loonbelasting (34 ms)
+
+  ΓùÅ Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting) ΓÇ║ should publish template
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 500
+
+    [0m [90m 440 |[39m       [33m.[39msend()[33m;[39m
+     [90m 441 |[39m
+    [31m[1m>[22m[39m[90m 442 |[39m     expect(response[33m.[39mstatus)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m     |[39m                             [31m[1m^[22m[39m
+     [90m 443 |[39m     expect(response[33m.[39mbody[33m.[39mtemplate[33m.[39mstatus)[33m.[39mtoBe([32m'published'[39m)[33m;[39m
+     [90m 444 |[39m   })[33m;[39m
+     [90m 445 |[39m[0m
+
+      at Object.<anonymous> (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:442:29)
+
+  ΓùÅ Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting) ΓÇ║ should assign template to worker
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 400
+
+    [0m [90m 224 |[39m     }
+     [90m 225 |[39m
+    [31m[1m>[22m[39m[90m 226 |[39m     expect(response[33m.[39mstatus)[33m.[39mtoBe([35m201[39m)[33m;[39m
+     [90m     |[39m                             [31m[1m^[22m[39m
+     [90m 227 |[39m     [36mreturn[39m response[33m.[39mbody[33m.[39massignment[33m;[39m
+     [90m 228 |[39m   }
+     [90m 229 |[39m[0m
+
+      at assignTemplateToWorker (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:226:29)
+      at Object.<anonymous> (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:450:24)
+
+  ΓùÅ Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting) ΓÇ║ should run payroll with Surinamese tax calculations
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 400
+
+    [0m [90m 239 |[39m       [33m.[39msend(payrollData)[33m;[39m
+     [90m 240 |[39m
+    [31m[1m>[22m[39m[90m 241 |[39m     expect(createResponse[33m.[39mstatus)[33m.[39mtoBe([35m201[39m)[33m;[39m
+     [90m     |[39m                                   [31m[1m^[22m[39m
+     [90m 242 |[39m     [36mconst[39m payrollRunId [33m=[39m createResponse[33m.[39mbody[33m.[39mpayrollRun[33m.[39mid[33m;[39m
+     [90m 243 |[39m     testPayrollRuns[33m.[39mpush(payrollRunId)[33m;[39m
+     [90m 244 |[39m[0m
+
+      at runPayroll (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:241:35)
+      at Object.<anonymous> (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:458:20)
+
+  ΓùÅ Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting) ΓÇ║ should validate Surinamese tax calculation on paycheck
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+    [0m [90m 476 |[39m       [33m.[39m[36mset[39m([32m'X-CSRF-Token'[39m[33m,[39m csrfToken)[33m;[39m
+     [90m 477 |[39m
+    [31m[1m>[22m[39m[90m 478 |[39m     expect(paychecksResponse[33m.[39mstatus)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m     |[39m                                      [31m[1m^[22m[39m
+     [90m 479 |[39m
+     [90m 480 |[39m     [36mconst[39m paycheck [33m=[39m paychecksResponse[33m.[39mbody[33m.[39mpaychecks[33m.[39mfind(pc [33m=>[39m 
+pc[33m.[39memployeeId [33m===[39m workerId)[33m;[39m
+     [90m 481 |[39m     expect(paycheck)[33m.[39mtoBeDefined()[33m;[39m[0m
+
+      at Object.<anonymous> (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:478:38)
+
+  ΓùÅ Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting) ΓÇ║ should verify compliance with Wet Loonbelasting
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 400
+
+    [0m [90m 543 |[39m       [33m.[39m[36mset[39m([32m'X-CSRF-Token'[39m[33m,[39m csrfToken)[33m;[39m
+     [90m 544 |[39m
+    [31m[1m>[22m[39m[90m 545 |[39m     expect(paychecksResponse[33m.[39mstatus)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m     |[39m                                      [31m[1m^[22m[39m
+     [90m 546 |[39m
+     [90m 547 |[39m     [36mconst[39m paycheck [33m=[39m paychecksResponse[33m.[39mbody[33m.[39mpaychecks[33m.[39mfind(pc [33m=>[39m 
+pc[33m.[39memployeeId [33m===[39m workerId)[33m;[39m
+     [90m 548 |[39m[0m
+
+      at Object.<anonymous> (tests/products/paylinq/e2e/payTemplateWorkflow-scenario8.e2e.test.js:545:38)
+

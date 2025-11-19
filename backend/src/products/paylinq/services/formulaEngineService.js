@@ -58,6 +58,91 @@ class FormulaEngineService {
   }
 
   /**
+   * Parse and validate JavaScript formula
+   * Supports complex formulas with conditionals, loops, and functions
+   * @param {string} formula - JavaScript formula expression
+   * @returns {Object} Parsed formula metadata
+   * @throws {Error} If formula is invalid
+   */
+  async parseFormula(formula) {
+    if (!formula || typeof formula !== 'string') {
+      throw new Error('Formula must be a non-empty string');
+    }
+
+    // Trim formula
+    const trimmedFormula = formula.trim();
+
+    // Check for dangerous patterns (security)
+    const dangerousPatterns = [
+      /\beval\s*\(/i,
+      /\bFunction\s*\(/i,
+      /\brequire\s*\(/i,
+      /\bimport\s+/i,
+      /\bprocess\./i,
+      /\b__dirname\b/i,
+      /\b__filename\b/i,
+      /\bfs\./i,
+      /\bchild_process\b/i,
+      /\bexec\s*\(/i,
+      /\bspawn\s*\(/i
+    ];
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(trimmedFormula)) {
+        throw new Error('Formula contains forbidden patterns for security reasons');
+      }
+    }
+
+    // Check for balanced braces and parentheses
+    let braceBalance = 0;
+    let parenBalance = 0;
+    for (const char of trimmedFormula) {
+      if (char === '{') braceBalance++;
+      if (char === '}') braceBalance--;
+      if (char === '(') parenBalance++;
+      if (char === ')') parenBalance--;
+      
+      if (braceBalance < 0 || parenBalance < 0) {
+        throw new Error('Unbalanced braces or parentheses in formula');
+      }
+    }
+
+    if (braceBalance !== 0) {
+      throw new Error('Unbalanced braces in formula');
+    }
+    if (parenBalance !== 0) {
+      throw new Error('Unbalanced parentheses in formula');
+    }
+
+    // Check for return statement (required for formulas)
+    if (!/\breturn\b/.test(trimmedFormula)) {
+      throw new Error('Formula must contain a return statement');
+    }
+
+    // Extract variables used in formula (simple heuristic)
+    const variablePattern = /\b(?:gross_pay|net_pay|base_salary|hours|rate|pre_tax_deductions|post_tax_deductions|taxable_income|overtime_hours|bonus|commission|sales)\b/g;
+    const variables = [...new Set(trimmedFormula.match(variablePattern) || [])];
+
+    // Validate formula doesn't have syntax errors (basic check)
+    try {
+      // Try to create a function to validate syntax (without executing)
+      new Function('gross_pay', 'pre_tax_deductions', trimmedFormula);
+    } catch (err) {
+      throw new Error(`Formula syntax error: ${err.message}`);
+    }
+
+    return {
+      isValid: true,
+      formula: trimmedFormula,
+      variables,
+      type: 'javascript',
+      hasConditionals: /\bif\b/.test(trimmedFormula),
+      hasLoops: /\b(for|while)\b/.test(trimmedFormula),
+      lineCount: trimmedFormula.split('\n').length
+    };
+  }
+
+  /**
    * Validate formula syntax
    * @param {string} formula - Formula expression
    * @throws {Error} If formula is invalid

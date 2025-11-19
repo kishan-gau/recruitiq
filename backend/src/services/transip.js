@@ -133,6 +133,38 @@ echo "✅ VPS setup complete for ${config.slug}"
   }
 
   /**
+   * Wait for VPS to be ready (polling)
+   * @param {string} vpsName - VPS name
+   * @param {number} timeout - Timeout in milliseconds (default 5 min)
+   */
+  async waitForVPSReady(vpsName, timeout = 300000) {
+    const startTime = Date.now();
+    const pollInterval = 10000; // Check every 10 seconds
+
+    logger.info(`⏳ Waiting for VPS ${vpsName} to be ready...`);
+
+    while (Date.now() - startTime < timeout) {
+      try {
+        const status = await this.getVPSStatus(vpsName);
+
+        if (status.status === 'running' && status.ipAddress) {
+          logger.info(`✅ VPS ${vpsName} is ready at ${status.ipAddress}`);
+          return status;
+        }
+
+        logger.info(`   VPS status: ${status.status}, waiting...`);
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+      } catch (error) {
+        logger.warn(`Error checking VPS status: ${error.message}`);
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+    }
+
+    throw new Error(`Timeout waiting for VPS ${vpsName} to be ready`);
+  }
+
+  /**
    * Get VPS status
    */
   async getVPSStatus(vpsName) {
@@ -141,11 +173,11 @@ echo "✅ VPS setup complete for ${config.slug}"
     // TODO: Implement actual API call
     // const vps = await this.client.vps.get(vpsName);
     
-    // Mock response
+    // Mock response - simulates VPS being ready immediately
     return {
       name: vpsName,
       status: 'running',
-      ipAddress: '192.168.1.100',
+      ipAddress: '192.168.1.100', // Mock IP - replace with actual
       cpus: 2,
       memoryInMb: 4096,
       diskInGb: 100

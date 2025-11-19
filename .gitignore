@@ -11,6 +11,11 @@ build/
 .env
 .env.local
 .env.*.local
+.env.production
+.env.staging
+
+# Keep templates only
+!.env.*.template
 
 # IDE
 .vscode/

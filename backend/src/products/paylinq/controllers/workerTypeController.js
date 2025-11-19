@@ -17,13 +17,12 @@ const workerTypeService = new WorkerTypeService();
 async function createWorkerType(req, res) {
   try {
     const { organization_id: organizationId, id: userId } = req.user;
-    const workerTypeData = {
-      ...req.body,
-      organizationId,
-      createdBy: userId,
-    };
 
-    const workerType = await workerTypeService.createWorkerTypeTemplate(workerTypeData);
+    const workerType = await workerTypeService.createWorkerTypeTemplate(
+      req.body,
+      organizationId,
+      userId
+    );
 
     logger.info('Worker type created', {
       organizationId,
@@ -33,7 +32,7 @@ async function createWorkerType(req, res) {
 
     res.status(201).json({
       success: true,
-      workerType: workerType,
+      workerTypeTemplate: workerType,
       message: 'Worker type created successfully',
     });
   } catch (error) {
@@ -101,7 +100,7 @@ async function getWorkerTypes(req, res) {
 
     res.status(200).json({
       success: true,
-      workerTypes: result.workerTypes,
+      workerTypeTemplates: result.workerTypes,
       pagination: result.pagination,
     });
   } catch (error) {
@@ -139,7 +138,7 @@ async function getWorkerTypeById(req, res) {
 
     res.status(200).json({
       success: true,
-      workerType: workerType,
+      workerTypeTemplate: workerType,
     });
   } catch (error) {
     logger.error('Error fetching worker type', {
@@ -165,12 +164,12 @@ async function updateWorkerType(req, res) {
     const { organization_id: organizationId, id: userId } = req.user;
     const { id } = req.params;
 
-    const updateData = {
-      ...req.body,
-      updatedBy: userId,
-    };
-
-    const workerType = await workerTypeService.updateWorkerTypeTemplate(id, organizationId, updateData);
+    const workerType = await workerTypeService.updateWorkerTypeTemplate(
+      id,
+      req.body,
+      organizationId,
+      userId
+    );
 
     if (!workerType) {
       return res.status(404).json({
@@ -188,7 +187,7 @@ async function updateWorkerType(req, res) {
 
     res.status(200).json({
       success: true,
-      workerType: workerType,
+      workerTypeTemplate: workerType,
       message: 'Worker type updated successfully',
     });
   } catch (error) {

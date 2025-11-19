@@ -1798,6 +1798,61 @@ it('should handle login with mocked API', async () => {
 });
 ```
 
+### Playwright Browser E2E Tests
+
+**For frontend E2E tests with Playwright, follow these best practices:**
+
+#### Use Relative Paths (MANDATORY)
+
+**CRITICAL:** Always use relative paths instead of hardcoded URLs to leverage Playwright's `baseURL` configuration.
+
+```javascript
+// playwright.config.ts
+export default defineConfig({
+  use: {
+    baseURL: 'http://localhost:5175',  // Configured once
+  },
+  webServer: {
+    command: 'pnpm dev',
+    url: 'http://localhost:5175',      // Same as baseURL
+    reuseExistingServer: !process.env.CI,
+  },
+});
+
+// ❌ WRONG: Hardcoded URLs (not portable, harder to maintain)
+test('should login', async ({ page }) => {
+  await page.goto('http://localhost:5175/login');
+  await page.waitForURL('http://localhost:5175/', { timeout: 10000 });
+  expect(page.url()).toBe('http://localhost:5175/');
+});
+
+// ✅ CORRECT: Relative paths (uses baseURL from config)
+test('should login', async ({ page }) => {
+  await page.goto('/login');                    // Relative path
+  await page.waitForURL('/', { timeout: 10000 }); // Relative path
+  expect(page.url()).toMatch(/\/$/);            // Pattern matching
+});
+
+// ✅ CORRECT: Using constants for reusability
+const ROUTES = {
+  LOGIN: '/login',
+  DASHBOARD: '/',
+  EMPLOYEES: '/employees'
+};
+
+test('should navigate to employees', async ({ page }) => {
+  await page.goto(ROUTES.LOGIN);
+  // Login flow...
+  await page.goto(ROUTES.EMPLOYEES);
+});
+```
+
+**Why Relative Paths?**
+- **Portability:** Works across dev, staging, production
+- **Maintainability:** Change `baseURL` once, not in every test
+- **Consistency:** Matches Playwright best practices
+- **Flexibility:** Easy to test different environments
+
 ### E2E Test Standards Checklist
 
 **EVERY E2E test suite MUST:**
@@ -1807,6 +1862,7 @@ it('should handle login with mocked API', async () => {
 - [ ] **Run against real backend server**
 - [ ] **Test complete user journeys** (not isolated operations)
 - [ ] **Use actual HTTP requests** (supertest or real browser)
+- [ ] **Use relative paths** in Playwright tests (never hardcode URLs)
 - [ ] **Verify database state** when necessary
 - [ ] **Clean up test data** (if creating data beyond seeds)
 - [ ] **Run serially** (maxWorkers: 1 to avoid port conflicts)

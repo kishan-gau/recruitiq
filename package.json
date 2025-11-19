@@ -21,10 +21,20 @@
     "build:paylinq": "pnpm run --filter=paylinq build",
     "build:nexus": "pnpm run --filter=nexus build",
     "build:portal": "pnpm run --filter=portal build",
+    "build:backend": "cd backend && npm install --production",
     "test": "pnpm run --parallel --filter=./apps/* test",
     "test:ui": "pnpm run --filter=@recruitiq/ui test",
     "lint": "pnpm run --parallel --filter=./apps/* lint",
-    "clean": "pnpm run --parallel --filter=./apps/* clean && rm -rf node_modules"
+    "clean": "pnpm run --parallel --filter=./apps/* clean && rm -rf node_modules",
+    "docker:build": "docker-compose -f docker-compose.production.yml build",
+    "docker:build:backend": "docker build -f Dockerfile.backend -t recruitiq-backend .",
+    "docker:build:frontend": "docker build -f Dockerfile.frontend --build-arg APP_NAME=nexus -t recruitiq-nexus .",
+    "docker:up": "docker-compose -f docker-compose.production.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.production.yml down",
+    "docker:logs": "docker-compose -f docker-compose.production.yml logs -f",
+    "deploy:check": "bash scripts/health-check.sh localhost",
+    "deploy:prod": "bash scripts/deploy.sh production all",
+    "deploy:staging": "bash scripts/deploy.sh staging all"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.1",

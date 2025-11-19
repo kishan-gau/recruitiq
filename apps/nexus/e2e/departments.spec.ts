@@ -1,11 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-// Configuration
-const BASE_URL = 'http://localhost:5175';
-
 test.describe('Departments Integration Tests', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${BASE_URL}/departments`);
+    // ✅ Authentication loaded from storage state (playwright/.auth/user.json)
+    await page.goto('/departments');
     await page.waitForLoadState('networkidle');
   });
 
@@ -75,7 +73,7 @@ test.describe('Departments Integration Tests', () => {
   });
 
   test('should show validation errors for empty department form', async ({ page }) => {
-    await page.goto(`${BASE_URL}/departments/new`);
+    await page.goto('/departments/new');
     await page.waitForLoadState('networkidle');
     
     // Click submit without filling fields
@@ -90,7 +88,7 @@ test.describe('Departments Integration Tests', () => {
   });
 
   test('should create a new department without parent', async ({ page }) => {
-    await page.goto(`${BASE_URL}/departments/new`);
+    await page.goto('/departments/new');
     await page.waitForLoadState('networkidle');
     
     // Generate unique department data
@@ -114,7 +112,7 @@ test.describe('Departments Integration Tests', () => {
   });
 
   test('should create a department with parent', async ({ page }) => {
-    await page.goto(`${BASE_URL}/departments/new`);
+    await page.goto('/departments/new');
     await page.waitForLoadState('networkidle');
     
     // Generate unique department data
@@ -239,7 +237,7 @@ test.describe('Departments Integration Tests', () => {
   });
 
   test('should cancel department creation', async ({ page }) => {
-    await page.goto(`${BASE_URL}/departments/new`);
+    await page.goto('/departments/new');
     await page.waitForLoadState('networkidle');
     
     // Fill some data
@@ -249,7 +247,7 @@ test.describe('Departments Integration Tests', () => {
     await page.getByRole('button', { name: /cancel/i }).click();
     
     // Verify navigation back
-    await expect(page).toHaveURL(`${BASE_URL}/departments`);
+    await expect(page).toHaveURL('/departments');
   });
 
   test('should cancel department edit', async ({ page }) => {

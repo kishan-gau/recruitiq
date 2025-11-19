@@ -1,0 +1,91 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+.pnpm-store/
+
+# Environment files
+.env
+.env.*
+!.env.*.template
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Testing
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+playwright/.auth/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (don't include in Docker images)
+*.md
+!README.md
+docs/
+*.pdf
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Deployment scripts
+scripts/
+deployment-service/
+
+# Docker
+docker-compose.yml
+docker-compose.*.yml
+!docker-compose.production.yml
+Dockerfile*
+.dockerignore
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Development tools
+ngrok.yml
+setup-ngrok.ps1
+start-dev.ps1
+validate-setup.ps1
+
+# Test databases
+*.sqlite
+*.db
