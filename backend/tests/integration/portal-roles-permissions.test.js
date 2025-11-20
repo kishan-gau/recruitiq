@@ -28,6 +28,10 @@ const __dirname = join(__filename, '..');
 // Use TEST_BACKEND_URL from env, or construct from config.port
 const API_URL = process.env.TEST_BACKEND_URL || `http://localhost:${config.port}`;
 
+// Test variables for authentication
+let platformAdminAgent, viewOnlyAgent;
+let platformAdminCsrfToken, viewOnlyCsrfToken;
+
 /**
  * Wait for server to be ready by polling health endpoint
  */
@@ -60,10 +64,6 @@ async function waitForServer(timeout = 45000) {
 
 describe('Portal Roles & Permissions Management - Integration Tests', () => {
   let serverProcess;
-  let platformAdminAgent;
-  let viewOnlyAgent;
-  let platformAdminCsrfToken;
-  let viewOnlyCsrfToken;
   let testRoleId;
   let testPermissionId;
   
@@ -149,6 +149,7 @@ describe('Portal Roles & Permissions Management - Integration Tests', () => {
       ]
     );
     
+    // ===== Platform Admin Authentication =====
     // Login admin user (agent maintains session cookies automatically)
     const adminLoginRes = await platformAdminAgent
       .post('/api/auth/platform/login')
@@ -169,6 +170,10 @@ describe('Portal Roles & Permissions Management - Integration Tests', () => {
       throw new Error('Admin CSRF token is undefined!');
     }
     
+    expect(adminLoginRes.body.user).toBeDefined();
+    console.log('✅ Platform admin authenticated with supertest agent');
+    
+    // ===== View-Only User Authentication =====
     // Login view-only user
     const viewerLoginRes = await viewOnlyAgent
       .post('/api/auth/platform/login')
@@ -188,6 +193,9 @@ describe('Portal Roles & Permissions Management - Integration Tests', () => {
     if (!viewOnlyCsrfToken) {
       throw new Error('Viewer CSRF token is undefined!');
     }
+    
+    expect(viewerLoginRes.body.user).toBeDefined();
+    console.log('✅ View-only user authenticated with supertest agent');
   });
   afterAll(async () => {
     // Clean up test data
@@ -213,14 +221,15 @@ describe('Portal Roles & Permissions Management - Integration Tests', () => {
   // ============================================================================
   describe('GET /api/portal/roles - List Roles', () => {
     it('should list all roles with user and permission counts', async () => {
-      const response = await platformAdminAgent
-        .get('/api/portal/roles')
-        .expect(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.roles).toBeDefined();
-      expect(Array.isArray(response.body.roles)).toBe(true);
-      if (response.body.roles.length > 0) {
-        const role = response.body.roles[0];
+      const response = await platformAdminClient.get('/api/portal/roles', {
+        headers: { 'X-CSRF-Token': platformAdminCsrfToken }
+      });
+      expect(response.status).toBe(200);
+      expect(response.data.success).toBe(true);
+      expect(response.data.roles).toBeDefined();
+      expect(Array.isArray(response.data.roles)).toBe(true);
+      if (response.data.roles.length > 0) {
+        const role = response.data.roles[0];
         expect(role).toHaveProperty('id');
         expect(role).toHaveProperty('name');
         expect(role).toHaveProperty('displayName');
@@ -236,13 +245,14 @@ describe('Portal Roles & Permissions Management - Integration Tests', () => {
       expect(response.body.success).toBe(true);
     });
     it('should order roles by level and name', async () => {
-      const response = await platformAdminAgent
-        .get('/api/portal/roles')
-        .expect(200);
-      expect(response.body.success).toBe(true);
+      const response = await platformAdminClient.get('/api/portal/roles', {
+        headers: { 'X-CSRF-Token': platformAdminCsrfToken }
+      });
+      expect(response.status).toBe(200);
+      expect(response.data.success).toBe(true);
       // Check ordering (higher level first)
-      if (response.body.roles.length > 1) {
-        const levels = response.body.roles.map(r => r.level);
+      if (response.data.roles.length > 1) {
+        const levels = response.data.roles.map(r => r.level);
         for (let i = 0; i < levels.length - 1; i++) {
           expect(levels[i]).toBeGreaterThanOrEqual(levels[i + 1]);
         }
@@ -673,7 +683,8 @@ describe('Portal Roles & Permissions Management - Integration Tests', () => {
   // ============================================================================
   describe('Authentication & Authorization', () => {
     it('should reject unauthenticated requests', async () => {
-      const response = await platformAdminAgent
+      // Use fresh agent without authentication
+      const response = await request(API_URL)
         .get('/api/portal/roles')
         .expect(401);
       expect(response.body.success).toBe(false);
@@ -723,4 +734,6 @@ describe('Portal Roles & Permissions Management - Integration Tests', () => {
     });
   });
 });
+
+
 

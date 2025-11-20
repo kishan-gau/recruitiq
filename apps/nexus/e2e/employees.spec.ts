@@ -18,7 +18,7 @@ test.describe('Employee CRUD Workflow', () => {
     await expect(page.getByRole('heading', { name: 'Employees' })).toBeVisible();
     
     // Check for search input
-    await expect(page.getByPlaceholder('Search employees...')).toBeVisible();
+    await expect(page.getByPlaceholder(/search by name.*email.*employee number/i)).toBeVisible();
     
     // Check for Add Employee button
     await expect(page.getByRole('link', { name: 'Add Employee' })).toBeVisible();
@@ -29,7 +29,7 @@ test.describe('Employee CRUD Workflow', () => {
     await page.waitForSelector('table', { timeout: 10000 });
     
     // Type in the search box
-    const searchInput = page.getByPlaceholder('Search employees...');
+    const searchInput = page.getByPlaceholder(/search by name.*email.*employee number/i);
     await searchInput.fill('John');
     
     // Wait for search to filter results
@@ -297,7 +297,7 @@ test.describe('Employee CRUD Workflow', () => {
 
   test('should display empty state when no employees found', async ({ page }) => {
     // Search for non-existent employee
-    const searchInput = page.getByPlaceholder('Search employees...');
+    const searchInput = page.getByPlaceholder(/search by name.*email.*employee number/i);
     await searchInput.fill('NonExistentEmployee99999');
     
     // Wait for search to filter results
@@ -402,7 +402,7 @@ test.describe('Employee List Features', () => {
 
   test('should clear search input', async ({ page }) => {
     // Type in the search box
-    const searchInput = page.getByPlaceholder('Search employees...');
+    const searchInput = page.getByPlaceholder(/search by name.*email.*employee number/i);
     await searchInput.fill('Test Search');
     
     // Clear the search

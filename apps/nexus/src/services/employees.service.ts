@@ -1,9 +1,10 @@
 /**
  * Employees API Service
  * Handles all employee-related API calls
+ * NOW USES: @recruitiq/api-client for type-safe API calls
  */
 
-import { apiClient } from './api';
+import { NexusClient, APIClient } from '@recruitiq/api-client';
 import type {
   Employee,
   CreateEmployeeDTO,
@@ -15,15 +16,18 @@ import type {
 } from '@/types/employee.types';
 import type { PaginatedResponse } from '@/types/common.types';
 
+// Create singleton instance for service-level usage
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
+
 export const employeesService = {
   /**
-   * Get list of employees with optional filters
+   * List all employees with optional filters
    */
   list: async (filters?: EmployeeFilters): Promise<EmployeeListItem[]> => {
-    const result = await apiClient.get<EmployeeListItem[]>('/employees', {
-      params: { page: 1, limit: 50, ...filters },
-    });
-    return result;
+    const response = await nexusClient.listEmployees(filters);
+    // Backend returns { success: true, data: { employees: [...], total, limit, offset } }
+    return (response.data?.employees || []) as EmployeeListItem[];
   },
 
   /**
@@ -34,81 +38,87 @@ export const employeesService = {
     page = 1,
     limit = 20
   ): Promise<PaginatedResponse<EmployeeListItem>> => {
-    return await apiClient.get<PaginatedResponse<EmployeeListItem>>('/employees', {
-      params: { ...filters, page, limit },
-    });
+    const response = await nexusClient.listEmployeesPaginated(filters, page, limit);
+    return response.data as PaginatedResponse<EmployeeListItem>;
   },
 
   /**
    * Get single employee by ID
    */
   get: async (id: string): Promise<Employee> => {
-    return await apiClient.get<Employee>(`/employees/${id}`);
+    const response = await nexusClient.getEmployee(id);
+    return response.data as Employee;
   },
 
   /**
    * Create new employee
    */
   create: async (employee: CreateEmployeeDTO): Promise<Employee> => {
-    return await apiClient.post<Employee>('/employees', employee);
+    const response = await nexusClient.createEmployee(employee);
+    return response.data as Employee;
   },
 
   /**
    * Update existing employee
    */
   update: async (id: string, updates: UpdateEmployeeDTO): Promise<Employee> => {
-    return await apiClient.patch<Employee>(`/employees/${id}`, updates);
+    const response = await nexusClient.updateEmployee(id, updates);
+    return response.data as Employee;
   },
 
   /**
    * Terminate employee
    */
   terminate: async (id: string, terminationData: TerminateEmployeeDTO): Promise<Employee> => {
-    return await apiClient.post<Employee>(`/employees/${id}/terminate`, terminationData);
+    const response = await nexusClient.terminateEmployee(id, terminationData);
+    return response.data as Employee;
   },
 
   /**
    * Rehire employee
    */
   rehire: async (id: string, rehireData: any): Promise<any> => {
-    return await apiClient.post<any>(`/employees/${id}/rehire`, rehireData);
+    const response = await nexusClient.rehireEmployee(id, rehireData);
+    return response.data;
   },
 
   /**
    * Get employment history for employee
    */
   getEmploymentHistory: async (id: string): Promise<any[]> => {
-    return await apiClient.get<any[]>(`/employees/${id}/employment-history`);
+    const response = await nexusClient.getEmploymentHistory(id);
+    return response.data as any[];
   },
 
   /**
    * Check if employee can be rehired
    */
   checkRehireEligibility: async (id: string): Promise<any> => {
-    return await apiClient.get<any>(`/employees/${id}/rehire-eligibility`);
+    const response = await nexusClient.checkRehireEligibility(id);
+    return response.data;
   },
 
   /**
    * Soft delete employee
    */
   delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/employees/${id}`);
+    await nexusClient.deleteEmployee(id);
   },
 
   /**
    * Search employees by query
    */
   search: async (query: string): Promise<EmployeeListItem[]> => {
-    return await apiClient.get<EmployeeListItem[]>('/employees/search', {
-      params: { q: query },
-    });
+    const response = await nexusClient.searchEmployees(query);
+    return response.data as EmployeeListItem[];
   },
 
   /**
    * Get organization chart data
    */
   getOrgChart: async (): Promise<OrgChartNode[]> => {
-    return await apiClient.get<OrgChartNode[]>('/employees/org-chart');
+    const response = await nexusClient.getOrgChart();
+    return response.data as OrgChartNode[];
   },
 
   /**
@@ -126,26 +136,23 @@ export const employeesService = {
       sendEmail?: boolean;
     }
   ): Promise<any> => {
-    const { data } = await apiClient.post<any>(
-      `/employees/${employeeId}/user-access/grant`,
-      accessData
-    );
-    return data;
+    const response = await nexusClient.grantSystemAccess(employeeId, accessData);
+    return response.data;
   },
 
   /**
    * Get employee's user account status
    */
   getUserAccountStatus: async (employeeId: string): Promise<any> => {
-    const { data } = await apiClient.get<any>(`/employees/${employeeId}/user-access`);
-    return data;
+    const response = await nexusClient.getUserAccountStatus(employeeId);
+    return response.data;
   },
 
   /**
    * Revoke system access from an employee
    */
   revokeSystemAccess: async (employeeId: string): Promise<void> => {
-    await apiClient.delete(`/employees/${employeeId}/user-access`);
+    await nexusClient.revokeSystemAccess(employeeId);
   },
 
   /**
@@ -159,10 +166,7 @@ export const employeesService = {
       status?: string;
     }
   ): Promise<any> => {
-    const { data } = await apiClient.patch<any>(
-      `/employees/${employeeId}/user-access`,
-      updates
-    );
-    return data;
+    const response = await nexusClient.updateUserAccess(employeeId, updates);
+    return response.data;
   },
 };

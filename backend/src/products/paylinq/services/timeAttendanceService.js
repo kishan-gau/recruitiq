@@ -108,7 +108,7 @@ class TimeAttendanceService {
    */
   async getShiftTypes(organizationId, filters = {}) {
     try {
-      return await this.timeAttendanceRepository.findShiftTypes(filters, organizationId);
+      return await this.timeAttendanceRepository.findShiftTypes(organizationId, filters);
     } catch (err) {
       logger.error('Error fetching shift types', { error: err.message, organizationId });
       throw err;

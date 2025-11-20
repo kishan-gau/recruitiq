@@ -87,11 +87,14 @@
   "devDependencies": {
     "@faker-js/faker": "^10.1.0",
     "@playwright/test": "^1.56.1",
+    "axios": "^1.13.2",
+    "axios-cookiejar-support": "^6.0.4",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.10",
-    "supertest": "^7.1.4"
+    "supertest": "^7.1.4",
+    "tough-cookie": "^6.0.0"
   },
   "engines": {
     "node": ">=18.0.0",

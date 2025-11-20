@@ -138,7 +138,7 @@ export const login = async (req, res) => {
 export const refresh = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.platform_refresh_token;
 
     if (!refreshToken) {
       return res.status(400).json({
@@ -229,7 +229,7 @@ export const refresh = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.platform_refresh_token;
 
     if (refreshToken) {
       // Revoke the refresh token

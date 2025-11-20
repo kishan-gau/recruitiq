@@ -4,17 +4,7 @@ import { schedulehubApi } from '@/lib/api/schedulehub';
 export function useScheduleStats() {
   return useQuery({
     queryKey: ['schedulehub', 'stats'],
-    queryFn: async () => {
-      // Mock data for now - replace with actual API call
-      return {
-        activeWorkers: 45,
-        publishedSchedules: 12,
-        pendingTimeOff: 8,
-        openShifts: 23,
-        upcomingShifts: [],
-        pendingApprovals: [],
-      };
-    },
+    queryFn: () => schedulehubApi.stats.get(),
   });
 }
 

@@ -10,7 +10,7 @@ export default {
   // Set environment variables for test process
   setupFiles: ['<rootDir>/tests/e2e/jest-setup-env.js'],
   
-  // Use ES modules
+  // Use ES modules (no transform needed)
   transform: {},
   
   // Global setup/teardown for server lifecycle
@@ -19,7 +19,8 @@ export default {
   
   // Only run E2E tests
   testMatch: [
-    '<rootDir>/tests/e2e/**/*.test.js'
+    '<rootDir>/tests/e2e/**/*.test.js',
+    '<rootDir>/tests/products/**/e2e/**/*.test.js'
   ],
   
   // Increase timeout for E2E tests (server startup + test execution)

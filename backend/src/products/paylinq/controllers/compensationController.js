@@ -14,14 +14,27 @@ import logger from '../../../utils/logger.js';
 async function createCompensation(req, res) {
   try {
     const { organization_id: organizationId, id: userId } = req.user;
-    const compensationData = mapCompensationApiToDb(req.body);
+    
+    // Transform API format to service format (light transformation)
+    const compensationData = {
+      employeeId: req.body.employeeId,  // Keep as-is
+      compensationType: req.body.compensationType,  // Keep as-is
+      amount: req.body.amount,  // Keep as-is
+      currency: req.body.currency,  // Keep as-is
+      // Transform effectiveDate (string) to effectiveFrom (Date)
+      effectiveFrom: new Date(req.body.effectiveDate),
+      effectiveTo: req.body.endDate ? new Date(req.body.endDate) : null,
+      // Transform payFrequency to payPeriod
+      payPeriod: transformPayFrequencyToPeriod(req.body.payFrequency)
+      // Don't include hoursPerWeek - not in service schema
+    };
 
     const compensation = await payrollService.createCompensation(compensationData, organizationId, userId);
 
     logger.info('Compensation record created', {
       organizationId,
       compensationId: compensation.id,
-      employeeId: compensation.employeeId,
+      employeeId: compensation.employeeId || compensation.employee_id,
       userId,
     });
 
@@ -43,6 +56,20 @@ async function createCompensation(req, res) {
       message: error.message,
     });
   }
+}
+
+/**
+ * Transform payFrequency (API) to payPeriod (service)
+ */
+function transformPayFrequencyToPeriod(payFrequency) {
+  const periodMapping = {
+    'weekly': 'week',
+    'bi_weekly': 'week',
+    'semi_monthly': 'month',
+    'monthly': 'month',
+    'annual': 'year'
+  };
+  return periodMapping[payFrequency] || 'month';
 }
 
 /**

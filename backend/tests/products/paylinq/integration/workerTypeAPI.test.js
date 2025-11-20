@@ -140,12 +140,12 @@ describe('Worker Type API Integration Tests', () => {
     await cleanupTestEmployees(organizationId);
     await cleanupTestEmployees(org2Id);
     
-    await pool.query('DELETE FROM payroll.worker_type_assignment WHERE organization_id = $1', [organizationId]);
+    await pool.query('DELETE FROM payroll.worker_type WHERE organization_id = $1', [organizationId]);
     await pool.query('DELETE FROM payroll.worker_type_template WHERE organization_id = $1', [organizationId]);
     await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [organizationId]);
     await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
     
-    await pool.query('DELETE FROM payroll.worker_type_assignment WHERE organization_id = $1', [org2Id]);
+    await pool.query('DELETE FROM payroll.worker_type WHERE organization_id = $1', [org2Id]);
     await pool.query('DELETE FROM payroll.worker_type_template WHERE organization_id = $1', [org2Id]);
     await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [org2Id]);
     await pool.query('DELETE FROM organizations WHERE id = $1', [org2Id]);
@@ -256,6 +256,7 @@ describe('Worker Type API Integration Tests', () => {
         defaultPaymentMethod: 'cash'
       };
 
+      // Create fresh request without agent (no cookies)
       await request(app)
         .post('/api/products/paylinq/worker-types')
         .send(templateData)
@@ -420,7 +421,7 @@ describe('Worker Type API Integration Tests', () => {
       
       expect(dbTemplate.name).toBe('Full-Time Employee Updated');
       expect(dbTemplate.description).toBe('Updated description');
-      expect(dbTemplate.vacation_accrual_rate).toBe(0.08);
+      expect(parseFloat(dbTemplate.vacation_accrual_rate)).toBe(0.08); // Parse NUMERIC as float
       expect(dbTemplate.updated_by).toBe(userId);
       expect(dbTemplate.updated_at).not.toBeNull();
     });
@@ -570,7 +571,7 @@ describe('Worker Type API Integration Tests', () => {
 
     it('should verify assignment in database', async () => {
       const result = await pool.query(
-        `SELECT * FROM payroll.worker_type_assignment 
+        `SELECT * FROM payroll.worker_type 
          WHERE employee_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
         [testEmployeeId, organizationId]
       );
@@ -819,14 +820,13 @@ describe('Worker Type API Integration Tests', () => {
         code: 'COMPLETE-TEMPLATE',
         description: 'All fields populated',
         defaultPayFrequency: 'semi-monthly',
-        defaultPaymentMethod: 'direct-deposit',
+        defaultPaymentMethod: 'ach', // ✅ Valid payment method
         benefitsEligible: true,
         overtimeEligible: true,
         ptoEligible: true,
         sickLeaveEligible: true,
-        vacationAccrualRate: 0.10,
-        overtimeMultiplier: 1.5,
-        taxSettings: { standardDeduction: 5000 }
+        vacationAccrualRate: 0.10
+        // Note: overtimeMultiplier and taxSettings are stripped by validation (stripUnknown: true)
       };
 
       const response = await agent

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import MFAVerification from '../components/MFAVerification';
-import api from '../services/api';
+import { authService } from '../services';
 
 export default function Login() {
   const [email, setEmail] = useState('');

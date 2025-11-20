@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Layout from '@/components/layout/Layout';
@@ -47,20 +48,21 @@ const ApprovalQueuePage = lazy(() => import('@/components/approvals/ApprovalQueu
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <ToastProvider>
-          <BrowserRouter>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/login" element={<Login />} />
-                
-                {/* Protected Routes */}
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Layout />
-                  </ProtectedRoute>
-                }>
+      <BrowserRouter>
+        <AuthProvider>
+          <ThemeProvider>
+            <ToastProvider>
+              <Suspense fallback={<LoadingSpinner />}>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/login" element={<Login />} />
+                  
+                  {/* Protected Routes */}
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <Layout />
+                    </ProtectedRoute>
+                  }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             
@@ -118,13 +120,14 @@ function App() {
             <Route path="approvals" element={<ApprovalQueuePage />} />
             
             {/* 404 */}
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Route>
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </ToastProvider>
-      </ThemeProvider>
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Route>
+                </Routes>
+              </Suspense>
+            </ToastProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

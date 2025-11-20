@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '../services/api'
+import { jobsService } from '../services'
 import { useWorkspace } from '../context/WorkspaceContext'
 import { useToast } from '../context/ToastContext'
 

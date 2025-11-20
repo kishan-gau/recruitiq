@@ -54,7 +54,7 @@ async function createWorkerType(req, res) {
       return res.status(409).json({
         success: false,
         error: error.message,
-        errorCode: 'WORKER_TYPE_ALREADY_EXISTS',
+        errorCode: 'CONFLICT',
       });
     }
 
@@ -128,14 +128,6 @@ async function getWorkerTypeById(req, res) {
 
     const workerType = await workerTypeService.getWorkerTypeTemplateById(id, organizationId);
 
-    if (!workerType) {
-      return res.status(404).json({
-        success: false,
-        error: 'Worker type not found',
-        errorCode: 'WORKER_TYPE_NOT_FOUND',
-      });
-    }
-
     res.status(200).json({
       success: true,
       workerTypeTemplate: workerType,
@@ -146,6 +138,23 @@ async function getWorkerTypeById(req, res) {
       workerTypeId: req.params.id,
       organizationId: req.user?.organization_id,
     });
+
+    // Handle specific error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        errorCode: 'FORBIDDEN',
+      });
+    }
 
     res.status(500).json({
       success: false,
@@ -171,14 +180,6 @@ async function updateWorkerType(req, res) {
       userId
     );
 
-    if (!workerType) {
-      return res.status(404).json({
-        success: false,
-        error: 'Worker type not found',
-        errorCode: 'WORKER_TYPE_NOT_FOUND',
-      });
-    }
-
     logger.info('Worker type updated', {
       organizationId,
       workerTypeId: id,
@@ -197,6 +198,23 @@ async function updateWorkerType(req, res) {
       organizationId: req.user?.organization_id,
       userId: req.user?.id,
     });
+
+    // Handle specific error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        errorCode: 'FORBIDDEN',
+      });
+    }
 
     res.status(400).json({
       success: false,
@@ -217,14 +235,6 @@ async function deleteWorkerType(req, res) {
 
     const deleted = await workerTypeService.deleteWorkerTypeTemplate(id, organizationId, userId);
 
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        error: 'Worker type not found',
-        errorCode: 'WORKER_TYPE_NOT_FOUND',
-      });
-    }
-
     logger.info('Worker type deleted', {
       organizationId,
       workerTypeId: id,
@@ -242,6 +252,23 @@ async function deleteWorkerType(req, res) {
       organizationId: req.user?.organization_id,
       userId: req.user?.id,
     });
+
+    // Handle specific error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        errorCode: 'FORBIDDEN',
+      });
+    }
 
     if (error.message.includes('has assigned employees')) {
       return res.status(409).json({

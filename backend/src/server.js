@@ -320,7 +320,7 @@ apiRouter.use('/features', authenticate, featuresRoutes);  // Tenant-facing feat
 
 // Product Registry/Management routes (Core Platform - requires authentication)
 // Admin APIs for managing product metadata, permissions, configs, features
-apiRouter.use('/admin', authenticate, productManagementRoutes);  // Product CRUD, Permission, Config, Feature APIs
+apiRouter.use('/admin', productManagementRoutes);  // Product CRUD, Permission, Config, Feature APIs - auth handled in routes
 
 // Product System Management routes (Admin only - runtime control)
 apiRouter.use('/system/products', systemRoutes);  // Dynamic product system admin (reload, unload, status)

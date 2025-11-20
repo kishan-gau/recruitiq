@@ -10,12 +10,15 @@
 
 1. [Testing Philosophy](#testing-philosophy)
 2. [Test Coverage Requirements](#test-coverage-requirements)
-3. [Unit Testing Standards](#unit-testing-standards)
-4. [Integration Testing Standards](#integration-testing-standards)
-5. [E2E Testing Standards](#e2e-testing-standards)
-6. [Test Structure](#test-structure)
-7. [Mocking Standards](#mocking-standards)
-8. [Test Data Management](#test-data-management)
+3. [Test File Organization](#test-file-organization)
+4. [Import Path Standards](#import-path-standards)
+5. [Unit Testing Standards](#unit-testing-standards)
+6. [Integration Testing Standards](#integration-testing-standards)
+7. [E2E Testing Standards](#e2e-testing-standards)
+8. [Test Structure](#test-structure)
+9. [Mocking Standards](#mocking-standards)
+10. [Test Data Management](#test-data-management)
+11. [Refactoring Resilience](#refactoring-resilience)
 
 ---
 
@@ -73,6 +76,315 @@
 - Configuration files
 - Simple getters/setters
 - Database migrations
+
+---
+
+## Test File Organization
+
+### Location Standard (MANDATORY)
+
+**ALL tests MUST be in dedicated `tests/` folders, NEVER co-located in `src/`.**
+
+This is a critical architectural decision that affects:
+- Code maintainability
+- Deployment safety
+- CI/CD configuration
+- Refactoring ease
+
+#### Backend Test Structure (MANDATORY)
+
+```
+backend/
+├── src/                          ← Source code ONLY (no tests)
+│   ├── services/
+│   │   ├── JobService.js
+│   │   └── InterviewService.js
+│   ├── repositories/
+│   │   └── JobRepository.js
+│   ├── controllers/
+│   │   └── jobController.js
+│   ├── utils/
+│   │   ├── logger.js
+│   │   └── sanitization.js
+│   └── products/
+│       ├── paylinq/
+│       │   ├── services/
+│       │   └── repositories/
+│       └── nexus/
+│           ├── services/
+│           └── repositories/
+│
+└── tests/                        ← ALL tests here
+    ├── unit/                     ← Unit tests (70% of tests)
+    │   ├── services/             ← Mirrors src/services/
+    │   │   ├── JobService.test.js
+    │   │   └── InterviewService.test.js
+    │   ├── repositories/         ← Mirrors src/repositories/
+    │   │   └── JobRepository.test.js
+    │   ├── controllers/          ← Mirrors src/controllers/
+    │   │   └── jobController.test.js
+    │   ├── utils/                ← Mirrors src/utils/
+    │   │   ├── logger.test.js
+    │   │   └── sanitization.test.js
+    │   └── formula/              ← Domain-specific tests
+    │       ├── FormulaParser.test.js
+    │       └── FormulaExecutor.test.js
+    │
+    ├── integration/              ← API/integration tests (20%)
+    │   ├── auth.test.js
+    │   ├── tenant-isolation.test.js
+    │   ├── jobs-api.test.js
+    │   └── session-management.test.js
+    │
+    ├── e2e/                      ← End-to-end tests (10%)
+    │   ├── setup.js
+    │   ├── teardown.js
+    │   └── sso-integration.test.js
+    │
+    ├── security/                 ← Security-focused tests
+    │   ├── auth-security.test.js
+    │   ├── jwt-security.test.js
+    │   └── penetration.test.js
+    │
+    ├── products/                 ← Product-specific tests
+    │   ├── paylinq/              ← Mirrors src/products/paylinq/
+    │   │   ├── services/
+    │   │   │   ├── PayrollService.test.js
+    │   │   │   └── AllowanceService.test.js
+    │   │   ├── repositories/
+    │   │   └── integration/
+    │   │       └── payroll-api.test.js
+    │   └── nexus/                ← Mirrors src/products/nexus/
+    │       ├── services/
+    │       │   ├── EmployeeService.test.js
+    │       │   └── LocationService.test.js
+    │       ├── repositories/
+    │       └── integration/
+    │
+    ├── helpers/                  ← Test utilities & factories
+    │   ├── auth.js               ← Auth test helpers
+    │   ├── factories.js          ← Test data factories
+    │   └── assertions.js         ← Custom assertions
+    │
+    ├── setup.js                  ← Global test setup
+    └── teardown.js               ← Global test teardown
+```
+
+#### Frontend Test Structure
+
+```
+apps/nexus/                       ← Each app has its own tests
+├── src/
+│   ├── components/
+│   │   └── LocationCard.tsx
+│   ├── services/
+│   │   └── LocationsService.ts
+│   └── hooks/
+│       └── useAuth.ts
+│
+├── tests/                        ← Separate tests folder
+│   ├── components/               ← Component unit tests
+│   │   └── LocationCard.test.tsx
+│   ├── services/                 ← Service unit tests
+│   │   └── LocationsService.test.tsx
+│   ├── hooks/                    ← Hook unit tests
+│   │   └── useAuth.test.tsx
+│   ├── integration/              ← Integration tests
+│   │   └── locations-flow.test.tsx
+│   └── setup.ts                  ← Test configuration
+│
+├── e2e/                          ← Playwright E2E tests
+│   └── locations.spec.ts
+│
+└── playwright.config.ts
+```
+
+#### Shared Packages Test Structure
+
+```
+packages/
+├── api-client/
+│   ├── src/
+│   │   └── core/
+│   │       └── client.ts
+│   └── tests/                    ← Separate folder
+│       └── core/
+│           └── client.test.ts
+│
+└── utils/
+    ├── src/
+    │   └── dateUtils.ts
+    └── tests/
+        └── dateUtils.test.ts
+```
+
+### ❌ Anti-Patterns (DO NOT USE)
+
+```
+❌ WRONG: Co-located tests in src/
+backend/src/services/__tests__/JobService.test.js
+backend/src/utils/__tests__/logger.test.js
+backend/src/services/jobs/__tests__/JobService.test.js
+
+❌ WRONG: Mixed patterns (inconsistent)
+backend/src/services/__tests__/JobService.test.js  ← Some in src/
+backend/tests/services/InterviewService.test.js    ← Some in tests/
+
+❌ WRONG: Tests without type folders
+backend/tests/JobService.test.js  ← Should be tests/unit/services/
+backend/tests/auth.test.js        ← Should be tests/integration/
+```
+
+### Rationale for Separation
+
+| Benefit | Description |
+|---------|-------------|
+| **Clear Separation of Concerns** | Source code and test code serve different purposes |
+| **Easier CI/CD Configuration** | Test folder can be excluded from production builds |
+| **Prevents Accidental Deployment** | Tests never end up in production bundles |
+| **Industry Standard** | Used by Google, Microsoft, Netflix, Airbnb |
+| **Easier Refactoring** | Tests don't break when source files move |
+| **Better IDE Performance** | Editors can exclude test folders from indexing |
+| **Cleaner Coverage Reports** | Coverage tools work better with separated tests |
+
+### Industry Examples
+
+**Major frameworks that use separate test folders:**
+
+- ✅ **Express.js** - `test/` folder
+- ✅ **NestJS** - `test/` folder for E2E, unit tests near source (exception)
+- ✅ **Next.js** - `__tests__/` folders (co-located but consistent)
+- ✅ **React Testing Library** - Recommends co-location (smaller apps)
+- ✅ **Angular** - `.spec.ts` files co-located
+- ✅ **Vue.js** - `tests/` folder
+
+**For enterprise monorepos (like RecruitIQ):**
+- ✅ **Google** - Separate `test/` directories
+- ✅ **Microsoft** - Separate test projects
+- ✅ **Netflix** - Separate test folders
+
+**RecruitIQ Standard: Separate `tests/` folder** (enterprise pattern)
+
+### Migration from Co-Located Tests
+
+If you have tests in `src/`, they must be moved:
+
+```powershell
+# Example migration (don't run manually - use migration script)
+# backend/src/services/__tests__/JobService.test.js
+# → backend/tests/unit/services/JobService.test.js
+```
+
+**After moving, update import paths (see Import Path Standards below).**
+
+---
+
+## Import Path Standards
+
+### The Path Fragility Problem
+
+**Problem:** Relative imports create tight coupling between test location and source location.
+
+```javascript
+// ❌ FRAGILE: Test in src/services/__tests__/JobService.test.js
+import JobService from '../JobService.js';          // Works here
+import logger from '../../utils/logger.js';         // Works here
+import { query } from '../../config/database.js';   // Works here
+
+// After moving to tests/unit/services/JobService.test.js
+import JobService from '../JobService.js';          // ❌ BREAKS! Wrong path
+import logger from '../../utils/logger.js';         // ❌ BREAKS! Wrong path
+import { query } from '../../config/database.js';   // ❌ BREAKS! Wrong path
+```
+
+### Standard Import Patterns
+
+#### Pattern 1: Consistent Relative Paths (Current Standard)
+
+**When tests are in `tests/` folder, use consistent depth:**
+
+```javascript
+// ✅ CORRECT: Test in tests/unit/services/JobService.test.js
+import JobService from '../../../src/services/JobService.js';
+import logger from '../../../src/utils/logger.js';
+import { query } from '../../../src/config/database.js';
+
+// ✅ CORRECT: Test in tests/unit/utils/logger.test.js
+import logger from '../../../src/utils/logger.js';
+import { formatDate } from '../../../src/utils/dateUtils.js';
+
+// ✅ CORRECT: Test in tests/integration/auth.test.js
+import app from '../../src/app.js';
+import pool from '../../src/config/database.js';
+```
+
+**Rules:**
+1. Always count the depth from test file to `src/`
+2. Unit tests: Usually `../../../src/`
+3. Integration tests: Usually `../../src/`
+4. Document common import depths in test helpers
+
+#### Pattern 2: Path Mapping (Future Enhancement)
+
+**For larger codebases, consider Node.js subpath imports:**
+
+```javascript
+// package.json
+{
+  "imports": {
+    "#services/*": "./src/services/*.js",
+    "#utils/*": "./src/utils/*.js",
+    "#config/*": "./src/config/*.js"
+  }
+}
+
+// Then in tests (location-independent):
+import JobService from '#services/JobService';
+import logger from '#utils/logger';
+import { query } from '#config/database';
+```
+
+**Benefits:**
+- ✅ Tests work regardless of location
+- ✅ Easier refactoring
+- ✅ Cleaner imports
+- ✅ Industry standard (used by TypeScript, Next.js, etc.)
+
+**Status:** Not yet implemented (requires package.json changes)
+
+### Import Path Checklist
+
+**When writing tests:**
+
+- [ ] Count depth from test file to `src/` folder
+- [ ] Use correct number of `../` levels
+- [ ] Include `.js` extension (ES modules requirement)
+- [ ] Test the import by running the test file
+- [ ] Document unusual import paths in comments
+
+**When moving tests:**
+
+- [ ] Update ALL import paths (source code imports)
+- [ ] Update ALL mock paths (jest.unstable_mockModule calls)
+- [ ] Update relative path counts
+- [ ] Run tests to verify imports work
+- [ ] Check for any dynamic imports
+
+### Common Import Mistakes
+
+```javascript
+// ❌ WRONG: Missing .js extension
+import JobService from '../../../src/services/JobService';
+
+// ❌ WRONG: Incorrect depth
+import JobService from '../../services/JobService.js';  // Too few ../
+
+// ❌ WRONG: Absolute path (not portable)
+import JobService from '/home/user/project/src/services/JobService.js';
+
+// ✅ CORRECT: Proper relative path with extension
+import JobService from '../../../src/services/JobService.js';
+```
 
 ---
 
@@ -2984,14 +3296,12 @@ export default {
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/server.js',
-    '!src/**/__tests__/**',
-    '!src/**/*.test.js',
+    '!src/**/*.test.js',  // Exclude test files (should not exist in src/)
   ],
 
   // Test file patterns
   testMatch: [
-    '**/__tests__/**/*.js',
-    '**/*.test.js',
+    '<rootDir>/tests/**/*.test.js',  // Only look in tests/ folder
   ],
 
   // Clear mocks between tests (IMPORTANT)
@@ -3066,14 +3376,215 @@ export default async function globalTeardown() {
 
 ---
 
+## Refactoring Resilience
+
+### Test Resilience Philosophy
+
+**Industry Standard:** *"If moving test files breaks tests, your tests are testing the file system structure, not your code."* - Martin Fowler
+
+### What Makes Tests Fragile?
+
+```javascript
+// ❌ FRAGILE TEST (breaks when files move)
+import JobService from '../JobService.js';           // Relative path
+import logger from '../../utils/logger.js';          // Relative path
+
+class JobService {
+  constructor() {
+    this.repository = new JobRepository();           // Hard-coded dependency
+  }
+}
+
+// ✅ RESILIENT TEST (survives restructuring)
+import JobService from '@services/JobService.js';    // Mapped path
+import logger from '@utils/logger.js';               // Mapped path
+
+class JobService {
+  constructor(repository = null) {
+    this.repository = repository || new JobRepository();  // Dependency injection
+  }
+}
+
+// Test uses DI
+const mockRepo = { create: jest.fn() };
+const service = new JobService(mockRepo);             // No file system coupling
+```
+
+### Refactoring Safety Checklist
+
+**Before major refactoring:**
+
+- [ ] All services use dependency injection
+- [ ] Tests are in separate `tests/` folder (not in `src/`)
+- [ ] Import paths are consistent and documented
+- [ ] Test helpers centralize common imports
+- [ ] Run full test suite to establish baseline
+
+**During refactoring:**
+
+- [ ] Move source files first
+- [ ] Update import paths in tests
+- [ ] Run tests incrementally
+- [ ] Commit working states frequently
+- [ ] Use version control to track changes
+
+**After refactoring:**
+
+- [ ] All tests pass
+- [ ] Coverage remains above thresholds
+- [ ] No orphaned test files
+- [ ] Update documentation
+- [ ] Remove old file references
+
+### Common Refactoring Scenarios
+
+#### Scenario 1: Moving a Service
+
+```javascript
+// Before: src/services/JobService.js
+// After:  src/services/jobs/JobService.js
+
+// Impact on test: tests/unit/services/JobService.test.js
+// Change: import JobService from '../../../src/services/JobService.js';
+// To:     import JobService from '../../../src/services/jobs/JobService.js';
+```
+
+**Steps:**
+1. Move source file
+2. Update test import
+3. Run test to verify
+4. Update any mocks that reference old path
+
+#### Scenario 2: Extracting a Module
+
+```javascript
+// Before: src/services/JobService.js (contains validation)
+// After:  src/services/JobService.js + src/validators/jobValidator.js
+
+// Impact: Need new test file
+// Action: Create tests/unit/validators/jobValidator.test.js
+```
+
+**Steps:**
+1. Create new source file
+2. Extract code
+3. Create new test file
+4. Update existing test to mock new dependency
+5. Run both tests
+
+#### Scenario 3: Renaming a Service
+
+```javascript
+// Before: JobService.js
+// After:  JobPostingService.js
+
+// Impact: Test file should also rename
+// From: tests/unit/services/JobService.test.js
+// To:   tests/unit/services/JobPostingService.test.js
+```
+
+**Steps:**
+1. Rename source file
+2. Update all imports that reference it
+3. Rename test file
+4. Update test imports
+5. Run tests
+
+### Migration from Co-Located Tests
+
+**Problem:** Tests in `src/` make refactoring risky.
+
+**Solution:** Migrate to `tests/` folder first, then refactor.
+
+#### Migration Script Pattern
+
+```powershell
+# 1. Create target directory structure
+New-Item -ItemType Directory -Path "tests/unit/services" -Force
+
+# 2. Move test file
+Move-Item "src/services/__tests__/JobService.test.js" `
+          "tests/unit/services/JobService.test.js"
+
+# 3. Update imports (manual or scripted)
+# Change: import JobService from '../JobService.js';
+# To:     import JobService from '../../../src/services/JobService.js';
+
+# 4. Run test to verify
+npm test -- JobService.test.js
+
+# 5. If passing, commit changes
+git add .
+git commit -m "test(structure): migrate JobService tests to tests/ folder"
+```
+
+#### Automated Migration (Recommended)
+
+Use a migration script that:
+1. Scans for tests in `src/`
+2. Calculates new import paths
+3. Moves files and updates imports
+4. Runs tests to verify
+5. Generates rollback script
+
+**See:** Migration script in `backend/scripts/migrate-tests.ps1` (to be created)
+
+### Test Independence Principles
+
+**Tests should be independent of:**
+
+1. ✅ **File location** - Use consistent import patterns
+2. ✅ **Other tests** - Each test should run in isolation
+3. ✅ **Test order** - Tests should pass in any order
+4. ✅ **External state** - Clean up after each test
+5. ✅ **Time** - Don't depend on current date/time
+6. ✅ **Environment** - Use test-specific configuration
+
+**Tests should depend on:**
+
+1. ✅ **Code contracts** - Test public APIs, not implementation
+2. ✅ **Behavior** - Test what code does, not how
+3. ✅ **Clear setup** - Explicit test data creation
+4. ✅ **Documented assumptions** - Comment edge cases
+
+### Measuring Test Resilience
+
+**Good indicators:**
+
+- ✅ Tests pass after moving test files
+- ✅ Tests pass after renaming source files
+- ✅ Tests pass after extracting modules
+- ✅ No hard-coded file paths in tests
+- ✅ All dependencies are injected or mocked
+
+**Bad indicators:**
+
+- ❌ Tests fail when moved to different folder
+- ❌ Tests have hard-coded absolute paths
+- ❌ Tests import from multiple relative depths
+- ❌ Tests break when source files reorganize
+- ❌ Tests depend on test execution order
+
+### Future Improvements
+
+**To make tests more resilient:**
+
+1. **Implement path mapping** - Use `#services/*` imports
+2. **Centralize test utilities** - Common imports in helpers
+3. **Use test factories** - Consistent test data creation
+4. **Document import conventions** - Clear patterns for team
+5. **Automate migration** - Scripts for bulk refactoring
+
+---
+
 ## Quick Reference: Test Template Checklist
 
 ### Unit Test Template
 
 ```javascript
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import ServiceClass from '../../src/services/ServiceClass.js'; // .js extension!
-import Repository from '../../src/repositories/Repository.js';
+import ServiceClass from '../../../src/services/ServiceClass.js'; // Correct depth for tests/unit/services/
+import Repository from '../../../src/repositories/Repository.js';
 
 describe('ServiceClass', () => {
   let service;
@@ -3106,7 +3617,7 @@ describe('ServiceClass', () => {
 ```javascript
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
-import app from '../../src/server.js';
+import app from '../../src/server.js'; // Correct depth for tests/integration/
 import pool from '../../src/config/database.js'; // For cleanup!
 
 describe('API Integration Tests', () => {

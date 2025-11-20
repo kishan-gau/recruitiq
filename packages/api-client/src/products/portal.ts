@@ -5,6 +5,14 @@ import { APIClient } from '../core/client';
  * Platform administration and management endpoints
  */
 export class PortalAPI {
+  private readonly adminPath = 'admin';
+  private readonly tiersPath = 'tiers';
+  private readonly securityPath = 'security';
+  private readonly deploymentsPath = 'deployments';
+  private readonly infrastructurePath = 'infrastructure';
+  private readonly portalPath = 'portal';
+  private readonly logsPath = 'logs';
+
   constructor(private client: APIClient) {}
 
   // ============================================================================
@@ -12,17 +20,17 @@ export class PortalAPI {
   // ============================================================================
 
   async getDashboardMetrics() {
-    const response = await this.client.get('/admin/dashboard');
+    const response = await this.client.get(`${this.adminPath}/dashboard`);
     return response.metrics;
   }
 
   async getUpcomingRenewals(_days: number = 60) {
-    const response = await this.client.get('/admin/dashboard');
+    const response = await this.client.get(`${this.adminPath}/dashboard`);
     return response.upcomingRenewals || [];
   }
 
   async getAnalytics(period: string = '30d') {
-    return this.client.get(`/admin/analytics?period=${period}`);
+    return this.client.get(`${this.adminPath}/analytics?period=${period}`);
   }
 
   // ============================================================================
@@ -37,31 +45,31 @@ export class PortalAPI {
       params.append('deploymentType', filters.deploymentType);
     if (filters.search) params.append('search', filters.search);
 
-    return this.client.get(`/admin/customers?${params.toString()}`);
+    return this.client.get(`${this.adminPath}/customers?${params.toString()}`);
   }
 
   async getCustomer(id: string) {
-    return this.client.get(`/admin/customers/${id}`);
+    return this.client.get(`${this.adminPath}/customers/${id}`);
   }
 
   async createCustomer(data: any) {
-    return this.client.post('/admin/customers', data);
+    return this.client.post(`${this.adminPath}/customers`, data);
   }
 
   async updateCustomer(id: string, data: any) {
-    return this.client.put(`/admin/customers/${id}`, data);
+    return this.client.put(`${this.adminPath}/customers/${id}`, data);
   }
 
   async deleteCustomer(id: string) {
-    return this.client.delete(`/admin/customers/${id}`);
+    return this.client.delete(`${this.adminPath}/customers/${id}`);
   }
 
   async getCustomerUsage(id: string, days: number = 30) {
-    return this.client.get(`/admin/customers/${id}/usage?days=${days}`);
+    return this.client.get(`${this.adminPath}/customers/${id}/usage?days=${days}`);
   }
 
   async getCustomerActivity(id: string, limit: number = 10) {
-    return this.client.get(`/admin/customers/${id}/activity?limit=${limit}`);
+    return this.client.get(`${this.adminPath}/customers/${id}/activity?limit=${limit}`);
   }
 
   // ============================================================================
@@ -69,19 +77,19 @@ export class PortalAPI {
   // ============================================================================
 
   async renewLicense(customerId: string, months: number = 12) {
-    return this.client.post(`/admin/licenses/${customerId}/renew`, { months });
+    return this.client.post(`${this.adminPath}/licenses/${customerId}/renew`, { months });
   }
 
   async suspendLicense(customerId: string) {
-    return this.client.post(`/admin/licenses/${customerId}/suspend`);
+    return this.client.post(`${this.adminPath}/licenses/${customerId}/suspend`);
   }
 
   async reactivateLicense(customerId: string) {
-    return this.client.post(`/admin/licenses/${customerId}/reactivate`);
+    return this.client.post(`${this.adminPath}/licenses/${customerId}/reactivate`);
   }
 
   async downloadLicenseFile(customerId: string) {
-    const response = await this.client.get(`/admin/licenses/${customerId}/download`);
+    const response = await this.client.get(`${this.adminPath}/licenses/${customerId}/download`);
     
     // Create download
     const blob = new Blob([JSON.stringify(response, null, 2)], {
@@ -102,35 +110,35 @@ export class PortalAPI {
   // ============================================================================
 
   async getTiers() {
-    return this.client.get('/tiers');
+    return this.client.get(`${this.tiersPath}`);
   }
 
   async getTierHistory(tierName: string) {
-    return this.client.get(`/tiers/${tierName}/history`);
+    return this.client.get(`${this.tiersPath}/${tierName}/history`);
   }
 
   async getTierStats() {
-    return this.client.get('/tiers/stats');
+    return this.client.get(`${this.tiersPath}/stats`);
   }
 
   async createTierVersion(tierData: any, autoMigrate: boolean = false) {
-    return this.client.post('/tiers/create-version', {
+    return this.client.post(`${this.tiersPath}/create-version`, {
       ...tierData,
       autoMigrate,
     });
   }
 
   async previewTierMigration(tierName: string, filters: Record<string, any> = {}) {
-    return this.client.post(`/tiers/${tierName}/preview-migration`, filters);
+    return this.client.post(`${this.tiersPath}/${tierName}/preview-migration`, filters);
   }
 
   async executeTierMigration(migrationId: string, filters: Record<string, any> = {}) {
-    return this.client.post(`/tiers/migrations/${migrationId}/execute`, filters);
+    return this.client.post(`${this.tiersPath}/migrations/${migrationId}/execute`, filters);
   }
 
   async getMigrationHistory(tierName: string | null = null) {
     const params = tierName ? { tierName } : {};
-    return this.client.get('/tiers/migrations/history', { params });
+    return this.client.get(`${this.tiersPath}/migrations/history`, { params });
   }
 
   // ============================================================================
@@ -138,25 +146,25 @@ export class PortalAPI {
   // ============================================================================
 
   async getSecurityDashboard() {
-    return this.client.get('/security/dashboard');
+    return this.client.get(`${this.securityPath}/dashboard`);
   }
 
   async getSecurityEvents(filters: Record<string, any> = {}) {
     const params = new URLSearchParams(filters);
-    return this.client.get(`/security/events?${params.toString()}`);
+    return this.client.get(`${this.securityPath}/events?${params.toString()}`);
   }
 
   async getSecurityAlerts(filters: Record<string, any> = {}) {
     const params = new URLSearchParams(filters);
-    return this.client.get(`/security/alerts?${params.toString()}`);
+    return this.client.get(`${this.securityPath}/alerts?${params.toString()}`);
   }
 
   async acknowledgeAlert(alertId: string) {
-    return this.client.post(`/security/alerts/${alertId}/acknowledge`);
+    return this.client.post(`${this.securityPath}/alerts/${alertId}/acknowledge`);
   }
 
   async resolveAlert(alertId: string) {
-    return this.client.post(`/security/alerts/${alertId}/resolve`);
+    return this.client.post(`${this.securityPath}/alerts/${alertId}/resolve`);
   }
 
   // ============================================================================
@@ -164,19 +172,19 @@ export class PortalAPI {
   // ============================================================================
 
   async deployInstance(deploymentData: any) {
-    return this.client.post('/deployments', deploymentData);
+    return this.client.post(`${this.deploymentsPath}`, deploymentData);
   }
 
   async getDeploymentStatus(jobId: string) {
-    return this.client.get(`/deployments/${jobId}`);
+    return this.client.get(`${this.deploymentsPath}/${jobId}`);
   }
 
   async cancelDeployment(jobId: string) {
-    return this.client.delete(`/deployments/${jobId}`);
+    return this.client.delete(`${this.deploymentsPath}/${jobId}`);
   }
 
   async getDeploymentStats() {
-    return this.client.get('/deployments/stats');
+    return this.client.get(`${this.deploymentsPath}/stats`);
   }
 
   // ============================================================================
@@ -184,31 +192,31 @@ export class PortalAPI {
   // ============================================================================
 
   async getVPSInstances() {
-    return this.client.get('/infrastructure/vps');
+    return this.client.get(`${this.infrastructurePath}/vps`);
   }
 
   async getVPSInstance(vpsName: string) {
-    return this.client.get(`/infrastructure/vps/${vpsName}`);
+    return this.client.get(`${this.infrastructurePath}/vps/${vpsName}`);
   }
 
   async createVPSInstance(data: any) {
-    return this.client.post('/infrastructure/vps', data);
+    return this.client.post(`${this.infrastructurePath}/vps`, data);
   }
 
   async deleteVPSInstance(vpsName: string) {
-    return this.client.delete(`/infrastructure/vps/${vpsName}`);
+    return this.client.delete(`${this.infrastructurePath}/vps/${vpsName}`);
   }
 
   async startVPSInstance(vpsName: string) {
-    return this.client.post(`/infrastructure/vps/${vpsName}/start`);
+    return this.client.post(`${this.infrastructurePath}/vps/${vpsName}/start`);
   }
 
   async stopVPSInstance(vpsName: string) {
-    return this.client.post(`/infrastructure/vps/${vpsName}/stop`);
+    return this.client.post(`${this.infrastructurePath}/vps/${vpsName}/stop`);
   }
 
   async rebootVPSInstance(vpsName: string) {
-    return this.client.post(`/infrastructure/vps/${vpsName}/reboot`);
+    return this.client.post(`${this.infrastructurePath}/vps/${vpsName}/reboot`);
   }
 
   // ============================================================================
@@ -217,27 +225,27 @@ export class PortalAPI {
 
   async getPortalUsers(filters: Record<string, any> = {}) {
     const params = new URLSearchParams(filters);
-    return this.client.get(`/portal/users?${params.toString()}`);
+    return this.client.get(`${this.portalPath}/users?${params.toString()}`);
   }
 
   async getPortalUser(userId: string) {
-    return this.client.get(`/portal/users/${userId}`);
+    return this.client.get(`${this.portalPath}/users/${userId}`);
   }
 
-  async createPortalUser(userData: any) {
-    return this.client.post('/portal/users', userData);
+  async createUser(userData: any) {
+    return this.client.post(`${this.portalPath}/users`, userData);
   }
 
   async updatePortalUser(userId: string, userData: any) {
-    return this.client.put(`/portal/users/${userId}`, userData);
+    return this.client.put(`${this.portalPath}/users/${userId}`, userData);
   }
 
   async deletePortalUser(userId: string) {
-    return this.client.delete(`/portal/users/${userId}`);
+    return this.client.delete(`${this.portalPath}/users/${userId}`);
   }
 
   async updateUserPermissions(userId: string, permissions: any) {
-    return this.client.put(`/portal/users/${userId}/permissions`, { permissions });
+    return this.client.put(`${this.portalPath}/users/${userId}/permissions`, { permissions });
   }
 
   // ============================================================================
@@ -245,27 +253,27 @@ export class PortalAPI {
   // ============================================================================
 
   async getRoles() {
-    return this.client.get('/portal/roles');
+    return this.client.get(`${this.portalPath}/roles`);
   }
 
   async getRole(roleId: string) {
-    return this.client.get(`/portal/roles/${roleId}`);
+    return this.client.get(`${this.portalPath}/roles/${roleId}`);
   }
 
   async createRole(roleData: any) {
-    return this.client.post('/portal/roles', roleData);
+    return this.client.post(`${this.portalPath}/roles`, roleData);
   }
 
   async updateRole(roleId: string, roleData: any) {
-    return this.client.put(`/portal/roles/${roleId}`, roleData);
+    return this.client.put(`${this.portalPath}/roles/${roleId}`, roleData);
   }
 
   async deleteRole(roleId: string) {
-    return this.client.delete(`/portal/roles/${roleId}`);
+    return this.client.delete(`${this.portalPath}/roles/${roleId}`);
   }
 
   async getPermissions() {
-    return this.client.get('/portal/permissions');
+    return this.client.get(`${this.portalPath}/permissions`);
   }
 
   // ============================================================================
@@ -274,16 +282,16 @@ export class PortalAPI {
 
   async getLogs(filters: Record<string, any> = {}) {
     const params = new URLSearchParams(filters);
-    return this.client.get(`/logs?${params.toString()}`);
+    return this.client.get(`${this.logsPath}?${params.toString()}`);
   }
 
   async getSystemLogs(filters: Record<string, any> = {}) {
     const params = new URLSearchParams(filters);
-    return this.client.get(`/logs/system?${params.toString()}`);
+    return this.client.get(`${this.logsPath}/system?${params.toString()}`);
   }
 
   async searchLogs(query: string, filters: Record<string, any> = {}) {
     const params = new URLSearchParams({ ...filters, q: query });
-    return this.client.get(`/logs/search?${params.toString()}`);
+    return this.client.get(`${this.logsPath}/search?${params.toString()}`);
   }
 }

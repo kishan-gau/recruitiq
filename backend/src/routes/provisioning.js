@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { authenticate, requireRole, requirePlatformUser, requirePermission } from '../middleware/auth.js';
+import { authenticatePlatform, requirePlatformRole, requirePlatformPermission } from '../middleware/auth.js';
 import vpsManager from '../services/vpsManager.js';
 import transipService from '../services/transip.js';
 import deploymentOrchestrator from '../services/deploymentOrchestrator.js';
@@ -132,8 +132,8 @@ async function configureSharedTenantAsync(deploymentId, organizationId, slug, vp
  * POST /api/portal/instances
  */
 router.post('/instances', 
-  authenticate, 
-  requireRole(['platform_admin']),
+  authenticatePlatform, 
+  requirePlatformRole(['platform_admin']),
   async (req, res) => {
     const client = await pool.connect();
     
@@ -426,8 +426,8 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
  * GET /api/portal/instances/:deploymentId/status
  */
 router.get('/instances/:deploymentId/status',
-  authenticate,
-  requireRole(['platform_admin']),
+  authenticatePlatform,
+  requirePlatformRole(['platform_admin']),
   async (req, res) => {
     try {
       const { deploymentId } = req.params;
@@ -473,8 +473,8 @@ router.get('/instances/:deploymentId/status',
  * GET /api/portal/instances/:deploymentId/logs
  */
 router.get('/instances/:deploymentId/logs',
-  authenticate,
-  requireRole(['platform_admin']),
+  authenticatePlatform,
+  requirePlatformRole(['platform_admin']),
   async (req, res) => {
     try {
       const { deploymentId } = req.params;
@@ -498,8 +498,8 @@ router.get('/instances/:deploymentId/logs',
  * GET /api/portal/clients
  */
 router.get('/clients',
-  authenticate,
-  requireRole(['platform_admin']),
+  authenticatePlatform,
+  requirePlatformRole(['platform_admin']),
   async (req, res) => {
     try {
       const result = await pool.query(
@@ -530,9 +530,8 @@ router.get('/clients',
  * GET /api/portal/vps/available
  */
 router.get('/vps/available',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('vps.view'),
+  authenticatePlatform,
+  requirePlatformPermission('vps.view'),
   async (req, res) => {
     try {
       const availableVPS = await vpsManager.getAvailableSharedVPS();
@@ -549,9 +548,8 @@ router.get('/vps/available',
  * GET /api/portal/vps
  */
 router.get('/vps',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('vps.view'),
+  authenticatePlatform,
+  requirePlatformPermission('vps.view'),
   async (req, res) => {
     try {
       const allVPS = await vpsManager.getAllVPS();
@@ -568,9 +566,8 @@ router.get('/vps',
  * GET /api/portal/vps/stats
  */
 router.get('/vps/stats',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('vps.view'),
+  authenticatePlatform,
+  requirePlatformPermission('vps.view'),
   async (req, res) => {
     try {
       const stats = await vpsManager.getVPSStatistics();
@@ -587,9 +584,8 @@ router.get('/vps/stats',
  * POST /api/portal/vps
  */
 router.post('/vps',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('vps.create'),
+  authenticatePlatform,
+  requirePlatformPermission('vps.create'),
   async (req, res) => {
     try {
       const vps = await vpsManager.registerVPS(req.body);
@@ -606,9 +602,8 @@ router.post('/vps',
  * GET /api/portal/deployments/:id/logs
  */
 router.get('/deployments/:id/logs',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('deployment.view'),
+  authenticatePlatform,
+  requirePlatformPermission('deployment.view'),
   async (req, res) => {
     try {
       const { id } = req.params;

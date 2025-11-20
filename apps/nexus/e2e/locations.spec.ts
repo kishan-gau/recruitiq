@@ -12,7 +12,7 @@ test.describe('Locations Integration Tests', () => {
     await expect(page.getByRole('heading', { name: 'Locations', exact: true })).toBeVisible();
     
     // Check search input
-    await expect(page.getByPlaceholder(/search locations/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/search by name.*code.*city.*country/i)).toBeVisible();
     
     // Check Add Location button
     await expect(page.getByRole('link', { name: /add location/i })).toBeVisible();
@@ -25,7 +25,7 @@ test.describe('Locations Integration Tests', () => {
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
     // Search by location name
-    const searchInput = page.getByPlaceholder(/search locations/i);
+    const searchInput = page.getByPlaceholder(/search by name.*code.*city.*country/i);
     await searchInput.fill('HQ');
     
     await page.waitForTimeout(500);
@@ -83,10 +83,10 @@ test.describe('Locations Integration Tests', () => {
     // Verify navigation
     await expect(page).toHaveURL(/\/locations\/new/);
     
-    // Check form sections
+    // Check form sections - use getByRole for heading to avoid strict mode violations
     await expect(page.getByText(/create location/i)).toBeVisible();
     await expect(page.getByText(/basic information/i)).toBeVisible();
-    await expect(page.getByText(/address/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /address/i })).toBeVisible();
     await expect(page.getByText(/contact information/i)).toBeVisible();
   });
 
@@ -423,7 +423,7 @@ test.describe('Locations Integration Tests', () => {
   });
 
   test('should display empty state for search with no results', async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/search locations/i);
+    const searchInput = page.getByPlaceholder(/search by name.*code.*city.*country/i);
     await searchInput.fill('NonExistentLocation99999');
     
     await page.waitForTimeout(1000);

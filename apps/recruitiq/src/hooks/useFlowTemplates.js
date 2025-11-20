@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../services/api';
+import { authService } from '../services';
 
 /**
  * All API calls now use the centralized api service

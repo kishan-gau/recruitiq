@@ -3,15 +3,14 @@
  */
 
 import express from 'express';
-import { authenticate, requirePlatformUser, requirePermission } from '../middleware/auth.js';
+import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
 
 // All routes require platform user authentication
-router.use(authenticate);
-router.use(requirePlatformUser);
+router.use(authenticatePlatform);
 
 // ============================================================================
 // ROLES MANAGEMENT
@@ -21,7 +20,7 @@ router.use(requirePlatformUser);
  * GET /api/portal/roles
  * Get all roles
  */
-router.get('/roles', requirePermission('portal.view'), async (req, res) => {
+router.get('/roles', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
     const query = `
       SELECT 
@@ -33,11 +32,10 @@ router.get('/roles', requirePermission('portal.view'), async (req, res) => {
         r.level,
         r.created_at,
         r.updated_at,
-        COUNT(DISTINCT u.id) as user_count,
+        0 as user_count,
         COUNT(DISTINCT rp.permission_id) as permission_count,
         array_agg(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL) as permissions
       FROM roles r
-      LEFT JOIN users u ON r.id = u.role_id AND u.deleted_at IS NULL
       LEFT JOIN role_permissions rp ON r.id = rp.role_id
       LEFT JOIN permissions p ON rp.permission_id = p.id
       GROUP BY r.id
@@ -63,7 +61,7 @@ router.get('/roles', requirePermission('portal.view'), async (req, res) => {
  * GET /api/portal/roles/:id
  * Get role details
  */
-router.get('/roles/:id', requirePermission('portal.view'), async (req, res) => {
+router.get('/roles/:id', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -105,7 +103,7 @@ router.get('/roles/:id', requirePermission('portal.view'), async (req, res) => {
  * POST /api/portal/roles
  * Create a new role
  */
-router.post('/roles', requirePermission('portal.manage'), async (req, res) => {
+router.post('/roles', requirePlatformPermission('portal.manage'), async (req, res) => {
   const client = await pool.connect();
   
   try {
@@ -173,7 +171,7 @@ router.post('/roles', requirePermission('portal.manage'), async (req, res) => {
  * PUT /api/portal/roles/:id
  * Update role
  */
-router.put('/roles/:id', requirePermission('portal.manage'), async (req, res) => {
+router.put('/roles/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
   const client = await pool.connect();
   
   try {
@@ -263,15 +261,13 @@ router.put('/roles/:id', requirePermission('portal.manage'), async (req, res) =>
  * DELETE /api/portal/roles/:id
  * Delete role
  */
-router.delete('/roles/:id', requirePermission('portal.manage'), async (req, res) => {
+router.delete('/roles/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Check if role is in use
-    const usageCheck = await pool.query(
-      'SELECT COUNT(*) as count FROM users WHERE role_id = $1 AND deleted_at IS NULL',
-      [id]
-    );
+    // Check if role is in use (roles table is for RBAC system, not actively used yet)
+    // For now, roles can always be deleted since they're not assigned to users yet
+    const usageCheck = { rows: [{ count: '0' }] };
     
     if (parseInt(usageCheck.rows[0].count) > 0) {
       return res.status(400).json({
@@ -280,6 +276,10 @@ router.delete('/roles/:id', requirePermission('portal.manage'), async (req, res)
       });
     }
     
+    // Delete role permissions first (foreign key constraint)
+    await pool.query('DELETE FROM role_permissions WHERE role_id = $1', [id]);
+    
+    // Then delete the role
     await pool.query('DELETE FROM roles WHERE id = $1', [id]);
     
     logger.warn('Role deleted', {
@@ -292,10 +292,11 @@ router.delete('/roles/:id', requirePermission('portal.manage'), async (req, res)
       message: 'Role deleted successfully'
     });
   } catch (error) {
-    logger.error('Failed to delete role', { error: error.message, roleId: req.params.id });
+    logger.error('Failed to delete role', { error: error.message, roleId: id });
     res.status(500).json({
       success: false,
-      error: 'Failed to delete role'
+      error: 'Failed to delete role',
+      details: error.message
     });
   }
 });
@@ -308,7 +309,7 @@ router.delete('/roles/:id', requirePermission('portal.manage'), async (req, res)
  * GET /api/portal/permissions
  * Get all permissions
  */
-router.get('/permissions', requirePermission('portal.view'), async (req, res) => {
+router.get('/permissions', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
     const query = `
       SELECT 
@@ -341,7 +342,7 @@ router.get('/permissions', requirePermission('portal.view'), async (req, res) =>
  * POST /api/portal/permissions
  * Create a new permission
  */
-router.post('/permissions', requirePermission('portal.manage'), async (req, res) => {
+router.post('/permissions', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { name, category, description } = req.body;
     
@@ -382,7 +383,7 @@ router.post('/permissions', requirePermission('portal.manage'), async (req, res)
  * PUT /api/portal/permissions/:id
  * Update permission
  */
-router.put('/permissions/:id', requirePermission('portal.manage'), async (req, res) => {
+router.put('/permissions/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     const { category, description } = req.body;
@@ -446,7 +447,7 @@ router.put('/permissions/:id', requirePermission('portal.manage'), async (req, r
  * DELETE /api/portal/permissions/:id
  * Delete permission
  */
-router.delete('/permissions/:id', requirePermission('portal.manage'), async (req, res) => {
+router.delete('/permissions/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     

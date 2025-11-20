@@ -1,7 +1,7 @@
 # RecruitIQ Coding Standards & Best Practices
 
-**Version:** 1.0  
-**Date:** November 3, 2025  
+**Version:** 1.1  
+**Date:** November 19, 2025  
 **Status:** Mandatory for all engineers  
 
 ## Purpose
@@ -218,6 +218,31 @@ See [FRONTEND_STANDARDS.md](./docs/FRONTEND_STANDARDS.md) for complete frontend 
 
 ### Quick Reference
 
+**Provider Wrapping Order (CRITICAL):**
+- **ErrorBoundary** → **BrowserRouter** → **AuthProvider** → **QueryClientProvider** → **ThemeProvider** → **ToastProvider** → Domain Providers
+- **NEVER** wrap BrowserRouter inside AuthProvider
+- **ALWAYS** initialize Auth before domain providers (Organization, Workspace)
+- See [Provider Wrapping Order](./FRONTEND_STANDARDS.md#provider-wrapping-order) for detailed rationale
+
+**API Client Integration (MANDATORY):**
+- **ALWAYS** use centralized `@recruitiq/api-client` package
+- **NEVER** create local API client files
+- Use product-specific clients: `NexusClient`, `PayLinQClient`, `ScheduleHubClient`
+- Wrap client methods in service layer
+- Integrate with React Query hooks
+
+```typescript
+// ✅ CORRECT: Use centralized API client
+import { NexusClient, APIClient } from '@recruitiq/api-client';
+
+const nexusClient = new NexusClient(new APIClient());
+const locations = await nexusClient.listLocations();
+
+// ❌ WRONG: Direct API calls
+import { apiClient } from './api';  // Deprecated!
+const response = await apiClient.get('/api/products/nexus/locations');
+```
+
 **Component Structure:**
 - Use functional components with hooks
 - One component per file
@@ -227,6 +252,7 @@ See [FRONTEND_STANDARDS.md](./docs/FRONTEND_STANDARDS.md) for complete frontend 
 - Local state: `useState`
 - Complex state: `useReducer`
 - Global state: Context API or state management library
+- API state: React Query with service layer
 
 ---
 

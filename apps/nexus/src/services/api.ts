@@ -12,9 +12,10 @@ let csrfToken: string | null = null;
 
 // Create axios instance with default config
 // Use relative API paths proxied by Vite (same-origin for cookie auth)
-const API_BASE_URL = '/api';
+// ARCHITECTURE: All endpoints are relative to /api baseURL
+// This matches the unified api-client pattern
 const api: AxiosInstance = axios.create({
-  baseURL: `${API_BASE_URL}/products/nexus`,
+  baseURL: '/api/products/nexus',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -36,7 +37,7 @@ api.interceptors.request.use(
       if (!csrfToken && !config.url?.includes('/csrf-token') && !isAuthRequest) {
         console.log('[Nexus API] No CSRF token found, fetching lazily...');
         try {
-          const csrfResponse = await axios.get(`${API_BASE_URL}/csrf-token`, {
+          const csrfResponse = await axios.get('/api/csrf-token', {
             withCredentials: true
           });
           csrfToken = csrfResponse.data?.csrfToken;

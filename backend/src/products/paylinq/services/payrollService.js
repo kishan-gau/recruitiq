@@ -23,6 +23,7 @@ class PayrollService {
     this.deductionRepository = new DeductionRepository();
     this.taxCalculationService = taxCalculationService;
     this.payStructureService = new PayStructureService();
+    this.payrollRunTypeService = new PayrollRunTypeService();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -839,7 +840,7 @@ class PayrollService {
 
     // Validate run type exists and is active
     try {
-      const runType = await PayrollRunTypeService.getByCode(value.runType, organizationId);
+      const runType = await this.payrollRunTypeService.getByCode(value.runType, organizationId);
       if (!runType) {
         throw new ValidationError(`Run type '${value.runType}' not found for this organization`);
       }
@@ -930,7 +931,7 @@ class PayrollService {
       // Resolve allowed components for this run type
       let allowedComponents = null;
       try {
-        allowedComponents = await PayrollRunTypeService.resolveAllowedComponents(
+        allowedComponents = await this.payrollRunTypeService.resolveAllowedComponents(
           payrollRun.run_type,
           organizationId
         );
@@ -1305,7 +1306,7 @@ class PayrollService {
                 {
                   payrollRunId,
                   paycheckId: paycheck.id,
-                  componentType: component.componentCategory,
+                  componentType: component.componentType || 'earning', // Use componentType, not componentCategory
                   componentCode: component.componentCode,
                   componentName: component.componentName,
                   amount: component.amount,

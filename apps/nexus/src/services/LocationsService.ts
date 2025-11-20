@@ -1,12 +1,17 @@
 /**
  * LocationsService - Handles all location-related API operations
  * Uses TanStack Query for data fetching, caching, and state management
+ * NOW USES: @recruitiq/api-client for type-safe API calls
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Location, CreateLocationDTO, UpdateLocationDTO, LocationFilters } from '../types/location.types';
+import { NexusClient } from '@recruitiq/api-client';
+import { APIClient } from '@recruitiq/api-client';
 
-const API_BASE = '/api/products/nexus/locations';
+// Create singleton instance for service-level usage
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
 
 /**
  * Query Keys for TanStack Query
@@ -20,85 +25,30 @@ export const locationKeys = {
 };
 
 /**
- * API Functions
+ * API Functions - Using @recruitiq/api-client
  */
 async function fetchLocations(filters?: LocationFilters): Promise<Location[]> {
-  const params = new URLSearchParams();
-  if (filters?.search) params.append('search', filters.search);
-  if (filters?.locationType) params.append('locationType', filters.locationType);
-  if (filters?.isActive !== undefined) params.append('isActive', filters.isActive.toString());
-  if (filters?.country) params.append('country', filters.country);
-
-  const url = params.toString() ? `${API_BASE}?${params}` : API_BASE;
-  const response = await fetch(url, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch locations: ${response.statusText}`);
-  }
-  
-  const result = await response.json();
-  return result.data || result; // Extract data array from response
+  const response = await nexusClient.getLocations(filters);
+  return response.data || []; // Extract data array from ApiResponse
 }
 
 async function fetchLocationById(id: string): Promise<Location> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error('Location not found');
-    }
-    throw new Error(`Failed to fetch location: ${response.statusText}`);
-  }
-  
-  const result = await response.json();
-  return result.data || result; // Extract data from response
+  const response = await nexusClient.getLocation(id);
+  return response.data; // Extract data from ApiResponse
 }
 
 async function createLocation(data: CreateLocationDTO): Promise<Location> {
-  const response = await fetch(API_BASE, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to create location: ${response.statusText}`);
-  }
-  
-  const result = await response.json();
-  return result.data || result; // Extract data from response
+  const response = await nexusClient.createLocation(data);
+  return response.data; // Extract data from ApiResponse
 }
 
 async function updateLocation(id: string, data: UpdateLocationDTO): Promise<Location> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'PATCH',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to update location: ${response.statusText}`);
-  }
-  
-  const result = await response.json();
-  return result.data || result; // Extract data from response
+  const response = await nexusClient.updateLocation(id, data);
+  return response.data; // Extract data from ApiResponse
 }
 
 async function deleteLocation(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to delete location: ${response.statusText}`);
-  }
+  await nexusClient.deleteLocation(id);
 }
 
 /**

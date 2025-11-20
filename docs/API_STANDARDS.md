@@ -1,8 +1,8 @@
 # API Standards
 
 **Part of:** [RecruitIQ Coding Standards](../CODING_STANDARDS.md)  
-**Version:** 1.0  
-**Last Updated:** November 3, 2025
+**Version:** 1.1  
+**Last Updated:** November 19, 2025
 
 ---
 
@@ -82,17 +82,88 @@ POST   /api/schedulehub/stations               // Missing /products prefix
 
 ### Frontend API Client Configuration
 
-**CRITICAL:** When creating frontend API services, always use the correct product path:
+**MANDATORY:** All frontend applications MUST use the centralized `@recruitiq/api-client` package with product-specific clients (NexusClient, PayLinQClient, ScheduleHubClient).
+
+**✅ CORRECT: Use Centralized API Clients**
 
 ```typescript
-// ✅ CORRECT: Include /products in base path
-const API_BASE = '/api/products/nexus/locations';
-const API_BASE = '/api/products/paylinq/worker-types';
-const API_BASE = '/api/products/schedulehub/stations';
+// apps/nexus/src/services/locations.service.ts
+import { NexusClient, APIClient } from '@recruitiq/api-client';
 
-// ❌ WRONG: Missing /products prefix
-const API_BASE = '/api/nexus/locations';          // Returns 404!
-const API_BASE = '/api/paylinq/worker-types';     // Returns 404!
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
+
+export const locationsService = {
+  async listLocations(filters?: any) {
+    const response = await nexusClient.listLocations(filters);
+    return response.data;
+  },
+  
+  async getLocation(id: string) {
+    const response = await nexusClient.getLocation(id);
+    return response.data;
+  },
+  
+  async createLocation(data: any) {
+    const response = await nexusClient.createLocation(data);
+    return response.data;
+  }
+};
+```
+
+**❌ WRONG: Direct apiClient Calls**
+
+```typescript
+// ❌ DON'T DO THIS: Direct API calls without product client
+import { apiClient } from './api';
+
+export const locationsService = {
+  async listLocations() {
+    // Missing type safety, manual path construction
+    const response = await apiClient.get('/api/products/nexus/locations');
+    return response.data;
+  }
+};
+```
+
+### Available Product Clients
+
+| Product | Client Class | Package Import | Use Case |
+|---------|-------------|----------------|----------|
+| Nexus (HRIS) | `NexusClient` | `@recruitiq/api-client` | Employee management, attendance, benefits |
+| PayLinQ (Payroll) | `PayLinQClient` | `@recruitiq/api-client` | Payroll runs, compensation, tax |
+| ScheduleHub | `ScheduleHubClient` | `@recruitiq/api-client` | Scheduling, shifts, stations |
+| RecruitIQ | `RecruitIQClient` | `@recruitiq/api-client` | Job postings, candidates, applications |
+
+### Product Client Methods (Type-Safe)
+
+**NexusClient** (112 methods across 9 services):
+- Locations: `listLocations()`, `getLocation()`, `createLocation()`, `updateLocation()`, `deleteLocation()`
+- Departments: `listDepartments()`, `getDepartment()`, `createDepartment()`, etc.
+- Employees: `listEmployees()`, `getEmployee()`, `createEmployee()`, `terminateEmployee()`, etc.
+- Time-Off: `listTimeOffRequests()`, `approveTimeOffRequest()`, `rejectTimeOffRequest()`, etc.
+- Attendance: `listAttendanceRecords()`, `getAttendanceStatistics()`, etc.
+- Benefits: `listBenefitPlans()`, `enrollEmployee()`, `checkEligibility()`, etc.
+- Contracts: `listContracts()`, `generateFromContractTemplate()`, etc.
+- Documents: `uploadFile()`, `downloadDocument()`, `requestSignature()`, etc.
+- Performance: `listPerformanceReviews()`, `createGoal()`, `updateGoalProgress()`, etc.
+
+**Benefits of Centralized Clients:**
+1. ✅ **Type Safety** - Full TypeScript support with proper return types
+2. ✅ **Maintainability** - Update paths in one place
+3. ✅ **Consistency** - All services follow same pattern
+4. ✅ **Error Handling** - Centralized interceptors and logging
+5. ✅ **Testing** - Easy to mock entire client
+6. ✅ **Documentation** - Self-documenting API surface
+
+### Legacy Pattern (Deprecated)
+
+**⚠️ DEPRECATED:** Direct path construction is no longer recommended:
+
+```typescript
+// ❌ OLD PATTERN: Manual path construction
+const API_BASE = '/api/products/nexus/locations';  // Deprecated
+const response = await apiClient.get(API_BASE);     // Use NexusClient instead
 ```
 
 ### Product Routing Architecture

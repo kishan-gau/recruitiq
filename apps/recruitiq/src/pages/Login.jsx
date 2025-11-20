@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@recruitiq/auth';
 import { motion } from 'framer-motion';
 import MFAVerification from '../components/MFAVerification';
-import apiClient from '../services/api';
+import { authService } from '../services';
 
 export default function Login() {
   const navigate = useNavigate();

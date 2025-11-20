@@ -11,7 +11,7 @@ import Joi from 'joi';
 import WorkerTypeRepository from '../repositories/workerTypeRepository.js';
 import productConfig from '../config/product.config.js';
 import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import { ValidationError, NotFoundError, ConflictError, ForbiddenError  } from '../../../middleware/errorHandler.js';
 import { query  } from '../../../config/database.js';
 import { 
   mapTemplateDbToApi, 
@@ -233,10 +233,17 @@ class WorkerTypeService {
    */
   async getWorkerTypeTemplateById(templateId, organizationId) {
     try {
-      const dbTemplate = await this.workerTypeRepository.findTemplateById(templateId, organizationId);
+      // Check if template exists at all (without org filter)
+      const dbTemplate = await this.workerTypeRepository.findTemplateByIdAnyOrg(templateId);
       if (!dbTemplate) {
         throw new NotFoundError('Worker type template not found');
       }
+      
+      // Check organization ownership
+      if (dbTemplate.organization_id !== organizationId) {
+        throw new ForbiddenError('Access denied to resource from another organization');
+      }
+      
       return mapTemplateDbToApi(dbTemplate);
     } catch (err) {
       logger.error('Error fetching worker type template', { error: err.message, templateId });
@@ -254,6 +261,17 @@ class WorkerTypeService {
    */
   async updateWorkerTypeTemplate(templateId, updates, organizationId, userId) {
     try {
+      // Check if template exists at all (without org filter)
+      const existingTemplate = await this.workerTypeRepository.findTemplateByIdAnyOrg(templateId);
+      if (!existingTemplate) {
+        throw new NotFoundError('Worker type template not found');
+      }
+      
+      // Check organization ownership
+      if (existingTemplate.organization_id !== organizationId) {
+        throw new ForbiddenError('Access denied to resource from another organization');
+      }
+      
       // Validate partial schema
       const allowedFields = [
         'name', 'description', 'defaultPayFrequency', 'defaultPaymentMethod',
@@ -272,9 +290,12 @@ class WorkerTypeService {
         throw new Error('No valid fields to update');
       }
 
+      // Convert API format (camelCase) to DB format (snake_case)
+      const dbUpdates = mapTemplateApiToDb(filteredUpdates);
+
       const dbTemplate = await this.workerTypeRepository.updateTemplate(
         templateId,
-        filteredUpdates,
+        dbUpdates,
         organizationId,
         userId
       );
@@ -299,8 +320,26 @@ class WorkerTypeService {
    * @param {string} userId - User deleting the template
    * @returns {Promise<boolean>} Success status
    */
+  /**
+   * Delete worker type template
+   * @param {string} templateId - Template UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User deleting the template
+   * @returns {Promise<boolean>} Success status
+   */
   async deleteWorkerTypeTemplate(templateId, organizationId, userId) {
     try {
+      // Check if template exists at all (without org filter)
+      const existingTemplate = await this.workerTypeRepository.findTemplateByIdAnyOrg(templateId);
+      if (!existingTemplate) {
+        throw new NotFoundError('Worker type template not found');
+      }
+      
+      // Check organization ownership
+      if (existingTemplate.organization_id !== organizationId) {
+        throw new ForbiddenError('Access denied to resource from another organization');
+      }
+      
       const deleted = await this.workerTypeRepository.deleteTemplate(
         templateId,
         organizationId,

@@ -133,6 +133,63 @@ class TimeOffService {
     }
   }
 
+  async listRequests(organizationId, status = null, startDate = null, endDate = null) {
+    try {
+      let query = `
+        SELECT r.*, e.first_name || ' ' || e.last_name as worker_name
+        FROM scheduling.time_off_requests r
+        JOIN hris.employee e ON r.employee_id = e.id
+        WHERE r.organization_id = $1
+      `;
+      const params = [organizationId];
+      let paramCount = 1;
+
+      if (status) {
+        paramCount++;
+        query += ` AND r.status = $${paramCount}`;
+        params.push(status);
+      }
+      if (startDate) {
+        paramCount++;
+        query += ` AND r.end_date >= $${paramCount}`;
+        params.push(startDate);
+      }
+      if (endDate) {
+        paramCount++;
+        query += ` AND r.start_date <= $${paramCount}`;
+        params.push(endDate);
+      }
+
+      query += ` ORDER BY r.created_at DESC`;
+      const result = await pool.query(query, params);
+      return { success: true, data: result.rows };
+    } catch (error) {
+      this.logger.error('Error listing requests:', error);
+      throw error;
+    }
+  }
+
+  async getRequestById(requestId, organizationId) {
+    try {
+      const result = await pool.query(
+        `SELECT r.*, e.first_name || ' ' || e.last_name as worker_name
+         FROM scheduling.time_off_requests r
+         JOIN hris.employee e ON r.employee_id = e.id
+         WHERE r.id = $1 AND r.organization_id = $2`,
+        [requestId, organizationId]
+      );
+      
+      if (result.rows.length === 0) {
+        return { success: false, error: 'Request not found' };
+      }
+      
+      return { success: true, data: result.rows[0] };
+    } catch (error) {
+      this.logger.error('Error fetching request by ID:', error);
+      throw error;
+    }
+  }
+
   async getPendingRequests(organizationId) {
     try {
       const result = await pool.query(

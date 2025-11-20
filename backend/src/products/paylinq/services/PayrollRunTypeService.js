@@ -406,7 +406,7 @@ class PayrollRunTypeService {
               runType.default_template_id,
               organizationId
             );
-            components = templateComponents.map(c => c.component_code);
+            components = templateComponents.map(c => c.componentCode); // DTO maps to camelCase
             logger.debug('Template components resolved', {
               templateId: runType.default_template_id,
               componentCount: components.length,
@@ -438,7 +438,7 @@ class PayrollRunTypeService {
               runType.default_template_id,
               organizationId
             );
-            components = templateComponents.map(c => c.component_code);
+            components = templateComponents.map(c => c.componentCode); // DTO maps to camelCase
             logger.debug('Template components loaded for hybrid mode', {
               templateId: runType.default_template_id,
               componentCount: components.length,

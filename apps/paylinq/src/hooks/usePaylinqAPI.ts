@@ -8,9 +8,12 @@
 import { RecruitIQPlatformAPI } from '@recruitiq/api-client';
 
 // Create singleton instance
-// IMPORTANT: Use relative path to go through Vite proxy for cookie support
+// ARCHITECTURE: Use default /api baseURL
+// - Core APIs: /api/auth/*, /api/csrf-token
+// - Product APIs: /api/products/paylinq/*
+// Vite proxy forwards /api/* to backend at localhost:4000
 const api = new RecruitIQPlatformAPI({
-  baseURL: '/api',
+  // baseURL defaults to '/api' in APIClient constructor
   timeout: 30000,
 });
 

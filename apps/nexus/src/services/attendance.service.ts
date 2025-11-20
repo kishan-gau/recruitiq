@@ -1,9 +1,10 @@
 /**
  * Attendance Service
  * API service for attendance tracking, clock in/out, and timesheets
+ * NOW USES: @recruitiq/api-client for type-safe API calls
  */
 
-import { apiClient } from './api';
+import { NexusClient, APIClient } from '@recruitiq/api-client';
 import type {
   AttendanceRecord,
   CreateAttendanceRecordDTO,
@@ -30,156 +31,165 @@ import type {
   AttendanceReportFilters,
 } from '@/types/attendance.types';
 
+// Create singleton instance for service-level usage
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
+
 export const attendanceService = {
   // ============ Attendance Records ============
   
   async listAttendanceRecords(filters?: AttendanceFilters): Promise<AttendanceRecord[]> {
-    const params = new URLSearchParams();
-    if (filters?.employeeId) params.append('employeeId', filters.employeeId);
-    if (filters?.departmentId) params.append('departmentId', filters.departmentId);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.startDate) params.append('startDate', filters.startDate);
-    if (filters?.endDate) params.append('endDate', filters.endDate);
-    if (filters?.clockStatus) params.append('clockStatus', filters.clockStatus);
-    
-    const queryString = params.toString();
-    return apiClient.get(`/attendance/records${queryString ? `?${queryString}` : ''}`);
+    const response = await nexusClient.listAttendanceRecords(filters);
+    return response.data;
   },
 
   async getAttendanceRecord(id: string): Promise<AttendanceRecord> {
-    return apiClient.get(`/attendance/records/${id}`);
+    const response = await nexusClient.getAttendanceRecord(id);
+    return response.data;
   },
 
   async getEmployeeAttendance(employeeId: string, startDate: string, endDate: string): Promise<AttendanceRecord[]> {
-    return apiClient.get(`/attendance/records/employee/${employeeId}?startDate=${startDate}&endDate=${endDate}`);
+    const response = await nexusClient.getEmployeeAttendance(employeeId, startDate, endDate);
+    return response.data;
   },
 
   async getTodayAttendance(): Promise<AttendanceRecord[]> {
-    return apiClient.get('/attendance/records/today');
+    const response = await nexusClient.getTodayAttendance();
+    return response.data;
   },
 
   async createAttendanceRecord(data: CreateAttendanceRecordDTO): Promise<AttendanceRecord> {
-    return apiClient.post('/attendance/records', data);
+    const response = await nexusClient.createAttendanceRecord(data);
+    return response.data;
   },
 
   async updateAttendanceRecord(id: string, updates: UpdateAttendanceRecordDTO): Promise<AttendanceRecord> {
-    return apiClient.put(`/attendance/records/${id}`, updates);
+    const response = await nexusClient.updateAttendanceRecord(id, updates);
+    return response.data;
   },
 
   async deleteAttendanceRecord(id: string): Promise<void> {
-    return apiClient.delete(`/attendance/records/${id}`);
+    await nexusClient.deleteAttendanceRecord(id);
   },
 
   // ============ Clock In/Out Operations ============
   
   async clockIn(data: ClockInDTO): Promise<AttendanceRecord> {
-    return apiClient.post('/attendance/clock-in', data);
+    const response = await nexusClient.clockIn(data);
+    return response.data;
   },
 
   async clockOut(recordId: string, data: ClockOutDTO): Promise<AttendanceRecord> {
-    return apiClient.post(`/attendance/records/${recordId}/clock-out`, data);
+    const response = await nexusClient.clockOut(recordId, data);
+    return response.data;
   },
 
   async startBreak(recordId: string, data: BreakStartDTO): Promise<AttendanceRecord> {
-    return apiClient.post(`/attendance/records/${recordId}/break-start`, data);
+    const response = await nexusClient.startBreak(recordId, data);
+    return response.data;
   },
 
   async endBreak(recordId: string, data: BreakEndDTO): Promise<AttendanceRecord> {
-    return apiClient.post(`/attendance/records/${recordId}/break-end`, data);
+    const response = await nexusClient.endBreak(recordId, data);
+    return response.data;
   },
 
   async getCurrentClockStatus(employeeId: string): Promise<AttendanceRecord | null> {
-    return apiClient.get(`/attendance/clock-status/${employeeId}`);
+    const response = await nexusClient.getCurrentClockStatus(employeeId);
+    return response.data;
   },
 
   // ============ Work Schedules ============
   
   async listWorkSchedules(filters?: WorkScheduleFilters): Promise<WorkSchedule[]> {
-    const params = new URLSearchParams();
-    if (filters?.shiftType) params.append('shiftType', filters.shiftType);
-    if (filters?.isActive !== undefined) params.append('isActive', String(filters.isActive));
-    
-    const queryString = params.toString();
-    return apiClient.get(`/attendance/schedules${queryString ? `?${queryString}` : ''}`);
+    const response = await nexusClient.listWorkSchedules(filters);
+    return response.data;
   },
 
   async getWorkSchedule(id: string): Promise<WorkSchedule> {
-    return apiClient.get(`/attendance/schedules/${id}`);
+    const response = await nexusClient.getWorkSchedule(id);
+    return response.data;
   },
 
   async createWorkSchedule(data: CreateWorkScheduleDTO): Promise<WorkSchedule> {
-    return apiClient.post('/attendance/schedules', data);
+    const response = await nexusClient.createWorkSchedule(data);
+    return response.data;
   },
 
   async updateWorkSchedule(id: string, updates: UpdateWorkScheduleDTO): Promise<WorkSchedule> {
-    return apiClient.put(`/attendance/schedules/${id}`, updates);
+    const response = await nexusClient.updateWorkSchedule(id, updates);
+    return response.data;
   },
 
   async deleteWorkSchedule(id: string): Promise<void> {
-    return apiClient.delete(`/attendance/schedules/${id}`);
+    await nexusClient.deleteWorkSchedule(id);
   },
 
   // ============ Timesheets ============
   
   async listTimesheets(filters?: TimesheetFilters): Promise<Timesheet[]> {
-    const params = new URLSearchParams();
-    if (filters?.employeeId) params.append('employeeId', filters.employeeId);
-    if (filters?.departmentId) params.append('departmentId', filters.departmentId);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.weekStartDate) params.append('weekStartDate', filters.weekStartDate);
-    if (filters?.weekEndDate) params.append('weekEndDate', filters.weekEndDate);
-    
-    const queryString = params.toString();
-    return apiClient.get(`/attendance/timesheets${queryString ? `?${queryString}` : ''}`);
+    const response = await nexusClient.listTimesheets(filters);
+    return response.data;
   },
 
   async getTimesheet(id: string): Promise<Timesheet> {
-    return apiClient.get(`/attendance/timesheets/${id}`);
+    const response = await nexusClient.getTimesheet(id);
+    return response.data;
   },
 
   async getEmployeeTimesheets(employeeId: string): Promise<Timesheet[]> {
-    return apiClient.get(`/attendance/timesheets/employee/${employeeId}`);
+    const response = await nexusClient.getEmployeeTimesheets(employeeId);
+    return response.data;
   },
 
   async createTimesheet(data: CreateTimesheetDTO): Promise<Timesheet> {
-    return apiClient.post('/attendance/timesheets', data);
+    const response = await nexusClient.createTimesheet(data);
+    return response.data;
   },
 
   async updateTimesheet(id: string, updates: UpdateTimesheetDTO): Promise<Timesheet> {
-    return apiClient.put(`/attendance/timesheets/${id}`, updates);
+    const response = await nexusClient.updateTimesheet(id, updates);
+    return response.data;
   },
 
   async submitTimesheet(id: string, data: SubmitTimesheetDTO): Promise<Timesheet> {
-    return apiClient.post(`/attendance/timesheets/${id}/submit`, data);
+    const response = await nexusClient.submitTimesheet(id, data);
+    return response.data;
   },
 
   async approveTimesheet(id: string, data: ApproveTimesheetDTO): Promise<Timesheet> {
-    return apiClient.post(`/attendance/timesheets/${id}/approve`, data);
+    const response = await nexusClient.approveTimesheet(id, data);
+    return response.data;
   },
 
   async rejectTimesheet(id: string, data: RejectTimesheetDTO): Promise<Timesheet> {
-    return apiClient.post(`/attendance/timesheets/${id}/reject`, data);
+    const response = await nexusClient.rejectTimesheet(id, data);
+    return response.data;
   },
 
   async deleteTimesheet(id: string): Promise<void> {
-    return apiClient.delete(`/attendance/timesheets/${id}`);
+    await nexusClient.deleteTimesheet(id);
   },
 
   // ============ Statistics & Reports ============
   
   async getAttendanceStatistics(): Promise<AttendanceStatistics> {
-    return apiClient.get('/attendance/statistics');
+    const response = await nexusClient.getAttendanceStatistics();
+    return response.data;
   },
 
   async getEmployeeAttendanceSummary(employeeId: string, startDate: string, endDate: string): Promise<EmployeeAttendanceSummary> {
-    return apiClient.get(`/attendance/summary/employee/${employeeId}?startDate=${startDate}&endDate=${endDate}`);
+    const response = await nexusClient.getEmployeeAttendanceSummary(employeeId, startDate, endDate);
+    return response.data;
   },
 
   async getDepartmentAttendanceReport(filters: AttendanceReportFilters): Promise<DepartmentAttendanceReport[]> {
-    return apiClient.post('/attendance/reports/department', filters);
+    const response = await nexusClient.getDepartmentAttendanceReport(filters);
+    return response.data;
   },
 
   async generateAttendanceReport(filters: AttendanceReportFilters): Promise<EmployeeAttendanceSummary[]> {
-    return apiClient.post('/attendance/reports/generate', filters);
+    const response = await nexusClient.generateAttendanceReport(filters);
+    return response.data;
   },
 };

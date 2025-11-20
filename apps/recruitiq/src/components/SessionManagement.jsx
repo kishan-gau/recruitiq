@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import apiClient from '../services/api'
+import { authService } from '../services'
 import toast from 'react-hot-toast'
 
 export default function SessionManagement() {

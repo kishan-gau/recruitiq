@@ -20,6 +20,10 @@ api.interceptors.request.use((config) => {
 });
 
 export const schedulehubApi = {
+  stats: {
+    get: () => api.get('/stats').then((res) => res.data),
+  },
+
   workers: {
     list: (params?: any) => api.get('/workers', { params }).then((res) => res.data),
     get: (id: string) => api.get(`/workers/${id}`).then((res) => res.data),
