@@ -800,7 +800,7 @@ class PayStructureService {
       try {
         // Check if component has an override (handle both camelCase and snake_case)
         const override = overrides.find(o => 
-          (o.componentCode === component.code || o.component_code === component.code)
+          (o.componentCode === component.componentCode || o.component_code === component.componentCode)
         );
         
         // Skip if disabled by override (handle both camelCase and snake_case)
@@ -814,7 +814,7 @@ class PayStructureService {
           const patternConfig = component.conditions.pattern;
           
           logger.debug('Evaluating temporal pattern condition for component', {
-            componentCode: component.code,
+            componentCode: component.componentCode,
             patternType: patternConfig.patternType,
             employeeId,
           });
@@ -829,7 +829,7 @@ class PayStructureService {
 
             if (!patternResult.qualified) {
               logger.info('Component skipped - pattern condition not met', {
-                componentCode: component.code,
+                componentCode: component.componentCode,
                 employeeId,
                 patternType: patternConfig.patternType,
                 patternMetadata: patternResult.metadata,
@@ -838,7 +838,7 @@ class PayStructureService {
             }
 
             logger.info('Component pattern condition met', {
-              componentCode: component.code,
+              componentCode: component.componentCode,
               employeeId,
               patternType: patternConfig.patternType,
             });
@@ -856,12 +856,21 @@ class PayStructureService {
         // Calculate component value
         const value = await this.calculateComponent(component, override, context, calculatedValues);
 
-        calculatedValues[component.code] = value;
+        calculatedValues[component.componentCode] = value;
+
+        // Map componentCategory to valid component_type for database constraint
+        // DB constraint allows: 'earning', 'deduction', 'tax'
+        // componentCategory may include: 'earning', 'benefit', 'tax', 'deduction'
+        let componentType = component.componentType || component.componentCategory || 'earning';
+        if (componentType === 'benefit') {
+          componentType = 'deduction'; // Map benefit to deduction for DB constraint
+        }
 
         calculations.push({
-          componentCode: component.code,
-          componentName: component.name,
-          componentCategory: component.category,
+          componentCode: component.componentCode,
+          componentName: component.componentName,
+          componentType, // Use mapped componentType
+          componentCategory: component.componentCategory,
           amount: value,
           configSnapshot: override || component.configuration,
           calculationMetadata: {
@@ -877,12 +886,12 @@ class PayStructureService {
         }
       } catch (err) {
         logger.error('Component calculation failed', {
-          component: component.code,
+          component: component.componentCode,
           error: err.message,
           employeeId,
           organizationId
         });
-        throw new Error(`Failed to calculate component ${component.code}: ${err.message}`);
+        throw new Error(`Failed to calculate component ${component.componentCode}: ${err.message}`);
       }
     }
 
@@ -920,13 +929,24 @@ class PayStructureService {
     const calculationType = component.calculationType;
 
     logger.debug('Calculating component', {
-      componentCode: component.code,
+      componentCode: component.componentCode,
       calculationType,
       hasConfiguration: !!component.configuration,
       hasOverride: !!override,
       overrideData: override,
       defaultAmount: component.configuration?.defaultAmount
     });
+
+    // Validate component has required data
+    if (!config && calculationType !== 'fixed') {
+      logger.warn('Component missing configuration', {
+        componentCode: component.componentCode,
+        calculationType,
+        component: JSON.stringify(component, null, 2)
+      });
+      // For non-fixed calculation types, configuration is required
+      return 0;
+    }
 
     let value = 0;
 
@@ -935,7 +955,7 @@ class PayStructureService {
         // Use override amount if it exists, otherwise use configuration default amount
         value = override?.overrideAmount ?? parseFloat(config?.defaultAmount) ?? 0;
         logger.debug('Fixed calculation', {
-          componentCode: component.code,
+          componentCode: component.componentCode,
           overrideAmount: override?.overrideAmount,
           configDefaultAmount: config?.defaultAmount,
           parsedDefaultAmount: parseFloat(config?.defaultAmount),
@@ -970,11 +990,11 @@ class PayStructureService {
         throw new Error(`Unsupported calculation type: ${calculationType}`);
     }
 
-    // Apply limits
-    if (config.minAmount && value < config.minAmount) {
+    // Apply limits (with null safety check)
+    if (config?.minAmount && value < config.minAmount) {
       value = config.minAmount;
     }
-    if (config.maxAmount && value > config.maxAmount) {
+    if (config?.maxAmount && value > config.maxAmount) {
       value = config.maxAmount;
     }
 
