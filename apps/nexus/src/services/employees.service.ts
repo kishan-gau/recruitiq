@@ -26,8 +26,9 @@ export const employeesService = {
    */
   list: async (filters?: EmployeeFilters): Promise<EmployeeListItem[]> => {
     const response = await nexusClient.listEmployees(filters);
-    // Backend returns { success: true, data: { employees: [...], total, limit, offset } }
-    return (response.data?.employees || []) as EmployeeListItem[];
+    // APIClient.get() extracts response.data automatically
+    // Backend returns { success: true, employees: [...], total, limit, offset }
+    return (response.employees || []) as EmployeeListItem[];
   },
 
   /**
@@ -39,7 +40,7 @@ export const employeesService = {
     limit = 20
   ): Promise<PaginatedResponse<EmployeeListItem>> => {
     const response = await nexusClient.listEmployeesPaginated(filters, page, limit);
-    return response.data as PaginatedResponse<EmployeeListItem>;
+    return response as PaginatedResponse<EmployeeListItem>;
   },
 
   /**
@@ -47,7 +48,7 @@ export const employeesService = {
    */
   get: async (id: string): Promise<Employee> => {
     const response = await nexusClient.getEmployee(id);
-    return response.data as Employee;
+    return response.employee as Employee;
   },
 
   /**
@@ -55,7 +56,7 @@ export const employeesService = {
    */
   create: async (employee: CreateEmployeeDTO): Promise<Employee> => {
     const response = await nexusClient.createEmployee(employee);
-    return response.data as Employee;
+    return response.employee as Employee;
   },
 
   /**
@@ -63,7 +64,7 @@ export const employeesService = {
    */
   update: async (id: string, updates: UpdateEmployeeDTO): Promise<Employee> => {
     const response = await nexusClient.updateEmployee(id, updates);
-    return response.data as Employee;
+    return response.employee as Employee;
   },
 
   /**
@@ -71,7 +72,7 @@ export const employeesService = {
    */
   terminate: async (id: string, terminationData: TerminateEmployeeDTO): Promise<Employee> => {
     const response = await nexusClient.terminateEmployee(id, terminationData);
-    return response.data as Employee;
+    return response.employee as Employee;
   },
 
   /**
@@ -79,7 +80,7 @@ export const employeesService = {
    */
   rehire: async (id: string, rehireData: any): Promise<any> => {
     const response = await nexusClient.rehireEmployee(id, rehireData);
-    return response.data;
+    return response.rehire;
   },
 
   /**
@@ -87,7 +88,7 @@ export const employeesService = {
    */
   getEmploymentHistory: async (id: string): Promise<any[]> => {
     const response = await nexusClient.getEmploymentHistory(id);
-    return response.data as any[];
+    return response.employmentHistory as any[];
   },
 
   /**
@@ -95,7 +96,7 @@ export const employeesService = {
    */
   checkRehireEligibility: async (id: string): Promise<any> => {
     const response = await nexusClient.checkRehireEligibility(id);
-    return response.data;
+    return response.eligibility;
   },
 
   /**
@@ -110,7 +111,7 @@ export const employeesService = {
    */
   search: async (query: string): Promise<EmployeeListItem[]> => {
     const response = await nexusClient.searchEmployees(query);
-    return response.data as EmployeeListItem[];
+    return response.employees as EmployeeListItem[];
   },
 
   /**
@@ -118,7 +119,7 @@ export const employeesService = {
    */
   getOrgChart: async (): Promise<OrgChartNode[]> => {
     const response = await nexusClient.getOrgChart();
-    return response.data as OrgChartNode[];
+    return response.orgChart as OrgChartNode[];
   },
 
   /**
@@ -137,7 +138,7 @@ export const employeesService = {
     }
   ): Promise<any> => {
     const response = await nexusClient.grantSystemAccess(employeeId, accessData);
-    return response.data;
+    return response;
   },
 
   /**
@@ -145,7 +146,7 @@ export const employeesService = {
    */
   getUserAccountStatus: async (employeeId: string): Promise<any> => {
     const response = await nexusClient.getUserAccountStatus(employeeId);
-    return response.data;
+    return response;
   },
 
   /**
@@ -167,6 +168,6 @@ export const employeesService = {
     }
   ): Promise<any> => {
     const response = await nexusClient.updateUserAccess(employeeId, updates);
-    return response.data;
+    return response;
   },
 };

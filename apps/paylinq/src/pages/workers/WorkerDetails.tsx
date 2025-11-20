@@ -14,6 +14,10 @@ import SystemAccessPanel from '@/components/worker/SystemAccessPanel';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
+import { lazy, Suspense } from 'react';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+
+const CompensationManagementPage = lazy(() => import('@/pages/CompensationManagementPage'));
 
 export default function WorkerDetails() {
   const { workerId } = useParams();
@@ -52,7 +56,8 @@ export default function WorkerDetails() {
           const metadata = w.metadata || {};
           
           setWorker({
-            id: w.employeeId || w.employee_id || w.id, // Use employeeId (from hris.employee), not payroll config id
+            id: w.id, // Keep original id (payroll config id)
+            employeeId: w.employeeId || w.employee_id, // HRIS employee ID for compensation/access
             employeeNumber: w.employee_number || w.employeeNumber || 'N/A',
             fullName: w.fullName || w.full_name || `${w.firstName || w.first_name || ''} ${w.lastName || w.last_name || ''}`.trim() || 'Unknown',
             email: w.email || w.user_email || 'N/A',
@@ -282,44 +287,10 @@ export default function WorkerDetails() {
         </div>
       )}
 
-      {activeTab === 'compensation' && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Compensation Details</h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Base Compensation</p>
-                <CurrencyDisplay amount={worker.compensation} className="text-2xl font-bold" currency={worker.currency} />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Type</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {worker.workerType}
-                </p>
-              </div>
-            </div>
-
-            {worker.deductions && worker.deductions.length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-3">Deductions</h4>
-                <div className="space-y-2">
-                  {worker.deductions.map((deduction: any) => (
-                    <div
-                      key={deduction.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{deduction.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{deduction.type}</p>
-                      </div>
-                      <CurrencyDisplay amount={deduction.amount} variant="negative" className="text-sm font-medium" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {activeTab === 'compensation' && worker && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <CompensationManagementPage employeeId={worker.employeeId} />
+        </Suspense>
       )}
 
       {activeTab === 'tax-info' && (
@@ -455,7 +426,7 @@ export default function WorkerDetails() {
       {/* System Access Tab */}
       {activeTab === 'system-access' && (
         <SystemAccessPanel
-          employeeId={worker.id}
+          employeeId={worker.employeeId}
           employeeName={worker.fullName}
           employeeEmail={worker.email}
         />

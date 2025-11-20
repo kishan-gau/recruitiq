@@ -45,6 +45,10 @@ const ExchangeRatesPage = lazy(() => import('@/components/currency/ExchangeRates
 const CurrencyConfigPage = lazy(() => import('@/components/currency/CurrencyConfigPage'));
 const ApprovalQueuePage = lazy(() => import('@/components/approvals/ApprovalQueuePage'));
 
+// Compensation
+const CompensationManagementPage = lazy(() => import('@/pages/CompensationManagementPage'));
+const CreateCompensationForm = lazy(() => import('@/pages/CreateCompensationForm'));
+
 function App() {
   return (
     <ErrorBoundary>
@@ -91,6 +95,10 @@ function App() {
             
             {/* Payslips */}
             <Route path="payslips" element={<Payslips />} />
+            
+            {/* Compensation */}
+            <Route path="compensation" element={<CompensationManagementPage />} />
+            <Route path="compensation/create" element={<CreateCompensationForm />} />
             
             {/* Reconciliation */}
             <Route path="reconciliation" element={<Reconciliation />} />

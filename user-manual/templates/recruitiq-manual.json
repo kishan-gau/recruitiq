@@ -1,0 +1,23 @@
+{
+  "title": "RecruitIQ User Manual",
+  "product": "recruitiq",
+  "versionSource": "apps/recruitiq/package.json",
+  "version": "0.0.0",
+  "flows": [
+    {
+      "id": "onboarding",
+      "title": "Getting started / Onboarding",
+      "steps": [
+        { "text": "Open the web app at your local dev server", "screenshot": "01-home.png" },
+        { "text": "Log in using your test account; go to dashboard", "screenshot": "02-dashboard.png" }
+      ]
+    },
+    {
+      "id": "create-job",
+      "title": "Create a job",
+      "steps": [
+        { "text": "Click Create Job, fill the form and Save", "screenshot": "03-create-job.png" }
+      ]
+    }
+  ]
+}

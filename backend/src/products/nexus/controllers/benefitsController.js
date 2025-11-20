@@ -4,6 +4,7 @@
  */
 
 import BenefitsService from '../services/benefitsService.js';
+import { mapPlanApiToDb, mapPlanDbToApi, mapPlansDbToApi } from '../dto/benefitsDto.js';
 import logger from '../../../utils/logger.js';
 
 class BenefitsController {
@@ -21,8 +22,16 @@ class BenefitsController {
   createPlan = async (req, res) => {
     try {
       const { organizationId, userId } = req.user;
-      const plan = await this.service.createPlan(req.body, organizationId, userId);
-      res.status(201).json({ success: true, data: plan });
+      
+      // Transform API format (camelCase) to DB format (snake_case)
+      const dbData = mapPlanApiToDb(req.body);
+      
+      const plan = await this.service.createPlan(dbData, organizationId, userId);
+      
+      // Transform DB format back to API format
+      const apiPlan = mapPlanDbToApi(plan);
+      
+      res.status(201).json({ success: true, data: apiPlan });
     } catch (error) {
       this.logger.error('Error in createPlan controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
@@ -38,7 +47,11 @@ class BenefitsController {
       const { organizationId } = req.user;
       const { id } = req.params;
       const plan = await this.service.getPlan(id, organizationId);
-      res.json({ success: true, data: plan });
+      
+      // Transform DB format to API format
+      const apiPlan = mapPlanDbToApi(plan);
+      
+      res.json({ success: true, data: apiPlan });
     } catch (error) {
       this.logger.error('Error in getPlan controller', { error: error.message });
       const status = error.message === 'Benefit plan not found' ? 404 : 500;
@@ -61,8 +74,20 @@ class BenefitsController {
 
       const options = { limit: parseInt(limit), offset: parseInt(offset) };
 
-      const plans = await this.service.listPlans(filters, organizationId, options);
-      res.json({ success: true, data: plans });
+      const result = await this.service.listPlans(filters, organizationId, options);
+      
+      // Transform DB format to API format
+      const apiPlans = mapPlansDbToApi(result.plans);
+      
+      res.json({ 
+        success: true, 
+        data: {
+          plans: apiPlans,
+          total: result.total,
+          limit: result.limit,
+          offset: result.offset
+        }
+      });
     } catch (error) {
       this.logger.error('Error in listPlans controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
@@ -77,11 +102,38 @@ class BenefitsController {
     try {
       const { organizationId, userId } = req.user;
       const { id } = req.params;
-      const plan = await this.service.updatePlan(id, req.body, organizationId, userId);
-      res.json({ success: true, data: plan });
+      
+      // Transform API format to DB format
+      const dbData = mapPlanApiToDb(req.body);
+      
+      const plan = await this.service.updatePlan(id, dbData, organizationId, userId);
+      
+      // Transform DB format to API format
+      const apiPlan = mapPlanDbToApi(plan);
+      
+      res.json({ success: true, data: apiPlan });
     } catch (error) {
       this.logger.error('Error in updatePlan controller', { error: error.message });
       const status = error.message === 'Benefit plan not found' ? 404 : 400;
+      res.status(status).json({ success: false, error: error.message });
+    }
+  };
+
+  /**
+   * Get enrollment summary for a benefit plan
+   * GET /api/nexus/benefits/plans/:id/enrollment-summary
+   */
+  getEnrollmentSummary = async (req, res) => {
+    try {
+      const { organizationId } = req.user;
+      const { id } = req.params;
+      
+      const summary = await this.service.getEnrollmentSummary(id, organizationId);
+      
+      res.json({ success: true, data: summary });
+    } catch (error) {
+      this.logger.error('Error in getEnrollmentSummary controller', { error: error.message });
+      const status = error.message.includes('not found') ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
     }
   };
@@ -159,6 +211,31 @@ class BenefitsController {
       this.logger.error('Error in getEnrollment controller', { error: error.message });
       const status = error.message === 'Enrollment not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
+    }
+  };
+
+  /**
+   * List enrollments with optional filters
+   * GET /api/nexus/benefits/enrollments?employeeId=...&status=...
+   */
+  listEnrollments = async (req, res) => {
+    try {
+      const { organizationId } = req.user;
+      const { employeeId, status, planId } = req.query;
+      
+      // If employeeId is provided, use the specific method
+      if (employeeId) {
+        const enrollments = await this.service.getEmployeeEnrollments(employeeId, organizationId);
+        return res.json({ success: true, data: enrollments });
+      }
+      
+      // Otherwise use general list with filters
+      const filters = { status, planId };
+      const enrollments = await this.service.listEnrollments(organizationId, filters);
+      res.json({ success: true, data: enrollments });
+    } catch (error) {
+      this.logger.error('Error in listEnrollments controller', { error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   };
 

@@ -137,7 +137,7 @@ const router = createBrowserRouter([
             element: <CompensationManagementPage />,
           },
           {
-            path: 'new',
+            path: 'create',
             element: <CreateCompensationForm />,
           },
         ],

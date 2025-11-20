@@ -855,6 +855,13 @@ class TaxCalculationService {
    */
   async calculateEmployeeTaxesWithComponents(employeeRecordId, components, payDate, payPeriod, organizationId) {
     try {
+      console.log('=== TAX CALCULATION DEBUG ===');
+      console.log('Employee Record ID:', employeeRecordId);
+      console.log('Components:', JSON.stringify(components, null, 2));
+      console.log('Pay Date:', payDate);
+      console.log('Pay Period:', payPeriod);
+      console.log('Organization ID:', organizationId);
+      
       logger.info('Starting component-based tax calculation', {
         employeeRecordId,
         componentCount: components.length,
@@ -885,9 +892,16 @@ class TaxCalculationService {
         organizationId
       );
 
+      console.log('Tax Rule Sets Found:', taxRuleSets?.length || 0);
+      console.log('Tax Rule Sets:', JSON.stringify(taxRuleSets, null, 2));
+
       const wageTaxRuleSet = taxRuleSets.find(rs => rs.tax_type === 'wage' || rs.tax_type === 'income');
       const aovRuleSet = await this.taxEngineRepository.getSurinameseAOVRate(payDate, organizationId);
       const awwRuleSet = await this.taxEngineRepository.getSurinameseAWWRate(payDate, organizationId);
+
+      console.log('Wage Tax Rule Set:', wageTaxRuleSet ? 'FOUND' : 'NOT FOUND');
+      console.log('AOV Rule Set:', aovRuleSet ? 'FOUND' : 'NOT FOUND');
+      console.log('AWW Rule Set:', awwRuleSet ? 'FOUND' : 'NOT FOUND');
 
       // Determine calculation modes for each tax type
       const wageTaxMode = this._resolveTaxCalculationMode(wageTaxRuleSet);
@@ -905,8 +919,14 @@ class TaxCalculationService {
         );
       }
 
+      console.log('Wage Tax Brackets Found:', wageTaxBrackets?.length || 0);
+      console.log('Wage Tax Brackets:', JSON.stringify(wageTaxBrackets, null, 2));
+
       const aovBrackets = aovRuleSet ? await this.taxEngineRepository.findTaxBrackets(aovRuleSet.id, organizationId) : [];
       const awwBrackets = awwRuleSet ? await this.taxEngineRepository.findTaxBrackets(awwRuleSet.id, organizationId) : [];
+
+      console.log('AOV Brackets Found:', aovBrackets?.length || 0);
+      console.log('AWW Brackets Found:', awwBrackets?.length || 0);
 
       // STEP 1: Calculate allowances and taxable income per component
       for (const component of components) {

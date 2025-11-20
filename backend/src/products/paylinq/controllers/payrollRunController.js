@@ -460,21 +460,17 @@ async function getPayrollRunPaychecks(req, res) {
 
     // Enrich each paycheck with components and metadata
     const enrichedPaychecks = await Promise.all(formattedPaychecks.map(async (paycheck) => {
-      // Fetch components for this paycheck
-      const components = await payrollRepository.getPaycheckComponents(paycheck.id, organizationId);
+      // Components are already included in camelCase format from the DTO
+      // No need to transform them again - they're already in the correct format
+      const components = paycheck.components || [];
       
-      // Calculate total_deductions as sum of all deduction fields
+      // Calculate total_deductions as sum of ONLY deduction fields (NOT taxes)
+      // Taxes are separate and stored in wageTax, aovTax, etc.
       const totalDeductions = (
-        parseFloat(paycheck.wageTax || 0) +
-        parseFloat(paycheck.aovTax || 0) +
-        parseFloat(paycheck.awwTax || 0) +
-        parseFloat(paycheck.federalTax || 0) +
-        parseFloat(paycheck.stateTax || 0) +
-        parseFloat(paycheck.localTax || 0) +
-        parseFloat(paycheck.socialSecurity || 0) +
-        parseFloat(paycheck.medicare || 0) +
+        parseFloat(paycheck.preTaxDeductions || 0) +
+        parseFloat(paycheck.postTaxDeductions || 0) +
         parseFloat(paycheck.otherDeductions || 0)
-      ); // Keep as number, don't use .toFixed() which returns string
+      );
 
       // Add tax law compliance metadata
       const metadata = {
@@ -492,18 +488,7 @@ async function getPayrollRunPaychecks(req, res) {
       return {
         ...paycheck,
         totalDeductions,
-        components: components.map(comp => ({
-          id: comp.id,
-          componentType: comp.component_type,
-          componentCode: comp.component_code,
-          componentName: comp.component_name,
-          amount: parseFloat(comp.amount),
-          units: comp.units ? parseFloat(comp.units) : null,
-          rate: comp.rate ? parseFloat(comp.rate) : null,
-          isTaxable: comp.is_taxable,
-          taxCategory: comp.tax_category,
-          calculationMetadata: comp.calculation_metadata
-        })),
+        components, // Already in correct format from DTO
         metadata
       };
     }));

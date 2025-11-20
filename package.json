@@ -34,7 +34,10 @@
     "docker:logs": "docker-compose -f docker-compose.production.yml logs -f",
     "deploy:check": "bash scripts/health-check.sh localhost",
     "deploy:prod": "bash scripts/deploy.sh production all",
-    "deploy:staging": "bash scripts/deploy.sh staging all"
+    "deploy:staging": "bash scripts/deploy.sh staging all",
+    "docs:capture:recruitiq": "pnpm --filter=apps/recruitiq exec playwright test user-manual/playwright/capture.manual.spec.ts --project=chromium",
+    "docs:generate": "node user-manual/scripts/generate-manual.js",
+    "docs:regen": "pnpm run docs:capture:recruitiq && pnpm run docs:generate"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.1",

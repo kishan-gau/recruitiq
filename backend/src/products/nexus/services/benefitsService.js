@@ -207,6 +207,74 @@ class BenefitsService {
   }
 
   /**
+   * Get enrollment summary for a benefit plan
+   */
+  async getEnrollmentSummary(planId, organizationId) {
+    try {
+      this.logger.debug('Getting enrollment summary', { planId, organizationId });
+
+      const sql = `
+        SELECT 
+          COUNT(be.id) as enrollment_count,
+          COUNT(DISTINCT be.employee_id) as unique_employees,
+          COALESCE(AVG(bp.employee_cost + bp.employer_contribution), 0) as average_cost_per_enrollment,
+          COALESCE(SUM(bp.employee_cost), 0) as total_employee_cost,
+          COALESCE(SUM(bp.employer_contribution), 0) as total_employer_cost,
+          COUNT(CASE WHEN be.status = 'active' THEN 1 END) as active_enrollments,
+          COUNT(CASE WHEN be.status = 'pending' THEN 1 END) as pending_enrollments,
+          COUNT(CASE WHEN be.status = 'cancelled' THEN 1 END) as terminated_enrollments
+        FROM hris.benefits_plan bp
+        LEFT JOIN hris.employee_benefit_enrollment be 
+          ON bp.id = be.benefits_plan_id 
+          AND be.deleted_at IS NULL
+        WHERE bp.id = $1 
+          AND bp.organization_id = $2
+          AND bp.deleted_at IS NULL
+        GROUP BY bp.id
+      `;
+
+      const result = await query(sql, [planId, organizationId], organizationId, {
+        operation: 'select',
+        table: 'hris.benefits_plan'
+      });
+
+      if (result.rows.length === 0) {
+        // Plan exists but has no enrollments
+        return {
+          enrollmentCount: 0,
+          uniqueEmployees: 0,
+          averageCostPerEnrollment: 0,
+          totalEmployeeCost: 0,
+          totalEmployerCost: 0,
+          activeEnrollments: 0,
+          pendingEnrollments: 0,
+          terminatedEnrollments: 0
+        };
+      }
+
+      const summary = result.rows[0];
+
+      return {
+        enrollmentCount: parseInt(summary.enrollment_count) || 0,
+        uniqueEmployees: parseInt(summary.unique_employees) || 0,
+        averageCostPerEnrollment: parseFloat(summary.average_cost_per_enrollment) || 0,
+        totalEmployeeCost: parseFloat(summary.total_employee_cost) || 0,
+        totalEmployerCost: parseFloat(summary.total_employer_cost) || 0,
+        activeEnrollments: parseInt(summary.active_enrollments) || 0,
+        pendingEnrollments: parseInt(summary.pending_enrollments) || 0,
+        terminatedEnrollments: parseInt(summary.terminated_enrollments) || 0
+      };
+    } catch (error) {
+      this.logger.error('Error getting enrollment summary', { 
+        error: error.message,
+        planId,
+        organizationId 
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Update benefit plan
    */
   async updatePlan(id, planData, organizationId, userId) {
@@ -294,8 +362,12 @@ class BenefitsService {
 
   /**
    * Enroll employee in benefit plan
+   * Automatically creates payroll deduction in PayLinQ
    */
   async enrollEmployee(enrollmentData, organizationId, userId) {
+    const IntegrationService = (await import('../../paylinq/services/integrationService.js')).default;
+    const integrationService = new IntegrationService();
+
     try {
       this.logger.info('Enrolling employee in benefit plan', { 
         organizationId, 
@@ -362,12 +434,58 @@ class BenefitsService {
         table: 'hris.employee_benefit_enrollment'
       });
 
+      const enrollment = result.rows[0];
+
       this.logger.info('Employee enrolled successfully', { 
-        enrollmentId: result.rows[0].id,
+        enrollmentId: enrollment.id,
         organizationId 
       });
 
-      return result.rows[0];
+      // Get plan details for integration
+      const planSql = `SELECT plan_name FROM hris.benefit_plan WHERE id = $1 AND organization_id = $2`;
+      const planResult = await query(planSql, [enrollmentData.plan_id, organizationId], organizationId);
+      const planName = planResult.rows[0]?.plan_name || 'Benefit Plan';
+
+      // Create payroll deduction in PayLinQ (non-blocking)
+      try {
+        this.logger.info('Creating payroll deduction for benefits enrollment', {
+          enrollmentId: enrollment.id,
+          employeeId: enrollmentData.employee_id,
+          contribution: enrollmentData.employee_contribution_amount
+        });
+
+        const deductionResult = await integrationService.addBenefitsDeductionFromNexus(
+          {
+            employeeId: enrollmentData.employee_id,
+            enrollmentId: enrollment.id,
+            organizationId,
+            planName,
+            employeeContribution: enrollmentData.employee_contribution_amount || 0,
+            startDate: enrollmentData.coverage_start_date || new Date()
+          },
+          userId
+        );
+
+        if (deductionResult.success) {
+          this.logger.info('Payroll deduction created successfully', {
+            enrollmentId: enrollment.id,
+            deductionId: deductionResult.data?.deductionId
+          });
+        } else {
+          this.logger.warn('Payroll deduction creation failed but enrollment succeeded', {
+            enrollmentId: enrollment.id,
+            error: deductionResult.error
+          });
+        }
+      } catch (integrationError) {
+        // Log error but don't fail the enrollment
+        this.logger.error('Failed to create payroll deduction (enrollment still successful)', {
+          enrollmentId: enrollment.id,
+          error: integrationError.message
+        });
+      }
+
+      return enrollment;
     } catch (error) {
       this.logger.error('Error enrolling employee', { 
         error: error.message,
@@ -527,6 +645,65 @@ class BenefitsService {
   }
 
   /**
+   * List enrollments with filters
+   */
+  async listEnrollments(organizationId, filters = {}) {
+    try {
+      this.logger.debug('Listing benefit enrollments', { 
+        organizationId,
+        filters 
+      });
+
+      const conditions = ['be.organization_id = $1', 'be.deleted_at IS NULL'];
+      const values = [organizationId];
+      let paramCount = 1;
+
+      // Add status filter
+      if (filters.status) {
+        paramCount++;
+        conditions.push(`be.enrollment_status = $${paramCount}`);
+        values.push(filters.status);
+      }
+
+      // Add plan filter
+      if (filters.planId) {
+        paramCount++;
+        conditions.push(`be.plan_id = $${paramCount}`);
+        values.push(filters.planId);
+      }
+
+      const sql = `
+        SELECT be.*, 
+               bp.plan_name,
+               bp.plan_type,
+               bp.provider_name,
+               e.first_name,
+               e.last_name,
+               e.email
+        FROM hris.employee_benefit_enrollment be
+        JOIN hris.benefits_plan bp ON be.plan_id = bp.id
+        JOIN hris.employee e ON be.employee_id = e.id
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY be.enrollment_date DESC
+      `;
+
+      const result = await query(sql, values, organizationId, {
+        operation: 'findAll',
+        table: 'hris.employee_benefit_enrollment'
+      });
+
+      return result.rows;
+    } catch (error) {
+      this.logger.error('Error listing enrollments', { 
+        error: error.message,
+        organizationId,
+        filters 
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Get employee enrollments
    */
   async getEmployeeEnrollments(employeeId, organizationId) {
@@ -542,7 +719,7 @@ class BenefitsService {
                bp.plan_type,
                bp.provider_name
         FROM hris.employee_benefit_enrollment be
-        JOIN hris.benefits_plan bp ON be.plan_id = bp.id
+        JOIN hris.benefits_plan bp ON be.benefits_plan_id = bp.id
         WHERE be.employee_id = $1 
           AND be.organization_id = $2
           AND be.deleted_at IS NULL
@@ -582,7 +759,7 @@ class BenefitsService {
                e.employee_number
         FROM hris.employee_benefit_enrollment be
         JOIN hris.employee e ON be.employee_id = e.id
-        WHERE be.plan_id = $1 
+        WHERE be.benefits_plan_id = $1 
           AND be.organization_id = $2
           AND be.deleted_at IS NULL
         ORDER BY be.enrollment_date DESC

@@ -59,6 +59,10 @@ function mapPaycheckToDto(paycheck) {
     status: paycheck.status,
     paymentReference: paycheck.payment_reference,
     
+    // Components (earnings, deductions, taxes) - from payroll_run_component JOIN
+    // CRITICAL: Components are aggregated as JSONB array in the query
+    components: paycheck.components || [],
+    
     // Metadata
     createdAt: paycheck.created_at,
     updatedAt: paycheck.updated_at,
