@@ -58,7 +58,7 @@ describe('BenefitsService', () => {
       // Assert
       expect(result.id).toBe(mockPlanId);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO hris.benefit_plan'),
+        expect.stringContaining('INSERT INTO hris.benefits_plan'),
         expect.any(Array),
         mockOrganizationId,
         expect.any(Object)
@@ -482,7 +482,7 @@ describe('BenefitsService', () => {
       // Assert
       expect(result).toEqual(mockEnrollments);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('JOIN hris.benefit_plan'),
+        expect.stringContaining('JOIN hris.benefits_plan'),
         [mockEmployeeId, mockOrganizationId],
         mockOrganizationId,
         expect.any(Object)
