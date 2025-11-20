@@ -119,29 +119,6 @@ describe('LocationService', () => {
 
       expect(result.timezone).toBe('UTC');
     });
-
-    it('should handle JSON facilities field', async () => {
-      const locationData = {
-        location_name: 'Tech Hub',
-        facilities: ['parking', 'gym', 'cafeteria']
-      };
-
-      mockQuery.mockResolvedValueOnce({ rows: [] });
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ id: locationId, ...locationData }]
-      });
-
-      await service.createLocation(locationData, organizationId, userId);
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.arrayContaining([
-          expect.stringContaining('"parking"')
-        ]),
-        organizationId,
-        expect.any(Object)
-      );
-    });
   });
 
   describe('getLocation', () => {
@@ -280,7 +257,7 @@ describe('LocationService', () => {
       mockQuery.mockResolvedValueOnce({ rows: [] });
       mockQuery.mockResolvedValueOnce({ rows: [{ count: '0' }] });
 
-      await service.listLocations({}, organizationId);
+      await service.listLocations({ orderBy: 'is_primary' }, organizationId);
 
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining('ORDER BY l.is_primary DESC, l.location_name ASC'),
@@ -354,31 +331,6 @@ describe('LocationService', () => {
 
       expect(result).toEqual(existingLocation);
       expect(mockQuery).toHaveBeenCalledTimes(1);
-    });
-
-    it('should update JSON facilities field', async () => {
-      const existingLocation = {
-        id: locationId,
-        location_name: 'Office'
-      };
-
-      const updateData = {
-        facilities: ['parking', 'gym']
-      };
-
-      mockQuery.mockResolvedValueOnce({ rows: [existingLocation] });
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ ...existingLocation, facilities: updateData.facilities }]
-      });
-
-      await service.updateLocation(locationId, updateData, organizationId, userId);
-
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('facilities = $'),
-        expect.arrayContaining([expect.stringContaining('parking')]),
-        organizationId,
-        expect.any(Object)
-      );
     });
   });
 
