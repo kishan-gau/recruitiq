@@ -434,8 +434,8 @@ describe('PayrollRunTypeService', () => {
       // Mock payStructureService that's injected
       const mockPayStructureService = {
         getTemplateComponents: jest.fn().mockResolvedValue([
-          { component_code: 'COMP1' },
-          { component_code: 'COMP2' }
+          { componentCode: 'COMP1' },
+          { componentCode: 'COMP2' }
         ])
       };
       service.payStructureService = mockPayStructureService;
@@ -475,7 +475,7 @@ describe('PayrollRunTypeService', () => {
 
       const mockPayStructureService = {
         getTemplateComponents: jest.fn().mockResolvedValue([
-          { component_code: 'TEMPLATE_COMP' }
+          { componentCode: 'TEMPLATE_COMP' }
         ])
       };
       service.payStructureService = mockPayStructureService;

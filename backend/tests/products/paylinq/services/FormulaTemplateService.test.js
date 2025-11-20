@@ -269,7 +269,7 @@ describe('FormulaTemplateService', () => {
         template_name: 'Bonus Calculation'
       });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
       mockFormulaEngine.parse.mockResolvedValue({
         ast: { type: 'multiply', args: [] }
       });
@@ -294,7 +294,7 @@ describe('FormulaTemplateService', () => {
 
     it('should validate formula expression', async () => {
       mockFormulaEngine.validate.mockResolvedValue({
-        isValid: false,
+        valid: false,
         errors: [{ message: 'Syntax error' }]
       });
 
@@ -304,7 +304,7 @@ describe('FormulaTemplateService', () => {
     });
 
     it('should check for duplicate template code', async () => {
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
       mockPool.query.mockResolvedValue({
         rows: [{ id: 'existing-id' }]
       });
@@ -317,7 +317,7 @@ describe('FormulaTemplateService', () => {
     it('should set is_global to false for org templates', async () => {
       const createdTemplate = createDbTemplate({ is_global: false });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
       mockFormulaEngine.parse.mockResolvedValue({
         ast: { type: 'multiply', args: [] }
       });
@@ -332,8 +332,8 @@ describe('FormulaTemplateService', () => {
 
     it('should store formula AST', async () => {
       const ast = { type: 'multiply', left: 'base_salary', right: 0.10 };
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
-      mockFormulaEngine.parse.mockResolvedValue({ ast });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
+      mockFormulaEngine.parse.mockResolvedValue(ast); // Return AST directly, not wrapped
       mockPool.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [createDbTemplate()] });
@@ -351,8 +351,8 @@ describe('FormulaTemplateService', () => {
       delete dataWithoutComplexity.complexity_level;
 
       const createdTemplate = createDbTemplate();
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
-      mockFormulaEngine.parse.mockResolvedValue({ ast: {} });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
+      mockFormulaEngine.parse.mockResolvedValue({});
       mockPool.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [createdTemplate] });
@@ -409,7 +409,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [existingTemplate] });
 
       mockFormulaEngine.validate.mockResolvedValue({
-        isValid: false,
+        valid: false,
         errors: [{ message: 'Invalid syntax' }]
       });
 
@@ -431,8 +431,8 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [existingTemplate] })
         .mockResolvedValueOnce({ rows: [createDbTemplate()] });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
-      mockFormulaEngine.parse.mockResolvedValue({ ast: newAst });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
+      mockFormulaEngine.parse.mockResolvedValue(newAst); // Return AST directly
 
       await FormulaTemplateService.updateTemplate(
         templateId,
@@ -571,7 +571,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [parsedTemplate] }) // getTemplateById
         .mockResolvedValueOnce({ rows: [] }); // Update usage count
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
 
       const result = await FormulaTemplateService.applyTemplate(
         templateId,
@@ -597,7 +597,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [parsedTemplate] })
         .mockResolvedValueOnce({ rows: [] });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
 
       await FormulaTemplateService.applyTemplate(templateId, { base: 100 }, orgId);
 
@@ -679,7 +679,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       mockFormulaEngine.validate.mockResolvedValue({
-        isValid: false,
+        valid: false,
         errors: [{ message: 'Invalid operator' }]
       });
 
@@ -705,7 +705,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [parsedTemplate] })
         .mockResolvedValueOnce({ rows: [] });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
 
       const result = await FormulaTemplateService.applyTemplate(
         templateId,

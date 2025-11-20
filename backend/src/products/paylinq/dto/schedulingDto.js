@@ -22,7 +22,7 @@ export function mapScheduleDbToApi(dbSchedule) {
     startTime: dbSchedule.start_time,
     endTime: dbSchedule.end_time,
     durationHours: dbSchedule.duration_hours,
-    breakMinutes: dbSchedule.break_minutes,
+    breakDurationMinutes: dbSchedule.break_duration_minutes,
     location: dbSchedule.location,
     status: dbSchedule.status,
     scheduleType: dbSchedule.schedule_type,
@@ -86,8 +86,8 @@ export function mapScheduleApiToDb(apiData) {
   if (apiData.durationHours !== undefined) {
     dbData.duration_hours = apiData.durationHours;
   }
-  if (apiData.breakMinutes !== undefined) {
-    dbData.break_minutes = apiData.breakMinutes;
+  if (apiData.breakDurationMinutes !== undefined) {
+    dbData.break_duration_minutes = apiData.breakDurationMinutes;
   }
   if (apiData.location !== undefined) {
     dbData.location = apiData.location;
@@ -121,15 +121,19 @@ export function mapScheduleChangeRequestDbToApi(dbRequest) {
     organizationId: dbRequest.organization_id,
     scheduleId: dbRequest.schedule_id,
     requestedBy: dbRequest.requested_by,
-    requestType: dbRequest.request_type,
-    requestedChanges: dbRequest.requested_changes,
+    changeType: dbRequest.change_type,
+    requestedDate: dbRequest.requested_date,
+    requestedShiftTypeId: dbRequest.requested_shift_type_id,
     reason: dbRequest.reason,
     status: dbRequest.status,
-    reviewedBy: dbRequest.reviewed_by,
-    reviewedAt: dbRequest.reviewed_at,
-    reviewNotes: dbRequest.review_notes,
+    approvedBy: dbRequest.approved_by,
+    approvedAt: dbRequest.approved_at,
+    rejectionReason: dbRequest.rejection_reason,
     createdAt: dbRequest.created_at,
     updatedAt: dbRequest.updated_at,
+    // Joined fields
+    requesterName: dbRequest.requester_name,
+    approverName: dbRequest.approver_name,
   };
 }
 
@@ -159,11 +163,14 @@ export function mapScheduleChangeRequestApiToDb(apiData) {
   if (apiData.requestedBy !== undefined) {
     dbData.requested_by = apiData.requestedBy;
   }
-  if (apiData.requestType !== undefined) {
-    dbData.request_type = apiData.requestType;
+  if (apiData.changeType !== undefined) {
+    dbData.change_type = apiData.changeType;
   }
-  if (apiData.requestedChanges !== undefined) {
-    dbData.requested_changes = apiData.requestedChanges;
+  if (apiData.requestedDate !== undefined) {
+    dbData.requested_date = apiData.requestedDate;
+  }
+  if (apiData.requestedShiftTypeId !== undefined) {
+    dbData.requested_shift_type_id = apiData.requestedShiftTypeId;
   }
   if (apiData.reason !== undefined) {
     dbData.reason = apiData.reason;
@@ -171,14 +178,14 @@ export function mapScheduleChangeRequestApiToDb(apiData) {
   if (apiData.status !== undefined) {
     dbData.status = apiData.status;
   }
-  if (apiData.reviewedBy !== undefined) {
-    dbData.reviewed_by = apiData.reviewedBy;
+  if (apiData.approvedBy !== undefined) {
+    dbData.approved_by = apiData.approvedBy;
   }
-  if (apiData.reviewedAt !== undefined) {
-    dbData.reviewed_at = apiData.reviewedAt;
+  if (apiData.approvedAt !== undefined) {
+    dbData.approved_at = apiData.approvedAt;
   }
-  if (apiData.reviewNotes !== undefined) {
-    dbData.review_notes = apiData.reviewNotes;
+  if (apiData.rejectionReason !== undefined) {
+    dbData.rejection_reason = apiData.rejectionReason;
   }
 
   return dbData;
