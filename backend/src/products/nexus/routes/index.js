@@ -130,13 +130,15 @@ router.get('/performance/feedback/employee/:employeeId', performanceController.g
 
 // ========== BENEFITS ROUTES ==========
 router.post('/benefits/plans', benefitsController.createPlan);
+router.get('/benefits/plans/:id/enrollment-summary', benefitsController.getEnrollmentSummary);
 router.get('/benefits/plans/:id', benefitsController.getPlan);
 router.get('/benefits/plans', benefitsController.listPlans);
 router.patch('/benefits/plans/:id', benefitsController.updatePlan);
 
 router.post('/benefits/enrollments', benefitsController.enrollEmployee);
+router.get('/benefits/enrollments/employee/:employeeId', benefitsController.getEmployeeEnrollments); // Specific route first
 router.get('/benefits/enrollments/:id', benefitsController.getEnrollment);
-router.get('/benefits/enrollments/employee/:employeeId', benefitsController.getEmployeeEnrollments);
+router.get('/benefits/enrollments', benefitsController.listEnrollments); // General route last
 router.patch('/benefits/enrollments/:id', benefitsController.updateEnrollment);
 router.post('/benefits/enrollments/:id/terminate', benefitsController.terminateEnrollment);
 

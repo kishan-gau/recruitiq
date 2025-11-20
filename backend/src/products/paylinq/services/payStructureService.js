@@ -881,8 +881,15 @@ class PayStructureService {
         });
 
         // Update context for dependent components
-        if (component.category === 'earning' && component.configuration.affectsGrossPay) {
+        // affectsGrossPay can be on component itself or in configuration (camelCase or snake_case)
+        const affectsGross = component.affectsGrossPay 
+          || component.affects_gross_pay 
+          || component.configuration?.affectsGrossPay 
+          || component.configuration?.affects_gross_pay;
+        
+        if (component.componentCategory === 'earning' && affectsGross) {
           context.grossEarnings = (context.grossEarnings || 0) + value;
+          context.gross_earnings = context.grossEarnings; // Keep both formats
         }
       } catch (err) {
         logger.error('Component calculation failed', {
@@ -896,6 +903,14 @@ class PayStructureService {
     }
 
     // Calculate totals
+    logger.debug('Final calculations array:', { 
+      calculations: calculations.map(c => ({ 
+        code: c.componentCode, 
+        category: c.componentCategory, 
+        amount: c.amount 
+      }))
+    });
+
     const totalEarnings = calculations
       .filter(c => c.componentCategory === 'earning')
       .reduce((sum, c) => sum + c.amount, 0);
@@ -907,6 +922,13 @@ class PayStructureService {
     const totalTaxes = calculations
       .filter(c => c.componentCategory === 'tax')
       .reduce((sum, c) => sum + c.amount, 0);
+
+    logger.debug('Calculations array for totals:', calculations.map(c => ({
+      code: c.componentCode,
+      category: c.componentCategory,
+      amount: c.amount
+    })));
+    logger.debug('Calculated totals:', { totalEarnings, totalDeductions, totalTaxes });
 
     return {
       structureId: structure.id || structure.structure_id,
@@ -1465,6 +1487,109 @@ class PayStructureService {
     }
 
     return differences;
+  }
+
+  // ==================== WORKER STRUCTURE METHODS ====================
+
+  /**
+   * Get current pay structure for a worker
+   * @param {string} employeeId - Employee UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string|null} asOfDate - Optional date for historical lookup (YYYY-MM-DD)
+   * @returns {Promise<Object|null>} Current worker pay structure with components
+   */
+  async getCurrentWorkerStructure(employeeId, organizationId, asOfDate = null) {
+    try {
+      return await this.repository.getCurrentWorkerStructure(employeeId, organizationId, asOfDate);
+    } catch (error) {
+      logger.error('Error fetching current worker structure', {
+        error: error.message,
+        employeeId,
+        organizationId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get worker structure history
+   * @param {string} employeeId - Employee UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array>} Array of worker structure assignments
+   */
+  async getWorkerStructureHistory(employeeId, organizationId) {
+    try {
+      return await this.repository.getWorkerStructureHistory(employeeId, organizationId);
+    } catch (error) {
+      logger.error('Error fetching worker structure history', {
+        error: error.message,
+        employeeId,
+        organizationId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Assign pay structure template to worker
+   * @param {string} employeeId - Employee UUID
+   * @param {string} templateId - Template UUID
+   * @param {Object} assignmentData - Assignment details (effectiveFrom, etc.)
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User making the assignment
+   * @returns {Promise<Object>} Created worker structure assignment
+   */
+  async assignTemplateToWorker(employeeId, templateId, assignmentData, organizationId, userId) {
+    try {
+      // Validate template exists and is active
+      logger.info('Looking up template for assignment', {
+        templateId,
+        organizationId  // Added!
+      });
+      
+      const template = await this.repository.findTemplateById(templateId, organizationId);
+      
+      logger.info('Template lookup result', {
+        found: !!template,
+        templateId,
+        organizationId,  // Added!
+        status: template?.status
+      });
+      
+      if (!template) {
+        throw new NotFoundError('Pay structure template not found');
+      }
+
+      if (template.status !== 'active') {
+        throw new ValidationError('Only active templates can be assigned to workers');
+      }
+
+      // Build assignment data object for repository
+      const fullAssignmentData = {
+        employeeId,
+        templateVersionId: templateId,
+        effectiveFrom: assignmentData.effectiveFrom,
+        effectiveTo: assignmentData.effectiveTo || null,
+        assignmentSource: 'manual',
+        assignmentType: 'custom',  // Valid values: default, department, group, custom, temporary
+        isCurrent: true
+      };
+
+      // Create assignment
+      return await this.repository.assignTemplateToWorker(
+        fullAssignmentData,
+        organizationId,
+        userId
+      );
+    } catch (error) {
+      logger.error('Error assigning template to worker', {
+        error: error.message,
+        employeeId,
+        templateId,
+        organizationId
+      });
+      throw error;
+    }
   }
 }
 

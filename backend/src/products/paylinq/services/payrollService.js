@@ -16,6 +16,7 @@ import PayrollRunTypeService from './PayrollRunTypeService.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from '../../../utils/timezone.js';
+import compensationService from '../../../shared/services/compensationService.js';
 
 class PayrollService {
   constructor() {
@@ -247,25 +248,30 @@ class PayrollService {
         userId
       );
 
-      // Create a default compensation record if compensation data is in metadata
-      if (value.metadata?.compensation) {
+      // Create a default compensation record if compensation data is provided
+      if (value.metadata?.compensation || value.compensation) {
         try {
+          const compensationAmount = value.metadata?.compensation || value.compensation;
           const compensationData = {
-            employeeId: targetEmployeeId,
-            compensationType: value.metadata.compensationType || 'salary',
-            amount: value.metadata.compensation,
+            amount: compensationAmount,
+            type: value.metadata?.compensationType || value.compensationType || 'salary',
             currency: payrollData.currency || 'SRD',
             effectiveFrom: payrollData.startDate || new Date().toISOString().split('T')[0],
-            isCurrent: true,
-            payFrequency: payrollData.payFrequency || 'monthly'
+            payFrequency: payrollData.payFrequency || 'monthly',
+            overtimeRate: value.metadata?.overtimeRate || value.overtimeRate || null
           };
 
-          await this.payrollRepository.createCompensation(compensationData, organizationId, userId);
+          await compensationService.createInitialCompensation(
+            targetEmployeeId,
+            compensationData,
+            organizationId,
+            userId
+          );
           
-          logger.info('Created default compensation for employee', {
+          logger.info('Created initial compensation for employee via shared service', {
             employeeId: targetEmployeeId,
             amount: compensationData.amount,
-            type: compensationData.compensationType
+            type: compensationData.type
           });
         } catch (compErr) {
           logger.warn('Failed to create default compensation', {
@@ -765,6 +771,41 @@ class PayrollService {
   }
 
   /**
+   * Get compensation summary for an employee
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Compensation summary with stats
+   */
+  async getCompensationSummary(employeeRecordId, organizationId) {
+    try {
+      const history = await this.payrollRepository.findCompensationHistory(employeeRecordId, organizationId);
+      const current = await this.payrollRepository.findCurrentCompensation(employeeRecordId, organizationId);
+      
+      // Calculate summary stats
+      const summary = {
+        currentCompensation: current ? current.amount : 0,
+        compensationType: current ? current.compensation_type : null,
+        totalChanges: history.length,
+        totalYearsOfService: 0,
+        lastChangeDate: history.length > 0 ? history[0].effective_date : null,
+        firstHireDate: history.length > 0 ? history[history.length - 1].effective_date : null,
+      };
+
+      // Calculate years of service
+      if (summary.firstHireDate) {
+        const hireDate = new Date(summary.firstHireDate);
+        const now = new Date();
+        summary.totalYearsOfService = (now - hireDate) / (1000 * 60 * 60 * 24 * 365.25);
+      }
+
+      return summary;
+    } catch (err) {
+      logger.error('Error fetching compensation summary', { error: err.message, employeeRecordId });
+      throw err;
+    }
+  }
+
+  /**
    * Update compensation record
    * @param {string} compensationId - Compensation UUID
    * @param {Object} updateData - Fields to update
@@ -1047,13 +1088,6 @@ class PayrollService {
 
           // Try to use pay structure if available
           try {
-            logger.info('Calling calculateWorkerPay with inputs', {
-              employeeId,
-              baseSalary,
-              hourlyRate,
-              payFrequency: employee.pay_frequency,
-              compensationType: compensation?.compensation_type
-            });
             
             const payStructureCalc = await this.payStructureService.calculateWorkerPay(
               employeeId,
@@ -1090,7 +1124,14 @@ class PayrollService {
               );
               
               // Recalculate gross pay based on filtered components
-              grossPay = paycheckComponents.reduce((sum, comp) => sum + (comp.amount || 0), 0);
+              // CRITICAL FIX: Only sum earnings and benefits, exclude deductions and taxes
+              grossPay = paycheckComponents.reduce((sum, comp) => {
+                const category = comp.componentCategory || 'earning';
+                if (category === 'earning' || category === 'benefit') {
+                  return sum + (comp.amount || 0);
+                }
+                return sum;
+              }, 0);
               
               logger.info('Filtered components by run type', {
                 employeeId,
@@ -1254,7 +1295,45 @@ class PayrollService {
           }
 
           const totalTaxAmount = taxCalculation.summary.totalTaxes;
-          const netPay = grossPay - totalTaxAmount;
+          
+          // Calculate total deductions from components (deduction category only)
+          const totalDeductions = paycheckComponents
+            .filter(comp => comp.componentCategory === 'deduction')
+            .reduce((sum, comp) => sum + (comp.amount || 0), 0);
+          
+          // Calculate total tax amounts from tax category components
+          // This includes any tax components that were calculated by the component formula
+          const totalComponentTaxes = paycheckComponents
+            .filter(comp => comp.componentCategory === 'tax')
+            .reduce((sum, comp) => sum + (comp.amount || 0), 0);
+          
+          // DEBUG: Log component details
+          console.log('=== PAYCHECK CALCULATION DEBUG ===');
+          console.log('Gross Pay:', grossPay);
+          console.log('Total Deductions:', totalDeductions);
+          console.log('Total Tax Amount (from tax calculation service):', totalTaxAmount);
+          console.log('Total Component Taxes (from template):', totalComponentTaxes);
+          console.log('All paycheck components:', JSON.stringify(paycheckComponents, null, 2));
+          console.log('Tax category components:', paycheckComponents.filter(c => c.componentCategory === 'tax'));
+          
+          // Use component taxes if provided (from template), otherwise use calculated taxes
+          // This allows templates with tax components to override the tax calculation service
+          const effectiveTaxAmount = totalComponentTaxes > 0 ? totalComponentTaxes : totalTaxAmount;
+          
+          // For individual tax breakdown, use component if available
+          const componentWageTax = paycheckComponents
+            .filter(comp => comp.componentCategory === 'tax' && 
+                           (comp.componentCode === 'LOONBELASTING' || comp.componentCode === 'INCOME_TAX'))
+            .reduce((sum, comp) => sum + (comp.amount || 0), 0);
+          const wageTax = componentWageTax > 0 ? componentWageTax : (taxCalculation.summary.totalWageTax || 0);
+          
+          console.log('Wage Tax (to use):', wageTax);
+          console.log('Effective Tax Amount:', effectiveTaxAmount);
+          
+          // Calculate net pay: gross pay - taxes - deductions
+          const netPay = grossPay - effectiveTaxAmount - totalDeductions;
+          
+          console.log('Net Pay Calculation:', `${grossPay} - ${effectiveTaxAmount} - ${totalDeductions} = ${netPay}`);
 
           // Create paycheck
           const paycheck = await this.payrollRepository.createPaycheck(
@@ -1270,8 +1349,8 @@ class PayrollService {
               // PHASE 2: Use component-based totals
               taxFreeAllowance: taxCalculation.summary.totalTaxFreeAllowance || 0,
               taxableIncome: taxCalculation.summary.totalTaxableIncome || 0,
-              // Surinamese taxes (primary)
-              wageTax: taxCalculation.summary.totalWageTax || 0,
+              // Surinamese taxes (primary) - use component tax if available, otherwise calculated
+              wageTax: wageTax,
               aovTax: taxCalculation.summary.totalAovTax || 0,
               awwTax: taxCalculation.summary.totalAwwTax || 0,
               // US taxes (for backward compatibility, set to 0)
@@ -1279,7 +1358,9 @@ class PayrollService {
               stateTax: 0,
               socialSecurity: 0,
               medicare: 0,
-              otherDeductions: 0,
+              preTaxDeductions: 0, // Not used in component-based system
+              postTaxDeductions: 0, // Not used in component-based system
+              otherDeductions: totalDeductions, // Store total deductions (from deduction category components)
               netPay,
               paymentMethod: employee.payment_method,
               paymentStatus: 'pending'

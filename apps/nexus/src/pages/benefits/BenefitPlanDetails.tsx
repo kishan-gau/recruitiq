@@ -36,6 +36,7 @@ const COVERAGE_LABELS: Record<CoverageLevel, string> = {
 export default function BenefitPlanDetails() {
   const { id } = useParams<{ id: string }>();
   const { data: plan, isLoading } = useBenefitPlan(id!);
+  // Enrollment summary is optional - gracefully handle if endpoint doesn't exist
   const { data: enrollmentSummary } = useEnrollmentSummary(id!);
 
   if (isLoading) {
@@ -230,7 +231,11 @@ export default function BenefitPlanDetails() {
             {plan.eligibilityRules && (
               <div>
                 <label className="text-sm text-gray-600">Eligibility Rules</label>
-                <p className="text-gray-900">{plan.eligibilityRules}</p>
+                <p className="text-gray-900">
+                  {typeof plan.eligibilityRules === 'string' 
+                    ? plan.eligibilityRules 
+                    : JSON.stringify(plan.eligibilityRules)}
+                </p>
               </div>
             )}
           </div>

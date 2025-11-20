@@ -901,9 +901,10 @@ class PayrollRepository {
       (organization_id, payroll_run_id, employee_id, payment_date,
        pay_period_start, pay_period_end, gross_pay, regular_pay, overtime_pay,
        taxable_income, tax_free_allowance,
-       wage_tax, aov_tax, aww_tax, federal_tax, state_tax, social_security, medicare, other_deductions,
+       wage_tax, aov_tax, aww_tax, federal_tax, state_tax, social_security, medicare, 
+       pre_tax_deductions, post_tax_deductions, other_deductions,
        net_pay, payment_method, status, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
       RETURNING *`,
       [
         organizationId,
@@ -924,6 +925,8 @@ class PayrollRepository {
         paycheckData.stateTax || 0,
         paycheckData.socialSecurity || 0,
         paycheckData.medicare || 0,
+        paycheckData.preTaxDeductions || 0,
+        paycheckData.postTaxDeductions || 0,
         paycheckData.otherDeductions || 0,
         paycheckData.netPay,
         paycheckData.paymentMethod,
@@ -950,10 +953,33 @@ class PayrollRepository {
               e.id as employee_id,
               e.first_name,
               e.last_name,
-              e.email
+              e.email,
+              COALESCE(
+                jsonb_agg(
+                  jsonb_build_object(
+                    'id', prc.id,
+                    'componentType', prc.component_type,
+                    'componentCode', prc.component_code,
+                    'componentName', prc.component_name,
+                    'componentCategory', prc.component_type,
+                    'units', prc.units,
+                    'rate', prc.rate,
+                    'amount', prc.amount,
+                    'isTaxable', prc.is_taxable,
+                    'taxCategory', prc.tax_category,
+                    'calculationType', 'fixed',
+                    'calculationMetadata', prc.calculation_metadata,
+                    'componentConfigSnapshot', prc.component_config_snapshot
+                  ) ORDER BY prc.created_at
+                ) FILTER (WHERE prc.id IS NOT NULL),
+                '[]'::jsonb
+              ) as components
        FROM payroll.paycheck p
        INNER JOIN hris.employee e ON e.id = p.employee_id
+       LEFT JOIN payroll.payroll_run_component prc 
+         ON prc.paycheck_id = p.id AND prc.deleted_at IS NULL
        WHERE p.payroll_run_id = $1 AND p.organization_id = $2 AND p.deleted_at IS NULL
+       GROUP BY p.id, e.employee_number, e.id, e.first_name, e.last_name, e.email
        ORDER BY e.employee_number`,
       [payrollRunId, organizationId],
       organizationId,

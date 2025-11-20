@@ -16,13 +16,18 @@ import {
   Shield,
   History,
   UserPlus,
+  Heart,
+  Plus,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { useEmployee, useTerminateEmployee, useRehireEmployee, useEmploymentHistory, useRehireEligibility } from '@/hooks/useEmployees';
+import { useBenefitEnrollments, useCancelBenefitEnrollment } from '@/hooks/useBenefits';
 import { useToast } from '@/contexts/ToastContext';
 import { format } from 'date-fns';
 import SystemAccessPanel from '@/components/employee/SystemAccessPanel';
 
-type TabType = 'overview' | 'personal' | 'employment' | 'contracts' | 'performance' | 'time-off' | 'system-access' | 'history';
+type TabType = 'overview' | 'personal' | 'employment' | 'contracts' | 'performance' | 'time-off' | 'benefits' | 'system-access' | 'history';
 
 export default function EmployeeDetails() {
   const { id } = useParams<{ id: string }>();
@@ -48,6 +53,8 @@ export default function EmployeeDetails() {
   const { mutate: rehireEmployee, isPending: isRehiring } = useRehireEmployee();
   const { data: employmentHistory = [], isLoading: isLoadingHistory } = useEmploymentHistory(id!);
   const { data: rehireEligibility } = useRehireEligibility(id!);
+  const { data: enrollments = [], isLoading: isLoadingEnrollments } = useBenefitEnrollments({ employeeId: id });
+  const cancelEnrollment = useCancelBenefitEnrollment();
 
   if (isLoading) {
     return (
@@ -152,6 +159,7 @@ export default function EmployeeDetails() {
     { id: 'contracts', label: 'Contracts', icon: FileText },
     { id: 'performance', label: 'Performance', icon: Award },
     { id: 'time-off', label: 'Time Off', icon: Clock },
+    { id: 'benefits', label: 'Benefits', icon: Heart },
     { id: 'system-access', label: 'System Access', icon: Shield },
     { id: 'history', label: 'Employment History', icon: History },
   ];
@@ -618,6 +626,111 @@ export default function EmployeeDetails() {
             employeeName={`${employee.firstName} ${employee.lastName}`}
             employeeEmail={employee.email}
           />
+        )}
+
+        {activeTab === 'benefits' && (
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                Benefit Enrollments
+              </h3>
+              <Link
+                to={`/benefits/enrollments/new?employeeId=${id}`}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Enroll in Plan
+              </Link>
+            </div>
+            {isLoadingEnrollments ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 spinner" aria-label="Loading enrollments"></div>
+              </div>
+            ) : enrollments.length === 0 ? (
+              <div className="text-center py-12">
+                <Heart className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                <p className="text-slate-500 dark:text-slate-400 mb-4">
+                  No benefit enrollments yet.
+                </p>
+                <Link
+                  to={`/benefits/enrollments/new?employeeId=${id}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Enroll in First Plan
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {enrollments.map((enrollment: any) => (
+                  <div
+                    key={enrollment.id}
+                    className="border rounded-lg p-4 border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="font-semibold text-slate-900 dark:text-white">
+                            {enrollment.plan?.planName || 'Unknown Plan'}
+                          </h4>
+                          <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                            enrollment.enrollmentStatus === 'active'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400'
+                              : enrollment.enrollmentStatus === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-400'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-400'
+                          }`}>
+                            {enrollment.enrollmentStatus}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-sm text-slate-600 dark:text-slate-400">
+                          <div>
+                            <span className="font-medium">Coverage:</span> {enrollment.coverageLevel?.replace(/-/g, ' ') || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Start Date:</span> {enrollment.coverageStartDate ? format(new Date(enrollment.coverageStartDate), 'MMM d, yyyy') : 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Employee Contribution:</span> ${enrollment.employeeContribution?.toFixed(2) || '0.00'}/mo
+                          </div>
+                          <div>
+                            <span className="font-medium">Employer Contribution:</span> ${enrollment.employerContribution?.toFixed(2) || '0.00'}/mo
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/benefits/enrollments/${enrollment.id}`}
+                          className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 text-sm font-medium"
+                        >
+                          View Details
+                        </Link>
+                        {enrollment.enrollmentStatus === 'active' && (
+                          <button
+                            onClick={() => {
+                              if (confirm('Are you sure you want to cancel this enrollment?')) {
+                                cancelEnrollment.mutate(enrollment.id, {
+                                  onSuccess: () => {
+                                    toast.success('Enrollment cancelled successfully');
+                                  },
+                                  onError: (error: any) => {
+                                    toast.error(error.message || 'Failed to cancel enrollment');
+                                  },
+                                });
+                              }
+                            }}
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'history' && (

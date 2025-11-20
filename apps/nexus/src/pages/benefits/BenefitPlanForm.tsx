@@ -137,17 +137,17 @@ export default function BenefitPlanForm() {
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Basic Information */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Basic Information</h2>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Basic Information</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Plan Name <span className="text-red-500">*</span>
               </label>
               <input
                 {...register('planName', { required: 'Plan name is required' })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
               {errors.planName && (
                 <p className="text-red-500 text-sm mt-1">{errors.planName.message}</p>
@@ -155,12 +155,12 @@ export default function BenefitPlanForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Plan Code <span className="text-red-500">*</span>
               </label>
               <input
                 {...register('planCode', { required: 'Plan code is required' })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
               {errors.planCode && (
                 <p className="text-red-500 text-sm mt-1">{errors.planCode.message}</p>
@@ -168,12 +168,12 @@ export default function BenefitPlanForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Category <span className="text-red-500">*</span>
               </label>
               <select
                 {...register('category', { required: 'Category is required' })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 {CATEGORY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -184,10 +184,10 @@ export default function BenefitPlanForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
               <select
                 {...register('status')}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -197,28 +197,28 @@ export default function BenefitPlanForm() {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
               <textarea
                 {...register('description')}
                 rows={3}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
           </div>
         </div>
 
         {/* Provider Information */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Provider Information</h2>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Provider Information</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Provider Name <span className="text-red-500">*</span>
               </label>
               <input
                 {...register('providerName', { required: 'Provider name is required' })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
               {errors.providerName && (
                 <p className="text-red-500 text-sm mt-1">{errors.providerName.message}</p>
@@ -226,30 +226,30 @@ export default function BenefitPlanForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Provider Contact</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Provider Contact</label>
               <input
                 {...register('providerContact')}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Policy Number</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Policy Number</label>
               <input
                 {...register('policyNumber')}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
           </div>
         </div>
 
         {/* Cost Information */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Cost Information</h2>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Cost Information</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Employee Contribution (Monthly) <span className="text-red-500">*</span>
               </label>
               <input
@@ -259,12 +259,12 @@ export default function BenefitPlanForm() {
                   required: 'Employee contribution is required',
                   valueAsNumber: true,
                 })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Employer Contribution (Monthly) <span className="text-red-500">*</span>
               </label>
               <input
@@ -274,39 +274,39 @@ export default function BenefitPlanForm() {
                   required: 'Employer contribution is required',
                   valueAsNumber: true,
                 })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Deductible</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Deductible</label>
               <input
                 type="number"
                 step="0.01"
                 {...register('deductible', { valueAsNumber: true })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Out-of-Pocket Maximum</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Out-of-Pocket Maximum</label>
               <input
                 type="number"
                 step="0.01"
                 {...register('outOfPocketMax', { valueAsNumber: true })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
           </div>
         </div>
 
         {/* Coverage Details */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Coverage Details</h2>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Coverage Details</h2>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Coverage Levels <span className="text-red-500">*</span>
               </label>
               <Controller
@@ -330,7 +330,7 @@ export default function BenefitPlanForm() {
                           }}
                           className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                         />
-                        <span className="text-sm text-slate-900">{option.label}</span>
+                        <span className="text-sm text-slate-900 dark:text-slate-100">{option.label}</span>
                       </label>
                     ))}
                   </div>
@@ -342,7 +342,7 @@ export default function BenefitPlanForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Coverage Start Day (Day of Month)
               </label>
               <input
@@ -350,34 +350,34 @@ export default function BenefitPlanForm() {
                 min="1"
                 max="31"
                 {...register('coverageStartDay', { valueAsNumber: true })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
           </div>
         </div>
 
         {/* Eligibility & Enrollment */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Eligibility & Enrollment</h2>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Eligibility & Enrollment</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Waiting Period (Days)
               </label>
               <input
                 type="number"
                 {...register('waitingPeriodDays', { valueAsNumber: true })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Eligibility Rules</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Eligibility Rules</label>
               <textarea
                 {...register('eligibilityRules')}
                 rows={3}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                 placeholder="Describe eligibility requirements..."
               />
             </div>
@@ -385,54 +385,54 @@ export default function BenefitPlanForm() {
         </div>
 
         {/* Plan Period */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Plan Period</h2>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Plan Period</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Plan Year Start <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 {...register('planYearStart', { required: 'Plan year start is required' })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Plan Year End <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 {...register('planYearEnd', { required: 'Plan year end is required' })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
           </div>
         </div>
 
         {/* Documents */}
-        <div className="bg-white p-6 rounded-lg border border-slate-200 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">Documents</h2>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg border border-slate-200 dark:border-slate-700 space-y-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Documents</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Summary Document URL</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Summary Document URL</label>
               <input
                 type="url"
                 {...register('summaryDocumentUrl')}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Handbook URL</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Handbook URL</label>
               <input
                 type="url"
                 {...register('handbookUrl')}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
           </div>
@@ -443,7 +443,7 @@ export default function BenefitPlanForm() {
           <button
             type="button"
             onClick={() => navigate('/benefits/plans')}
-            className="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="px-6 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
           >
             Cancel
           </button>

@@ -498,9 +498,12 @@ export async function assignTemplateToWorker(req, res) {
     const organizationId = req.user.organization_id;
     const userId = req.user.id;
     const { employeeId } = req.params;
+    const { templateId, effectiveFrom, effectiveTo } = req.body;
 
     const assignment = await payStructureService.assignTemplateToWorker(
-      { ...req.body, employeeId },
+      employeeId,
+      templateId,
+      { effectiveFrom, effectiveTo },
       organizationId,
       userId
     );
@@ -556,17 +559,10 @@ export async function getCurrentWorkerStructure(req, res) {
       asOfDate
     );
 
-    if (!structure) {
-      return res.status(404).json({
-        success: false,
-        error: 'Not Found',
-        message: 'No pay structure found for this worker'
-      });
-    }
-
+    // Return 200 with null if no structure exists (not an error - worker just doesn't have one assigned yet)
     res.status(200).json({
       success: true,
-      workerPayStructure: structure
+      workerPayStructure: structure || null
     });
   } catch (error) {
     logger.error('Error fetching worker pay structure', {

@@ -281,6 +281,36 @@ async function getCompensationHistory(req, res) {
   }
 }
 
+/**
+ * Get compensation summary for an employee
+ * GET /api/paylinq/compensation/employee/:employeeId/summary
+ */
+async function getCompensationSummary(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { employeeId } = req.params;
+
+    const summary = await payrollService.getCompensationSummary(employeeId, organizationId);
+
+    res.status(200).json({
+      success: true,
+      summary: summary,
+    });
+  } catch (error) {
+    logger.error('Error fetching compensation summary', {
+      error: error.message,
+      employeeId: req.params.employeeId,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch compensation summary',
+    });
+  }
+}
+
 export default {
   createCompensation,
   getEmployeeCompensation,
@@ -288,4 +318,5 @@ export default {
   updateCompensation,
   deleteCompensation,
   getCompensationHistory,
+  getCompensationSummary,
 };

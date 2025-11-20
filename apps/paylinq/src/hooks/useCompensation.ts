@@ -47,7 +47,7 @@ export function useCompensationById(id: string) {
     queryKey: [...COMPENSATION_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getCompensationById(id);
-      return response.data;
+      return response.data || null;
     },
     enabled: !!id,
   });
@@ -79,7 +79,7 @@ export function useCurrentCompensation(employeeId: string) {
     queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'current'],
     queryFn: async () => {
       const response = await paylinq.getCurrentCompensation(employeeId);
-      return response.data;
+      return response.data || null;
     },
     enabled: !!employeeId,
     staleTime: 5 * 60 * 1000, // 5 minutes - current compensation doesn't change often
@@ -112,7 +112,7 @@ export function useCompensationSummary(employeeId: string) {
     queryKey: [...COMPENSATION_KEY, 'summary', employeeId],
     queryFn: async () => {
       const response = await paylinq.getCompensationSummary(employeeId);
-      return response.data;
+      return response.data || null;
     },
     enabled: !!employeeId,
   });

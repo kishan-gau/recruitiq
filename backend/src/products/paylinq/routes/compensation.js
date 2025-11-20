@@ -46,8 +46,17 @@ const idParamSchema = Joi.object({
 
 // Routes
 router.post('/', validate(createCompensationSchema, 'body'), compensationController.createCompensation);
+
+// New API client compatible routes (employee singular)
+router.get('/employee/:employeeId/current', validate(employeeIdParamSchema, 'params'), compensationController.getEmployeeCompensation);
+router.get('/employee/:employeeId/history', validate(employeeIdParamSchema, 'params'), compensationController.getCompensationHistory);
+router.get('/employee/:employeeId/summary', validate(employeeIdParamSchema, 'params'), compensationController.getCompensationSummary);
+router.get('/employee/:employeeId', validate(employeeIdParamSchema, 'params'), compensationController.getEmployeeCompensation);
+
+// Legacy routes (employees plural) - kept for backwards compatibility
 router.get('/employees/:employeeId/compensation', validate(employeeIdParamSchema, 'params'), compensationController.getEmployeeCompensation);
 router.get('/employees/:employeeId/compensation/history', validate(employeeIdParamSchema, 'params'), compensationController.getCompensationHistory);
+
 router.get('/:id', validate(idParamSchema, 'params'), compensationController.getCompensationById);
 router.put('/:id', validate(idParamSchema, 'params'), validate(updateCompensationSchema, 'body'), compensationController.updateCompensation);
 router.delete('/:id', validate(idParamSchema, 'params'), compensationController.deleteCompensation);

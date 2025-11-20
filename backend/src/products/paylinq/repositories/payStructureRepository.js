@@ -625,6 +625,8 @@ class PayStructureRepository {
                   'overrideAllowedFields', psc.override_allowed_fields,
                   'isMandatory', psc.is_mandatory,
                   'isTaxable', psc.is_taxable,
+                  'affectsGrossPay', psc.affects_gross_pay,
+                  'affectsNetPay', psc.affects_net_pay,
                   'configuration', jsonb_build_object(
                     'defaultAmount', psc.default_amount,
                     'percentageRate', psc.percentage_rate,

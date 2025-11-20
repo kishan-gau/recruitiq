@@ -5,6 +5,8 @@
 
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import compensationService from '../../../shared/services/compensationService.js';
+import { mapEmployeeDbToApi, mapEmployeesDbToApi, mapEmployeeApiToDb } from '../dto/employeeDto.js';
 
 class EmployeeService {
   constructor() {
@@ -22,30 +24,33 @@ class EmployeeService {
         email: employeeData.email 
       });
 
+      // Transform API data (camelCase) to DB format (snake_case)
+      const dbData = mapEmployeeApiToDb(employeeData);
+
       // Validate required fields
-      this.validateEmployeeData(employeeData);
+      this.validateEmployeeData(dbData);
 
       // Check if email already exists
-      if (employeeData.email) {
+      if (dbData.email) {
         const checkEmailSql = `
           SELECT id FROM hris.employee 
           WHERE email = $1 AND organization_id = $2 AND deleted_at IS NULL
         `;
-        const emailCheck = await query(checkEmailSql, [employeeData.email, organizationId], organizationId);
+        const emailCheck = await query(checkEmailSql, [dbData.email, organizationId], organizationId);
         if (emailCheck.rows.length > 0) {
-          throw new Error(`Employee with email ${employeeData.email} already exists`);
+          throw new Error(`Employee with email ${dbData.email} already exists`);
         }
       }
 
       // Check if employee number already exists
-      if (employeeData.employee_number) {
+      if (dbData.employee_number) {
         const checkNumberSql = `
           SELECT id FROM hris.employee 
           WHERE employee_number = $1 AND organization_id = $2 AND deleted_at IS NULL
         `;
-        const numberCheck = await query(checkNumberSql, [employeeData.employee_number, organizationId], organizationId);
+        const numberCheck = await query(checkNumberSql, [dbData.employee_number, organizationId], organizationId);
         if (numberCheck.rows.length > 0) {
-          throw new Error(`Employee with number ${employeeData.employee_number} already exists`);
+          throw new Error(`Employee with number ${dbData.employee_number} already exists`);
         }
       }
 
@@ -66,21 +71,21 @@ class EmployeeService {
 
       const params = [
         organizationId,
-        employeeData.employee_number || null,
-        employeeData.first_name,
-        employeeData.middle_name || null,
-        employeeData.last_name,
-        employeeData.preferred_name || null,
-        employeeData.email,
-        employeeData.phone || null,
-        employeeData.mobile_phone || null,
-        employeeData.hire_date || new Date(),
-        employeeData.employment_status || 'active',
-        employeeData.employment_type || 'full_time',
-        employeeData.department_id || null,
-        employeeData.location_id || null,
-        employeeData.manager_id || null,
-        employeeData.job_title || null,
+        dbData.employee_number || null,
+        dbData.first_name,
+        dbData.middle_name || null,
+        dbData.last_name,
+        dbData.preferred_name || null,
+        dbData.email,
+        dbData.phone || null,
+        dbData.mobile_phone || null,
+        dbData.hire_date || new Date(),
+        dbData.employment_status || 'active',
+        dbData.employment_type || 'full_time',
+        dbData.department_id || null,
+        dbData.location_id || null,
+        dbData.manager_id || null,
+        dbData.job_title || null,
         userId,
         userId
       ];
@@ -97,7 +102,83 @@ class EmployeeService {
         organizationId 
       });
 
-      return employee;
+      // Auto-create payroll configuration for new employee
+      // This ensures the employee appears in PayLinQ immediately
+      try {
+        const payrollConfigSql = `
+          INSERT INTO payroll.employee_payroll_config (
+            organization_id, employee_id, pay_frequency, payment_method, currency,
+            payroll_status, payroll_start_date, created_by
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8
+          )
+          ON CONFLICT (organization_id, employee_id) DO NOTHING
+        `;
+
+        await query(payrollConfigSql, [
+          organizationId,
+          employee.id,
+          dbData.pay_frequency || 'monthly', // Default to monthly
+          'direct_deposit', // Default payment method
+          dbData.currency || 'SRD', // Default currency
+          'active',
+          dbData.hire_date || new Date(),
+          userId
+        ], organizationId, {
+          operation: 'create',
+          table: 'payroll.employee_payroll_config'
+        });
+
+        this.logger.info('Created payroll config for employee', {
+          employeeId: employee.id,
+          organizationId
+        });
+      } catch (payrollErr) {
+        // Log error but don't fail employee creation
+        this.logger.error('Failed to create payroll config', {
+          error: payrollErr.message,
+          employeeId: employee.id,
+          organizationId
+        });
+      }
+
+      // Create initial compensation record if compensation data is provided
+      if (dbData.compensation || dbData.salary) {
+        try {
+          const compensationAmount = dbData.compensation || dbData.salary;
+          const compensationData = {
+            amount: compensationAmount,
+            type: dbData.compensation_type || dbData.salary_type || 'salary',
+            currency: dbData.currency || 'SRD',
+            effectiveFrom: dbData.hire_date || new Date().toISOString().split('T')[0],
+            payFrequency: dbData.pay_frequency || 'monthly',
+            overtimeRate: dbData.overtime_rate || null
+          };
+
+          await compensationService.createInitialCompensation(
+            employee.id,
+            compensationData,
+            organizationId,
+            userId
+          );
+
+          this.logger.info('Created initial compensation for employee via shared service', {
+            employeeId: employee.id,
+            amount: compensationData.amount,
+            type: compensationData.type
+          });
+        } catch (compErr) {
+          // Log error but don't fail employee creation
+          this.logger.error('Failed to create initial compensation record', {
+            error: compErr.message,
+            employeeId: employee.id,
+            organizationId
+          });
+        }
+      }
+
+      // Transform DB employee (snake_case) to API format (camelCase)
+      return mapEmployeeDbToApi(employee);
     } catch (error) {
       this.logger.error('Error creating employee', { 
         error: error.message,
@@ -138,7 +219,8 @@ class EmployeeService {
         throw new Error(`Employee with ID ${id} not found`);
       }
 
-      return result.rows[0];
+      // Transform DB employee to API format
+      return mapEmployeeDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error getting employee', { 
         error: error.message,
@@ -244,8 +326,9 @@ class EmployeeService {
         table: 'hris.employee'
       });
 
+      // Transform DB employees to API format
       return {
-        employees: result.rows,
+        employees: mapEmployeesDbToApi(result.rows),
         total: parseInt(countResult.rows[0].count),
         limit,
         offset
@@ -271,6 +354,9 @@ class EmployeeService {
         userId 
       });
 
+      // Transform API data (camelCase) to DB format (snake_case)
+      const dbData = mapEmployeeApiToDb(employeeData);
+
       // Check if employee exists
       const checkSql = `
         SELECT * FROM hris.employee 
@@ -285,14 +371,14 @@ class EmployeeService {
       const existingEmployee = checkResult.rows[0];
 
       // Validate email uniqueness if changed
-      if (employeeData.email && employeeData.email !== existingEmployee.email) {
+      if (dbData.email && dbData.email !== existingEmployee.email) {
         const emailCheckSql = `
           SELECT id FROM hris.employee 
           WHERE email = $1 AND organization_id = $2 AND id != $3 AND deleted_at IS NULL
         `;
-        const emailCheck = await query(emailCheckSql, [employeeData.email, organizationId, id], organizationId);
+        const emailCheck = await query(emailCheckSql, [dbData.email, organizationId, id], organizationId);
         if (emailCheck.rows.length > 0) {
-          throw new Error(`Employee with email ${employeeData.email} already exists`);
+          throw new Error(`Employee with email ${dbData.email} already exists`);
         }
       }
 
@@ -309,15 +395,16 @@ class EmployeeService {
       ];
 
       updateableFields.forEach(field => {
-        if (employeeData[field] !== undefined) {
+        if (dbData[field] !== undefined) {
           updates.push(`${field} = $${paramIndex}`);
-          params.push(employeeData[field]);
+          params.push(dbData[field]);
           paramIndex++;
         }
       });
 
       if (updates.length === 0) {
-        return existingEmployee;
+        // No changes, return existing employee transformed to API format
+        return mapEmployeeDbToApi(existingEmployee);
       }
 
       updates.push(`updated_by = $${paramIndex}`);
@@ -345,7 +432,8 @@ class EmployeeService {
         organizationId 
       });
 
-      return result.rows[0];
+      // Transform DB employee to API format
+      return mapEmployeeDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error updating employee', { 
         error: error.message,
@@ -379,14 +467,14 @@ class EmployeeService {
         throw new Error(`Employee with ID ${id} not found`);
       }
 
-      // Soft delete employee
+      // Soft delete employee (note: hris.employee table doesn't have deleted_by column)
       const sql = `
         UPDATE hris.employee 
-        SET deleted_at = CURRENT_TIMESTAMP, deleted_by = $3
+        SET deleted_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND organization_id = $2
       `;
 
-      await query(sql, [id, organizationId, userId], organizationId, {
+      await query(sql, [id, organizationId], organizationId, {
         operation: 'softDelete',
         table: 'hris.employee'
       });
@@ -445,7 +533,8 @@ class EmployeeService {
         table: 'hris.employee'
       });
 
-      return result.rows;
+      // Transform DB employees to API format
+      return mapEmployeesDbToApi(result.rows);
     } catch (error) {
       this.logger.error('Error searching employees', { 
         error: error.message,
@@ -482,7 +571,8 @@ class EmployeeService {
         throw new Error(`Employee with email ${email} not found`);
       }
 
-      return result.rows[0];
+      // Transform DB employee to API format
+      return mapEmployeeDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error getting employee by email', { 
         error: error.message,
@@ -519,7 +609,8 @@ class EmployeeService {
         throw new Error(`Employee with number ${employeeNumber} not found`);
       }
 
-      return result.rows[0];
+      // Transform DB employee to API format
+      return mapEmployeeDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error getting employee by number', { 
         error: error.message,

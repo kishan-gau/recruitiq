@@ -51,6 +51,7 @@ const BenefitPlanDetails = lazy(() => import('@/pages/benefits/BenefitPlanDetail
 const BenefitPlanForm = lazy(() => import('@/pages/benefits/BenefitPlanForm'));
 const EnrollmentsList = lazy(() => import('@/pages/benefits/EnrollmentsList'));
 const EnrollmentDetails = lazy(() => import('@/pages/benefits/EnrollmentDetails'));
+const EnrollmentForm = lazy(() => import('@/pages/benefits/EnrollmentForm'));
 
 // Documents
 const DocumentsList = lazy(() => import('@/pages/documents/DocumentsList'));
@@ -165,6 +166,7 @@ function App() {
                     </Route>
                     <Route path="enrollments">
                       <Route index element={<EnrollmentsList />} />
+                      <Route path="new" element={<EnrollmentForm />} />
                       <Route path=":id" element={<EnrollmentDetails />} />
                     </Route>
                   </Route>

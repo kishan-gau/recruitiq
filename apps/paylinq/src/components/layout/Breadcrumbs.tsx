@@ -27,7 +27,7 @@ const Breadcrumbs = () => {
     '/timesheets': 'Timesheets',
     '/timesheets/new': 'New Time Entry',
     '/compensation': 'Compensation Management',
-    '/compensation/new': 'Add Compensation',
+    '/compensation/create': 'Add Compensation',
     '/reports': 'Reports Dashboard',
     '/settings': 'Settings',
     '/settings/pay-periods': 'Pay Period Configuration',
