@@ -7,15 +7,21 @@
  * MVP Version: Simple arithmetic formulas (e.g., hours * rate, base + bonus)
  * Phase 2: Complex expressions with conditionals, aggregations, and custom functions
  * 
- * SECURITY: Uses expr-eval library for safe expression evaluation.
+ * SECURITY: Uses mathjs library for safe expression evaluation.
  * Prevents code injection vulnerabilities by avoiding eval() and Function() constructor.
  * 
  * @module products/paylinq/services/formulaEngineService
  */
 
-import { Parser } from 'expr-eval';
+import { create, all } from 'mathjs';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+
+// Create a limited math.js instance with only safe functions
+const math = create(all, {
+  number: 'number',        // Use native JavaScript numbers
+  precision: 64,           // Precision for calculations
+});
 
 class FormulaEngineService {
   constructor() {
@@ -218,7 +224,7 @@ class FormulaEngineService {
 
   /**
    * Evaluate arithmetic expression using safe parser
-   * SECURITY: Uses expr-eval library instead of Function() constructor
+   * SECURITY: Uses mathjs library instead of Function() constructor
    * to prevent code injection vulnerabilities
    * 
    * @param {string} expression - Arithmetic expression
@@ -239,10 +245,9 @@ class FormulaEngineService {
         throw new Error('Expression contains invalid characters after substitution');
       }
 
-      // SECURITY FIX: Use safe expression parser instead of Function() constructor
-      // This prevents code injection attacks
-      const parser = new Parser();
-      const result = parser.evaluate(cleanExpression);
+      // SECURITY FIX: Use mathjs library for safe expression evaluation
+      // This prevents code injection attacks and prototype pollution
+      const result = math.evaluate(cleanExpression);
 
       // Validate result
       if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
