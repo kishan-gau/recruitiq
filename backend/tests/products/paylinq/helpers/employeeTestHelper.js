@@ -166,10 +166,12 @@ export async function deleteTestEmployee(employeeId) {
  */
 export async function cleanupTestEmployees(organizationId, hoursAgo = 1) {
   // Delete payroll configs for recent test employees
+  // Note: hoursAgo must be a number, not a UUID
+  const intervalHours = typeof hoursAgo === 'number' ? hoursAgo : 1;
   await query(
     `DELETE FROM payroll.employee_payroll_config 
      WHERE organization_id = $1 
-     AND created_at > NOW() - INTERVAL '${hoursAgo} hours'`,
+     AND created_at > NOW() - INTERVAL '${intervalHours} hours'`,
     [organizationId]
   );
   
@@ -177,7 +179,7 @@ export async function cleanupTestEmployees(organizationId, hoursAgo = 1) {
   await query(
     `DELETE FROM hris.employee 
      WHERE organization_id = $1 
-     AND created_at > NOW() - INTERVAL '${hoursAgo} hours'`,
+     AND created_at > NOW() - INTERVAL '${intervalHours} hours'`,
     [organizationId]
   );
 }

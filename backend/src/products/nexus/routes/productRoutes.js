@@ -4,9 +4,13 @@
  */
 
 import express from 'express';
+import { authenticatePlatform } from '../../../middleware/auth.js';
 import { productController } from '../controllers/index.js';
 
 const router = express.Router();
+
+// All routes require platform authentication
+router.use(authenticatePlatform);
 
 // Public routes (or with basic auth)
 router.get('/', productController.getAllProducts.bind(productController));

@@ -111,7 +111,12 @@ class PayComponentService {
    * @returns {Promise<Object>} Created pay component
    */
   async createPayComponent(componentData, organizationId, userId) {
-    const { error, value } = this.payComponentSchema.validate(componentData);
+    const { error, value } = this.payComponentSchema.validate(componentData, {
+      abortEarly: false,
+      stripUnknown: true,
+      convert: true,
+    });
+    
     if (error) {
       throw new ValidationError(error.details[0].message);
     }
@@ -414,7 +419,11 @@ class PayComponentService {
    * @returns {Promise<Object>} Created component formula
    */
   async createComponentFormula(formulaData, organizationId, userId) {
-    const { error, value } = this.componentFormulaSchema.validate(formulaData);
+    const { error, value } = this.componentFormulaSchema.validate(formulaData, {
+      abortEarly: false,
+      stripUnknown: true,
+      convert: true,
+    });
     if (error) {
       throw new ValidationError(error.details[0].message);
     }
@@ -499,7 +508,11 @@ class PayComponentService {
    * @returns {Promise<Object>} Created custom component
    */
   async assignCustomComponent(customComponentData, organizationId, userId) {
-    const { error, value } = this.customComponentSchema.validate(customComponentData);
+    const { error, value } = this.customComponentSchema.validate(customComponentData, {
+      abortEarly: false,
+      stripUnknown: true,
+      convert: true,
+    });
     if (error) {
       throw new ValidationError(error.details[0].message);
     }

@@ -1,0 +1,224 @@
+name: Deploy to TransIP VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      apps:
+        description: 'Apps to deploy (comma-separated: backend,nexus,paylinq,portal,recruitiq or "all")'
+        required: true
+        default: 'all'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        include:
+          - service: backend
+            dockerfile: Dockerfile.backend
+            context: .
+          - service: nexus
+            dockerfile: Dockerfile.frontend
+            context: .
+            build-arg: APP_NAME=nexus
+          - service: paylinq
+            dockerfile: Dockerfile.frontend
+            context: .
+            build-arg: APP_NAME=paylinq
+          - service: portal
+            dockerfile: Dockerfile.frontend
+            context: .
+            build-arg: APP_NAME=portal
+          - service: recruitiq
+            dockerfile: Dockerfile.frontend
+            context: .
+            build-arg: APP_NAME=recruitiq
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if service should be deployed
+        id: check
+        run: |
+          APPS="${{ github.event.inputs.apps }}"
+          SERVICE="${{ matrix.service }}"
+          
+          if [[ "$APPS" == "all" ]] || [[ "$APPS" == *"$SERVICE"* ]]; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.check.outputs.deploy == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: steps.check.outputs.deploy == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        if: steps.check.outputs.deploy == 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+          tags: |
+            type=sha,prefix=${{ github.event.inputs.environment }}-
+            type=raw,value=${{ github.event.inputs.environment }}-latest
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Docker image
+        if: steps.check.outputs.deploy == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.build-arg }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  deploy:
+    name: Deploy to TransIP VPS
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create deployment directory
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "mkdir -p /opt/recruitiq"
+
+      - name: Copy docker-compose and configuration
+        run: |
+          scp docker-compose.production.yml ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/recruitiq/docker-compose.yml
+          scp -r nginx ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/recruitiq/
+
+      - name: Create .env file on VPS
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cat > /opt/recruitiq/.env << 'EOF'
+          # Environment
+          NODE_ENV=production
+          ENVIRONMENT=${{ github.event.inputs.environment }}
+          
+          # Domain
+          DOMAIN=${{ secrets.DOMAIN }}
+          
+          # Database
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          
+          # Redis
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          
+          # JWT Secrets
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+          COOKIE_SECRET=${{ secrets.COOKIE_SECRET }}
+          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+          
+          # Encryption
+          ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+          
+          # CORS
+          CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+          
+          # Let's Encrypt
+          LETSENCRYPT_EMAIL=${{ secrets.LETSENCRYPT_EMAIL }}
+          
+          # Traefik Auth (generated with: htpasswd -nb admin password)
+          TRAEFIK_AUTH=${{ secrets.TRAEFIK_AUTH }}
+          EOF"
+
+      - name: Login to Container Registry on VPS
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "echo ${{ secrets.GITHUB_TOKEN }} | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin"
+
+      - name: Pull latest images
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/recruitiq && docker-compose pull"
+
+      - name: Run database migrations
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/recruitiq && docker-compose run --rm backend npm run migrate"
+
+      - name: Deploy application
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/recruitiq && docker-compose up -d"
+
+      - name: Health check
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "sleep 30 && curl -f http://localhost:3001/health || exit 1"
+
+      - name: Clean up old images
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "docker image prune -a -f --filter 'until=168h'"
+
+      - name: Show deployment status
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /opt/recruitiq && docker-compose ps"
+
+  notify:
+    name: Send Deployment Notification
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "✅ Deployment to ${{ github.event.inputs.environment }} succeeded!"
+          echo "Apps deployed: ${{ github.event.inputs.apps }}"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Notify failure
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "❌ Deployment to ${{ github.event.inputs.environment }} failed!"
+          exit 1

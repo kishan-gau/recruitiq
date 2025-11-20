@@ -5,13 +5,14 @@ export default defineConfig({
   plugins: [react()],
   
   server: {
+    host: 'localhost',
     port: 5173,
     
     // Security: Proxy API requests to avoid CORS issues in development
     // This allows using relative URLs (/api) in the frontend
     proxy: {
       '/api': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:4000',
+        target: 'http://localhost:4000',
         changeOrigin: true,
         secure: false,
       }

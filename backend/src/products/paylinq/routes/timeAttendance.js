@@ -58,11 +58,49 @@ const employeeIdParamSchema = Joi.object({
   employeeId: Joi.string().uuid().required(),
 });
 
+// Shift type schemas
+const createShiftTypeSchema = Joi.object({
+  shiftName: Joi.string().required().max(100),
+  shiftCode: Joi.string().required().max(50),
+  startTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required(), // HH:MM format
+  endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
+  durationHours: Joi.number().min(0).max(24).required(),
+  isOvernight: Joi.boolean().default(false),
+  breakDurationMinutes: Joi.number().min(0).default(0),
+  isPaidBreak: Joi.boolean().default(false),
+  shiftDifferentialRate: Joi.number().min(0).default(0),
+  description: Joi.string().max(500).allow(null, ''),
+  status: Joi.string().valid('active', 'inactive').default('active'),
+});
+
+const updateShiftTypeSchema = Joi.object({
+  shiftName: Joi.string().max(100),
+  shiftCode: Joi.string().max(50),
+  startTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  durationHours: Joi.number().min(0).max(24),
+  isOvernight: Joi.boolean(),
+  breakDurationMinutes: Joi.number().min(0),
+  isPaidBreak: Joi.boolean(),
+  shiftDifferentialRate: Joi.number().min(0),
+  description: Joi.string().max(500).allow(null, ''),
+  status: Joi.string().valid('active', 'inactive'),
+});
+
 // Routes
 router.post('/clock-in', validate(clockInSchema, 'body'), timeAttendanceController.clockIn);
 router.post('/clock-out', validate(clockOutSchema, 'body'), timeAttendanceController.clockOut);
 router.get('/active-clocks', timeAttendanceController.getActiveClockEntries);
 router.get('/employees/:employeeId/clock-history', validate(employeeIdParamSchema, 'params'), timeAttendanceController.getEmployeeClockHistory);
+
+// Shift type routes
+router.post('/shift-types', validate(createShiftTypeSchema, 'body'), timeAttendanceController.createShiftType);
+router.get('/shift-types', timeAttendanceController.getShiftTypes);
+router.get('/shift-types/:id', validate(idParamSchema, 'params'), timeAttendanceController.getShiftTypeById);
+router.put('/shift-types/:id', validate(idParamSchema, 'params'), validate(updateShiftTypeSchema, 'body'), timeAttendanceController.updateShiftType);
+router.delete('/shift-types/:id', validate(idParamSchema, 'params'), timeAttendanceController.deleteShiftType);
+
+// Time entry routes
 router.post('/time-entries', validate(createTimeEntrySchema, 'body'), timeAttendanceController.createTimeEntry);
 router.get('/time-entries', timeAttendanceController.getTimeEntries);
 router.get('/time-entries/:id', validate(idParamSchema, 'params'), timeAttendanceController.getTimeEntryById);

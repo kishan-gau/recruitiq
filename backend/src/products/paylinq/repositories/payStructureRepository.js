@@ -363,7 +363,8 @@ class PayStructureRepository {
   async getTemplateComponents(templateId, organizationId) {
     const result = await this.query(
       `SELECT psc.*,
-              pc.component_name as pay_component_name
+              pc.component_name as pay_component_name,
+              pc.component_type as pay_component_type
        FROM payroll.pay_structure_component psc
        INNER JOIN payroll.pay_structure_template pst ON pst.id = psc.template_id
        LEFT JOIN payroll.pay_component pc ON pc.id = psc.pay_component_id
@@ -619,17 +620,19 @@ class PayStructureRepository {
                   'componentName', psc.component_name,
                   'componentCategory', psc.component_category,
                   'calculationType', psc.calculation_type,
-                  'defaultAmount', psc.default_amount,
-                  'percentageRate', psc.percentage_rate,
-                  'percentageOf', psc.percentage_of,
-                  'rateMultiplier', psc.rate_multiplier,
-                  'formulaExpression', psc.formula_expression,
-                  'formulaVariables', psc.formula_variables,
                   'sequenceOrder', psc.sequence_order,
                   'allowWorkerOverride', psc.allow_worker_override,
                   'overrideAllowedFields', psc.override_allowed_fields,
                   'isMandatory', psc.is_mandatory,
-                  'isTaxable', psc.is_taxable
+                  'isTaxable', psc.is_taxable,
+                  'configuration', jsonb_build_object(
+                    'defaultAmount', psc.default_amount,
+                    'percentageRate', psc.percentage_rate,
+                    'percentageOf', psc.percentage_of,
+                    'rateMultiplier', psc.rate_multiplier,
+                    'formulaExpression', psc.formula_expression,
+                    'formulaVariables', psc.formula_variables
+                  )
                 ) ORDER BY psc.sequence_order
               )
               FROM payroll.pay_structure_component psc

@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import TenantUser from '../../models/TenantUser.js';
 import db from '../../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
+import { getTenantAccessCookieConfig, getTenantRefreshCookieConfig } from '../../config/cookie.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Tenant Authentication Controller
@@ -20,6 +22,7 @@ export const login = async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({
+        success: false,
         error: 'Email and password are required'
       });
     }
@@ -39,6 +42,7 @@ export const login = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({
+        success: false,
         error: 'Invalid credentials'
       });
     }
@@ -46,6 +50,7 @@ export const login = async (req, res) => {
     // Check if account is locked
     if (TenantUser.isAccountLocked(user)) {
       return res.status(403).json({
+        success: false,
         error: 'Account is locked due to too many failed login attempts. Please try again later.'
       });
     }
@@ -53,6 +58,7 @@ export const login = async (req, res) => {
     // Check if account is active
     if (!user.is_active) {
       return res.status(403).json({
+        success: false,
         error: 'Account is inactive. Please contact your administrator.'
       });
     }
@@ -65,13 +71,17 @@ export const login = async (req, res) => {
       await TenantUser.incrementFailedLogins(email, organizationId);
       
       return res.status(401).json({
+        success: false,
         error: 'Invalid credentials'
       });
     }
 
     // Set PostgreSQL RLS context for the session
-    // Note: SET LOCAL doesn't support parameterized queries, but organizationId is validated UUID
-    await db.query(`SET LOCAL app.current_organization_id = '${organizationId}'`);
+    // Using set_config() function to safely set session variable with parameterized query
+    await db.query('SELECT set_config($1, $2, true)', [
+      'app.current_organization_id',
+      organizationId
+    ]);
 
     // DEBUG: Log what we're putting in the JWT
     if (process.env.NODE_ENV === 'development') {
@@ -141,24 +151,23 @@ export const login = async (req, res) => {
     await TenantUser.updateLastLogin(user.id, user.organization_id, req.ip || req.connection.remoteAddress);
 
     // SECURITY: Set tokens as httpOnly cookies (industry standard - protects against XSS)
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,  // Cannot be accessed via JavaScript (XSS protection)
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Allow cross-origin in dev
-      maxAge: 15 * 60 * 1000, // 15 minutes
-      path: '/' // Available for all routes
+    // Using centralized cookie configuration for consistency
+    const accessCookieConfig = getTenantAccessCookieConfig();
+    const refreshCookieConfig = getTenantRefreshCookieConfig(rememberMe);
+    
+    // DEBUG: Log cookie configurations using logger (not console.log)
+    logger.info('🔍 DEBUG Setting cookies with config:', {
+      accessConfig: accessCookieConfig,
+      refreshConfig: refreshCookieConfig,
+      email: email // For correlation
     });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000, // 30 days or 7 days
-      path: '/' // Available for all routes
-    });
+    
+    res.cookie('tenant_access_token', accessToken, accessCookieConfig);
+    res.cookie('tenant_refresh_token', refreshToken, refreshCookieConfig);
 
     // Return success with user info only (tokens are in httpOnly cookies)
     res.json({
+      success: true,
       user: {
         id: user.id,
         email: user.email,
@@ -177,6 +186,7 @@ export const login = async (req, res) => {
   } catch (error) {
     console.error('Tenant login error:', error);
     res.status(500).json({
+      success: false,
       error: 'An error occurred during login'
     });
   }
@@ -189,10 +199,11 @@ export const login = async (req, res) => {
 export const refresh = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie instead of request body
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.tenant_refresh_token;
 
     if (!refreshToken) {
       return res.status(400).json({
+        success: false,
         error: 'Refresh token is required'
       });
     }
@@ -203,6 +214,7 @@ export const refresh = async (req, res) => {
       decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     } catch (error) {
       return res.status(401).json({
+        success: false,
         error: 'Invalid or expired refresh token'
       });
     }
@@ -210,6 +222,7 @@ export const refresh = async (req, res) => {
     // Verify token type
     if (decoded.type !== 'tenant') {
       return res.status(403).json({
+        success: false,
         error: 'Invalid token type'
       });
     }
@@ -224,6 +237,7 @@ export const refresh = async (req, res) => {
 
     if (tokenResult.rows.length === 0) {
       return res.status(401).json({
+        success: false,
         error: 'Refresh token not found'
       });
     }
@@ -232,19 +246,24 @@ export const refresh = async (req, res) => {
 
     if (tokenRecord.revoked_at) {
       return res.status(401).json({
+        success: false,
         error: 'Refresh token has been revoked'
       });
     }
 
     // Set RLS context
-    // Note: SET LOCAL doesn't support parameterized queries, but organizationId is from validated JWT
-    await db.query(`SET LOCAL app.current_organization_id = '${tokenRecord.organization_id}'`);
+    // Using set_config() function to safely set session variable with parameterized query
+    await db.query('SELECT set_config($1, $2, true)', [
+      'app.current_organization_id',
+      tokenRecord.organization_id
+    ]);
 
     // Get user
     const user = await TenantUser.findById(decoded.id, decoded.organizationId);
 
     if (!user || !user.is_active) {
       return res.status(403).json({
+        success: false,
         error: 'User account is not active'
       });
     }
@@ -272,10 +291,11 @@ export const refresh = async (req, res) => {
     );
 
     // SECURITY: Set new access token as httpOnly cookie
-    res.cookie('accessToken', accessToken, {
+    res.cookie('tenant_access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: 'lax', // Allow SSO navigation between tenant apps
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : '.localhost', // .localhost for dev subdomains
       maxAge: 15 * 60 * 1000, // 15 minutes
       path: '/' // Available for all routes
     });
@@ -287,6 +307,7 @@ export const refresh = async (req, res) => {
   } catch (error) {
     console.error('Tenant token refresh error:', error);
     res.status(500).json({
+      success: false,
       error: 'An error occurred during token refresh'
     });
   }
@@ -299,7 +320,7 @@ export const refresh = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.tenant_refresh_token;
 
     if (refreshToken) {
       // Revoke the refresh token
@@ -311,17 +332,24 @@ export const logout = async (req, res) => {
       );
     }
 
-    // SECURITY: Clear httpOnly cookies
-    res.clearCookie('accessToken', {
+    // SECURITY: Clear httpOnly cookies (must match cookie options used in login)
+    // Use res.cookie with maxAge: 0 instead of clearCookie to ensure Max-Age=0 in response
+    res.cookie('tenant_access_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : '.localhost', // .localhost for dev subdomains
+      path: '/',
+      maxAge: 0
     });
 
-    res.clearCookie('refreshToken', {
+    res.cookie('tenant_refresh_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.recruitiq.com' : '.localhost', // .localhost for dev subdomains
+      path: '/',
+      maxAge: 0
     });
 
     res.json({
@@ -349,11 +377,13 @@ export const getProfile = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({
+        success: false,
         error: 'User not found'
       });
     }
 
     res.json({
+      success: true,
       user: {
         id: user.id,
         email: user.email,
@@ -377,6 +407,7 @@ export const getProfile = async (req, res) => {
   } catch (error) {
     console.error('Get tenant profile error:', error);
     res.status(500).json({
+      success: false,
       error: 'An error occurred while fetching profile'
     });
   }

@@ -1,30 +1,33 @@
 /**
  * Base API client for Nexus HRIS
- * Configured to work with the backend at /api/nexus
+ * Configured to work with the backend at /api/products/nexus
+ * 
+ * SECURITY: Authentication is handled by @recruitiq/auth package with httpOnly cookies
  */
 
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
-import { authService } from './auth.service';
 
 // Store CSRF token in memory (safe to store in JS, not secret like access tokens)
 let csrfToken: string | null = null;
 
 // Create axios instance with default config
+// Use relative API paths proxied by Vite (same-origin for cookie auth)
+// ARCHITECTURE: All endpoints are relative to /api baseURL
+// This matches the unified api-client pattern
 const api: AxiosInstance = axios.create({
-  baseURL: '/api/nexus',
+  baseURL: '/api/products/nexus',
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 30000, // 30 seconds
+  withCredentials: true, // Important: send cookies with same-origin requests
 });
 
-// Request interceptor for adding auth token and CSRF token
+// Request interceptor for adding CSRF token
 api.interceptors.request.use(
   async (config) => {
-    const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // SECURITY: Auth tokens are in httpOnly cookies, sent automatically by browser
+    // No need to manually add Authorization header
     
     // Add CSRF token to POST, PUT, PATCH, DELETE requests
     const mutatingMethods = ['post', 'put', 'patch', 'delete'];
@@ -34,19 +37,18 @@ api.interceptors.request.use(
       if (!csrfToken && !config.url?.includes('/csrf-token') && !isAuthRequest) {
         console.log('[Nexus API] No CSRF token found, fetching lazily...');
         try {
-          const csrfResponse = await axios.get('/api/csrf-token');
+          const csrfResponse = await axios.get('/api/csrf-token', {
+            withCredentials: true
+          });
           csrfToken = csrfResponse.data?.csrfToken;
           if (csrfToken) {
             console.log('[Nexus API] CSRF token fetched and stored');
           }
         } catch (err: any) {
           console.warn('[Nexus API] Failed to fetch CSRF token:', err.response?.status || err.message);
-          // If it's a 401, redirect to login
+          // If it's a 401, session expired - redirect handled by @recruitiq/auth
           if (err.response?.status === 401) {
-            console.log('[Nexus API] CSRF fetch failed - session expired, redirecting to login');
-            const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-            window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`;
-            throw new Error('Authentication required. Please log in again.');
+            console.log('[Nexus API] CSRF fetch failed - session expired');
           }
         }
       }
@@ -64,51 +66,19 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for handling errors and token refresh
+// Response interceptor for handling errors
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error) => {
-    const originalRequest = error.config;
-    
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        // Try to refresh the token
-        const newToken = await authService.refresh();
-        
-        // Update the Authorization header
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        
-        // Fetch fresh CSRF token after successful token refresh
-        try {
-          const csrfResponse = await axios.get('/api/csrf-token');
-          csrfToken = csrfResponse.data?.csrfToken;
-          if (csrfToken) {
-            console.log('[Nexus API] CSRF token refreshed after token rotation');
-          }
-        } catch (csrfErr) {
-          console.warn('[Nexus API] Failed to refresh CSRF token after token rotation:', csrfErr);
-        }
-        
-        // Retry the original request
-        return api(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed, redirect to login
-        localStorage.removeItem('token');
-        localStorage.removeItem('accessToken');
-        csrfToken = null; // Clear CSRF token
-        
-        const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-        window.location.href = `/login?reason=session_expired&returnTo=${returnTo}`;
-        return Promise.reject(refreshError);
-      }
-    }
+    // SECURITY: Token refresh is handled by @recruitiq/auth package
+    // This interceptor only handles error formatting
     
     if (error.response) {
       // Server responded with error status
-      const message = error.response.data?.message || error.response.statusText;
+      const message = error.response.data?.message || error.response.data?.error || error.response.statusText;
+      
+      // 401 errors are handled by @recruitiq/auth AuthContext
+      // It will automatically redirect to login
       
       return Promise.reject({
         message,

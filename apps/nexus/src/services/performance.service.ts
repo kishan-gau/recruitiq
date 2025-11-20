@@ -1,9 +1,10 @@
 /**
  * Performance Service
  * API service layer for performance reviews and goals
+ * NOW USES: @recruitiq/api-client for type-safe API calls
  */
 
-import { apiClient } from './api';
+import { NexusClient, APIClient } from '@recruitiq/api-client';
 import type {
   PerformanceReview,
   CreatePerformanceReviewDTO,
@@ -17,150 +18,101 @@ import type {
   GoalStatistics,
 } from '@/types/performance.types';
 
+// Create singleton instance
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
+
 // ============ Performance Reviews ============
 
-/**
- * Get all performance reviews with optional filters
- */
 async function listReviews(filters?: PerformanceReviewFilters): Promise<PerformanceReview[]> {
-  const response = await apiClient.get<{ success: boolean; data: PerformanceReview[] }>('/performance/reviews', { params: filters });
-  return response.data.data;
+  const response = await nexusClient.listPerformanceReviews(filters);
+  // Backend returns { success: true, data: { reviews: [...], total, limit, offset } }
+  return response.data.reviews as PerformanceReview[];
 }
 
-/**
- * Get a single performance review by ID
- */
 async function getReview(id: string): Promise<PerformanceReview> {
-  const response = await apiClient.get<{ success: boolean; data: PerformanceReview }>(`/performance/reviews/${id}`);
-  return response.data.data;
+  const response = await nexusClient.getPerformanceReview(id);
+  return response.data as PerformanceReview;
 }
 
-/**
- * Get all reviews for a specific employee
- */
 async function getEmployeeReviews(employeeId: string): Promise<PerformanceReview[]> {
-  const response = await apiClient.get<{ success: boolean; data: PerformanceReview[] }>(`/performance/reviews/employee/${employeeId}`);
-  return response.data.data;
+  const response = await nexusClient.getEmployeeReviews(employeeId);
+  return response.data as PerformanceReview[];
 }
 
-/**
- * Get all reviews where user is the reviewer
- */
 async function getReviewerReviews(reviewerId: string): Promise<PerformanceReview[]> {
-  const response = await apiClient.get<{ success: boolean; data: PerformanceReview[] }>(`/performance/reviews/reviewer/${reviewerId}`);
-  return response.data.data;
+  const response = await nexusClient.getReviewerReviews(reviewerId);
+  return response.data as PerformanceReview[];
 }
 
-/**
- * Create a new performance review
- */
 async function createReview(review: CreatePerformanceReviewDTO): Promise<PerformanceReview> {
-  const response = await apiClient.post<{ success: boolean; data: PerformanceReview }>('/performance/reviews', review);
-  return response.data.data;
+  const response = await nexusClient.createPerformanceReview(review);
+  return response.data as PerformanceReview;
 }
 
-/**
- * Update an existing performance review
- */
 async function updateReview(id: string, updates: UpdatePerformanceReviewDTO): Promise<PerformanceReview> {
-  const response = await apiClient.put<{ success: boolean; data: PerformanceReview }>(`/performance/reviews/${id}`, updates);
-  return response.data.data;
+  const response = await nexusClient.updatePerformanceReview(id, updates);
+  return response.data as PerformanceReview;
 }
 
-/**
- * Delete a performance review
- */
 async function deleteReview(id: string): Promise<void> {
-  await apiClient.delete(`/performance/reviews/${id}`);
+  await nexusClient.deletePerformanceReview(id);
 }
 
-/**
- * Submit a review for completion
- */
 async function submitReview(id: string): Promise<PerformanceReview> {
-  const response = await apiClient.post<{ success: boolean; data: PerformanceReview }>(`/performance/reviews/${id}/submit`);
-  return response.data.data;
+  const response = await nexusClient.submitPerformanceReview(id);
+  return response.data as PerformanceReview;
 }
 
-/**
- * Get review statistics
- */
 async function getReviewStatistics(): Promise<ReviewStatistics> {
-  const response = await apiClient.get<{ success: boolean; data: ReviewStatistics }>('/performance/reviews/statistics');
-  return response.data.data;
+  const response = await nexusClient.getReviewStatistics();
+  return response.data as ReviewStatistics;
 }
 
 // ============ Goals ============
 
-/**
- * Get all goals with optional filters
- */
 async function listGoals(filters?: GoalFilters): Promise<Goal[]> {
-  const response = await apiClient.get<{ success: boolean; data: Goal[] }>('/performance/goals', { params: filters });
-  return response.data.data;
+  const response = await nexusClient.listGoals(filters);
+  return response.data as Goal[];
 }
 
-/**
- * Get a single goal by ID
- */
 async function getGoal(id: string): Promise<Goal> {
-  const response = await apiClient.get<{ success: boolean; data: Goal }>(`/performance/goals/${id}`);
-  return response.data.data;
+  const response = await nexusClient.getGoal(id);
+  return response.data as Goal;
 }
 
-/**
- * Get all goals for a specific employee
- */
 async function getEmployeeGoals(employeeId: string): Promise<Goal[]> {
-  const response = await apiClient.get<{ success: boolean; data: Goal[] }>(`/performance/goals/employee/${employeeId}`);
-  return response.data.data;
+  const response = await nexusClient.getEmployeeGoals(employeeId);
+  return response.data as Goal[];
 }
 
-/**
- * Create a new goal
- */
 async function createGoal(goal: CreateGoalDTO): Promise<Goal> {
-  const response = await apiClient.post<{ success: boolean; data: Goal }>('/performance/goals', goal);
-  return response.data.data;
+  const response = await nexusClient.createGoal(goal);
+  return response.data as Goal;
 }
 
-/**
- * Update an existing goal
- */
 async function updateGoal(id: string, updates: UpdateGoalDTO): Promise<Goal> {
-  const response = await apiClient.put<{ success: boolean; data: Goal }>(`/performance/goals/${id}`, updates);
-  return response.data.data;
+  const response = await nexusClient.updateGoal(id, updates);
+  return response.data as Goal;
 }
 
-/**
- * Delete a goal
- */
 async function deleteGoal(id: string): Promise<void> {
-  await apiClient.delete(`/performance/goals/${id}`);
+  await nexusClient.deleteGoal(id);
 }
 
-/**
- * Update goal progress
- */
 async function updateGoalProgress(id: string, progress: number): Promise<Goal> {
-  const response = await apiClient.patch<{ success: boolean; data: Goal }>(`/performance/goals/${id}/progress`, { progress });
-  return response.data.data;
+  const response = await nexusClient.updateGoalProgress(id, progress);
+  return response.data as Goal;
 }
 
-/**
- * Complete a goal
- */
 async function completeGoal(id: string): Promise<Goal> {
-  const response = await apiClient.post<{ success: boolean; data: Goal }>(`/performance/goals/${id}/complete`);
-  return response.data.data;
+  const response = await nexusClient.completeGoal(id);
+  return response.data as Goal;
 }
 
-/**
- * Get goal statistics
- */
 async function getGoalStatistics(): Promise<GoalStatistics> {
-  const response = await apiClient.get<{ success: boolean; data: GoalStatistics }>('/performance/goals/statistics');
-  return response.data.data;
+  const response = await nexusClient.getGoalStatistics();
+  return response.data as GoalStatistics;
 }
 
 export const performanceService = {

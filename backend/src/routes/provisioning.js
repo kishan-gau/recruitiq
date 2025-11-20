@@ -4,10 +4,13 @@
  */
 
 import express from 'express';
-import { authenticate, requireRole, requirePlatformUser, requirePermission } from '../middleware/auth.js';
+import { authenticatePlatform, requirePlatformRole, requirePlatformPermission } from '../middleware/auth.js';
 import vpsManager from '../services/vpsManager.js';
 import transipService from '../services/transip.js';
+import deploymentOrchestrator from '../services/deploymentOrchestrator.js';
+import sharedVPSOrchestrator from '../services/sharedVPSOrchestrator.js';
 import pool from '../config/database.js';
+import logger from '../utils/logger.js';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
 
@@ -91,12 +94,46 @@ async function getTierLimits(tier) {
 }
 
 /**
+ * Configure shared tenant asynchronously
+ * Handles NGINX subdomain configuration and SSL certificate setup
+ * @param {string} deploymentId - Deployment ID
+ * @param {string} organizationId - Organization UUID
+ * @param {string} slug - Organization slug
+ * @param {Object} vps - VPS object with connection details
+ */
+async function configureSharedTenantAsync(deploymentId, organizationId, slug, vps) {
+  try {
+    logger.info(`Starting shared tenant configuration for ${slug} on VPS ${vps.vps_name}`);
+
+    // Get VPS connection details
+    const sshKey = process.env.VPS_SSH_KEY_PATH || '/root/.ssh/id_rsa';
+    const baseDomain = process.env.BASE_DOMAIN || 'recruitiq.nl';
+
+    // Run onboarding orchestration
+    await sharedVPSOrchestrator.onboardTenantToSharedVPS({
+      deploymentId,
+      organizationId,
+      slug,
+      vpsIp: vps.ip_address,
+      vpsName: vps.vps_name,
+      sshKey,
+      baseDomain
+    });
+
+    logger.info(`✅ Shared tenant ${slug} configured successfully`);
+  } catch (error) {
+    logger.error(`❌ Shared tenant configuration failed for ${slug}:`, error);
+    // Error is already logged in orchestrator
+  }
+}
+
+/**
  * Provision new client instance
  * POST /api/portal/instances
  */
 router.post('/instances', 
-  authenticate, 
-  requireRole(['platform_admin']),
+  authenticatePlatform, 
+  requirePlatformRole(['platform_admin']),
   async (req, res) => {
     const client = await pool.connect();
     
@@ -193,13 +230,14 @@ router.post('/instances',
 
         await client.query('COMMIT');
 
-        // TODO: Configure subdomain on VPS (NGINX config, SSL cert)
+        const deploymentId = deploymentResult.rows[0].id;
 
+        // Return immediately to avoid timeout, then configure VPS asynchronously
         res.json({
           success: true,
-          deploymentId: deploymentResult.rows[0].id,
+          deploymentId,
           organizationId,
-          message: 'Shared hosting instance provisioned successfully',
+          message: 'Tenant onboarding initiated',
           url: `https://${slug}.recruitiq.nl`,
           deploymentModel: 'shared',
           tier,
@@ -213,6 +251,12 @@ router.post('/instances',
             tenantCount: selectedVPS.current_tenants + 1,
             maxTenants: selectedVPS.max_tenants
           }
+        });
+
+        // Configure subdomain on VPS asynchronously (NGINX config, SSL cert)
+        // Don't await - run in background
+        configureSharedTenantAsync(deploymentId, organizationId, slug, selectedVPS).catch(error => {
+          logger.error('Shared tenant configuration failed:', error);
         });
 
       } else if (deploymentModel === 'dedicated') {
@@ -265,17 +309,18 @@ router.post('/instances',
 );
 
 /**
- * Async function to create dedicated VPS
+ * Async function to create dedicated VPS and deploy applications
  */
 async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier, adminEmail, adminName) {
   try {
     // Update status
     await pool.query(
-      `UPDATE instance_deployments SET status = 'creating_vps' WHERE id = $1`,
+      `UPDATE instance_deployments SET status = 'creating_vps', status_message = 'Provisioning VPS via TransIP API...' WHERE id = $1`,
       [deploymentId]
     );
 
     // Create VPS via TransIP API
+    logger.info(`🚀 Creating dedicated VPS for ${slug}...`);
     const vpsDetails = await transipService.createDedicatedVPS({
       organizationId,
       slug,
@@ -311,8 +356,26 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
       [registeredVPS.id, organizationId]
     );
 
-    // Wait for VPS to be ready (this would poll TransIP API in real implementation)
-    // await waitForVPSReady(vpsDetails.vpsName);
+    // Wait for VPS to be ready
+    logger.info(`⏳ Waiting for VPS ${vpsDetails.vpsName} to be ready...`);
+    await transipService.waitForVPSReady(vpsDetails.vpsName, 300000); // 5 minute timeout
+
+    // Deploy applications to VPS
+    await pool.query(
+      `UPDATE instance_deployments SET status = 'deploying', status_message = 'Deploying applications to VPS...' WHERE id = $1`,
+      [deploymentId]
+    );
+
+    logger.info(`📦 Starting deployment orchestration for ${slug}...`);
+    await deploymentOrchestrator.deployToVPS({
+      deploymentId,
+      organizationId,
+      slug,
+      tier,
+      vpsIp: vpsDetails.ipAddress,
+      vpsName: vpsDetails.vpsName,
+      sshKey: process.env.VPS_SSH_PRIVATE_KEY
+    });
 
     // Create admin user
     const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
@@ -329,17 +392,28 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
       [organizationId, adminEmail, passwordHash, adminName, firstName, lastName]
     );
 
-    // Mark as active
+    // Mark as active (deployment orchestrator already set this if successful)
     await pool.query(
       `UPDATE instance_deployments 
-       SET status = 'active', completed_at = NOW()
-       WHERE id = $1`,
-      [deploymentId]
+       SET status = 'active', completed_at = NOW(), 
+           access_url = $1, status_message = 'Deployment completed successfully'
+       WHERE id = $2`,
+      [`https://${slug}.recruitiq.nl`, deploymentId]
     );
 
-    // TODO: Send welcome email with credentials
+    // Send welcome email with credentials
+    // TODO: Implement email service
+    logger.info(`📧 TODO: Send welcome email to ${adminEmail} with credentials`);
+    logger.info(`   URL: https://${slug}.recruitiq.nl`);
+    logger.info(`   Email: ${adminEmail}`);
+    logger.info(`   Password: ${tempPassword}`);
 
-    logger.info(`✅ Dedicated VPS provisioned for ${slug}`);
+    logger.info(`✅ Dedicated VPS fully provisioned and deployed for ${slug}`);
+
+    // Clear deployment logs after success
+    setTimeout(() => {
+      deploymentOrchestrator.clearDeploymentLogs(deploymentId);
+    }, 3600000); // Keep logs for 1 hour
 
   } catch (error) {
     logger.error('VPS provisioning failed:', error);
@@ -352,8 +426,8 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
  * GET /api/portal/instances/:deploymentId/status
  */
 router.get('/instances/:deploymentId/status',
-  authenticate,
-  requireRole(['platform_admin']),
+  authenticatePlatform,
+  requirePlatformRole(['platform_admin']),
   async (req, res) => {
     try {
       const { deploymentId } = req.params;
@@ -377,7 +451,15 @@ router.get('/instances/:deploymentId/status',
         return res.status(404).json({ error: 'Deployment not found' });
       }
 
-      res.json(result.rows[0]);
+      const deployment = result.rows[0];
+
+      // Add deployment logs if available
+      const logs = deploymentOrchestrator.getDeploymentLogs(deploymentId);
+
+      res.json({
+        ...deployment,
+        logs: logs.length > 0 ? logs : null
+      });
 
     } catch (error) {
       logger.error('Status check error:', error);
@@ -387,12 +469,37 @@ router.get('/instances/:deploymentId/status',
 );
 
 /**
+ * Get deployment logs in real-time
+ * GET /api/portal/instances/:deploymentId/logs
+ */
+router.get('/instances/:deploymentId/logs',
+  authenticatePlatform,
+  requirePlatformRole(['platform_admin']),
+  async (req, res) => {
+    try {
+      const { deploymentId } = req.params;
+
+      const logs = deploymentOrchestrator.getDeploymentLogs(deploymentId);
+
+      res.json({
+        success: true,
+        logs
+      });
+
+    } catch (error) {
+      logger.error('Error fetching logs:', error);
+      res.status(500).json({ error: 'Failed to fetch logs' });
+    }
+  }
+);
+
+/**
  * Get all clients
  * GET /api/portal/clients
  */
 router.get('/clients',
-  authenticate,
-  requireRole(['platform_admin']),
+  authenticatePlatform,
+  requirePlatformRole(['platform_admin']),
   async (req, res) => {
     try {
       const result = await pool.query(
@@ -423,9 +530,8 @@ router.get('/clients',
  * GET /api/portal/vps/available
  */
 router.get('/vps/available',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('vps.view'),
+  authenticatePlatform,
+  requirePlatformPermission('vps.view'),
   async (req, res) => {
     try {
       const availableVPS = await vpsManager.getAvailableSharedVPS();
@@ -442,9 +548,8 @@ router.get('/vps/available',
  * GET /api/portal/vps
  */
 router.get('/vps',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('vps.view'),
+  authenticatePlatform,
+  requirePlatformPermission('vps.view'),
   async (req, res) => {
     try {
       const allVPS = await vpsManager.getAllVPS();
@@ -461,9 +566,8 @@ router.get('/vps',
  * GET /api/portal/vps/stats
  */
 router.get('/vps/stats',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('vps.view'),
+  authenticatePlatform,
+  requirePlatformPermission('vps.view'),
   async (req, res) => {
     try {
       const stats = await vpsManager.getVPSStatistics();
@@ -480,9 +584,8 @@ router.get('/vps/stats',
  * POST /api/portal/vps
  */
 router.post('/vps',
-  authenticate,
-  requirePlatformUser,
-  requirePermission('vps.create'),
+  authenticatePlatform,
+  requirePlatformPermission('vps.create'),
   async (req, res) => {
     try {
       const vps = await vpsManager.registerVPS(req.body);
@@ -490,6 +593,42 @@ router.post('/vps',
     } catch (error) {
       logger.error('Error registering VPS:', error);
       res.status(500).json({ error: 'Failed to register VPS' });
+    }
+  }
+);
+
+/**
+ * Get deployment logs (supports both dedicated and shared deployments)
+ * GET /api/portal/deployments/:id/logs
+ */
+router.get('/deployments/:id/logs',
+  authenticatePlatform,
+  requirePlatformPermission('deployment.view'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // First check which deployment model this is
+      const deploymentResult = await pool.query(
+        'SELECT deployment_model FROM instance_deployments WHERE id = $1',
+        [id]
+      );
+      
+      if (deploymentResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Deployment not found' });
+      }
+      
+      const deploymentModel = deploymentResult.rows[0].deployment_model;
+      
+      // Get logs from appropriate orchestrator
+      const logs = deploymentModel === 'dedicated' 
+        ? deploymentOrchestrator.getLogs(id)
+        : sharedVPSOrchestrator.getLogs(id);
+      
+      res.json({ logs });
+    } catch (error) {
+      logger.error('Error fetching deployment logs:', error);
+      res.status(500).json({ error: 'Failed to fetch logs' });
     }
   }
 );

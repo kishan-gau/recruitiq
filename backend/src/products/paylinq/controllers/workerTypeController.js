@@ -17,13 +17,12 @@ const workerTypeService = new WorkerTypeService();
 async function createWorkerType(req, res) {
   try {
     const { organization_id: organizationId, id: userId } = req.user;
-    const workerTypeData = {
-      ...req.body,
-      organizationId,
-      createdBy: userId,
-    };
 
-    const workerType = await workerTypeService.createWorkerTypeTemplate(workerTypeData);
+    const workerType = await workerTypeService.createWorkerTypeTemplate(
+      req.body,
+      organizationId,
+      userId
+    );
 
     logger.info('Worker type created', {
       organizationId,
@@ -33,7 +32,7 @@ async function createWorkerType(req, res) {
 
     res.status(201).json({
       success: true,
-      workerType: workerType,
+      workerTypeTemplate: workerType,
       message: 'Worker type created successfully',
     });
   } catch (error) {
@@ -55,7 +54,7 @@ async function createWorkerType(req, res) {
       return res.status(409).json({
         success: false,
         error: error.message,
-        errorCode: 'WORKER_TYPE_ALREADY_EXISTS',
+        errorCode: 'CONFLICT',
       });
     }
 
@@ -101,7 +100,7 @@ async function getWorkerTypes(req, res) {
 
     res.status(200).json({
       success: true,
-      workerTypes: result.workerTypes,
+      workerTypeTemplates: result.workerTypes,
       pagination: result.pagination,
     });
   } catch (error) {
@@ -129,17 +128,9 @@ async function getWorkerTypeById(req, res) {
 
     const workerType = await workerTypeService.getWorkerTypeTemplateById(id, organizationId);
 
-    if (!workerType) {
-      return res.status(404).json({
-        success: false,
-        error: 'Worker type not found',
-        errorCode: 'WORKER_TYPE_NOT_FOUND',
-      });
-    }
-
     res.status(200).json({
       success: true,
-      workerType: workerType,
+      workerTypeTemplate: workerType,
     });
   } catch (error) {
     logger.error('Error fetching worker type', {
@@ -147,6 +138,23 @@ async function getWorkerTypeById(req, res) {
       workerTypeId: req.params.id,
       organizationId: req.user?.organization_id,
     });
+
+    // Handle specific error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        errorCode: 'FORBIDDEN',
+      });
+    }
 
     res.status(500).json({
       success: false,
@@ -165,20 +173,12 @@ async function updateWorkerType(req, res) {
     const { organization_id: organizationId, id: userId } = req.user;
     const { id } = req.params;
 
-    const updateData = {
-      ...req.body,
-      updatedBy: userId,
-    };
-
-    const workerType = await workerTypeService.updateWorkerTypeTemplate(id, organizationId, updateData);
-
-    if (!workerType) {
-      return res.status(404).json({
-        success: false,
-        error: 'Worker type not found',
-        errorCode: 'WORKER_TYPE_NOT_FOUND',
-      });
-    }
+    const workerType = await workerTypeService.updateWorkerTypeTemplate(
+      id,
+      req.body,
+      organizationId,
+      userId
+    );
 
     logger.info('Worker type updated', {
       organizationId,
@@ -188,7 +188,7 @@ async function updateWorkerType(req, res) {
 
     res.status(200).json({
       success: true,
-      workerType: workerType,
+      workerTypeTemplate: workerType,
       message: 'Worker type updated successfully',
     });
   } catch (error) {
@@ -198,6 +198,23 @@ async function updateWorkerType(req, res) {
       organizationId: req.user?.organization_id,
       userId: req.user?.id,
     });
+
+    // Handle specific error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        errorCode: 'FORBIDDEN',
+      });
+    }
 
     res.status(400).json({
       success: false,
@@ -218,14 +235,6 @@ async function deleteWorkerType(req, res) {
 
     const deleted = await workerTypeService.deleteWorkerTypeTemplate(id, organizationId, userId);
 
-    if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        error: 'Worker type not found',
-        errorCode: 'WORKER_TYPE_NOT_FOUND',
-      });
-    }
-
     logger.info('Worker type deleted', {
       organizationId,
       workerTypeId: id,
@@ -243,6 +252,23 @@ async function deleteWorkerType(req, res) {
       organizationId: req.user?.organization_id,
       userId: req.user?.id,
     });
+
+    // Handle specific error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+    
+    if (error.message.includes('Access denied')) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        errorCode: 'FORBIDDEN',
+      });
+    }
 
     if (error.message.includes('has assigned employees')) {
       return res.status(409).json({

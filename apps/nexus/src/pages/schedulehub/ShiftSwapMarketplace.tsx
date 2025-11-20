@@ -4,10 +4,12 @@ import {
   useShiftSwaps,
   useRequestSwap,
 } from '@/hooks/schedulehub/useScheduleStats';
+import { useToast } from '@/contexts/ToastContext';
 import type { ShiftSwapOffer } from '@/types/schedulehub';
 
 export default function ShiftSwapMarketplace() {
   const [swapTypeFilter, setSwapTypeFilter] = useState<string>('');
+  const toast = useToast();
 
   const { data, isLoading, error } = useShiftSwaps({
     swapType: swapTypeFilter || undefined,
@@ -21,9 +23,9 @@ export default function ShiftSwapMarketplace() {
         offerId,
         // Additional data would come from a form modal
       });
-      alert('Swap request submitted!');
+      toast.success('Swap request submitted!');
     } catch (error) {
-      alert('Failed to request swap');
+      toast.error('Failed to request swap');
     }
   };
 

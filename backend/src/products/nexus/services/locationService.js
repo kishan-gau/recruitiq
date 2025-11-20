@@ -41,13 +41,12 @@ class LocationService {
 
       const sql = `
         INSERT INTO hris.location (
-          organization_id, location_name, location_code,
+          organization_id, location_name, location_code, location_type,
           address_line1, address_line2, city, state_province,
-          postal_code, country, timezone, phone, email,
-          is_primary, is_active, capacity, facilities,
-          created_by, updated_by
+          postal_code, country, phone, email,
+          is_active, created_by, updated_by
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
         )
         RETURNING *
       `;
@@ -56,19 +55,16 @@ class LocationService {
         organizationId,
         locationData.location_name,
         locationData.location_code || null,
+        locationData.location_type || 'branch',
         locationData.address_line1 || null,
         locationData.address_line2 || null,
         locationData.city || null,
         locationData.state_province || null,
         locationData.postal_code || null,
         locationData.country || null,
-        locationData.timezone || 'UTC',
         locationData.phone || null,
         locationData.email || null,
-        locationData.is_primary || false,
         locationData.is_active !== false,
-        locationData.capacity || null,
-        locationData.facilities ? JSON.stringify(locationData.facilities) : null,
         userId,
         userId
       ];
@@ -180,14 +176,8 @@ class LocationService {
         paramIndex++;
       }
 
-      if (filters.isPrimary !== undefined) {
-        sql += ` AND l.is_primary = $${paramIndex}`;
-        params.push(filters.isPrimary);
-        paramIndex++;
-      }
-
       sql += ` GROUP BY l.id`;
-      sql += ` ORDER BY l.is_primary DESC, l.location_name ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      sql += ` ORDER BY l.location_name ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
       const result = await query(sql, params, organizationId, {
@@ -226,12 +216,6 @@ class LocationService {
       if (filters.city) {
         countSql += ` AND l.city = $${countIndex}`;
         countParams.push(filters.city);
-        countIndex++;
-      }
-
-      if (filters.isPrimary !== undefined) {
-        countSql += ` AND l.is_primary = $${countIndex}`;
-        countParams.push(filters.isPrimary);
         countIndex++;
       }
 
@@ -303,9 +287,9 @@ class LocationService {
       let paramIndex = 1;
 
       const updateableFields = [
-        'location_name', 'location_code', 'address_line1', 'address_line2',
-        'city', 'state_province', 'postal_code', 'country', 'timezone',
-        'phone', 'email', 'is_primary', 'is_active', 'capacity'
+        'location_name', 'location_code', 'location_type', 'address_line1', 'address_line2',
+        'city', 'state_province', 'postal_code', 'country',
+        'phone', 'email', 'is_active'
       ];
 
       updateableFields.forEach(field => {
@@ -315,13 +299,6 @@ class LocationService {
           paramIndex++;
         }
       });
-
-      // Handle JSON field
-      if (locationData.facilities !== undefined) {
-        updates.push(`facilities = $${paramIndex}`);
-        params.push(JSON.stringify(locationData.facilities));
-        paramIndex++;
-      }
 
       if (updates.length === 0) {
         return existingLocation;
@@ -429,7 +406,7 @@ class LocationService {
   }
 
   /**
-   * Get primary location for organization
+   * Get primary location for organization (first active location by name)
    */
   async getPrimaryLocation(organizationId) {
     try {
@@ -438,8 +415,9 @@ class LocationService {
       const sql = `
         SELECT * FROM hris.location
         WHERE organization_id = $1 
-          AND is_primary = true
+          AND is_active = true
           AND deleted_at IS NULL
+        ORDER BY location_name ASC
         LIMIT 1
       `;
 
@@ -459,15 +437,49 @@ class LocationService {
   }
 
   /**
-   * Set location as primary
+   * Get location by code
    */
-  async setPrimaryLocation(id, organizationId, userId) {
+  async getLocationByCode(code, organizationId) {
     try {
-      this.logger.info('Setting primary location', { 
-        id,
-        organizationId,
-        userId 
+      this.logger.debug('Getting location by code', { code, organizationId });
+
+      const sql = `
+        SELECT l.*,
+               COUNT(DISTINCT e.id) as employee_count
+        FROM hris.location l
+        LEFT JOIN hris.employee e ON l.id = e.location_id AND e.deleted_at IS NULL
+        WHERE l.location_code = $1 
+          AND l.organization_id = $2
+          AND l.deleted_at IS NULL
+        GROUP BY l.id
+      `;
+
+      const result = await query(sql, [code, organizationId], organizationId, {
+        operation: 'findByCode',
+        table: 'hris.location'
       });
+      
+      if (result.rows.length === 0) {
+        throw new Error('Location not found');
+      }
+
+      return result.rows[0];
+    } catch (error) {
+      this.logger.error('Error getting location by code', { 
+        error: error.message,
+        code,
+        organizationId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get location statistics (employee count, departments, etc.)
+   */
+  async getLocationStats(id, organizationId) {
+    try {
+      this.logger.debug('Getting location statistics', { id, organizationId });
 
       // Check if location exists
       const checkSql = `
@@ -480,38 +492,70 @@ class LocationService {
         throw new Error('Location not found');
       }
 
-      // Unset current primary location
-      const unsetSql = `
-        UPDATE hris.location 
-        SET is_primary = false, updated_by = $2, updated_at = CURRENT_TIMESTAMP
-        WHERE organization_id = $1 AND is_primary = true
+      const sql = `
+        SELECT 
+          COUNT(DISTINCT e.id) as total_employees,
+          COUNT(DISTINCT e.id) FILTER (WHERE e.employee_status = 'active') as active_employees,
+          COUNT(DISTINCT e.department_id) as departments,
+          COUNT(DISTINCT e.id) FILTER (WHERE e.employment_type = 'full_time') as full_time_employees,
+          COUNT(DISTINCT e.id) FILTER (WHERE e.employment_type = 'part_time') as part_time_employees,
+          COUNT(DISTINCT e.id) FILTER (WHERE e.employment_type = 'contract') as contract_employees
+        FROM hris.employee e
+        WHERE e.location_id = $1 
+          AND e.organization_id = $2
+          AND e.deleted_at IS NULL
       `;
-      await query(unsetSql, [organizationId, userId], organizationId);
 
-      // Set new primary location
-      const setSql = `
-        UPDATE hris.location 
-        SET is_primary = true, updated_by = $3, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 AND organization_id = $2
-        RETURNING *
-      `;
-      const result = await query(setSql, [id, organizationId, userId], organizationId, {
-        operation: 'update',
+      const result = await query(sql, [id, organizationId], organizationId, {
+        operation: 'getStats',
         table: 'hris.location'
-      });
-
-      this.logger.info('Primary location set successfully', { 
-        id,
-        organizationId 
       });
 
       return result.rows[0];
     } catch (error) {
-      this.logger.error('Error setting primary location', { 
+      this.logger.error('Error getting location statistics', { 
         error: error.message,
         id,
-        organizationId,
-        userId 
+        organizationId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all location statistics for organization
+   */
+  async getAllLocationStats(organizationId) {
+    try {
+      this.logger.debug('Getting all location statistics', { organizationId });
+
+      const sql = `
+        SELECT 
+          l.id,
+          l.location_name,
+          l.location_code,
+          l.is_active,
+          COUNT(DISTINCT e.id) as total_employees,
+          COUNT(DISTINCT e.id) FILTER (WHERE e.employee_status = 'active') as active_employees,
+          COUNT(DISTINCT e.department_id) as departments
+        FROM hris.location l
+        LEFT JOIN hris.employee e ON l.id = e.location_id AND e.deleted_at IS NULL
+        WHERE l.organization_id = $1
+          AND l.deleted_at IS NULL
+        GROUP BY l.id, l.location_name, l.location_code, l.is_active
+        ORDER BY l.location_name ASC
+      `;
+
+      const result = await query(sql, [organizationId], organizationId, {
+        operation: 'getAllStats',
+        table: 'hris.location'
+      });
+
+      return result.rows;
+    } catch (error) {
+      this.logger.error('Error getting all location statistics', { 
+        error: error.message,
+        organizationId 
       });
       throw error;
     }

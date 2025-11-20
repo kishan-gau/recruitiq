@@ -104,6 +104,7 @@ describe('WorkerTypeService', () => {
       createTemplate: jest.fn(),
       findTemplateByCode: jest.fn(),
       findTemplateById: jest.fn(),
+      findTemplateByIdAnyOrg: jest.fn(), // Added for global template access checking
       findTemplatesByOrganization: jest.fn(),
       updateTemplate: jest.fn(),
       deleteTemplate: jest.fn(),
@@ -236,6 +237,7 @@ describe('WorkerTypeService', () => {
     it('should return DTO-transformed template', async () => {
       const dbTemplate = createDbTemplate();
 
+      mockRepository.findTemplateByIdAnyOrg.mockResolvedValue(dbTemplate); // Check existence
       mockRepository.findTemplateById.mockResolvedValue(dbTemplate);
 
       const result = await service.getWorkerTypeTemplateById(templateId, orgId);
@@ -249,7 +251,7 @@ describe('WorkerTypeService', () => {
     });
 
     it('should throw NotFoundError when template does not exist', async () => {
-      mockRepository.findTemplateById.mockResolvedValue(null);
+      mockRepository.findTemplateByIdAnyOrg.mockResolvedValue(null); // Template doesn't exist at all
 
       await expect(
         service.getWorkerTypeTemplateById(templateId, orgId)
@@ -262,6 +264,7 @@ describe('WorkerTypeService', () => {
       const updates = { name: 'Updated Full-Time', benefitsEligible: false };
       const dbTemplate = createDbTemplate({ name: 'Updated Full-Time', benefits_eligible: false });
 
+      mockRepository.findTemplateByIdAnyOrg.mockResolvedValue(dbTemplate); // Check existence
       mockRepository.updateTemplate.mockResolvedValue(dbTemplate);
 
       const result = await service.updateWorkerTypeTemplate(templateId, updates, orgId, userId);
@@ -284,6 +287,9 @@ describe('WorkerTypeService', () => {
 
   describe('deleteWorkerTypeTemplate', () => {
     it('should delete worker type template successfully', async () => {
+      const dbTemplate = createDbTemplate();
+      
+      mockRepository.findTemplateByIdAnyOrg.mockResolvedValue(dbTemplate); // Check existence
       mockRepository.deleteTemplate.mockResolvedValue(true);
 
       await service.deleteWorkerTypeTemplate(templateId, orgId, userId);

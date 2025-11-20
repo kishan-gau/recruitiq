@@ -12,6 +12,7 @@ import TimeOffController from '../controllers/timeOffController.js';
 import ShiftTradeController from '../controllers/shiftTradeController.js';
 import RoleController from '../controllers/roleController.js';
 import StationController from '../controllers/stationController.js';
+import StatsController from '../controllers/statsController.js';
 
 const router = express.Router();
 
@@ -27,6 +28,13 @@ const timeOffController = new TimeOffController();
 const shiftTradeController = new ShiftTradeController();
 const roleController = new RoleController();
 const stationController = new StationController();
+const statsController = new StatsController();
+
+// ============================================================================
+// STATS ROUTES
+// ============================================================================
+
+router.get('/stats', statsController.getStats);
 
 // ============================================================================
 // WORKER ROUTES
@@ -78,23 +86,24 @@ router.post('/workers/:workerId/default-availability', availabilityController.cr
 // TIME OFF ROUTES
 // ============================================================================
 
+router.get('/time-off', timeOffController.listRequests);
 router.post('/time-off', timeOffController.createRequest);
+router.get('/time-off/pending', timeOffController.getPendingRequests);
 router.get('/time-off/:id', timeOffController.getRequestById);
 router.post('/time-off/:id/review', timeOffController.reviewRequest);
 router.post('/time-off/:id/cancel', timeOffController.cancelRequest);
 router.get('/workers/:workerId/time-off', timeOffController.getWorkerRequests);
-router.get('/time-off/pending', timeOffController.getPendingRequests);
 
 // ============================================================================
 // SHIFT SWAP/TRADE ROUTES
 // ============================================================================
 
+router.get('/shift-swaps/marketplace', shiftTradeController.getOpenOffers);
 router.post('/shift-swaps', shiftTradeController.createSwapOffer);
 router.get('/shift-swaps/:id', shiftTradeController.getOfferById);
 router.post('/shift-swaps/:offerId/request', shiftTradeController.requestSwap);
 router.post('/shift-swaps/:offerId/approve', shiftTradeController.approveSwap);
 router.post('/shift-swaps/:offerId/cancel', shiftTradeController.cancelOffer);
-router.get('/shift-swaps/marketplace', shiftTradeController.getOpenOffers);
 router.get('/shift-swaps/:offerId/requests', shiftTradeController.getOfferRequests);
 router.get('/workers/:workerId/swap-offers', shiftTradeController.getWorkerOffers);
 router.post('/shift-swap-requests/:requestId/accept', shiftTradeController.acceptSwapRequest);

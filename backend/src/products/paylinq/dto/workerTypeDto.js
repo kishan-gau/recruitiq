@@ -33,7 +33,7 @@ export function mapTemplateDbToApi(dbTemplate) {
     overtimeEligible: dbTemplate.overtime_eligible,
     ptoEligible: dbTemplate.pto_eligible,
     sickLeaveEligible: dbTemplate.sick_leave_eligible,
-    vacationAccrualRate: dbTemplate.vacation_accrual_rate,
+    vacationAccrualRate: dbTemplate.vacation_accrual_rate ? parseFloat(dbTemplate.vacation_accrual_rate) : null,
     
     // Status
     status: dbTemplate.status,

@@ -4,12 +4,16 @@
  */
 
 import payrollService from '../services/payrollService.js';
+import PayrollRepository from '../repositories/payrollRepository.js';
 import { mapPayrollRunApiToDb, mapPayrollRunUpdateApiToDb, mapPayrollRunDbToApi } from '../utils/dtoMapper.js';
 import { mapPaychecksToDto } from '../dto/paycheckDto.js';
 import logger from '../../../utils/logger.js';
 import emailService from '../../../services/emailService.js';
 import { initializeEmailService } from '../../../controllers/emailSettingsController.js';
 import db from '../../../config/database.js';
+
+// Initialize repository instance for component fetching
+const payrollRepository = new PayrollRepository();
 
 /**
  * Create a new payroll run
@@ -454,8 +458,11 @@ async function getPayrollRunPaychecks(req, res) {
     // Use DTO mapper to convert snake_case to camelCase
     const formattedPaychecks = mapPaychecksToDto(paychecks);
 
-    // Add calculated fields to each paycheck
-    const enrichedPaychecks = formattedPaychecks.map(paycheck => {
+    // Enrich each paycheck with components and metadata
+    const enrichedPaychecks = await Promise.all(formattedPaychecks.map(async (paycheck) => {
+      // Fetch components for this paycheck
+      const components = await payrollRepository.getPaycheckComponents(paycheck.id, organizationId);
+      
       // Calculate total_deductions as sum of all deduction fields
       const totalDeductions = (
         parseFloat(paycheck.wageTax || 0) +
@@ -467,13 +474,39 @@ async function getPayrollRunPaychecks(req, res) {
         parseFloat(paycheck.socialSecurity || 0) +
         parseFloat(paycheck.medicare || 0) +
         parseFloat(paycheck.otherDeductions || 0)
-      ).toFixed(2);
+      ); // Keep as number, don't use .toFixed() which returns string
+
+      // Add tax law compliance metadata
+      const metadata = {
+        taxLaw: 'Wet Loonbelasting',
+        taxYear: new Date(paycheck.payPeriodEnd).getFullYear(),
+        taxFreeThreshold: 9000, // Surinamese tax-free threshold (Article 13)
+        taxBrackets: [
+          { rate: 0, threshold: 0, label: 'Tax-free' },
+          { rate: 0.15, threshold: 9000, label: 'First bracket' },
+          { rate: 0.25, threshold: 24000, label: 'Second bracket' },
+          { rate: 0.35, threshold: 60000, label: 'Third bracket' }
+        ]
+      };
 
       return {
         ...paycheck,
         totalDeductions,
+        components: components.map(comp => ({
+          id: comp.id,
+          componentType: comp.component_type,
+          componentCode: comp.component_code,
+          componentName: comp.component_name,
+          amount: parseFloat(comp.amount),
+          units: comp.units ? parseFloat(comp.units) : null,
+          rate: comp.rate ? parseFloat(comp.rate) : null,
+          isTaxable: comp.is_taxable,
+          taxCategory: comp.tax_category,
+          calculationMetadata: comp.calculation_metadata
+        })),
+        metadata
       };
-    });
+    }));
 
     res.status(200).json({
       success: true,

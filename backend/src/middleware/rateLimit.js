@@ -366,12 +366,13 @@ export function createEndpointLimiter(options = {}) {
     max,
     message,
     // Use endpoint-based keyGenerator for better tracking
-    // Format: endpoint:name:user:id or endpoint:name:ip:address
+    // For authenticated users: endpoint + user ID
+    // For anonymous users: let express-rate-limit handle IP (with IPv6 support)
     keyGenerator: (req) => {
       const userId = req.user?.id;
       // If authenticated, limit by endpoint + user ID
-      // If not authenticated, limit by endpoint + IP address
-      return userId ? `endpoint:${endpoint}:user:${userId}` : `endpoint:${endpoint}:ip:${req.ip}`;
+      // If not authenticated, return undefined to let express-rate-limit use default IP key
+      return userId ? `endpoint:${endpoint}:user:${userId}` : undefined;
     },
   });
 }

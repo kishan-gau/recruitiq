@@ -80,7 +80,7 @@ export const getTemplateByCode = async (req, res, next) => {
  */
 export const createTemplate = async (req, res, next) => {
   try {
-    const { organizationId, userId } = req.user;
+    const { organizationId, id: userId } = req.user;
     const template = await formulaTemplateService.createTemplate(
       req.body,
       organizationId,
@@ -103,7 +103,7 @@ export const createTemplate = async (req, res, next) => {
  */
 export const updateTemplate = async (req, res, next) => {
   try {
-    const { organizationId, userId } = req.user;
+    const { organizationId, id: userId } = req.user;
     const { id } = req.params;
 
     const template = await formulaTemplateService.updateTemplate(
@@ -129,7 +129,7 @@ export const updateTemplate = async (req, res, next) => {
  */
 export const deleteTemplate = async (req, res, next) => {
   try {
-    const { organizationId, userId } = req.user;
+    const { organizationId, id: userId } = req.user;
     const { id } = req.params;
 
     const result = await formulaTemplateService.deleteTemplate(id, organizationId, userId);

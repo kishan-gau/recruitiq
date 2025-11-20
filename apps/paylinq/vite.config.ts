@@ -15,19 +15,16 @@ export default defineConfig({
     exclude: [],
   },
   server: {
+    host: 'localhost',
     port: 5174,
-    open: false, // Don't auto-open, use gateway URL instead
-    watch: {
-      ignored: ['**/node_modules/**', '**/packages/api-client/dist/**'],
+    open: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+      },
     },
-    hmr: {
-      overlay: true,
-      // Let Vite HMR connect directly to port 5174 instead of through gateway
-      // This avoids WebSocket proxy issues
-      port: 5174,
-      host: 'localhost',
-    },
-    // No proxy needed - gateway handles routing
   },
   build: {
     outDir: 'dist',

@@ -3,7 +3,7 @@
  * 
  * @deprecated This file is deprecated. Use specific DTO files instead:
  * - For pay_components table: import from './payComponentDto.js'
- * - For payroll_run_components table: import from './runComponentDto.js'
+ * - For payroll.payroll_run_components table: import from './runComponentDto.js'
  * 
  * This file remains for backward compatibility but will be removed in a future version.
  * 

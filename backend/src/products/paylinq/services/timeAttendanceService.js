@@ -18,9 +18,9 @@ import { ValidationError, NotFoundError, ConflictError  } from '../../../middlew
 import { nowUTC, toUTCDateString, calculateHours, formatForDatabase } from '../../../utils/timezone.js';
 
 class TimeAttendanceService {
-  constructor() {
-    this.timeAttendanceRepository = new TimeAttendanceRepository();
-    this.payComponentRepository = new PayComponentRepository();
+  constructor(timeAttendanceRepository = null, payComponentRepository = null) {
+    this.timeAttendanceRepository = timeAttendanceRepository || new TimeAttendanceRepository();
+    this.payComponentRepository = payComponentRepository || new PayComponentRepository();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -108,9 +108,147 @@ class TimeAttendanceService {
    */
   async getShiftTypes(organizationId, filters = {}) {
     try {
-      return await this.timeAttendanceRepository.findShiftTypes(filters, organizationId);
+      return await this.timeAttendanceRepository.findShiftTypes(organizationId, filters);
     } catch (err) {
       logger.error('Error fetching shift types', { error: err.message, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get shift type by ID
+   * @param {string} shiftTypeId - Shift type UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Shift type
+   */
+  async getShiftTypeById(shiftTypeId, organizationId) {
+    try {
+      const shiftType = await this.timeAttendanceRepository.findShiftTypeById(shiftTypeId, organizationId);
+      
+      if (!shiftType) {
+        throw new NotFoundError('Shift type not found');
+      }
+
+      return shiftType;
+    } catch (err) {
+      logger.error('Error fetching shift type', { error: err.message, shiftTypeId, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get shift type by code
+   * @param {string} shiftCode - Shift code
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Shift type
+   */
+  async getShiftTypeByCode(shiftCode, organizationId) {
+    try {
+      const shiftType = await this.timeAttendanceRepository.findShiftTypeByCode(shiftCode, organizationId);
+      
+      if (!shiftType) {
+        throw new NotFoundError('Shift type not found');
+      }
+
+      return shiftType;
+    } catch (err) {
+      logger.error('Error fetching shift type by code', { error: err.message, shiftCode, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Get all shift types
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Array>} Shift types
+   */
+  async getAllShiftTypes(organizationId, filters = {}) {
+    return this.getShiftTypes(organizationId, filters);
+  }
+
+  /**
+   * Update shift type
+   * @param {string} shiftTypeId - Shift type UUID
+   * @param {Object} updateData - Update data
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User performing update
+   * @returns {Promise<Object>} Updated shift type
+   */
+  async updateShiftType(shiftTypeId, updateData, organizationId, userId) {
+    // Create partial schema for updates (all fields optional)
+    const updateSchema = this.shiftTypeSchema.fork(
+      ['shiftCode', 'shiftName', 'startTime', 'endTime', 'durationHours'],
+      (schema) => schema.optional()
+    );
+
+    // Validate update data (partial validation)
+    const { error, value } = updateSchema.validate(updateData, { 
+      allowUnknown: false,
+      stripUnknown: true 
+    });
+    
+    if (error) {
+      throw new ValidationError(error.details[0].message);
+    }
+
+    try {
+      // Verify shift type exists
+      await this.getShiftTypeById(shiftTypeId, organizationId);
+
+      const updatedShiftType = await this.timeAttendanceRepository.updateShiftType(
+        shiftTypeId,
+        value,
+        organizationId,
+        userId
+      );
+
+      logger.info('Shift type updated', {
+        shiftTypeId,
+        organizationId
+      });
+
+      return updatedShiftType;
+    } catch (err) {
+      logger.error('Error updating shift type', { error: err.message, shiftTypeId, organizationId });
+      throw err;
+    }
+  }
+
+  /**
+   * Delete shift type
+   * @param {string} shiftTypeId - Shift type UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User performing delete
+   * @returns {Promise<void>}
+   */
+  async deleteShiftType(shiftTypeId, organizationId, userId) {
+    try {
+      // Verify shift type exists
+      await this.getShiftTypeById(shiftTypeId, organizationId);
+
+      // Check if shift type is in use
+      const { query } = await import('../../../config/database.js');
+      const usageCheck = await query(
+        `SELECT COUNT(*) as count FROM payroll.time_entry
+         WHERE shift_type_id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+        [shiftTypeId, organizationId],
+        organizationId
+      );
+
+      const usageCount = parseInt(usageCheck.rows[0].count);
+      if (usageCount > 0) {
+        throw new Error(`Cannot delete shift type that is used in ${usageCount} time entries. Consider marking it as inactive instead.`);
+      }
+
+      await this.timeAttendanceRepository.deleteShiftType(shiftTypeId, organizationId, userId);
+
+      logger.info('Shift type deleted', {
+        shiftTypeId,
+        organizationId
+      });
+    } catch (err) {
+      logger.error('Error deleting shift type', { error: err.message, shiftTypeId, organizationId });
       throw err;
     }
   }
@@ -671,7 +809,7 @@ class TimeAttendanceService {
 
     // Map timesheet fields to time entry fields
     const entryData = {
-      employeeRecordId: timesheetData.employeeId,
+      employeeId: timesheetData.employeeId,  // Keep as employeeId for validation
       entryDate: timesheetData.periodStart || toUTCDateString(nowUTC()),
       workedHours: timesheetData.workedHours || 0,
       regularHours: timesheetData.regularHours || 0,
@@ -804,7 +942,14 @@ class TimeAttendanceService {
       status: 'rejected',
       notes: rejectionReason 
     };
-    return await this.updateTimeEntry(timesheetId, updates, organizationId, userId);
+    
+    // Call repository directly to bypass the draft-only business rule in updateTimeEntry
+    return await this.timeAttendanceRepository.updateTimeEntry(
+      timesheetId,
+      updates,
+      organizationId,
+      userId
+    );
   }
 
   /**
@@ -819,4 +964,4 @@ class TimeAttendanceService {
   }
 }
 
-export default new TimeAttendanceService();
+export default TimeAttendanceService;

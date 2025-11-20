@@ -18,7 +18,7 @@ class ReportsController {
    */
   getHeadcountReport = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const report = await this.service.getHeadcountReport(organizationId, req.query);
       res.json({ success: true, data: report });
     } catch (error) {
@@ -33,7 +33,7 @@ class ReportsController {
    */
   getTurnoverReport = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { startDate, endDate } = req.query;
 
       if (!startDate || !endDate) {
@@ -57,7 +57,7 @@ class ReportsController {
    */
   getTimeOffReport = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { startDate, endDate } = req.query;
 
       if (!startDate || !endDate) {
@@ -81,7 +81,7 @@ class ReportsController {
    */
   getAttendanceReport = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { startDate, endDate } = req.query;
 
       if (!startDate || !endDate) {
@@ -105,7 +105,7 @@ class ReportsController {
    */
   getPerformanceReport = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { startDate, endDate } = req.query;
 
       if (!startDate || !endDate) {
@@ -129,7 +129,7 @@ class ReportsController {
    */
   getBenefitsReport = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const report = await this.service.getBenefitsReport(organizationId);
       res.json({ success: true, data: report });
     } catch (error) {
@@ -144,7 +144,7 @@ class ReportsController {
    */
   getDashboardReport = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const report = await this.service.getDashboardReport(organizationId);
       res.json({ success: true, data: report });
     } catch (error) {

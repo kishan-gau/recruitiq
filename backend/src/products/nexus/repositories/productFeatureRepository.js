@@ -3,20 +3,26 @@
  * Database operations for ProductFeature model
  */
 
-import pool from '../../../config/database.js';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 import ProductFeature from '../models/ProductFeature.js';
 
 class ProductFeatureRepository {
+  constructor(database = null) {
+    this.query = database?.query || query;
+    this.logger = logger;
+  }
+
   /**
    * Find all features for a product
    */
   async findByProduct(productId) {
-    const query = `
+    const sql = `
       SELECT * FROM product_features 
       WHERE product_id = $1
       ORDER BY is_default DESC, feature_key ASC
     `;
-    const result = await pool.query(query, [productId]);
+    const result = await this.query(sql, [productId]);
     return result.rows.map(row => new ProductFeature(row));
   }
 
@@ -24,11 +30,11 @@ class ProductFeatureRepository {
    * Find feature by key
    */
   async findByKey(productId, featureKey) {
-    const query = `
+    const sql = `
       SELECT * FROM product_features 
       WHERE product_id = $1 AND feature_key = $2
     `;
-    const result = await pool.query(query, [productId, featureKey]);
+    const result = await this.query(sql, [productId, featureKey]);
     return result.rows.length > 0 ? new ProductFeature(result.rows[0]) : null;
   }
 
@@ -36,12 +42,12 @@ class ProductFeatureRepository {
    * Find default features for a product
    */
   async findDefaultByProduct(productId) {
-    const query = `
+    const sql = `
       SELECT * FROM product_features 
       WHERE product_id = $1 AND is_default = TRUE
       ORDER BY feature_key ASC
     `;
-    const result = await pool.query(query, [productId]);
+    const result = await this.query(sql, [productId]);
     return result.rows.map(row => new ProductFeature(row));
   }
 
@@ -49,12 +55,12 @@ class ProductFeatureRepository {
    * Find features by status
    */
   async findByStatus(productId, status) {
-    const query = `
+    const sql = `
       SELECT * FROM product_features 
       WHERE product_id = $1 AND status = $2
       ORDER BY feature_key ASC
     `;
-    const result = await pool.query(query, [productId, status]);
+    const result = await this.query(sql, [productId, status]);
     return result.rows.map(row => new ProductFeature(row));
   }
 
@@ -68,14 +74,14 @@ class ProductFeatureRepository {
       'enterprise': 3
     };
     
-    const query = `
+    const sql = `
       SELECT * FROM product_features 
       WHERE product_id = $1 
         AND status NOT IN ('deprecated', 'disabled')
       ORDER BY is_default DESC, feature_key ASC
     `;
     
-    const result = await pool.query(query, [productId]);
+    const result = await this.query(sql, [productId]);
     const features = result.rows.map(row => new ProductFeature(row));
     
     // Filter by tier
@@ -90,7 +96,7 @@ class ProductFeatureRepository {
    * Create feature
    */
   async create(featureData, userId) {
-    const query = `
+    const sql = `
       INSERT INTO product_features (
         product_id, feature_key, feature_name, description,
         status, is_default, min_tier, requires_features,
@@ -117,7 +123,7 @@ class ProductFeatureRepository {
       userId
     ];
 
-    const result = await pool.query(query, values);
+    const result = await this.query(sql, values);
     return new ProductFeature(result.rows[0]);
   }
 
@@ -177,14 +183,14 @@ class ProductFeatureRepository {
     updates.push(`updated_at = NOW()`);
     values.push(productId, featureKey);
 
-    const query = `
+    const sql = `
       UPDATE product_features 
       SET ${updates.join(', ')} 
       WHERE product_id = $${paramCount++} AND feature_key = $${paramCount++}
       RETURNING *
     `;
 
-    const result = await pool.query(query, values);
+    const result = await this.query(sql, values);
     return result.rows.length > 0 ? new ProductFeature(result.rows[0]) : null;
   }
 
@@ -192,13 +198,13 @@ class ProductFeatureRepository {
    * Update rollout percentage
    */
   async updateRollout(productId, featureKey, rolloutPercentage) {
-    const query = `
+    const sql = `
       UPDATE product_features 
       SET rollout_percentage = $1, updated_at = NOW()
       WHERE product_id = $2 AND feature_key = $3
       RETURNING *
     `;
-    const result = await pool.query(query, [rolloutPercentage, productId, featureKey]);
+    const result = await this.query(sql, [rolloutPercentage, productId, featureKey]);
     return result.rows.length > 0 ? new ProductFeature(result.rows[0]) : null;
   }
 
@@ -206,14 +212,15 @@ class ProductFeatureRepository {
    * Delete feature
    */
   async delete(productId, featureKey) {
-    const query = `
+    const sql = `
       DELETE FROM product_features 
       WHERE product_id = $1 AND feature_key = $2
       RETURNING *
     `;
-    const result = await pool.query(query, [productId, featureKey]);
+    const result = await this.query(sql, [productId, featureKey]);
     return result.rows.length > 0;
   }
 }
 
-export default new ProductFeatureRepository();
+export default ProductFeatureRepository;
+

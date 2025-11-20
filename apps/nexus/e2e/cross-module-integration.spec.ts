@@ -1,39 +1,39 @@
 import { test, expect } from '@playwright/test';
 
-// Configuration
-const BASE_URL = 'http://localhost:5175';
-
 test.describe('Cross-Module Integration Tests', () => {
+  // ✅ Authentication loaded from storage state (playwright/.auth/user.json)
+  // No beforeEach needed - each test navigates as needed
+  
   test('should navigate between employees, departments, and locations', async ({ page }) => {
     // Start at employees page
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto('/employees');
     await page.waitForLoadState('networkidle');
     await expect(page.getByRole('heading', { name: 'Employees' })).toBeVisible();
     
     // Navigate to departments via menu/navigation
-    await page.goto(`${BASE_URL}/departments`);
+    await page.goto('/departments');
     await page.waitForLoadState('networkidle');
     await expect(page.getByRole('heading', { name: 'Departments' })).toBeVisible();
     
     // Navigate to locations
-    await page.goto(`${BASE_URL}/locations`);
+    await page.goto('/locations');
     await page.waitForLoadState('networkidle');
     await expect(page.getByRole('heading', { name: 'Locations' })).toBeVisible();
     
     // Navigate back to employees
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto('/employees');
     await page.waitForLoadState('networkidle');
     await expect(page.getByRole('heading', { name: 'Employees' })).toBeVisible();
   });
 
   test('should create employee with department assignment', async ({ page }) => {
     // First, ensure we have a department
-    await page.goto(`${BASE_URL}/departments`);
+    await page.goto('/departments');
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
     // Navigate to create employee
-    await page.goto(`${BASE_URL}/employees/create`);
+    await page.goto('/employees/create');
     await page.waitForLoadState('networkidle');
     
     // Generate unique employee data
@@ -72,12 +72,12 @@ test.describe('Cross-Module Integration Tests', () => {
 
   test('should create employee with location assignment', async ({ page }) => {
     // Ensure we have a location
-    await page.goto(`${BASE_URL}/locations`);
+    await page.goto(`/locations`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
     // Navigate to create employee
-    await page.goto(`${BASE_URL}/employees/create`);
+    await page.goto(`/employees/create`);
     await page.waitForLoadState('networkidle');
     
     // Generate unique employee data
@@ -116,7 +116,7 @@ test.describe('Cross-Module Integration Tests', () => {
 
   test('should create employee with both department and location', async ({ page }) => {
     // Navigate to create employee
-    await page.goto(`${BASE_URL}/employees/create`);
+    await page.goto(`/employees/create`);
     await page.waitForLoadState('networkidle');
     
     // Generate unique employee data
@@ -163,7 +163,7 @@ test.describe('Cross-Module Integration Tests', () => {
   });
 
   test('should view employee and see assigned department', async ({ page }) => {
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto(`/employees`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
@@ -178,7 +178,7 @@ test.describe('Cross-Module Integration Tests', () => {
   });
 
   test('should view employee and see assigned location', async ({ page }) => {
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto(`/employees`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
@@ -193,7 +193,7 @@ test.describe('Cross-Module Integration Tests', () => {
   });
 
   test('should navigate from department to view its employees', async ({ page }) => {
-    await page.goto(`${BASE_URL}/departments`);
+    await page.goto(`/departments`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
@@ -215,7 +215,7 @@ test.describe('Cross-Module Integration Tests', () => {
   });
 
   test('should navigate from location to view its employees', async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations`);
+    await page.goto(`/locations`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
@@ -230,7 +230,7 @@ test.describe('Cross-Module Integration Tests', () => {
   });
 
   test('should edit employee and change department', async ({ page }) => {
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto(`/employees`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
@@ -266,7 +266,7 @@ test.describe('Cross-Module Integration Tests', () => {
   });
 
   test('should edit employee and change location', async ({ page }) => {
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto(`/employees`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
@@ -302,7 +302,7 @@ test.describe('Cross-Module Integration Tests', () => {
   });
 
   test('should search employees in a specific department', async ({ page }) => {
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto(`/employees`);
     await page.waitForLoadState('networkidle');
     
     // Look for department filter
@@ -324,7 +324,7 @@ test.describe('Cross-Module Integration Tests', () => {
   });
 
   test('should search employees in a specific location', async ({ page }) => {
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto(`/employees`);
     await page.waitForLoadState('networkidle');
     
     // Look for location filter
@@ -347,7 +347,7 @@ test.describe('Cross-Module Integration Tests', () => {
 
   test('should create department hierarchy and assign employees', async ({ page }) => {
     // Create parent department
-    await page.goto(`${BASE_URL}/departments/new`);
+    await page.goto(`/departments/new`);
     await page.waitForLoadState('networkidle');
     
     const timestamp = Date.now();
@@ -360,7 +360,7 @@ test.describe('Cross-Module Integration Tests', () => {
     await page.waitForTimeout(2000);
     
     // Now create child department with parent
-    await page.goto(`${BASE_URL}/departments/new`);
+    await page.goto(`/departments/new`);
     await page.waitForLoadState('networkidle');
     
     const childCode = `CHD${timestamp}`.substring(0, 10);
@@ -390,7 +390,7 @@ test.describe('Cross-Module Integration Tests', () => {
     await page.waitForTimeout(2000);
     
     // Verify both departments exist
-    await page.goto(`${BASE_URL}/departments`);
+    await page.goto(`/departments`);
     await page.waitForLoadState('networkidle');
     
     // Search for parent
@@ -409,7 +409,7 @@ test.describe('Cross-Module Integration Tests', () => {
     const timestamp = Date.now();
     
     // Create location
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     const locCode = `INT${timestamp}`.substring(0, 10);
@@ -424,7 +424,7 @@ test.describe('Cross-Module Integration Tests', () => {
     await page.waitForTimeout(2000);
     
     // Create department
-    await page.goto(`${BASE_URL}/departments/new`);
+    await page.goto(`/departments/new`);
     await page.waitForLoadState('networkidle');
     
     const deptCode = `INT${timestamp}`.substring(0, 10);
@@ -436,7 +436,7 @@ test.describe('Cross-Module Integration Tests', () => {
     await page.waitForTimeout(2000);
     
     // Create employee with both
-    await page.goto(`${BASE_URL}/employees/create`);
+    await page.goto(`/employees/create`);
     await page.waitForLoadState('networkidle');
     
     const empNum = `INT${timestamp}`;
@@ -475,7 +475,7 @@ test.describe('Cross-Module Integration Tests', () => {
 
   test('should validate referential integrity - cannot delete department with employees', async ({ page }) => {
     // This test verifies that departments with employees cannot be easily deleted
-    await page.goto(`${BASE_URL}/departments`);
+    await page.goto(`/departments`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
@@ -509,7 +509,7 @@ test.describe('Cross-Module Integration Tests', () => {
 
   test('should validate referential integrity - cannot delete location with employees', async ({ page }) => {
     // This test verifies that locations with employees cannot be easily deleted
-    await page.goto(`${BASE_URL}/locations`);
+    await page.goto(`/locations`);
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
@@ -543,7 +543,7 @@ test.describe('Cross-Module Integration Tests', () => {
 
   test('should display breadcrumbs or navigation path', async ({ page }) => {
     // Navigate through different pages and verify navigation elements
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto(`/employees`);
     await page.waitForLoadState('networkidle');
     
     // Check for navigation elements
@@ -555,7 +555,7 @@ test.describe('Cross-Module Integration Tests', () => {
     const timestamp = Date.now();
     
     // Create department in one flow
-    await page.goto(`${BASE_URL}/departments/new`);
+    await page.goto(`/departments/new`);
     await page.waitForLoadState('networkidle');
     
     const deptCode = `CON${timestamp}`.substring(0, 10);
@@ -565,7 +565,7 @@ test.describe('Cross-Module Integration Tests', () => {
     await page.waitForTimeout(2000);
     
     // Immediately create location
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     const locCode = `CON${timestamp}`.substring(0, 10);
@@ -581,3 +581,4 @@ test.describe('Cross-Module Integration Tests', () => {
     await expect(page).toHaveURL(/\/locations$/);
   });
 });
+

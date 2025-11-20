@@ -56,7 +56,7 @@ class ShiftService {
           w.last_name,
           w.employment_type
         FROM scheduling.shift s
-        JOIN scheduling.worker w ON s.worker_id = w.id
+        JOIN hris.employee w ON s.employee_id = w.id
         WHERE s.id = $1 
         AND s.organization_id = $2 
         AND s.deleted_at IS NULL`,
@@ -124,7 +124,7 @@ class ShiftService {
 
       this.logger.info('Shift clocked out', {
         shiftId,
-        workerId: shift.worker_id,
+        workerId: shift.employee_id,
         workedHours,
         regularHours,
         overtimeHours,
@@ -246,7 +246,7 @@ class ShiftService {
 
       this.logger.info('Shift clocked in', {
         shiftId,
-        workerId: shift.worker_id,
+        workerId: shift.employee_id,
         organizationId
       });
 

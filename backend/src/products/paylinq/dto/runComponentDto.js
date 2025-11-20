@@ -1,7 +1,7 @@
 /**
  * Run Component DTO
  * 
- * Data Transfer Object for payroll run component records (payroll_run_components table).
+ * Data Transfer Object for payroll run component records (payroll.payroll_run_components table).
  * Handles mapping between database schema and API format.
  * 
  * Database Format (snake_case):
@@ -80,7 +80,7 @@ export function mapRunComponentApiToDb(apiData) {
 
 /**
  * Map payroll run components with tax calculation metadata for component breakdown endpoint (PHASE 2)
- * @param {Array<Object>} dbComponents - Array of payroll_run_component records from database
+ * @param {Array<Object>} dbComponents - Array of payroll_run_components records from database
  * @returns {Object} Structured component breakdown with earnings, taxes, and summary
  */
 export function mapRunComponentsToBreakdown(dbComponents) {

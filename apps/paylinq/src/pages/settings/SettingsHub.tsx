@@ -74,6 +74,13 @@ const settingsCards: SettingCard[] = [
     category: 'payroll',
   },
   {
+    title: 'Shift Types',
+    description: 'Define shift schedules, differentials, and time-based pay rules',
+    icon: <Clock className="h-6 w-6" />,
+    href: '/settings/shift-types',
+    category: 'payroll',
+  },
+  {
     title: 'Payroll Defaults',
     description: 'Default pay frequency, overtime rates, and work schedule settings',
     icon: <DollarSign className="h-6 w-6" />,

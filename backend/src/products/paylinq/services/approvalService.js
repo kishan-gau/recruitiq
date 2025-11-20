@@ -1,4 +1,4 @@
-import { query } from '../../../config/database.js';
+import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 /**
@@ -408,11 +408,7 @@ class ApprovalService {
     queryText += ' ORDER BY priority DESC, created_at ASC';
 
     try {
-      const result = await query(queryText, params, organizationId, {
-        operation: 'SELECT',
-        table: 'currency_approval_request',
-        userId
-      });
+      const result = await pool.query(queryText, params);
       return result.rows;
     } catch (error) {
       logger.error('Error getting pending approvals', { error, organizationId });

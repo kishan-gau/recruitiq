@@ -1,12 +1,13 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = '/api';
 
 const api = axios.create({
-  baseURL: `${API_BASE_URL}/api/schedulehub`,
+  baseURL: `${API_BASE_URL}/products/schedulehub`,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Send cookies with requests
 });
 
 // Add auth token to requests
@@ -19,6 +20,10 @@ api.interceptors.request.use((config) => {
 });
 
 export const schedulehubApi = {
+  stats: {
+    get: () => api.get('/stats').then((res) => res.data),
+  },
+
   workers: {
     list: (params?: any) => api.get('/workers', { params }).then((res) => res.data),
     get: (id: string) => api.get(`/workers/${id}`).then((res) => res.data),

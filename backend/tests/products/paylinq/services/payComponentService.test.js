@@ -15,7 +15,7 @@ const createDbComponent = (overrides = {}) => ({
   category: 'regular_pay',
   is_taxable: true,
   is_system_defined: false,
-  is_active: true,
+  status: 'active',
   requires_amount_input: false,
   requires_hours_input: false,
   affects_provident_fund: false,
@@ -165,19 +165,26 @@ describe('PayComponentService', () => {
         createDbComponent({ component_code: 'OVERTIME', component_type: 'earning' })
       ];
 
-      mockRepository.findPayComponents.mockResolvedValue(dbComponents);
+      mockRepository.findPayComponents.mockResolvedValue({
+        components: dbComponents,
+        total: 2
+      });
 
       const result = await service.getPayComponents(orgId);
 
-      expect(result).toEqual(mapComponentsDbToApi(dbComponents));
-      expect(result).toHaveLength(2);
-      expect(result[0].componentCode).toBe('BASIC_PAY');
-      expect(result[1].componentCode).toBe('OVERTIME');
+      expect(result.components).toEqual(mapComponentsDbToApi(dbComponents));
+      expect(result.total).toBe(2);
+      expect(result.components).toHaveLength(2);
+      expect(result.components[0].componentCode).toBe('BASIC_PAY');
+      expect(result.components[1].componentCode).toBe('OVERTIME');
     });
 
     it('should pass filters to repository', async () => {
       const filters = { componentType: 'earning', isActive: true };
-      mockRepository.findPayComponents.mockResolvedValue([]);
+      mockRepository.findPayComponents.mockResolvedValue({
+        components: [],
+        total: 0
+      });
 
       await service.getPayComponents(orgId, filters);
 
@@ -185,11 +192,15 @@ describe('PayComponentService', () => {
     });
 
     it('should return empty array when no components found', async () => {
-      mockRepository.findPayComponents.mockResolvedValue([]);
+      mockRepository.findPayComponents.mockResolvedValue({
+        components: [],
+        total: 0
+      });
 
       const result = await service.getPayComponents(orgId);
 
-      expect(result).toEqual([]);
+      expect(result.components).toEqual([]);
+      expect(result.total).toBe(0);
     });
   });
 
@@ -608,8 +619,8 @@ describe('PayComponentService', () => {
   describe('getActivePayComponentsForPayroll', () => {
     it('should return DTO-transformed active components', async () => {
       const dbComponents = [
-        createDbComponent({ component_code: 'BASIC', is_active: true }),
-        createDbComponent({ component_code: 'OVERTIME', is_active: true })
+        createDbComponent({ component_code: 'BASIC' }),
+        createDbComponent({ component_code: 'OVERTIME' })
       ];
 
       mockRepository.findActivePayComponentsForPayroll.mockResolvedValue(dbComponents);
@@ -718,11 +729,17 @@ describe('PayComponentService', () => {
   describe('getPayComponentsByOrganization', () => {
     it('should call getPayComponents', async () => {
       const dbComponents = [createDbComponent()];
-      mockRepository.findPayComponents.mockResolvedValue(dbComponents);
+      mockRepository.findPayComponents.mockResolvedValue({
+        components: dbComponents,
+        total: 1
+      });
 
       const result = await service.getPayComponentsByOrganization(orgId);
 
-      expect(result).toEqual(mapComponentsDbToApi(dbComponents));
+      expect(result).toEqual({
+        components: mapComponentsDbToApi(dbComponents),
+        total: 1
+      });
       expect(mockRepository.findPayComponents).toHaveBeenCalledWith(orgId, {});
     });
   });

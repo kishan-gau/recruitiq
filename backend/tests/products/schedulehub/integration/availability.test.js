@@ -1,12 +1,10 @@
 /**
  * Integration Tests: Availability API
- * Tests worker availability management endpoints
+ * Tests worker availability management endpoints with cookie-based authentication
  */
 
 import { jest } from '@jest/globals';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import request from 'supertest';
-import app from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
 import {
   createTestOrganization,
@@ -17,15 +15,11 @@ import {
   createTestRole,
   cleanupTestData
 } from './setup.js';
-
-
-// SKIPPED: Bearer token auth incomplete - migrating to cookie-based auth
-// TODO: Re-enable once cookie auth is implemented for all apps
-
-describe.skip('Integration: Availability API', () => {
+describe('Integration: Availability API', () => {
   let organizationId;
   let userId;
-  let token;
+  let agent;
+  let csrfToken;
   let workerId;
   let roleId;
   let availabilityId;
@@ -34,7 +28,8 @@ describe.skip('Integration: Availability API', () => {
     const org = await createTestOrganization();
     organizationId = org.organizationId;
     userId = org.userId;
-    token = org.token;
+    agent = org.agent;
+    csrfToken = org.csrfToken;
 
     const departmentId = await createTestDepartment(organizationId, userId);
     const locationId = await createTestLocation(organizationId, userId);
@@ -48,11 +43,9 @@ describe.skip('Integration: Availability API', () => {
     await pool.end();
   });
 
-  describe.skip('POST /api/schedulehub/availability', () => {
+  describe('POST /api/products/schedulehub/availability', () => {
     it('should create recurring availability', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/availability')
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.post('/api/products/schedulehub/availability')        .set('X-CSRF-Token', csrfToken)
         .send({
           workerId,
           availabilityType: 'recurring',
@@ -75,9 +68,7 @@ describe.skip('Integration: Availability API', () => {
       const specificDate = new Date();
       specificDate.setDate(specificDate.getDate() + 3);
 
-      const response = await request(app)
-        .post('/api/schedulehub/availability')
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.post('/api/products/schedulehub/availability')        .set('X-CSRF-Token', csrfToken)
         .send({
           workerId,
           availabilityType: 'one_time',
@@ -94,9 +85,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should create unavailability', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/availability')
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.post('/api/products/schedulehub/availability')        .set('X-CSRF-Token', csrfToken)
         .send({
           workerId,
           availabilityType: 'unavailable',
@@ -111,9 +100,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should validate time format', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/availability')
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.post('/api/products/schedulehub/availability')        .set('X-CSRF-Token', csrfToken)
         .send({
           workerId,
           availabilityType: 'recurring',
@@ -126,9 +113,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should validate priority enum', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/availability')
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.post('/api/products/schedulehub/availability')        .set('X-CSRF-Token', csrfToken)
         .send({
           workerId,
           availabilityType: 'recurring',
@@ -142,9 +127,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should require specific_date for one_time', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/availability')
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.post('/api/products/schedulehub/availability')        .set('X-CSRF-Token', csrfToken)
         .send({
           workerId,
           availabilityType: 'one_time',
@@ -157,9 +140,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should require day_of_week for recurring', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/availability')
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.post('/api/products/schedulehub/availability')        .set('X-CSRF-Token', csrfToken)
         .send({
           workerId,
           availabilityType: 'recurring',
@@ -172,10 +153,9 @@ describe.skip('Integration: Availability API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/workers/:workerId/availability', () => {
+  describe('GET /api/products/schedulehub/workers/:workerId/availability', () => {
     it('should get worker availability', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/availability`)
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/availability`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -185,10 +165,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should filter by availability type', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/availability`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ availabilityType: 'recurring' });
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/availability`)        .query({ availabilityType: 'recurring' });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(a => a.availability_type === 'recurring')).toBe(true);
@@ -198,26 +175,20 @@ describe.skip('Integration: Availability API', () => {
       const startDate = new Date().toISOString().split('T')[0];
       const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/availability`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ startDate, endDate });
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/availability`)        .query({ startDate, endDate });
 
       expect(response.status).toBe(200);
     });
 
     it('should filter by day of week', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/availability`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ dayOfWeek: 1 });
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/availability`)        .query({ dayOfWeek: 1 });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(a => a.day_of_week === 1 || a.day_of_week === null)).toBe(true);
     });
   });
 
-  describe.skip('GET /api/schedulehub/workers/:workerId/check-availability', () => {
+  describe('GET /api/products/schedulehub/workers/:workerId/check-availability', () => {
     it('should check if worker is available', async () => {
       const checkDate = new Date();
       checkDate.setDate(checkDate.getDate() + 1);
@@ -227,10 +198,7 @@ describe.skip('Integration: Availability API', () => {
         checkDate.setDate(checkDate.getDate() + 1);
       }
 
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/check-availability`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/check-availability`)        .query({
           date: checkDate.toISOString().split('T')[0],
           startTime: '10:00',
           endTime: '16:00'
@@ -242,10 +210,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should require date and times', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/check-availability`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/check-availability`)        .query({
           date: new Date().toISOString().split('T')[0]
           // Missing times
         });
@@ -254,7 +219,7 @@ describe.skip('Integration: Availability API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/available-workers', () => {
+  describe('GET /api/products/schedulehub/available-workers', () => {
     it('should find available workers for shift', async () => {
       const shiftDate = new Date();
       shiftDate.setDate(shiftDate.getDate() + 1);
@@ -264,10 +229,7 @@ describe.skip('Integration: Availability API', () => {
         shiftDate.setDate(shiftDate.getDate() + 1);
       }
 
-      const response = await request(app)
-        .get('/api/schedulehub/available-workers')
-        .set('Authorization', `Bearer ${token}`)
-        .query({
+      const response = await agent.get('/api/products/schedulehub/available-workers')        .query({
           date: shiftDate.toISOString().split('T')[0],
           startTime: '10:00',
           endTime: '16:00'
@@ -281,10 +243,7 @@ describe.skip('Integration: Availability API', () => {
       const shiftDate = new Date();
       shiftDate.setDate(shiftDate.getDate() + 1);
 
-      const response = await request(app)
-        .get('/api/schedulehub/available-workers')
-        .set('Authorization', `Bearer ${token}`)
-        .query({
+      const response = await agent.get('/api/products/schedulehub/available-workers')        .query({
           date: shiftDate.toISOString().split('T')[0],
           startTime: '10:00',
           endTime: '16:00',
@@ -298,10 +257,7 @@ describe.skip('Integration: Availability API', () => {
       const shiftDate = new Date();
       const excludeWorkerIds = [workerId];
 
-      const response = await request(app)
-        .get('/api/schedulehub/available-workers')
-        .set('Authorization', `Bearer ${token}`)
-        .query({
+      const response = await agent.get('/api/products/schedulehub/available-workers')        .query({
           date: shiftDate.toISOString().split('T')[0],
           startTime: '10:00',
           endTime: '16:00',
@@ -313,7 +269,7 @@ describe.skip('Integration: Availability API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/workers/:workerId/default-availability', () => {
+  describe('POST /api/products/schedulehub/workers/:workerId/default-availability', () => {
     let newWorkerId;
 
     beforeAll(async () => {
@@ -324,8 +280,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should create default availability (Mon-Fri 9-5)', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/workers/${newWorkerId}/default-availability`)
+      const response = await agent.post(`/api/products/schedulehub/workers/${newWorkerId}/default-availability`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(201);
@@ -351,9 +306,7 @@ describe.skip('Integration: Availability API', () => {
       const anotherEmployeeId = await createTestEmployee(organizationId, userId, anotherDepartmentId, anotherLocationId);
       const anotherWorkerId = await createTestWorker(organizationId, userId, anotherEmployeeId, anotherDepartmentId, anotherLocationId);
 
-      const response = await request(app)
-        .post(`/api/schedulehub/workers/${anotherWorkerId}/default-availability`)
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.post(`/api/products/schedulehub/workers/${anotherWorkerId}/default-availability`)        .set('X-CSRF-Token', csrfToken)
         .send({
           startTime: '08:00',
           endTime: '16:00'
@@ -367,11 +320,9 @@ describe.skip('Integration: Availability API', () => {
     });
   });
 
-  describe.skip('PATCH /api/schedulehub/availability/:id', () => {
+  describe('PATCH /api/products/schedulehub/availability/:id', () => {
     it('should update availability', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/availability/${availabilityId}`)
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.patch(`/api/products/schedulehub/availability/${availabilityId}`)        .set('X-CSRF-Token', csrfToken)
         .send({
           startTime: '08:00',
           endTime: '16:00',
@@ -386,9 +337,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should update reason', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/availability/${availabilityId}`)
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.patch(`/api/products/schedulehub/availability/${availabilityId}`)        .set('X-CSRF-Token', csrfToken)
         .send({
           reason: 'Updated availability reason'
         });
@@ -400,9 +349,7 @@ describe.skip('Integration: Availability API', () => {
 
     it('should return 404 for non-existent availability', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000';
-      const response = await request(app)
-        .patch(`/api/schedulehub/availability/${fakeId}`)
-        .set('Authorization', `Bearer ${token}`)
+      const response = await agent.patch(`/api/products/schedulehub/availability/${fakeId}`)        .set('X-CSRF-Token', csrfToken)
         .send({
           priority: 'preferred'
         });
@@ -411,7 +358,7 @@ describe.skip('Integration: Availability API', () => {
     });
   });
 
-  describe.skip('DELETE /api/schedulehub/availability/:id', () => {
+  describe('DELETE /api/products/schedulehub/availability/:id', () => {
     let deleteAvailId;
 
     beforeAll(async () => {
@@ -433,8 +380,7 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should delete availability', async () => {
-      const response = await request(app)
-        .delete(`/api/schedulehub/availability/${deleteAvailId}`)
+      const response = await agent.delete(`/api/products/schedulehub/availability/${deleteAvailId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -449,11 +395,11 @@ describe.skip('Integration: Availability API', () => {
     });
 
     it('should return 404 for already deleted availability', async () => {
-      const response = await request(app)
-        .delete(`/api/schedulehub/availability/${deleteAvailId}`)
+      const response = await agent.delete(`/api/products/schedulehub/availability/${deleteAvailId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(404);
     });
   });
 });
+

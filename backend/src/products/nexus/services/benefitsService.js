@@ -32,13 +32,13 @@ class BenefitsService {
       }
 
       const sql = `
-        INSERT INTO hris.benefit_plan (
+        INSERT INTO hris.benefits_plan (
           organization_id, plan_name, plan_type, description,
-          provider_name, provider_contact, policy_number,
-          coverage_start_date, coverage_end_date,
-          employee_contribution, employer_contribution,
-          contribution_frequency, eligibility_criteria,
-          is_active, created_by, updated_by
+          provider_name, coverage_level,
+          effective_date, termination_date,
+          employee_cost, employer_contribution,
+          contribution_frequency, eligibility_rules,
+          waiting_period_days, is_active, created_by, updated_by
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
         )
@@ -51,14 +51,14 @@ class BenefitsService {
         planData.plan_type,
         planData.description || null,
         planData.provider_name || null,
-        planData.provider_contact || null,
-        planData.policy_number || null,
-        planData.coverage_start_date || null,
-        planData.coverage_end_date || null,
-        planData.employee_contribution || 0,
+        planData.coverage_level || 'employee',
+        planData.effective_date || null,
+        planData.termination_date || null,
+        planData.employee_cost || 0,
         planData.employer_contribution || 0,
         planData.contribution_frequency || 'monthly',
-        planData.eligibility_criteria || null,
+        planData.eligibility_rules || '{}',
+        planData.waiting_period_days || 0,
         planData.is_active !== false,
         userId,
         userId
@@ -66,7 +66,7 @@ class BenefitsService {
 
       const result = await query(sql, params, organizationId, {
         operation: 'create',
-        table: 'hris.benefit_plan'
+        table: 'hris.benefits_plan'
       });
 
       this.logger.info('Benefit plan created successfully', { 
@@ -93,7 +93,7 @@ class BenefitsService {
       this.logger.debug('Getting benefit plan', { id, organizationId });
 
       const sql = `
-        SELECT * FROM hris.benefit_plan
+        SELECT * FROM hris.benefits_plan
         WHERE id = $1 
           AND organization_id = $2
           AND deleted_at IS NULL
@@ -101,7 +101,7 @@ class BenefitsService {
 
       const result = await query(sql, [id, organizationId], organizationId, {
         operation: 'findById',
-        table: 'hris.benefit_plan'
+        table: 'hris.benefits_plan'
       });
       
       if (result.rows.length === 0) {
@@ -135,8 +135,8 @@ class BenefitsService {
       let sql = `
         SELECT bp.*,
                COUNT(be.id) as enrollment_count
-        FROM hris.benefit_plan bp
-        LEFT JOIN hris.benefit_enrollment be ON bp.id = be.plan_id AND be.deleted_at IS NULL
+        FROM hris.benefits_plan bp
+        LEFT JOIN hris.employee_benefit_enrollment be ON bp.id = be.benefits_plan_id AND be.deleted_at IS NULL
         WHERE bp.organization_id = $1 AND bp.deleted_at IS NULL
       `;
 
@@ -160,13 +160,13 @@ class BenefitsService {
 
       const result = await query(sql, params, organizationId, {
         operation: 'findAll',
-        table: 'hris.benefit_plan'
+        table: 'hris.benefits_plan'
       });
 
       // Get total count
       let countSql = `
         SELECT COUNT(*) as count 
-        FROM hris.benefit_plan bp
+        FROM hris.benefits_plan bp
         WHERE bp.organization_id = $1 AND bp.deleted_at IS NULL
       `;
 
@@ -187,7 +187,7 @@ class BenefitsService {
 
       const countResult = await query(countSql, countParams, organizationId, {
         operation: 'count',
-        table: 'hris.benefit_plan'
+        table: 'hris.benefits_plan'
       });
 
       return {
@@ -219,7 +219,7 @@ class BenefitsService {
 
       // Check if plan exists
       const checkSql = `
-        SELECT id FROM hris.benefit_plan 
+        SELECT id FROM hris.benefits_plan 
         WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
       `;
       const checkResult = await query(checkSql, [id, organizationId], organizationId);
@@ -262,7 +262,7 @@ class BenefitsService {
       params.push(id, organizationId);
 
       const sql = `
-        UPDATE hris.benefit_plan 
+        UPDATE hris.benefits_plan 
         SET ${updates.join(', ')}
         WHERE id = $${paramIndex} AND organization_id = $${paramIndex + 1}
         RETURNING *
@@ -270,7 +270,7 @@ class BenefitsService {
 
       const result = await query(sql, params, organizationId, {
         operation: 'update',
-        table: 'hris.benefit_plan'
+        table: 'hris.benefits_plan'
       });
 
       this.logger.info('Benefit plan updated successfully', { 
@@ -313,7 +313,7 @@ class BenefitsService {
 
       // Check if employee is already enrolled in this plan
       const checkSql = `
-        SELECT id FROM hris.benefit_enrollment 
+        SELECT id FROM hris.employee_benefit_enrollment 
         WHERE employee_id = $1 
           AND plan_id = $2 
           AND organization_id = $3
@@ -331,7 +331,7 @@ class BenefitsService {
       }
 
       const sql = `
-        INSERT INTO hris.benefit_enrollment (
+        INSERT INTO hris.employee_benefit_enrollment (
           organization_id, employee_id, plan_id,
           enrollment_date, coverage_start_date, coverage_end_date,
           employee_contribution_amount, employer_contribution_amount,
@@ -359,7 +359,7 @@ class BenefitsService {
 
       const result = await query(sql, params, organizationId, {
         operation: 'create',
-        table: 'hris.benefit_enrollment'
+        table: 'hris.employee_benefit_enrollment'
       });
 
       this.logger.info('Employee enrolled successfully', { 
@@ -391,7 +391,7 @@ class BenefitsService {
 
       // Check if enrollment exists
       const checkSql = `
-        SELECT id FROM hris.benefit_enrollment 
+        SELECT id FROM hris.employee_benefit_enrollment 
         WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
       `;
       const checkResult = await query(checkSql, [id, organizationId], organizationId);
@@ -425,7 +425,7 @@ class BenefitsService {
       });
 
       if (updates.length === 0) {
-        const getSql = `SELECT * FROM hris.benefit_enrollment WHERE id = $1 AND organization_id = $2`;
+        const getSql = `SELECT * FROM hris.employee_benefit_enrollment WHERE id = $1 AND organization_id = $2`;
         const getResult = await query(getSql, [id, organizationId], organizationId);
         return getResult.rows[0];
       }
@@ -439,7 +439,7 @@ class BenefitsService {
       params.push(id, organizationId);
 
       const sql = `
-        UPDATE hris.benefit_enrollment 
+        UPDATE hris.employee_benefit_enrollment 
         SET ${updates.join(', ')}
         WHERE id = $${paramIndex} AND organization_id = $${paramIndex + 1}
         RETURNING *
@@ -447,7 +447,7 @@ class BenefitsService {
 
       const result = await query(sql, params, organizationId, {
         operation: 'update',
-        table: 'hris.benefit_enrollment'
+        table: 'hris.employee_benefit_enrollment'
       });
 
       this.logger.info('Enrollment updated successfully', { 
@@ -480,7 +480,7 @@ class BenefitsService {
 
       // Check if enrollment exists and is active
       const checkSql = `
-        SELECT id, status FROM hris.benefit_enrollment 
+        SELECT id, status FROM hris.employee_benefit_enrollment 
         WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
       `;
       const checkResult = await query(checkSql, [id, organizationId], organizationId);
@@ -494,7 +494,7 @@ class BenefitsService {
       }
 
       const sql = `
-        UPDATE hris.benefit_enrollment 
+        UPDATE hris.employee_benefit_enrollment 
         SET status = 'terminated',
             coverage_end_date = $3,
             termination_reason = $4,
@@ -506,7 +506,7 @@ class BenefitsService {
 
       const result = await query(sql, [id, organizationId, endDate, reason, userId], organizationId, {
         operation: 'update',
-        table: 'hris.benefit_enrollment'
+        table: 'hris.employee_benefit_enrollment'
       });
 
       this.logger.info('Enrollment terminated successfully', { 
@@ -541,8 +541,8 @@ class BenefitsService {
                bp.plan_name,
                bp.plan_type,
                bp.provider_name
-        FROM hris.benefit_enrollment be
-        JOIN hris.benefit_plan bp ON be.plan_id = bp.id
+        FROM hris.employee_benefit_enrollment be
+        JOIN hris.benefits_plan bp ON be.plan_id = bp.id
         WHERE be.employee_id = $1 
           AND be.organization_id = $2
           AND be.deleted_at IS NULL
@@ -551,7 +551,7 @@ class BenefitsService {
 
       const result = await query(sql, [employeeId, organizationId], organizationId, {
         operation: 'findAll',
-        table: 'hris.benefit_enrollment'
+        table: 'hris.employee_benefit_enrollment'
       });
 
       return result.rows;
@@ -580,7 +580,7 @@ class BenefitsService {
                e.first_name || ' ' || e.last_name as employee_name,
                e.email as employee_email,
                e.employee_number
-        FROM hris.benefit_enrollment be
+        FROM hris.employee_benefit_enrollment be
         JOIN hris.employee e ON be.employee_id = e.id
         WHERE be.plan_id = $1 
           AND be.organization_id = $2
@@ -590,7 +590,7 @@ class BenefitsService {
 
       const result = await query(sql, [planId, organizationId], organizationId, {
         operation: 'findAll',
-        table: 'hris.benefit_enrollment'
+        table: 'hris.employee_benefit_enrollment'
       });
 
       return result.rows;
@@ -606,3 +606,4 @@ class BenefitsService {
 }
 
 export default BenefitsService;
+

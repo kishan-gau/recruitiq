@@ -9,7 +9,7 @@
  */
 
 import express from 'express';
-import { authenticate, requirePlatformUser, requirePermission } from '../middleware/auth.js';
+import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
 import FeatureService from '../services/FeatureService.js';
 import FeatureTierService from '../services/FeatureTierService.js';
 import FeatureAccessService from '../services/FeatureAccessService.js';
@@ -29,8 +29,7 @@ const featureRepo = new FeatureRepository();
 const grantRepo = new FeatureGrantRepository();
 
 // All feature admin routes require platform user authentication
-router.use(authenticate);
-router.use(requirePlatformUser);
+router.use(authenticatePlatform);
 
 // ============================================================================
 // FEATURE CATALOG MANAGEMENT
@@ -40,7 +39,7 @@ router.use(requirePlatformUser);
  * POST /api/admin/features
  * Create a new feature
  */
-router.post('/features', requirePermission('features.manage'), async (req, res) => {
+router.post('/features', requirePlatformPermission('features.manage'), async (req, res) => {
   try {
     const {
       productId,
@@ -121,7 +120,7 @@ router.post('/features', requirePermission('features.manage'), async (req, res) 
  * GET /api/admin/features
  * List all features with filtering and pagination
  */
-router.get('/features', requirePermission('features.view'), async (req, res) => {
+router.get('/features', requirePlatformPermission('features.view'), async (req, res) => {
   try {
     const {
       productId,
@@ -167,7 +166,7 @@ router.get('/features', requirePermission('features.view'), async (req, res) => 
  * GET /api/admin/features/:featureId
  * Get feature details
  */
-router.get('/features/:featureId', requirePermission('features.view'), async (req, res) => {
+router.get('/features/:featureId', requirePlatformPermission('features.view'), async (req, res) => {
   try {
     const { featureId } = req.params;
 
@@ -204,7 +203,7 @@ router.get('/features/:featureId', requirePermission('features.view'), async (re
  * PATCH /api/admin/features/:featureId
  * Update a feature
  */
-router.patch('/features/:featureId', requirePermission('features.manage'), async (req, res) => {
+router.patch('/features/:featureId', requirePlatformPermission('features.manage'), async (req, res) => {
   try {
     const { featureId } = req.params;
     const updateData = req.body;
@@ -255,7 +254,7 @@ router.patch('/features/:featureId', requirePermission('features.manage'), async
  * POST /api/admin/features/:featureId/deprecate
  * Deprecate a feature
  */
-router.post('/features/:featureId/deprecate', requirePermission('features.manage'), async (req, res) => {
+router.post('/features/:featureId/deprecate', requirePlatformPermission('features.manage'), async (req, res) => {
   try {
     const { featureId } = req.params;
     const { message } = req.body;
@@ -314,7 +313,7 @@ router.post('/features/:featureId/deprecate', requirePermission('features.manage
  * PATCH /api/admin/features/:featureId/rollout
  * Update feature rollout percentage
  */
-router.patch('/features/:featureId/rollout', requirePermission('features.manage'), async (req, res) => {
+router.patch('/features/:featureId/rollout', requirePlatformPermission('features.manage'), async (req, res) => {
   try {
     const { featureId } = req.params;
     const { percentage, targetOrganizations = [] } = req.body;
@@ -379,7 +378,7 @@ router.patch('/features/:featureId/rollout', requirePermission('features.manage'
  * GET /api/admin/organizations/:organizationId/features
  * List all feature grants for an organization
  */
-router.get('/organizations/:organizationId/features', requirePermission('features.view'), async (req, res) => {
+router.get('/organizations/:organizationId/features', requirePlatformPermission('features.view'), async (req, res) => {
   try {
     const { organizationId } = req.params;
     const { productId } = req.query;
@@ -413,7 +412,7 @@ router.get('/organizations/:organizationId/features', requirePermission('feature
  * POST /api/admin/organizations/:organizationId/features/grant
  * Grant a feature to an organization
  */
-router.post('/organizations/:organizationId/features/grant', requirePermission('features.manage'), async (req, res) => {
+router.post('/organizations/:organizationId/features/grant', requirePlatformPermission('features.manage'), async (req, res) => {
   try {
     const { organizationId } = req.params;
     const {
@@ -506,7 +505,7 @@ router.post('/organizations/:organizationId/features/grant', requirePermission('
  * DELETE /api/admin/organizations/:organizationId/features/:grantId
  * Revoke a feature grant
  */
-router.delete('/organizations/:organizationId/features/:grantId', requirePermission('features.manage'), async (req, res) => {
+router.delete('/organizations/:organizationId/features/:grantId', requirePlatformPermission('features.manage'), async (req, res) => {
   try {
     const { grantId } = req.params;
     const { reason = 'Revoked by admin' } = req.body;
@@ -552,7 +551,7 @@ router.delete('/organizations/:organizationId/features/:grantId', requirePermiss
  * POST /api/admin/organizations/:organizationId/features/sync-tier
  * Sync features based on organization tier
  */
-router.post('/organizations/:organizationId/features/sync-tier', requirePermission('features.manage'), async (req, res) => {
+router.post('/organizations/:organizationId/features/sync-tier', requirePlatformPermission('features.manage'), async (req, res) => {
   try {
     const { organizationId } = req.params;
     const { productId, tier } = req.body;
@@ -614,7 +613,7 @@ router.post('/organizations/:organizationId/features/sync-tier', requirePermissi
  * POST /api/admin/organizations/:organizationId/features/preview-tier-change
  * Preview tier change impact
  */
-router.post('/organizations/:organizationId/features/preview-tier-change', requirePermission('features.view'), async (req, res) => {
+router.post('/organizations/:organizationId/features/preview-tier-change', requirePlatformPermission('features.view'), async (req, res) => {
   try {
     const { organizationId } = req.params;
     const { productId, currentTier, targetTier } = req.body;
@@ -665,7 +664,7 @@ router.post('/organizations/:organizationId/features/preview-tier-change', requi
  * GET /api/admin/features/:featureId/analytics
  * Get feature usage analytics
  */
-router.get('/features/:featureId/analytics', requirePermission('features.view'), async (req, res) => {
+router.get('/features/:featureId/analytics', requirePlatformPermission('features.view'), async (req, res) => {
   try {
     const { featureId } = req.params;
     const { period = '30d' } = req.query;
@@ -750,7 +749,7 @@ router.get('/features/:featureId/analytics', requirePermission('features.view'),
  * GET /api/admin/features/adoption-report
  * Get feature adoption report across all organizations
  */
-router.get('/features/adoption-report', requirePermission('features.view'), async (req, res) => {
+router.get('/features/adoption-report', requirePlatformPermission('features.view'), async (req, res) => {
   try {
     const { productId } = req.query;
 

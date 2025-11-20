@@ -5,7 +5,14 @@
 
 import schedulingService from '../services/schedulingService.js';
 import logger from '../../../utils/logger.js';
-import { mapScheduleApiToDb, mapScheduleChangeRequestApiToDb, mapScheduleDbToApi, mapScheduleDbArrayToApi } from '../utils/dtoMapper.js';
+import { 
+  mapScheduleApiToDb, 
+  mapScheduleDbToApi, 
+  mapSchedulesDbToApi,
+  mapScheduleChangeRequestApiToDb,
+  mapScheduleChangeRequestDbToApi,
+  mapScheduleChangeRequestsDbToApi 
+} from '../dto/schedulingDto.js';
 
 /**
  * Create a work schedule
@@ -64,7 +71,7 @@ async function createSchedule(req, res) {
 
       return res.status(201).json({
         success: true,
-        schedules: mapScheduleDbArrayToApi(schedules),
+        schedules: mapSchedulesDbToApi(schedules),
         count: schedules.length,
         message: 'Schedules created successfully',
       });
@@ -171,7 +178,7 @@ async function getSchedules(req, res) {
 
     res.status(200).json({
       success: true,
-      schedules: mapScheduleDbArrayToApi(result.schedules || result),
+      schedules: mapSchedulesDbToApi(result.schedules || result),
       pagination: result.pagination,
       count: result.schedules ? result.schedules.length : result.length,
     });
@@ -212,7 +219,7 @@ async function getEmployeeSchedules(req, res) {
 
     res.status(200).json({
       success: true,
-      schedules: mapScheduleDbArrayToApi(schedules),
+      schedules: mapSchedulesDbToApi(schedules),
       count: schedules.length,
     });
   } catch (error) {

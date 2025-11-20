@@ -1,8 +1,9 @@
 /**
  * Contracts API Service
+ * NOW USES: @recruitiq/api-client for type-safe API calls
  */
 
-import { apiClient } from './api';
+import { NexusClient, APIClient } from '@recruitiq/api-client';
 import type {
   Contract,
   CreateContractDTO,
@@ -10,104 +11,88 @@ import type {
   ContractFilters,
 } from '@/types/contract.types';
 
-// API response wrapper type
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-}
+// Create singleton instance
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
 
 export const contractsService = {
   /**
    * List all contracts with optional filters
    */
   list: async (filters?: ContractFilters): Promise<Contract[]> => {
-    const { data } = await apiClient.get<ApiResponse<Contract[]>>('/contracts', {
-      params: filters,
-    });
-    return data.data;
+    const response = await nexusClient.listContracts(filters);
+    // Backend returns { success: true, data: { contracts: [...], total, limit, offset } }
+    return response.data.contracts as Contract[];
   },
 
   /**
    * Get a single contract by ID
    */
   get: async (id: string): Promise<Contract> => {
-    const { data } = await apiClient.get<ApiResponse<Contract>>(`/contracts/${id}`);
-    return data.data;
+    const response = await nexusClient.getContract(id);
+    return response.data as Contract;
   },
 
   /**
    * Get all contracts for a specific employee
    */
   getByEmployee: async (employeeId: string): Promise<Contract[]> => {
-    const { data } = await apiClient.get<ApiResponse<Contract[]>>(`/contracts/employee/${employeeId}`);
-    return data.data;
+    const response = await nexusClient.getEmployeeContracts(employeeId);
+    return response.data as Contract[];
   },
 
   /**
    * Get the current active contract for an employee
    */
   getCurrentContract: async (employeeId: string): Promise<Contract | null> => {
-    const { data } = await apiClient.get<ApiResponse<Contract | null>>(`/contracts/employee/${employeeId}/current`);
-    return data.data;
+    const response = await nexusClient.getCurrentContract(employeeId);
+    return response.data as Contract | null;
   },
 
   /**
    * Create a new contract
    */
   create: async (contract: CreateContractDTO): Promise<Contract> => {
-    const { data } = await apiClient.post<ApiResponse<Contract>>('/contracts', contract);
-    return data.data;
+    const response = await nexusClient.createContract(contract);
+    return response.data as Contract;
   },
 
   /**
    * Update an existing contract
    */
   update: async (id: string, updates: UpdateContractDTO): Promise<Contract> => {
-    const { data } = await apiClient.patch<ApiResponse<Contract>>(`/contracts/${id}`, updates);
-    return data.data;
+    const response = await nexusClient.updateContract(id, updates);
+    return response.data as Contract;
   },
 
   /**
    * Delete a contract
    */
   delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/contracts/${id}`);
+    await nexusClient.deleteContract(id);
   },
 
   /**
    * Activate a contract
    */
   activate: async (id: string): Promise<Contract> => {
-    const { data } = await apiClient.post<ApiResponse<Contract>>(`/contracts/${id}/activate`);
-    return data.data;
+    const response = await nexusClient.activateContract(id);
+    return response.data as Contract;
   },
 
   /**
    * Terminate a contract
    */
   terminate: async (id: string, terminationDate: string): Promise<Contract> => {
-    const { data } = await apiClient.post<ApiResponse<Contract>>(`/contracts/${id}/terminate`, {
-      terminationDate,
-    });
-    return data.data;
+    const response = await nexusClient.terminateContract(id, terminationDate);
+    return response.data as Contract;
   },
 
   /**
    * Upload contract document
    */
   uploadDocument: async (id: string, file: File): Promise<{ documentUrl: string }> => {
-    const formData = new FormData();
-    formData.append('document', file);
-    
-    const { data } = await apiClient.post<ApiResponse<{ documentUrl: string }>>(
-      `/contracts/${id}/upload`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
-    return data.data;
+    const response = await nexusClient.uploadContractDocument(id, file);
+    return response.data as { documentUrl: string };
   },
 };

@@ -18,7 +18,7 @@ class AttendanceController {
    */
   clockIn = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const attendance = await this.service.clockIn(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: attendance });
     } catch (error) {
@@ -33,7 +33,7 @@ class AttendanceController {
    */
   clockOut = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { employeeId, ...clockOutData } = req.body;
       
       if (!employeeId) {
@@ -54,7 +54,7 @@ class AttendanceController {
    */
   getAttendance = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const attendance = await this.service.getAttendanceRecord(id, organizationId);
       res.json({ success: true, data: attendance });
@@ -71,7 +71,7 @@ class AttendanceController {
    */
   getEmployeeAttendance = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId } = req.params;
       const { startDate, endDate, limit = 50, offset = 0 } = req.query;
 
@@ -97,7 +97,7 @@ class AttendanceController {
    */
   createManualAttendance = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const attendance = await this.service.createManualAttendance(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: attendance });
     } catch (error) {
@@ -112,7 +112,7 @@ class AttendanceController {
    */
   getAttendanceSummary = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId } = req.params;
       const { startDate, endDate } = req.query;
 
@@ -142,7 +142,7 @@ class AttendanceController {
    */
   getTodayAttendance = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const records = await this.service.getTodayAttendance(organizationId);
       res.json({ success: true, data: records });
     } catch (error) {
@@ -157,7 +157,7 @@ class AttendanceController {
    */
   getAttendanceStatistics = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const statistics = await this.service.getAttendanceStatistics(organizationId);
       res.json({ success: true, data: statistics });
     } catch (error) {

@@ -29,30 +29,30 @@ function mapPaycheckToDto(paycheck) {
       : paycheck.first_name || paycheck.last_name || 'Unknown',
     email: paycheck.email,
     
-    // Pay amounts
-    grossPay: paycheck.gross_pay,
-    regularPay: paycheck.regular_pay,
-    overtimePay: paycheck.overtime_pay,
-    netPay: paycheck.net_pay,
+    // Pay amounts - ALWAYS convert to numbers (not strings)
+    grossPay: paycheck.gross_pay ? parseFloat(paycheck.gross_pay) : 0,
+    regularPay: paycheck.regular_pay ? parseFloat(paycheck.regular_pay) : 0,
+    overtimePay: paycheck.overtime_pay ? parseFloat(paycheck.overtime_pay) : 0,
+    netPay: paycheck.net_pay ? parseFloat(paycheck.net_pay) : 0,
     
     // Tax-free allowances and taxable income
     taxFreeAllowance: parseFloat(paycheck.tax_free_allowance) || 0,
     taxableIncome: parseFloat(paycheck.taxable_income) || 0,
     
-    // Surinamese taxes
-    wageTax: paycheck.wage_tax,
-    aovTax: paycheck.aov_tax,
-    awwTax: paycheck.aww_tax,
+    // Surinamese taxes - convert to numbers
+    wageTax: paycheck.wage_tax ? parseFloat(paycheck.wage_tax) : 0,
+    aovTax: paycheck.aov_tax ? parseFloat(paycheck.aov_tax) : 0,
+    awwTax: paycheck.aww_tax ? parseFloat(paycheck.aww_tax) : 0,
     
-    // US taxes (for backward compatibility)
-    federalTax: paycheck.federal_tax,
-    stateTax: paycheck.state_tax,
-    localTax: paycheck.local_tax,
-    socialSecurity: paycheck.social_security,
-    medicare: paycheck.medicare,
+    // US taxes (for backward compatibility) - convert to numbers
+    federalTax: paycheck.federal_tax ? parseFloat(paycheck.federal_tax) : 0,
+    stateTax: paycheck.state_tax ? parseFloat(paycheck.state_tax) : 0,
+    localTax: paycheck.local_tax ? parseFloat(paycheck.local_tax) : 0,
+    socialSecurity: paycheck.social_security ? parseFloat(paycheck.social_security) : 0,
+    medicare: paycheck.medicare ? parseFloat(paycheck.medicare) : 0,
     
-    // Deductions
-    otherDeductions: paycheck.other_deductions,
+    // Deductions - convert to numbers
+    otherDeductions: paycheck.other_deductions ? parseFloat(paycheck.other_deductions) : 0,
     
     // Payment info
     paymentMethod: paycheck.payment_method,

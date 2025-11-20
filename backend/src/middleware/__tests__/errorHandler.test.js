@@ -250,9 +250,9 @@ describe('Error Handler Middleware', () => {
       expect(mockRes.json).toHaveBeenCalled();
       
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.message).toBe('Invalid data');
-      expect(response.error.code).toBe('VALIDATION_ERROR');
-      expect(response.error.errorId).toBeDefined();
+      expect(response.error).toBe('Invalid data');
+      expect(response.errorCode).toBe('VALIDATION_ERROR');
+      expect(response.errorId).toBeDefined();
     });
 
     it('should handle generic errors with 500 status', () => {
@@ -300,7 +300,7 @@ describe('Error Handler Middleware', () => {
       
       expect(mockRes.status).toHaveBeenCalledWith(409);
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.code).toBe('DUPLICATE_RESOURCE');
+      expect(response.errorCode).toBe('DUPLICATE_RESOURCE');
     });
 
     it('should handle PostgreSQL foreign key violation (23503)', () => {
@@ -311,7 +311,7 @@ describe('Error Handler Middleware', () => {
       
       expect(mockRes.status).toHaveBeenCalledWith(400);
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.code).toBe('INVALID_REFERENCE');
+      expect(response.errorCode).toBe('INVALID_REFERENCE');
     });
 
     it('should handle PostgreSQL not null violation (23502)', () => {
@@ -323,7 +323,7 @@ describe('Error Handler Middleware', () => {
       
       expect(mockRes.status).toHaveBeenCalledWith(400);
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.code).toBe('MISSING_REQUIRED_FIELD');
+      expect(response.errorCode).toBe('MISSING_REQUIRED_FIELD');
     });
 
     it('should handle JWT errors', () => {
@@ -349,7 +349,7 @@ describe('Error Handler Middleware', () => {
       
       expect(mockRes.status).toHaveBeenCalledWith(401);
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.code).toBe('TOKEN_EXPIRED');
+      expect(response.errorCode).toBe('TOKEN_EXPIRED');
     });
 
     it('should handle Joi validation errors', () => {
@@ -368,7 +368,7 @@ describe('Error Handler Middleware', () => {
       
       expect(mockRes.status).toHaveBeenCalledWith(400);
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.code).toBe('VALIDATION_ERROR');
+      expect(response.errorCode).toBe('VALIDATION_ERROR');
     });
 
     it('should handle Multer file size error', () => {
@@ -381,7 +381,7 @@ describe('Error Handler Middleware', () => {
       
       expect(mockRes.status).toHaveBeenCalledWith(400);
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.code).toBe('FILE_UPLOAD_ERROR');
+      expect(response.errorCode).toBe('FILE_UPLOAD_ERROR');
     });
 
     it('should handle rate limit errors', () => {
@@ -406,7 +406,7 @@ describe('Error Handler Middleware', () => {
       errorHandler(error, mockReq, mockRes, mockNext);
       
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.message).toBe('An unexpected error occurred');
+      expect(response.error).toBe('An unexpected error occurred');
       
       config.env = 'test';
     });
@@ -418,8 +418,8 @@ describe('Error Handler Middleware', () => {
       errorHandler(error, mockReq, mockRes, mockNext);
       
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.error.stack).toBeDefined();
-      expect(response.error.raw).toBeDefined();
+      expect(response.stack).toBeDefined();
+      expect(response.debug).toBeDefined();
       
       config.env = 'test';
     });

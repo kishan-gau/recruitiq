@@ -1,13 +1,12 @@
 import express from 'express'
 import { tierController } from '../controllers/tierController.js'
-import { authenticate, requirePlatformUser, requirePermission } from '../../../middleware/auth.js'
+import { authenticatePlatform, requirePlatformPermission } from '../../../middleware/auth.js'
 
 const router = express.Router()
 
 // All tier management routes require authentication and license.tiers.manage permission
-router.use(authenticate)
-router.use(requirePlatformUser)
-router.use(requirePermission('license.tiers.manage'))
+router.use(authenticatePlatform)
+router.use(requirePlatformPermission('license.tiers.manage'))
 
 // Get all active tiers
 router.get('/', tierController.getAllTiers)

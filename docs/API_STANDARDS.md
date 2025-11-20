@@ -1,22 +1,23 @@
 # API Standards
 
 **Part of:** [RecruitIQ Coding Standards](../CODING_STANDARDS.md)  
-**Version:** 1.0  
-**Last Updated:** November 3, 2025
+**Version:** 1.1  
+**Last Updated:** November 19, 2025
 
 ---
 
 ## Table of Contents
 
 1. [API Principles](#api-principles)
-2. [Response Format](#response-format)
-3. [HTTP Status Codes](#http-status-codes)
-4. [Error Handling](#error-handling)
-5. [Pagination](#pagination)
-6. [Filtering & Sorting](#filtering--sorting)
-7. [Versioning](#versioning)
-8. [Rate Limiting](#rate-limiting)
-9. [Documentation](#documentation)
+2. [Product-Based Routing](#product-based-routing)
+3. [Response Format](#response-format)
+4. [HTTP Status Codes](#http-status-codes)
+5. [Error Handling](#error-handling)
+6. [Pagination](#pagination)
+7. [Filtering & Sorting](#filtering--sorting)
+8. [Versioning](#versioning)
+9. [Rate Limiting](#rate-limiting)
+10. [Documentation](#documentation)
 
 ---
 
@@ -51,6 +52,188 @@ GET    /api/v1/getJobs               // Don't use verbs
 POST   /api/v1/job/create            // Use HTTP methods
 GET    /api/v1/job/:id               // Use plural names
 POST   /api/v1/jobs/:id/apply        // Nest resources properly
+```
+
+---
+
+## Product-Based Routing
+
+### ⚠️ CRITICAL: Dynamic Product System
+
+RecruitIQ uses a **dynamic product loading system** where product modules (PayLinQ, Nexus, ScheduleHub, etc.) are loaded at runtime and mounted under a unified API structure.
+
+**ALL product API routes MUST use the `/api/products/{product-slug}` prefix.**
+
+### Product Route Structure (MANDATORY)
+
+```javascript
+// ✅ CORRECT: Product-based routing
+GET    /api/products/nexus/locations           // Nexus HRIS locations
+GET    /api/products/paylinq/worker-types      // PayLinQ worker types
+GET    /api/products/schedulehub/stations      // ScheduleHub stations
+POST   /api/products/nexus/employees           // Create employee in Nexus
+PATCH  /api/products/paylinq/payroll-runs/:id  // Update payroll run
+
+// ❌ WRONG: Direct product paths (will return 404!)
+GET    /api/nexus/locations                    // Missing /products prefix
+GET    /api/paylinq/worker-types               // Missing /products prefix
+POST   /api/schedulehub/stations               // Missing /products prefix
+```
+
+### Frontend API Client Configuration
+
+**MANDATORY:** All frontend applications MUST use the centralized `@recruitiq/api-client` package with product-specific clients (NexusClient, PayLinQClient, ScheduleHubClient).
+
+**✅ CORRECT: Use Centralized API Clients**
+
+```typescript
+// apps/nexus/src/services/locations.service.ts
+import { NexusClient, APIClient } from '@recruitiq/api-client';
+
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
+
+export const locationsService = {
+  async listLocations(filters?: any) {
+    const response = await nexusClient.listLocations(filters);
+    return response.data;
+  },
+  
+  async getLocation(id: string) {
+    const response = await nexusClient.getLocation(id);
+    return response.data;
+  },
+  
+  async createLocation(data: any) {
+    const response = await nexusClient.createLocation(data);
+    return response.data;
+  }
+};
+```
+
+**❌ WRONG: Direct apiClient Calls**
+
+```typescript
+// ❌ DON'T DO THIS: Direct API calls without product client
+import { apiClient } from './api';
+
+export const locationsService = {
+  async listLocations() {
+    // Missing type safety, manual path construction
+    const response = await apiClient.get('/api/products/nexus/locations');
+    return response.data;
+  }
+};
+```
+
+### Available Product Clients
+
+| Product | Client Class | Package Import | Use Case |
+|---------|-------------|----------------|----------|
+| Nexus (HRIS) | `NexusClient` | `@recruitiq/api-client` | Employee management, attendance, benefits |
+| PayLinQ (Payroll) | `PayLinQClient` | `@recruitiq/api-client` | Payroll runs, compensation, tax |
+| ScheduleHub | `ScheduleHubClient` | `@recruitiq/api-client` | Scheduling, shifts, stations |
+| RecruitIQ | `RecruitIQClient` | `@recruitiq/api-client` | Job postings, candidates, applications |
+
+### Product Client Methods (Type-Safe)
+
+**NexusClient** (112 methods across 9 services):
+- Locations: `listLocations()`, `getLocation()`, `createLocation()`, `updateLocation()`, `deleteLocation()`
+- Departments: `listDepartments()`, `getDepartment()`, `createDepartment()`, etc.
+- Employees: `listEmployees()`, `getEmployee()`, `createEmployee()`, `terminateEmployee()`, etc.
+- Time-Off: `listTimeOffRequests()`, `approveTimeOffRequest()`, `rejectTimeOffRequest()`, etc.
+- Attendance: `listAttendanceRecords()`, `getAttendanceStatistics()`, etc.
+- Benefits: `listBenefitPlans()`, `enrollEmployee()`, `checkEligibility()`, etc.
+- Contracts: `listContracts()`, `generateFromContractTemplate()`, etc.
+- Documents: `uploadFile()`, `downloadDocument()`, `requestSignature()`, etc.
+- Performance: `listPerformanceReviews()`, `createGoal()`, `updateGoalProgress()`, etc.
+
+**Benefits of Centralized Clients:**
+1. ✅ **Type Safety** - Full TypeScript support with proper return types
+2. ✅ **Maintainability** - Update paths in one place
+3. ✅ **Consistency** - All services follow same pattern
+4. ✅ **Error Handling** - Centralized interceptors and logging
+5. ✅ **Testing** - Easy to mock entire client
+6. ✅ **Documentation** - Self-documenting API surface
+
+### Legacy Pattern (Deprecated)
+
+**⚠️ DEPRECATED:** Direct path construction is no longer recommended:
+
+```typescript
+// ❌ OLD PATTERN: Manual path construction
+const API_BASE = '/api/products/nexus/locations';  // Deprecated
+const response = await apiClient.get(API_BASE);     // Use NexusClient instead
+```
+
+### Product Routing Architecture
+
+The dynamic product system works as follows:
+
+1. **Product Module Structure** (`backend/src/products/{product}/index.js`):
+```javascript
+export default {
+  config: {
+    name: 'Nexus',
+    slug: 'nexus',  // Used in URL path
+    version: '1.0.0'
+  },
+  routes: router,      // Product's Express router
+  middleware: [],      // Product-specific middleware
+  hooks: { onLoad, onUnload, onStartup, onShutdown }
+};
+```
+
+2. **Route Registration** (`backend/src/products/core/RouteRegistry.js`):
+   - Routes are mounted at `/{product.slug}` (e.g., `/nexus`)
+   - RouteRegistry returns a main router with all product routes
+
+3. **Server Mounting** (`backend/src/server.js`):
+   - Product router is mounted at `/api/products`
+   - Final path: `/api/products/{slug}/{resource}`
+
+### Product Slug Reference
+
+| Product | Slug | Base Path | Example Endpoint |
+|---------|------|-----------|------------------|
+| Nexus (HRIS) | `nexus` | `/api/products/nexus` | `/api/products/nexus/employees` |
+| PayLinQ (Payroll) | `paylinq` | `/api/products/paylinq` | `/api/products/paylinq/payroll-runs` |
+| ScheduleHub | `schedulehub` | `/api/products/schedulehub` | `/api/products/schedulehub/shifts` |
+| RecruitIQ | `recruitiq` | `/api/products/recruitiq` | `/api/products/recruitiq/jobs` |
+
+### Core Platform Routes (Not Product-Based)
+
+Some routes are **NOT** product-specific and exist at the root API level:
+
+```javascript
+// ✅ Core platform routes (no /products prefix)
+POST   /api/auth/login                    // Authentication
+GET    /api/auth/me                       // Current user
+POST   /api/auth/logout                   // Logout
+GET    /api/organizations                 // Organization management
+GET    /api/admin/products                // Product metadata management
+GET    /api/system/products/status        // Product system admin
+```
+
+**Rule:** Use `/api/products/{slug}` for product application endpoints. Use `/api/{resource}` for core platform services (auth, organizations, admin).
+
+### Troubleshooting 404 Errors
+
+If you encounter 404 errors when calling product APIs:
+
+1. **Check the API path** - Must include `/api/products/{slug}`
+2. **Verify product slug** - Check `backend/src/products/{product}/index.js` config
+3. **Confirm product is loaded** - Check server logs for product initialization
+4. **Check ProductManager** - Verify `dynamicProductRouter` is initialized
+5. **Test endpoint directly** - Use curl/Postman to verify backend route exists
+
+```bash
+# Verify product endpoints are accessible
+curl http://localhost:3001/api/products/nexus/locations
+curl http://localhost:3001/api/products/paylinq/worker-types
+
+# Check product system status (admin only)
+curl http://localhost:3001/api/system/products/status
 ```
 
 ---

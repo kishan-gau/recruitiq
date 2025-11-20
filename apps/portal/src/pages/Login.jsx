@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import MFAVerification from '../components/MFAVerification';
-import api from '../services/api';
+import { authService } from '../services';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -46,7 +46,7 @@ export default function Login() {
       try {
         // Try to get current user using cookie-based auth
         // Cookies are automatically sent with the request
-        const response = await axios.get('/api/auth/me');
+        const response = await axios.get('/api/auth/platform/me');
         const user = response.data.user;
         
         // Check if user has platform access

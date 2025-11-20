@@ -158,7 +158,6 @@ describe('ScheduleBuilder Integration', () => {
 
   it('validates that shift details are required before adding', async () => {
     const user = userEvent.setup();
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     
     renderWithProviders(<ScheduleBuilder />);
 
@@ -166,9 +165,20 @@ describe('ScheduleBuilder Integration', () => {
     const addShiftButton = screen.getByText('Add Shift');
     await user.click(addShiftButton);
 
-    expect(alertSpy).toHaveBeenCalledWith('Please fill in all shift details');
-    
-    alertSpy.mockRestore();
+    // Should show validation dialog
+    await waitFor(() => {
+      expect(screen.getByText('Missing Shift Details')).toBeInTheDocument();
+      expect(screen.getByText('Please fill in all shift details (Role and Station) before adding the shift.')).toBeInTheDocument();
+    });
+
+    // Close the dialog
+    const okButton = screen.getByRole('button', { name: 'OK' });
+    await user.click(okButton);
+
+    // Dialog should close
+    await waitFor(() => {
+      expect(screen.queryByText('Missing Shift Details')).not.toBeInTheDocument();
+    });
   });
 
   it('displays action buttons', () => {

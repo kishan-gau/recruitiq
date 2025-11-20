@@ -5,7 +5,6 @@
 
 import PayComponentService from '../services/payComponentService.js';
 import logger from '../../../utils/logger.js';
-import { mapPayComponentApiToDb, mapPayComponentDbToApi, mapPayComponentDbArrayToApi } from '../utils/dtoMapper.js';
 
 const payComponentService = new PayComponentService();
 
@@ -19,10 +18,9 @@ async function createPayComponent(req, res) {
   try {
     const organizationId = req.user.organization_id;
     const userId = req.user.id;
-    // Map API field names to database schema names
-    const componentData = mapPayComponentApiToDb(req.body);
 
-    const component = await payComponentService.createPayComponent(componentData, organizationId, userId);
+    // Pass data directly to service - service DTO handles DB transformation
+    const component = await payComponentService.createPayComponent(req.body, organizationId, userId);
 
     logger.info('Pay component created', {
       organizationId,
@@ -33,7 +31,7 @@ async function createPayComponent(req, res) {
 
     res.status(201).json({
       success: true,
-      payComponent: mapPayComponentDbToApi(component),
+      payComponent: component,
       message: 'Pay component created successfully',
     });
   } catch (error) {
@@ -107,7 +105,7 @@ async function getPayComponents(req, res) {
 
     res.status(200).json({
       success: true,
-      payComponents: mapPayComponentDbArrayToApi(result.components || result),
+      payComponents: result.components || result,
       pagination: {
         page: currentPage,
         limit: itemsPerPage,
@@ -145,7 +143,7 @@ async function getPayComponentById(req, res) {
 
     res.status(200).json({
       success: true,
-      payComponent: mapPayComponentDbToApi(component),
+      payComponent: component,
     });
   } catch (error) {
     logger.error('Error fetching pay component', {
@@ -189,7 +187,7 @@ async function getPayComponentById(req, res) {
  * Update a pay component
  * PUT /api/paylinq/pay-components/:id
  */
-async function updatePayComponent(req, res) {
+async function updatePayComponent(req, res, next) {
   try {
     const organizationId = req.user.organization_id;
     const userId = req.user.id;
@@ -205,10 +203,11 @@ async function updatePayComponent(req, res) {
 
     res.status(200).json({
       success: true,
-      payComponent: mapPayComponentDbToApi(component),
+      payComponent: component,
       message: 'Pay component updated successfully',
     });
   } catch (error) {
+    // Log error but pass to error handler middleware
     logger.error('Error updating pay component', {
       error: error.message,
       componentId: req.params.id,
@@ -216,19 +215,8 @@ async function updatePayComponent(req, res) {
       userId: req.user?.id,
     });
 
-    if (error.constructor.name === 'NotFoundError') {
-      return res.status(404).json({
-        success: false,
-        error: 'Not Found',
-        message: error.message,
-      });
-    }
-
-    res.status(400).json({
-      success: false,
-      error: 'Bad Request',
-      message: error.message,
-    });
+    // Pass error to error handler middleware (DO NOT send response here)
+    next(error);
   }
 }
 
@@ -296,10 +284,9 @@ async function createEmployeePayComponent(req, res) {
     const userId = req.user.id;
     const { employeeId } = req.params;
 
-    // Map field names and normalize values
-    const mappedData = mapPayComponentApiToDb(req.body);
+    // Pass data directly to service - service DTO handles transformation
     const componentData = {
-      ...mappedData,
+      ...req.body,
       employeeId,
       organizationId,
       createdBy: userId,

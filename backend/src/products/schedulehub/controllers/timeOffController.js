@@ -34,6 +34,35 @@ class TimeOffController {
   };
 
   /**
+   * List time off requests with filters
+   * GET /api/schedulehub/time-off
+   */
+  listRequests = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const { status, startDate, endDate, pending } = req.query;
+
+      // If pending query param is provided, use getPendingRequests
+      if (pending === 'true') {
+        const result = await this.timeOffService.getPendingRequests(organizationId);
+        return res.json(result);
+      }
+
+      const result = await this.timeOffService.listRequests(
+        organizationId,
+        status,
+        startDate,
+        endDate
+      );
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in listRequests controller:', error);
+      next(error);
+    }
+  };
+
+  /**
    * Review time off request (approve/deny)
    * POST /api/schedulehub/time-off/:id/review
    */

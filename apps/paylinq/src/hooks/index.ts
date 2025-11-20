@@ -75,6 +75,7 @@ export {
   useShiftType,
   useCreateShiftType,
   useUpdateShiftType,
+  useDeleteShiftType,
   useAttendanceEvents,
   useCreateAttendanceEvent,
   usePendingTimesheets,

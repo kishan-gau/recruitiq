@@ -109,6 +109,24 @@ class WorkerTypeRepository {
   }
 
   /**
+   * Find worker type template by ID without organization filter
+   * Used for checking cross-organization access
+   * @param {string} templateId - Worker type template UUID
+   * @returns {Promise<Object|null>} Worker type template or null
+   */
+  async findTemplateByIdAnyOrg(templateId) {
+    const result = await this.query(
+      `SELECT * FROM payroll.worker_type_template
+       WHERE id = $1 AND deleted_at IS NULL`,
+      [templateId],
+      null, // No org filter
+      { operation: 'SELECT', table: 'payroll.worker_type_template' }
+    );
+    
+    return result.rows[0] || null;
+  }
+
+  /**
    * Find worker type template by code
    * @param {string} code - Worker type code
    * @param {string} organizationId - Organization UUID

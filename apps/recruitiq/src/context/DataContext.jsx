@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { getInitialData } from '../mockData'
 import { useWorkspace } from './WorkspaceContext'
 import { useAuth } from '@recruitiq/auth'
-import api from '../services/api'
+import { jobsService, candidatesService } from '../services'
 
 const DataContext = createContext(null)
 

@@ -83,9 +83,9 @@ class TimeOffService {
       const sql = `
         UPDATE hris.time_off_request 
         SET status = $1,
-            reviewed_by = $2,
-            reviewed_at = CURRENT_TIMESTAMP,
-            review_comments = $3,
+            approver_id = $2,
+            approved_at = CURRENT_TIMESTAMP,
+            rejection_reason = $3,
             updated_by = $2,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $4 AND organization_id = $5
@@ -131,10 +131,10 @@ class TimeOffService {
       let sql = `
         SELECT tr.*, 
                e.first_name || ' ' || e.last_name as employee_name,
-               r.first_name || ' ' || r.last_name as reviewer_name
+               r.first_name || ' ' || r.last_name as approver_name
         FROM hris.time_off_request tr
         LEFT JOIN hris.employee e ON tr.employee_id = e.id
-        LEFT JOIN hris.employee r ON tr.reviewed_by = r.id
+        LEFT JOIN hris.employee r ON tr.approver_id = r.id
         WHERE tr.employee_id = $1 
           AND tr.organization_id = $2
           AND tr.deleted_at IS NULL
@@ -280,7 +280,7 @@ class TimeOffService {
         FROM hris.time_off_request tr
         LEFT JOIN hris.employee e ON tr.employee_id = e.id
         LEFT JOIN hris.department d ON e.department_id = d.id
-        LEFT JOIN hris.employee r ON tr.reviewed_by = r.id
+        LEFT JOIN hris.employee r ON tr.approver_id = r.id
         WHERE tr.id = $1 
           AND tr.organization_id = $2
           AND tr.deleted_at IS NULL
@@ -301,6 +301,92 @@ class TimeOffService {
         error: error.message,
         id,
         organizationId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get time-off requests with filters and pagination
+   */
+  async getTimeOffRequests(filters = {}, organizationId, options = {}) {
+    try {
+      this.logger.debug('Getting time-off requests', { organizationId, filters });
+
+      const { limit = 20, offset = 0 } = options;
+      const conditions = ['tr.organization_id = $1', 'tr.deleted_at IS NULL'];
+      const params = [organizationId];
+      let paramIndex = 1;
+
+      // Add filters
+      if (filters.status) {
+        paramIndex++;
+        conditions.push(`tr.status = $${paramIndex}`);
+        params.push(filters.status);
+      }
+
+      if (filters.employeeId) {
+        paramIndex++;
+        conditions.push(`tr.employee_id = $${paramIndex}`);
+        params.push(filters.employeeId);
+      }
+
+      if (filters.startDate) {
+        paramIndex++;
+        conditions.push(`tr.start_date >= $${paramIndex}`);
+        params.push(filters.startDate);
+      }
+
+      if (filters.endDate) {
+        paramIndex++;
+        conditions.push(`tr.end_date <= $${paramIndex}`);
+        params.push(filters.endDate);
+      }
+
+      const sql = `
+        SELECT tr.*, 
+               e.first_name || ' ' || e.last_name as employee_name,
+               d.department_name,
+               r.first_name || ' ' || r.last_name as approver_name
+        FROM hris.time_off_request tr
+        LEFT JOIN hris.employee e ON tr.employee_id = e.id
+        LEFT JOIN hris.department d ON e.department_id = d.id
+        LEFT JOIN hris.employee r ON tr.approver_id = r.id
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY tr.created_at DESC
+        LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}
+      `;
+
+      params.push(limit, offset);
+
+      const result = await query(sql, params, organizationId, {
+        operation: 'findAll',
+        table: 'hris.time_off_request'
+      });
+
+      // Get total count
+      const countSql = `
+        SELECT COUNT(*) as total
+        FROM hris.time_off_request tr
+        WHERE ${conditions.join(' AND ')}
+      `;
+
+      const countResult = await query(countSql, params.slice(0, paramIndex), organizationId, {
+        operation: 'count',
+        table: 'hris.time_off_request'
+      });
+
+      return {
+        requests: result.rows,
+        total: parseInt(countResult.rows[0].total),
+        limit,
+        offset
+      };
+    } catch (error) {
+      this.logger.error('Error getting time-off requests', { 
+        error: error.message,
+        organizationId,
+        filters 
       });
       throw error;
     }

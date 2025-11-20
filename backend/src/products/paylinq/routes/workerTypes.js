@@ -23,32 +23,32 @@ const workerTypeLimiter = createEndpointLimiter({
 
 router.use(workerTypeLimiter);
 
-// Validation schemas
+// Validation schemas (matches service layer workerTypeTemplateSchema)
 const createWorkerTypeSchema = Joi.object({
-  code: Joi.string().max(50).required(),
-  name: Joi.string().max(100).required(),
-  description: Joi.string().max(500).allow(null, ''),
-  payType: Joi.string().valid('hourly', 'salary', 'commission', 'piece_rate').required(),
-  defaultRate: Joi.number().min(0).allow(null),
-  overtimeEligible: Joi.boolean().default(true),
-  overtimeMultiplier: Joi.number().min(1).default(1.5),
-  benefits: Joi.object().allow(null),
-  taxSettings: Joi.object().allow(null),
-  isActive: Joi.boolean().default(true),
+  name: Joi.string().min(2).max(100).required(),
+  code: Joi.string().min(2).max(50).required(),
+  description: Joi.string().max(500).optional().allow(null, ''),
+  defaultPayFrequency: Joi.string().valid('weekly', 'bi-weekly', 'semi-monthly', 'monthly').required(),
+  defaultPaymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash').required(),
+  benefitsEligible: Joi.boolean().optional().default(false),
+  overtimeEligible: Joi.boolean().optional().default(true),
+  ptoEligible: Joi.boolean().optional().default(false),
+  sickLeaveEligible: Joi.boolean().optional().default(false),
+  vacationAccrualRate: Joi.number().min(0).max(1).optional().allow(null)
 });
 
 const updateWorkerTypeSchema = Joi.object({
-  code: Joi.string().max(50),
-  name: Joi.string().max(100),
-  description: Joi.string().max(500).allow(null, ''),
-  payType: Joi.string().valid('hourly', 'salary', 'commission', 'piece_rate'),
-  defaultRate: Joi.number().min(0).allow(null),
-  overtimeEligible: Joi.boolean(),
-  overtimeMultiplier: Joi.number().min(1),
-  benefits: Joi.object().allow(null),
-  taxSettings: Joi.object().allow(null),
-  isActive: Joi.boolean(),
-});
+  name: Joi.string().min(2).max(100).optional(),
+  code: Joi.string().min(2).max(50).optional(),
+  description: Joi.string().max(500).optional().allow(null, ''),
+  defaultPayFrequency: Joi.string().valid('weekly', 'bi-weekly', 'semi-monthly', 'monthly').optional(),
+  defaultPaymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash').optional(),
+  benefitsEligible: Joi.boolean().optional(),
+  overtimeEligible: Joi.boolean().optional(),
+  ptoEligible: Joi.boolean().optional(),
+  sickLeaveEligible: Joi.boolean().optional(),
+  vacationAccrualRate: Joi.number().min(0).max(1).optional().allow(null)
+}).min(1); // At least one field must be provided
 
 const assignEmployeesSchema = Joi.object({
   employeeIds: Joi.array().items(Joi.string().uuid()).min(1).required(),

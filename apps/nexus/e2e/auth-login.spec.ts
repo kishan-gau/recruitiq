@@ -2,30 +2,30 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Nexus Login Flow with HttpOnly Cookies', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to login page
-    await page.goto('http://localhost:5174/login');
+    // Navigate to login page (uses baseURL from config)
+    await page.goto('/login');
   });
 
   test('should successfully login with valid credentials', async ({ page, context }) => {
     // Fill in login form
-    await page.fill('input[type="email"]', 'johndoe@company.com');
-    await page.fill('input[type="password"]', 'SecurePass123!');
+    await page.fill('input[type="email"]', 'tenant@testcompany.com');
+    await page.fill('input[type="password"]', 'Admin123!');
 
     // Click login button
     await page.click('button[type="submit"]');
 
     // Wait for navigation to dashboard
-    await page.waitForURL('http://localhost:5174/', { timeout: 10000 });
+    await page.waitForURL('/dashboard', { timeout: 10000 });
 
     // Verify we're on the dashboard
-    expect(page.url()).toBe('http://localhost:5174/');
+    expect(page.url()).toMatch(/\/dashboard$/);
 
     // Verify httpOnly cookies are set
     const cookies = await context.cookies();
     console.log('Cookies after login:', cookies);
 
-    const accessTokenCookie = cookies.find(c => c.name === 'accessToken');
-    const refreshTokenCookie = cookies.find(c => c.name === 'refreshToken');
+    const accessTokenCookie = cookies.find(c => c.name === 'tenant_access_token');
+    const refreshTokenCookie = cookies.find(c => c.name === 'tenant_refresh_token');
 
     // Check that cookies exist
     expect(accessTokenCookie).toBeDefined();
@@ -37,7 +37,7 @@ test.describe('Nexus Login Flow with HttpOnly Cookies', () => {
 
     // Verify cookies are NOT accessible from JavaScript
     const canAccessToken = await page.evaluate(() => {
-      return document.cookie.includes('accessToken');
+      return document.cookie.includes('tenant_access_token');
     });
     expect(canAccessToken).toBe(false);
 
@@ -63,7 +63,7 @@ test.describe('Nexus Login Flow with HttpOnly Cookies', () => {
 
   test('should redirect to login when accessing protected route without auth', async ({ page }) => {
     // Try to access dashboard directly
-    await page.goto('http://localhost:5174/');
+    await page.goto('/');
 
     // Should redirect to login
     await page.waitForURL(/\/login/, { timeout: 5000 });
@@ -75,14 +75,14 @@ test.describe('Nexus Login Flow with HttpOnly Cookies', () => {
 
   test('should persist session after page refresh', async ({ page, context }) => {
     // Login first
-    await page.fill('input[type="email"]', 'johndoe@company.com');
-    await page.fill('input[type="password"]', 'SecurePass123!');
+    await page.fill('input[type="email"]', 'tenant@testcompany.com');
+    await page.fill('input[type="password"]', 'Admin123!');
     await page.click('button[type="submit"]');
-    await page.waitForURL('http://localhost:5174/', { timeout: 10000 });
+    await page.waitForURL('/dashboard', { timeout: 10000 });
 
     // Verify cookies exist
     let cookies = await context.cookies();
-    const accessTokenBefore = cookies.find(c => c.name === 'accessToken');
+    const accessTokenBefore = cookies.find(c => c.name === 'tenant_access_token');
     expect(accessTokenBefore).toBeDefined();
 
     // Refresh the page
@@ -90,22 +90,22 @@ test.describe('Nexus Login Flow with HttpOnly Cookies', () => {
 
     // Should still be on dashboard (not redirected to login)
     await page.waitForLoadState('networkidle');
-    expect(page.url()).toBe('http://localhost:5174/');
+    expect(page.url()).toMatch(/\/dashboard$/);
 
     // Cookies should still exist
     cookies = await context.cookies();
-    const accessTokenAfter = cookies.find(c => c.name === 'accessToken');
+    const accessTokenAfter = cookies.find(c => c.name === 'tenant_access_token');
     expect(accessTokenAfter).toBeDefined();
 
     console.log('✅ Session persists after page refresh');
   });
 
-  test('should make authenticated API calls with cookies', async ({ page }) => {
+  test('should make authenticated API calls with cookies', async ({ page, context }) => {
     // Login first
-    await page.fill('input[type="email"]', 'johndoe@company.com');
-    await page.fill('input[type="password"]', 'SecurePass123!');
+    await page.fill('input[type="email"]', 'tenant@testcompany.com');
+    await page.fill('input[type="password"]', 'Admin123!');
     await page.click('button[type="submit"]');
-    await page.waitForURL('http://localhost:5174/', { timeout: 10000 });
+    await page.waitForURL('/dashboard', { timeout: 10000 });
 
     // Monitor network requests
     interface ApiRequest {

@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import PlatformUser from '../../models/PlatformUser.js';
 import db from '../../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
+import { getPlatformAccessCookieConfig, getPlatformRefreshCookieConfig, getClearCookieConfig } from '../../config/cookie.js';
 
 /**
  * Platform Authentication Controller
@@ -106,19 +107,9 @@ export const login = async (req, res) => {
     await PlatformUser.updateLastLogin(user.id, req.ip || req.connection.remoteAddress);
 
     // SECURITY: Set tokens as httpOnly cookies (industry standard - protects against XSS)
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000 // 15 minutes
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000
-    });
+    // Using centralized cookie configuration for consistency
+    res.cookie('platform_access_token', accessToken, getPlatformAccessCookieConfig());
+    res.cookie('platform_refresh_token', refreshToken, getPlatformRefreshCookieConfig(rememberMe));
 
     // Return success with user info only (tokens are in httpOnly cookies)
     res.json({
@@ -147,7 +138,7 @@ export const login = async (req, res) => {
 export const refresh = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.platform_refresh_token;
 
     if (!refreshToken) {
       return res.status(400).json({
@@ -217,12 +208,7 @@ export const refresh = async (req, res) => {
     );
 
     // SECURITY: Set new access token as httpOnly cookie
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000
-    });
+    res.cookie('platform_access_token', accessToken, getPlatformAccessCookieConfig());
 
     res.json({
       success: true
@@ -243,7 +229,7 @@ export const refresh = async (req, res) => {
 export const logout = async (req, res) => {
   try {
     // SECURITY: Read refresh token from httpOnly cookie
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies.platform_refresh_token;
 
     if (refreshToken) {
       // Revoke the refresh token
@@ -255,17 +241,22 @@ export const logout = async (req, res) => {
       );
     }
 
-    // SECURITY: Clear httpOnly cookies
-    res.clearCookie('accessToken', {
+    // SECURITY: Clear httpOnly cookies (must match cookie options used in login)
+    // Use res.cookie with maxAge: 0 instead of clearCookie to ensure Max-Age=0 in response
+    res.cookie('platform_access_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 0
     });
 
-    res.clearCookie('refreshToken', {
+    res.cookie('platform_refresh_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax'
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 0
     });
 
     res.json({

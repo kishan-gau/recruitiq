@@ -5,6 +5,7 @@
 
 import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import { ValidationError } from '../../../utils/errors.js';
 import Joi from 'joi';
 
 class WorkerService {
@@ -50,7 +51,7 @@ class WorkerService {
   }).min(1);
 
   /**
-   * Create a new worker (synced from Nexus)
+   * Create worker scheduling config (employee must exist in hris.employee)
    */
   async createWorker(workerData, organizationId, userId) {
     const client = await pool.connect();
@@ -61,49 +62,48 @@ class WorkerService {
       // Validate input
       const { error, value } = this.createWorkerSchema.validate(workerData);
       if (error) {
-        throw new Error(`Validation error: ${error.details[0].message}`);
+        throw new ValidationError(error.details[0].message);
       }
 
-      // Check if worker already exists for this employee
-      const existingWorker = await client.query(
-        `SELECT id FROM scheduling.workers 
+      // Verify employee exists in hris.employee
+      const employeeCheck = await client.query(
+        `SELECT id, employment_status FROM hris.employee 
+         WHERE id = $1 AND organization_id = $2`,
+        [value.employeeId, organizationId]
+      );
+
+      if (employeeCheck.rows.length === 0) {
+        throw new Error('Employee not found in HRIS');
+      }
+
+      // Check if worker scheduling config already exists
+      const existingConfig = await client.query(
+        `SELECT id FROM scheduling.worker_scheduling_config 
          WHERE organization_id = $1 AND employee_id = $2`,
         [organizationId, value.employeeId]
       );
 
-      if (existingWorker.rows.length > 0) {
-        throw new Error('Worker already exists for this employee');
+      if (existingConfig.rows.length > 0) {
+        throw new ValidationError('Scheduling configuration already exists for this employee');
       }
 
-      // Insert worker
+      // Insert worker scheduling config (scheduling-specific data only)
       const result = await client.query(
-        `INSERT INTO scheduling.workers (
-          organization_id, employee_id, worker_number, first_name, last_name,
-          email, phone, employment_type, department_id, department_name,
-          location_id, location_name, max_hours_per_week, min_hours_per_week,
-          max_consecutive_days, min_rest_hours_between_shifts, hire_date,
-          status, created_by, updated_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        `INSERT INTO scheduling.worker_scheduling_config (
+          organization_id, employee_id, max_hours_per_week, min_hours_per_week,
+          max_consecutive_days, min_rest_hours_between_shifts, 
+          is_schedulable, scheduling_status, created_by, updated_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *`,
         [
           organizationId,
           value.employeeId,
-          value.workerNumber,
-          value.firstName,
-          value.lastName,
-          value.email || null,
-          value.phone || null,
-          value.employmentType,
-          value.departmentId || null,
-          value.departmentName || null,
-          value.locationId || null,
-          value.locationName || null,
-          value.maxHoursPerWeek,
-          value.minHoursPerWeek,
-          value.maxConsecutiveDays,
-          value.minRestHoursBetweenShifts,
-          value.hireDate || null,
-          'active',
+          value.maxHoursPerWeek || 40,
+          value.minHoursPerWeek || 0,
+          value.maxConsecutiveDays || 6,
+          value.minRestHoursBetweenShifts || 11,
+          true, // is_schedulable
+          'active', // scheduling_status
           userId,
           userId
         ]
@@ -111,15 +111,18 @@ class WorkerService {
 
       await client.query('COMMIT');
 
-      this.logger.info('Worker created successfully', {
-        workerId: result.rows[0].id,
+      this.logger.info('Worker scheduling config created successfully', {
+        configId: result.rows[0].id,
         employeeId: value.employeeId,
         organizationId
       });
 
+      // Return worker data by fetching combined employee + config info
+      const worker = await this.getWorkerByEmployeeId(value.employeeId, organizationId);
+
       return {
         success: true,
-        data: result.rows[0]
+        data: worker
       };
 
     } catch (error) {
@@ -132,27 +135,50 @@ class WorkerService {
   }
 
   /**
-   * Get worker by ID
+   * Get worker by ID (queries employee from hris.employee with scheduling config)
    */
   async getWorkerById(workerId, organizationId) {
     try {
       const result = await pool.query(
-        `SELECT w.*, 
-          (SELECT COUNT(*) FROM scheduling.shifts WHERE worker_id = w.id AND status != 'cancelled') as total_shifts,
-          (SELECT COUNT(*) FROM scheduling.worker_roles WHERE worker_id = w.id AND removed_date IS NULL) as role_count
-        FROM scheduling.workers w
-        WHERE w.id = $1 AND w.organization_id = $2`,
+        `SELECT 
+          e.id,
+          e.employee_number as worker_number,
+          e.first_name,
+          e.last_name,
+          e.email,
+          e.phone,
+          e.employment_type,
+          e.employment_status as status,
+          e.department_id,
+          d.department_name as department_name,
+          e.location_id,
+          e.hire_date,
+          e.termination_date,
+          wsc.max_hours_per_week,
+          wsc.min_hours_per_week,
+          wsc.max_consecutive_days,
+          wsc.min_rest_hours_between_shifts,
+          wsc.is_schedulable,
+          wsc.scheduling_status,
+          wsc.preferred_shift_types,
+          wsc.blocked_days,
+          wsc.scheduling_notes,
+          (SELECT COUNT(*) FROM scheduling.shifts WHERE employee_id = e.id AND status != 'cancelled') as total_shifts,
+          (SELECT COUNT(*) FROM scheduling.worker_roles WHERE employee_id = e.id AND removed_date IS NULL) as role_count
+        FROM hris.employee e
+        LEFT JOIN scheduling.worker_scheduling_config wsc 
+          ON e.id = wsc.employee_id AND e.organization_id = wsc.organization_id
+        LEFT JOIN hris.department d 
+          ON e.department_id = d.id AND e.organization_id = d.organization_id
+        WHERE e.id = $1 AND e.organization_id = $2`,
         [workerId, organizationId]
       );
 
       if (result.rows.length === 0) {
-        return { success: false, error: 'Worker not found' };
+        return null;
       }
 
-      return {
-        success: true,
-        data: result.rows[0]
-      };
+      return result.rows[0];
 
     } catch (error) {
       this.logger.error('Error fetching worker:', error);
@@ -161,24 +187,46 @@ class WorkerService {
   }
 
   /**
-   * Get worker by employee ID
+   * Get worker by employee ID (queries employee from hris.employee with scheduling config)
    */
   async getWorkerByEmployeeId(employeeId, organizationId) {
     try {
       const result = await pool.query(
-        `SELECT * FROM scheduling.workers
-        WHERE employee_id = $1 AND organization_id = $2`,
+        `SELECT 
+          e.id,
+          e.id as employee_id,
+          e.employee_number as worker_number,
+          e.first_name,
+          e.last_name,
+          e.email,
+          e.phone,
+          e.employment_type,
+          e.employment_status as status,
+          e.department_id,
+          e.location_id,
+          e.hire_date,
+          e.termination_date,
+          wsc.max_hours_per_week,
+          wsc.min_hours_per_week,
+          wsc.max_consecutive_days,
+          wsc.min_rest_hours_between_shifts,
+          wsc.is_schedulable,
+          wsc.scheduling_status,
+          wsc.preferred_shift_types,
+          wsc.blocked_days,
+          wsc.scheduling_notes
+        FROM hris.employee e
+        LEFT JOIN scheduling.worker_scheduling_config wsc 
+          ON e.id = wsc.employee_id AND e.organization_id = wsc.organization_id
+        WHERE e.id = $1 AND e.organization_id = $2`,
         [employeeId, organizationId]
       );
 
       if (result.rows.length === 0) {
-        return { success: false, error: 'Worker not found' };
+        return null;
       }
 
-      return {
-        success: true,
-        data: result.rows[0]
-      };
+      return result.rows[0];
 
     } catch (error) {
       this.logger.error('Error fetching worker by employee ID:', error);
@@ -187,7 +235,7 @@ class WorkerService {
   }
 
   /**
-   * List all workers with filters
+   * List all workers with filters (queries hris.employee with scheduling config)
    */
   async listWorkers(organizationId, filters = {}) {
     try {
@@ -202,10 +250,29 @@ class WorkerService {
       } = filters;
 
       let query = `
-        SELECT w.*,
-          (SELECT COUNT(*) FROM scheduling.shifts WHERE worker_id = w.id AND status != 'cancelled') as total_shifts
-        FROM scheduling.workers w
-        WHERE w.organization_id = $1
+        SELECT 
+          e.id,
+          e.employee_number as worker_number,
+          e.first_name,
+          e.last_name,
+          e.email,
+          e.phone,
+          e.employment_type,
+          e.employment_status as status,
+          e.department_id as primary_department_id,
+          e.location_id,
+          e.hire_date,
+          e.termination_date,
+          wsc.max_hours_per_week,
+          wsc.min_hours_per_week,
+          wsc.is_schedulable,
+          wsc.scheduling_status,
+          (SELECT COUNT(*) FROM scheduling.shifts WHERE employee_id = e.id AND status != 'cancelled') as total_shifts
+        FROM hris.employee e
+        LEFT JOIN scheduling.worker_scheduling_config wsc 
+          ON e.id = wsc.employee_id AND e.organization_id = wsc.organization_id
+        WHERE e.organization_id = $1
+          AND e.employment_status = 'active'
       `;
       const params = [organizationId];
       let paramCount = 1;
@@ -213,41 +280,41 @@ class WorkerService {
       // Apply filters
       if (status) {
         paramCount++;
-        query += ` AND w.status = $${paramCount}`;
+        query += ` AND e.employment_status = $${paramCount}`;
         params.push(status);
       }
 
       if (departmentId) {
         paramCount++;
-        query += ` AND w.department_id = $${paramCount}`;
+        query += ` AND e.department_id = $${paramCount}`;
         params.push(departmentId);
       }
 
       if (locationId) {
         paramCount++;
-        query += ` AND w.location_id = $${paramCount}`;
+        query += ` AND e.location_id = $${paramCount}`;
         params.push(locationId);
       }
 
       if (employmentType) {
         paramCount++;
-        query += ` AND w.employment_type = $${paramCount}`;
+        query += ` AND e.employment_type = $${paramCount}`;
         params.push(employmentType);
       }
 
       if (search) {
         paramCount++;
         query += ` AND (
-          w.first_name ILIKE $${paramCount} OR 
-          w.last_name ILIKE $${paramCount} OR 
-          w.worker_number ILIKE $${paramCount} OR
-          w.email ILIKE $${paramCount}
+          e.first_name ILIKE $${paramCount} OR 
+          e.last_name ILIKE $${paramCount} OR 
+          e.employee_number ILIKE $${paramCount} OR
+          e.email ILIKE $${paramCount}
         )`;
         params.push(`%${search}%`);
       }
 
       // Pagination
-      query += ` ORDER BY w.last_name, w.first_name`;
+      query += ` ORDER BY e.last_name, e.first_name`;
       const offset = (page - 1) * limit;
       paramCount++;
       query += ` LIMIT $${paramCount}`;
@@ -259,13 +326,30 @@ class WorkerService {
       const result = await pool.query(query, params);
 
       // Get total count
-      let countQuery = `SELECT COUNT(*) FROM scheduling.workers w WHERE w.organization_id = $1`;
+      let countQuery = `SELECT COUNT(*) FROM hris.employee e WHERE e.organization_id = $1 AND e.employment_status = 'active'`;
       const countParams = [organizationId];
+      let countParamCount = 1;
       
-      if (status) countQuery += ` AND w.status = $2`;
-      if (departmentId) countQuery += ` AND w.department_id = $${countParams.length + 1}`;
-      if (locationId) countQuery += ` AND w.location_id = $${countParams.length + 1}`;
-      if (employmentType) countQuery += ` AND w.employment_type = $${countParams.length + 1}`;
+      if (status) {
+        countParamCount++;
+        countQuery += ` AND e.employment_status = $${countParamCount}`;
+        countParams.push(status);
+      }
+      if (departmentId) {
+        countParamCount++;
+        countQuery += ` AND e.department_id = $${countParamCount}`;
+        countParams.push(departmentId);
+      }
+      if (locationId) {
+        countParamCount++;
+        countQuery += ` AND e.location_id = $${countParamCount}`;
+        countParams.push(locationId);
+      }
+      if (employmentType) {
+        countParamCount++;
+        countQuery += ` AND e.employment_type = $${countParamCount}`;
+        countParams.push(employmentType);
+      }
       
       const countResult = await pool.query(countQuery, countParams);
       const totalCount = parseInt(countResult.rows[0].count);
@@ -288,7 +372,7 @@ class WorkerService {
   }
 
   /**
-   * Update worker
+   * Update worker scheduling config (updates scheduling.worker_scheduling_config only)
    */
   async updateWorker(workerId, updateData, organizationId, userId) {
     const client = await pool.connect();
@@ -299,12 +383,13 @@ class WorkerService {
       // Validate input
       const { error, value } = this.updateWorkerSchema.validate(updateData);
       if (error) {
-        throw new Error(`Validation error: ${error.details[0].message}`);
+        throw new ValidationError(error.details[0].message);
       }
 
-      // Check worker exists
+      // Get employee_id from worker config first
       const workerCheck = await client.query(
-        `SELECT id FROM scheduling.workers WHERE id = $1 AND organization_id = $2`,
+        `SELECT employee_id FROM scheduling.worker_scheduling_config 
+         WHERE employee_id = $1 AND organization_id = $2`,
         [workerId, organizationId]
       );
 
@@ -312,40 +397,161 @@ class WorkerService {
         throw new Error('Worker not found');
       }
 
-      // Build update query dynamically
-      const updates = [];
-      const params = [];
-      let paramCount = 0;
+      const employeeId = workerCheck.rows[0].employee_id;
 
+      // Check employee exists and not terminated
+      const employeeCheck = await client.query(
+        `SELECT id, employment_status FROM hris.employee WHERE id = $1 AND organization_id = $2`,
+        [employeeId, organizationId]
+      );
+
+      if (employeeCheck.rows.length === 0) {
+        throw new Error('Employee not found');
+      }
+
+      if (employeeCheck.rows[0].employment_status === 'terminated') {
+        throw new ValidationError('Cannot update terminated worker');
+      }
+
+      // Separate employee fields from scheduling fields
+      const schedulingFields = ['maxHoursPerWeek', 'minHoursPerWeek', 'maxConsecutiveDays', 'minRestHoursBetweenShifts'];
+      const employeeFields = ['firstName', 'lastName', 'email', 'phone', 'employmentType', 'departmentId', 'locationId', 'status'];
+      
+      const schedulingUpdates = [];
+      const schedulingParams = [];
+      const employeeUpdates = [];
+      const employeeParams = [];
+      
+      // Categorize fields
       Object.keys(value).forEach(key => {
-        paramCount++;
-        const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-        updates.push(`${snakeKey} = $${paramCount}`);
-        params.push(value[key]);
+        if (schedulingFields.includes(key)) {
+          const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          schedulingUpdates.push(snakeKey);
+          schedulingParams.push(value[key]);
+        } else if (employeeFields.includes(key)) {
+          // Special field mapping: status -> employment_status
+          const snakeKey = key === 'status' 
+            ? 'employment_status' 
+            : key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          employeeUpdates.push(snakeKey);
+          employeeParams.push(value[key]);
+        }
       });
 
-      paramCount++;
-      updates.push(`updated_by = $${paramCount}`);
-      params.push(userId);
+      // Must have at least one field to update
+      if (schedulingUpdates.length === 0 && employeeUpdates.length === 0) {
+        throw new Error('No fields to update');
+      }
 
-      paramCount++;
-      params.push(workerId);
-      paramCount++;
-      params.push(organizationId);
+      let result;
 
-      const query = `
-        UPDATE scheduling.workers 
-        SET ${updates.join(', ')}
-        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount}
-        RETURNING *
-      `;
+      // Update scheduling config if there are scheduling fields
+      if (schedulingUpdates.length > 0) {
+        let paramCount = 0;
+        const setClause = schedulingUpdates.map(field => {
+          paramCount++;
+          return `${field} = $${paramCount}`;
+        }).join(', ');
 
-      const result = await client.query(query, params);
+        paramCount++;
+        const updatedByParam = paramCount;
+        paramCount++;
+        const workerIdParam = paramCount;
+        paramCount++;
+        const orgIdParam = paramCount;
+
+        const schedulingQuery = `
+          UPDATE scheduling.worker_scheduling_config 
+          SET ${setClause}, updated_by = $${updatedByParam}
+          WHERE employee_id = $${workerIdParam} AND organization_id = $${orgIdParam}
+          RETURNING 
+            id,
+            employee_id,
+            organization_id,
+            CAST(max_hours_per_week AS INTEGER) as max_hours_per_week,
+            CAST(min_hours_per_week AS INTEGER) as min_hours_per_week,
+            max_consecutive_days,
+            CAST(min_rest_hours_between_shifts AS INTEGER) as min_rest_hours_between_shifts,
+            is_schedulable,
+            scheduling_status,
+            preferred_shift_types,
+            blocked_days,
+            scheduling_notes,
+            created_at,
+            updated_at,
+            created_by,
+            updated_by
+        `;
+
+        const allParams = [...schedulingParams, userId, workerId, organizationId];
+        result = await client.query(schedulingQuery, allParams);
+      }
+
+      // Update employee if there are employee fields
+      if (employeeUpdates.length > 0) {
+        let paramCount = 0;
+        const setClause = employeeUpdates.map(field => {
+          paramCount++;
+          return `${field} = $${paramCount}`;
+        }).join(', ');
+
+        paramCount++;
+        const updatedByParam = paramCount;
+        paramCount++;
+        const employeeIdParam = paramCount;
+        paramCount++;
+        const orgIdParam = paramCount;
+
+        const employeeQuery = `
+          UPDATE hris.employee 
+          SET ${setClause}, updated_by = $${updatedByParam}, updated_at = NOW()
+          WHERE id = $${employeeIdParam} AND organization_id = $${orgIdParam}
+          RETURNING *
+        `;
+
+        const allParams = [...employeeParams, userId, employeeId, organizationId];
+        await client.query(employeeQuery, allParams);
+      }
+
+      // If no result from scheduling update, fetch complete worker data
+      // Need to JOIN employee and scheduling tables to get all fields
+      if (!result) {
+        result = await client.query(
+          `SELECT 
+            wsc.id,
+            wsc.employee_id,
+            wsc.organization_id,
+            CAST(wsc.max_hours_per_week AS INTEGER) as max_hours_per_week,
+            CAST(wsc.min_hours_per_week AS INTEGER) as min_hours_per_week,
+            wsc.max_consecutive_days,
+            CAST(wsc.min_rest_hours_between_shifts AS INTEGER) as min_rest_hours_between_shifts,
+            wsc.is_schedulable,
+            wsc.scheduling_status,
+            wsc.preferred_shift_types,
+            wsc.blocked_days,
+            wsc.scheduling_notes,
+            wsc.created_at,
+            wsc.updated_at,
+            wsc.created_by,
+            wsc.updated_by,
+            e.first_name,
+            e.last_name,
+            e.email,
+            e.employment_type,
+            e.employment_status as status,
+            e.department_id,
+            e.location_id
+          FROM scheduling.worker_scheduling_config wsc
+          INNER JOIN hris.employee e ON wsc.employee_id = e.id AND wsc.organization_id = e.organization_id
+          WHERE wsc.employee_id = $1 AND wsc.organization_id = $2`,
+          [workerId, organizationId]
+        );
+      }
 
       await client.query('COMMIT');
 
-      this.logger.info('Worker updated successfully', {
-        workerId,
+      this.logger.info('Worker scheduling config updated successfully', {
+        employeeId: workerId,
         organizationId
       });
 
@@ -364,7 +570,7 @@ class WorkerService {
   }
 
   /**
-   * Terminate worker (soft delete)
+   * Terminate worker (updates hris.employee and disables scheduling)
    */
   async terminateWorker(workerId, organizationId, terminationDate, userId) {
     const client = await pool.connect();
@@ -372,19 +578,43 @@ class WorkerService {
     try {
       await client.query('BEGIN');
 
-      const result = await client.query(
-        `UPDATE scheduling.workers 
-        SET status = 'terminated', 
+      // Get employee_id from worker config first
+      const workerCheck = await client.query(
+        `SELECT employee_id FROM scheduling.worker_scheduling_config 
+         WHERE employee_id = $1 AND organization_id = $2`,
+        [workerId, organizationId]
+      );
+
+      if (workerCheck.rows.length === 0) {
+        throw new Error('Worker not found');
+      }
+
+      const employeeId = workerCheck.rows[0].employee_id;
+
+      // Update employee status in hris.employee
+      const employeeResult = await client.query(
+        `UPDATE hris.employee 
+        SET employment_status = 'terminated', 
             termination_date = $1,
             updated_by = $2
         WHERE id = $3 AND organization_id = $4
         RETURNING *`,
-        [terminationDate || new Date(), userId, workerId, organizationId]
+        [terminationDate || new Date(), userId, employeeId, organizationId]
       );
 
-      if (result.rows.length === 0) {
-        throw new Error('Worker not found');
+      if (employeeResult.rows.length === 0) {
+        throw new Error('Employee not found');
       }
+
+      // Update scheduling config to mark as not schedulable
+      await client.query(
+        `UPDATE scheduling.worker_scheduling_config
+        SET is_schedulable = false,
+            scheduling_status = 'restricted',
+            updated_by = $1
+        WHERE employee_id = $2 AND organization_id = $3`,
+        [userId, employeeId, organizationId]
+      );
 
       // Cancel all future shifts
       await client.query(
@@ -392,7 +622,7 @@ class WorkerService {
         SET status = 'cancelled',
             cancellation_reason = 'Worker terminated',
             updated_by = $1
-        WHERE worker_id = $2 
+        WHERE employee_id = $2 
         AND shift_date >= CURRENT_DATE
         AND status IN ('scheduled', 'confirmed')`,
         [userId, workerId]
@@ -401,13 +631,35 @@ class WorkerService {
       await client.query('COMMIT');
 
       this.logger.info('Worker terminated successfully', {
-        workerId,
+        employeeId: workerId,
         organizationId
       });
 
+      // Fetch complete worker data with employment_status mapped to status
+      const workerResult = await client.query(
+        `SELECT 
+          e.id,
+          e.first_name,
+          e.last_name,
+          e.employment_status as status,
+          e.termination_date,
+          e.organization_id,
+          e.department_id,
+          e.location_id,
+          wsc.max_hours_per_week,
+          wsc.min_hours_per_week,
+          wsc.is_schedulable,
+          wsc.scheduling_status
+        FROM hris.employee e
+        LEFT JOIN scheduling.worker_scheduling_config wsc 
+          ON e.id = wsc.employee_id AND e.organization_id = wsc.organization_id
+        WHERE e.id = $1 AND e.organization_id = $2`,
+        [workerId, organizationId]
+      );
+
       return {
         success: true,
-        data: result.rows[0]
+        data: workerResult.rows[0]
       };
 
     } catch (error) {
@@ -432,7 +684,7 @@ class WorkerService {
           availability_type,
           priority
         FROM scheduling.worker_availability
-        WHERE worker_id = $1 
+        WHERE employee_id = $1 
         AND organization_id = $2
         AND (
           (availability_type = 'recurring' AND (effective_to IS NULL OR effective_to >= $3))
@@ -466,7 +718,7 @@ class WorkerService {
         FROM scheduling.shifts s
         LEFT JOIN scheduling.roles r ON s.role_id = r.id
         LEFT JOIN scheduling.stations st ON s.station_id = st.id
-        WHERE s.worker_id = $1 AND s.organization_id = $2
+        WHERE s.employee_id = $1 AND s.organization_id = $2
       `;
       const params = [workerId, organizationId];
       let paramCount = 2;

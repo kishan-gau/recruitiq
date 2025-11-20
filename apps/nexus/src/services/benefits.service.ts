@@ -1,9 +1,10 @@
 /**
  * Benefits Service
  * API service for benefits plans, enrollments, and dependents management
+ * NOW USES: @recruitiq/api-client for type-safe API calls
  */
 
-import { apiClient } from './api';
+import { NexusClient, APIClient } from '@recruitiq/api-client';
 import type {
   BenefitPlan,
   CreateBenefitPlanDTO,
@@ -21,107 +22,112 @@ import type {
   EnrollmentSummary,
 } from '@/types/benefits.types';
 
-// ============ Benefit Plans ============
+// Create singleton instance
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
 
 export const benefitsService = {
-  // Plan Operations
+  // ============ Benefit Plans ============
+
   async listPlans(filters?: BenefitPlanFilters): Promise<BenefitPlan[]> {
-    const params = new URLSearchParams();
-    if (filters?.category) params.append('category', filters.category);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.providerName) params.append('providerName', filters.providerName);
-    
-    const queryString = params.toString();
-    return apiClient.get(`/benefits/plans${queryString ? `?${queryString}` : ''}`);
+    const response = await nexusClient.listBenefitPlans(filters);
+    // Backend returns { success: true, data: { plans: [...], total, limit, offset } }
+    return response.data.plans as BenefitPlan[];
   },
 
   async getPlan(id: string): Promise<BenefitPlan> {
-    return apiClient.get(`/benefits/plans/${id}`);
+    const response = await nexusClient.getBenefitPlan(id);
+    return response.data as BenefitPlan;
   },
 
   async createPlan(data: CreateBenefitPlanDTO): Promise<BenefitPlan> {
-    return apiClient.post('/benefits/plans', data);
+    const response = await nexusClient.createBenefitPlan(data);
+    return response.data as BenefitPlan;
   },
 
   async updatePlan(id: string, updates: UpdateBenefitPlanDTO): Promise<BenefitPlan> {
-    return apiClient.put(`/benefits/plans/${id}`, updates);
+    const response = await nexusClient.updateBenefitPlan(id, updates);
+    return response.data as BenefitPlan;
   },
 
   async deletePlan(id: string): Promise<void> {
-    return apiClient.delete(`/benefits/plans/${id}`);
+    await nexusClient.deleteBenefitPlan(id);
   },
 
   async getStatistics(): Promise<BenefitStatistics> {
-    return apiClient.get('/benefits/statistics');
+    const response = await nexusClient.getBenefitStatistics();
+    return response.data as BenefitStatistics;
   },
 
   async getEnrollmentSummary(planId: string): Promise<EnrollmentSummary> {
-    return apiClient.get(`/benefits/plans/${planId}/enrollment-summary`);
+    const response = await nexusClient.getPlanEnrollmentSummary(planId);
+    return response.data as EnrollmentSummary;
   },
 
-  // Enrollment Operations
+  // ============ Enrollments ============
+
   async listEnrollments(filters?: BenefitEnrollmentFilters): Promise<BenefitEnrollment[]> {
-    const params = new URLSearchParams();
-    if (filters?.employeeId) params.append('employeeId', filters.employeeId);
-    if (filters?.planId) params.append('planId', filters.planId);
-    if (filters?.enrollmentStatus) params.append('enrollmentStatus', filters.enrollmentStatus);
-    if (filters?.category) params.append('category', filters.category);
-    
-    const queryString = params.toString();
-    return apiClient.get(`/benefits/enrollments${queryString ? `?${queryString}` : ''}`);
+    const response = await nexusClient.listBenefitEnrollments(filters);
+    return response.data as BenefitEnrollment[];
   },
 
   async getEnrollment(id: string): Promise<BenefitEnrollment> {
-    return apiClient.get(`/benefits/enrollments/${id}`);
+    const response = await nexusClient.getBenefitEnrollment(id);
+    return response.data as BenefitEnrollment;
   },
 
   async getEmployeeEnrollments(employeeId: string): Promise<BenefitEnrollment[]> {
-    return apiClient.get(`/benefits/enrollments/employee/${employeeId}`);
+    const response = await nexusClient.getEmployeeBenefitEnrollments(employeeId);
+    return response.data as BenefitEnrollment[];
   },
 
   async createEnrollment(data: CreateBenefitEnrollmentDTO): Promise<BenefitEnrollment> {
-    return apiClient.post('/benefits/enrollments', data);
+    const response = await nexusClient.createBenefitEnrollment(data);
+    return response.data as BenefitEnrollment;
   },
 
   async updateEnrollment(id: string, updates: UpdateBenefitEnrollmentDTO): Promise<BenefitEnrollment> {
-    return apiClient.put(`/benefits/enrollments/${id}`, updates);
+    const response = await nexusClient.updateBenefitEnrollment(id, updates);
+    return response.data as BenefitEnrollment;
   },
 
   async cancelEnrollment(id: string, reason: string): Promise<BenefitEnrollment> {
-    return apiClient.put(`/benefits/enrollments/${id}/cancel`, { reason });
+    const response = await nexusClient.cancelBenefitEnrollment(id, reason);
+    return response.data as BenefitEnrollment;
   },
 
   async deleteEnrollment(id: string): Promise<void> {
-    return apiClient.delete(`/benefits/enrollments/${id}`);
+    await nexusClient.deleteBenefitEnrollment(id);
   },
 
-  // Dependent Operations
+  // ============ Dependents ============
+
   async listDependents(filters?: DependentFilters): Promise<Dependent[]> {
-    const params = new URLSearchParams();
-    if (filters?.employeeId) params.append('employeeId', filters.employeeId);
-    if (filters?.relationship) params.append('relationship', filters.relationship);
-    
-    const queryString = params.toString();
-    return apiClient.get(`/benefits/dependents${queryString ? `?${queryString}` : ''}`);
+    const response = await nexusClient.listDependents(filters);
+    return response.data as Dependent[];
   },
 
   async getDependent(id: string): Promise<Dependent> {
-    return apiClient.get(`/benefits/dependents/${id}`);
+    const response = await nexusClient.getDependent(id);
+    return response.data as Dependent;
   },
 
   async getEmployeeDependents(employeeId: string): Promise<Dependent[]> {
-    return apiClient.get(`/benefits/dependents/employee/${employeeId}`);
+    const response = await nexusClient.getEmployeeDependents(employeeId);
+    return response.data as Dependent[];
   },
 
   async createDependent(data: CreateDependentDTO): Promise<Dependent> {
-    return apiClient.post('/benefits/dependents', data);
+    const response = await nexusClient.createDependent(data);
+    return response.data as Dependent;
   },
 
   async updateDependent(id: string, updates: UpdateDependentDTO): Promise<Dependent> {
-    return apiClient.put(`/benefits/dependents/${id}`, updates);
+    const response = await nexusClient.updateDependent(id, updates);
+    return response.data as Dependent;
   },
 
   async deleteDependent(id: string): Promise<void> {
-    return apiClient.delete(`/benefits/dependents/${id}`);
+    await nexusClient.deleteDependent(id);
   },
 };

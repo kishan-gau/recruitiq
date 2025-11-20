@@ -315,27 +315,27 @@ class ReportsService {
           json_agg(DISTINCT jsonb_build_object(
             'employee_id', e.id,
             'employee_name', e.first_name || ' ' || e.last_name,
-            'present_days', (SELECT COUNT(*) FROM hris.attendance 
+            'present_days', (SELECT COUNT(*) FROM hris.attendance_record 
                             WHERE employee_id = a.employee_id 
                               AND status = 'present'
                               AND date BETWEEN $2 AND $3
                               AND deleted_at IS NULL),
-            'absent_days', (SELECT COUNT(*) FROM hris.attendance 
+            'absent_days', (SELECT COUNT(*) FROM hris.attendance_record 
                            WHERE employee_id = a.employee_id 
                              AND status = 'absent'
                              AND date BETWEEN $2 AND $3
                              AND deleted_at IS NULL),
-            'late_days', (SELECT COUNT(*) FROM hris.attendance 
+            'late_days', (SELECT COUNT(*) FROM hris.attendance_record 
                          WHERE employee_id = a.employee_id 
                            AND status = 'late'
                            AND date BETWEEN $2 AND $3
                            AND deleted_at IS NULL),
-            'total_hours', (SELECT SUM(hours_worked) FROM hris.attendance 
+            'total_hours', (SELECT SUM(hours_worked) FROM hris.attendance_record 
                            WHERE employee_id = a.employee_id 
                              AND date BETWEEN $2 AND $3
                              AND deleted_at IS NULL)
           )) as by_employee
-        FROM hris.attendance a
+        FROM hris.attendance_record a
         INNER JOIN hris.employee e ON a.employee_id = e.id AND e.deleted_at IS NULL
         WHERE a.organization_id = $1
           AND a.date BETWEEN $2 AND $3

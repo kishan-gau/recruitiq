@@ -97,17 +97,17 @@ export function mapApiToDb(apiData, customMappings = {}) {
     result.category = 'regular_pay';
   }
 
-  // Normalize component_type values - DB only allows 'earning' and 'deduction'
+  // Normalize component_type values - DB allows 'earning', 'tax', and 'deduction'
   if (result.componentType) {
     const normalizedComponentType = {
       'benefit': 'deduction',      // Benefits are deductions
-      'tax': 'deduction',           // Taxes are deductions
       'reimbursement': 'earning',   // Reimbursements are earnings
     }[result.componentType];
     
     if (normalizedComponentType) {
       result.componentType = normalizedComponentType;
     }
+    // 'tax' is a valid component_type, don't normalize it
   }
 
   return result;
@@ -692,7 +692,29 @@ export function mapPayrollRunDbToApi(dbData) {
 export function mapPaycheckDbToApi(dbData) {
   if (!dbData) return null;
   
-  return mapDbToApi(dbData, PAYCHECK_DB_TO_API);
+  const mapped = mapDbToApi(dbData, PAYCHECK_DB_TO_API);
+  
+  // Convert numeric fields from strings to numbers (PostgreSQL NUMERIC returns strings)
+  const numericFields = [
+    'grossPay', 'regularPay', 'overtimePay', 'bonusPay', 'commissionPay',
+    'federalTax', 'stateTax', 'localTax', 'socialSecurity', 'medicare',
+    'wageTax', 'aovTax', 'awwTax',
+    'preTaxDeductions', 'postTaxDeductions', 'otherDeductions',
+    'totalDeductions', 'netPay'
+  ];
+  
+  numericFields.forEach(field => {
+    if (mapped[field] !== undefined && mapped[field] !== null) {
+      mapped[field] = parseFloat(mapped[field]) || 0;
+    }
+  });
+  
+  // Add calculated totalDeductions if not present
+  if (mapped.totalDeductions === undefined || mapped.totalDeductions === null) {
+    mapped.totalDeductions = (mapped.preTaxDeductions || 0) + (mapped.postTaxDeductions || 0) + (mapped.otherDeductions || 0);
+  }
+  
+  return mapped;
 }
 
 /**
@@ -806,8 +828,9 @@ export const PAY_STRUCTURE_COMPONENT_DB_TO_API = {
   created_by: 'createdBy',
   updated_by: 'updatedBy',
   deleted_at: 'deletedAt',
-  // Joined field from pay_component table
+  // Joined fields from pay_component table
   pay_component_name: 'payComponentName',
+  pay_component_type: 'componentType', // Map joined component_type to componentType
 };
 
 /**
@@ -920,6 +943,12 @@ export const PAY_STRUCTURE_TEMPLATE_DB_TO_API = {
   is_organization_default: 'isOrganizationDefault',
   effective_from: 'effectiveFrom',
   effective_to: 'effectiveTo',
+  published_at: 'publishedAt',
+  published_by: 'publishedBy',
+  deprecated_at: 'deprecatedAt',
+  deprecated_by: 'deprecatedBy',
+  deprecation_reason: 'deprecationReason',
+  change_summary: 'changeSummary',
   tags: 'tags',
   notes: 'notes',
   component_count: 'componentCount',

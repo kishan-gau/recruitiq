@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import apiService from '../services/api';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../services';
 
 const AuthContext = createContext(null);
 
@@ -9,24 +9,30 @@ export function AuthProvider({ children }) {
   const [mfaWarning, setMfaWarning] = useState(null); // Grace period warning
 
   // Initialize auth state by checking with backend (cookies are sent automatically)
-  // OPTIMIZATION: Only validate session on page load - no CSRF token fetch needed
-  // CSRF tokens are fetched lazily on first mutation by the API client interceptor
+  // SECURITY: Session validation via httpOnly cookies (XSS-proof)
+  // No localStorage usage - user data stored only in React state
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Validate session via cookies (sent automatically by browser)
+        // Validate session via httpOnly cookies (sent automatically by browser)
         const userData = await apiService.getMe();
         
-        // Verify platform access
-        if (userData.user_type === 'platform' && userData.permissions?.includes('portal.view')) {
-          setUser(userData);
-          // Store user data in localStorage for convenience (non-sensitive)
-          localStorage.setItem('user', JSON.stringify(userData));
+        // CRITICAL: Validate that we got valid user data
+        // If no email or id, treat as unauthenticated
+        if (!userData || !userData.email || !userData.id) {
+          console.log('[AuthContext] Invalid user data received (missing email/id), treating as unauthenticated');
+          setUser(null);
+          setLoading(false);
+          return;
         }
+        
+        // Backend /api/auth/platform/me already enforces platform auth
+        // If we get user data, they're authenticated as platform user
+        setUser(userData);
+        // REMOVED: localStorage.setItem() - unnecessary security risk
       } catch (error) {
-        // Not authenticated, clear any stale data
+        // Not authenticated, clear state
         setUser(null);
-        localStorage.removeItem('user');
       } finally {
         setLoading(false);
       }
@@ -50,15 +56,17 @@ export function AuthProvider({ children }) {
       const userData = response.user;
       // Tokens are automatically set as HTTP-only cookies by the backend
 
-      // Verify user is a platform user with portal.view permission
-      if (userData.user_type !== 'platform') {
-        throw new Error('Access denied. This portal is for platform administrators only.');
+      // CRITICAL: Validate user data before setting state
+      if (!userData || !userData.email || !userData.id) {
+        throw new Error('Invalid user data received from server');
       }
 
-      if (!userData.permissions || !userData.permissions.includes('portal.view')) {
-        throw new Error('Access denied. You do not have permission to access this portal.');
-      }
-
+      // Backend already enforces platform auth via /api/auth/platform/* endpoints
+      // No need to check user_type here - if they authenticated, they're platform users
+      
+      // Optional: Check for specific permissions if needed for UI features
+      // For now, if they can login to platform auth, they can access portal
+      
       setUser(userData);
       
       // Store MFA warning if present (grace period)

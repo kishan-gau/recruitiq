@@ -1,20 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-// Configuration
-const BASE_URL = 'http://localhost:5175';
-
 test.describe('Locations Integration Tests', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations`);
+    // ✅ Authentication loaded from storage state (playwright/.auth/user.json)
+    await page.goto('/locations');
     await page.waitForLoadState('networkidle');
   });
 
   test('should display locations list page', async ({ page }) => {
     // Check main heading
-    await expect(page.getByRole('heading', { name: 'Locations' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Locations', exact: true })).toBeVisible();
     
     // Check search input
-    await expect(page.getByPlaceholder(/search locations/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/search by name.*code.*city.*country/i)).toBeVisible();
     
     // Check Add Location button
     await expect(page.getByRole('link', { name: /add location/i })).toBeVisible();
@@ -27,7 +25,7 @@ test.describe('Locations Integration Tests', () => {
     await page.waitForSelector('table tbody tr', { timeout: 10000 });
     
     // Search by location name
-    const searchInput = page.getByPlaceholder(/search locations/i);
+    const searchInput = page.getByPlaceholder(/search by name.*code.*city.*country/i);
     await searchInput.fill('HQ');
     
     await page.waitForTimeout(500);
@@ -80,20 +78,20 @@ test.describe('Locations Integration Tests', () => {
 
   test('should navigate to create location page', async ({ page }) => {
     // Click Add Location button
-    await page.getByRole('link', { name: /add location/i }).click();
+    await page.getByRole('link', { name: /add location/i }).first().click();
     
     // Verify navigation
     await expect(page).toHaveURL(/\/locations\/new/);
     
-    // Check form sections
+    // Check form sections - use getByRole for heading to avoid strict mode violations
     await expect(page.getByText(/create location/i)).toBeVisible();
     await expect(page.getByText(/basic information/i)).toBeVisible();
-    await expect(page.getByText(/address/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /address/i })).toBeVisible();
     await expect(page.getByText(/contact information/i)).toBeVisible();
   });
 
   test('should show validation errors for empty location form', async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     // Click submit without filling fields
@@ -110,7 +108,7 @@ test.describe('Locations Integration Tests', () => {
   });
 
   test('should validate location code format', async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     // Enter invalid location code (lowercase)
@@ -126,7 +124,7 @@ test.describe('Locations Integration Tests', () => {
   });
 
   test('should validate email format', async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     // Enter invalid email
@@ -142,7 +140,7 @@ test.describe('Locations Integration Tests', () => {
   });
 
   test('should validate phone number format', async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     // Enter invalid phone
@@ -158,7 +156,7 @@ test.describe('Locations Integration Tests', () => {
   });
 
   test('should create a new location with required fields only', async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     // Generate unique location data
@@ -185,11 +183,11 @@ test.describe('Locations Integration Tests', () => {
     await page.waitForTimeout(2000);
     
     // Verify redirect to locations list
-    await expect(page).toHaveURL(`${BASE_URL}/locations`);
+    await expect(page).toHaveURL(`/locations`);
   });
 
   test('should create a location with all fields including optional', async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     // Generate unique location data
@@ -228,7 +226,7 @@ test.describe('Locations Integration Tests', () => {
     await page.waitForTimeout(2000);
     
     // Verify redirect
-    await expect(page).toHaveURL(`${BASE_URL}/locations`);
+    await expect(page).toHaveURL(`/locations`);
   });
 
   test('should view location details', async ({ page }) => {
@@ -338,7 +336,7 @@ test.describe('Locations Integration Tests', () => {
   });
 
   test('should cancel location creation', async ({ page }) => {
-    await page.goto(`${BASE_URL}/locations/new`);
+    await page.goto(`/locations/new`);
     await page.waitForLoadState('networkidle');
     
     // Fill some data
@@ -348,7 +346,7 @@ test.describe('Locations Integration Tests', () => {
     await page.getByRole('button', { name: /cancel/i }).click();
     
     // Verify navigation back
-    await expect(page).toHaveURL(`${BASE_URL}/locations`);
+    await expect(page).toHaveURL(`/locations`);
   });
 
   test('should cancel location edit', async ({ page }) => {
@@ -425,7 +423,7 @@ test.describe('Locations Integration Tests', () => {
   });
 
   test('should display empty state for search with no results', async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/search locations/i);
+    const searchInput = page.getByPlaceholder(/search by name.*code.*city.*country/i);
     await searchInput.fill('NonExistentLocation99999');
     
     await page.waitForTimeout(1000);

@@ -3,7 +3,7 @@ import { adminController } from '../controllers/adminController.js'
 import { customerController } from '../controllers/customerController.js'
 import { licenseController } from '../controllers/licenseController.js'
 // Import from main auth middleware instead of license-specific
-import { authenticate as authenticateAdmin, requirePlatformUser, requirePermission } from '../../../middleware/auth.js'
+import { authenticatePlatform, requirePlatformPermission } from '../../../middleware/auth.js'
 import { auditLog } from '../middleware/audit.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 
@@ -13,9 +13,8 @@ const router = express.Router()
 // Login will use main /api/auth/login endpoint
 
 // All routes below require platform user authentication
-router.use(authenticateAdmin)
-router.use(requirePlatformUser)
-router.use(requirePermission('license.view')) // All license routes need at least view permission
+router.use(authenticatePlatform)
+router.use(requirePlatformPermission('license.view')) // All license routes need at least view permission
 
 // Dashboard
 router.get('/dashboard', asyncHandler(adminController.getDashboard))
@@ -26,7 +25,7 @@ router.get('/me', asyncHandler(adminController.getMe))
 
 // Audit log (requires audit permission)
 router.get('/audit-log',
-  requirePermission('license.analytics', 'security.audit'),
+  requirePlatformPermission('license.analytics', 'security.audit'),
   asyncHandler(adminController.getAuditLog)
 )
 
@@ -40,19 +39,19 @@ router.get('/customers/:id',
 )
 
 router.post('/customers',
-  requirePermission('license.create'),
+  requirePlatformPermission('license.create'),
   auditLog('create_customer', 'customer'),
   asyncHandler(customerController.createCustomer)
 )
 
 router.put('/customers/:id',
-  requirePermission('license.edit'),
+  requirePlatformPermission('license.edit'),
   auditLog('update_customer', 'customer'),
   asyncHandler(customerController.updateCustomer)
 )
 
 router.delete('/customers/:id',
-  requirePermission('license.delete'),
+  requirePlatformPermission('license.delete'),
   auditLog('delete_customer', 'customer'),
   asyncHandler(customerController.deleteCustomer)
 )
@@ -71,43 +70,43 @@ router.get('/licenses/expiring',
 )
 
 router.post('/licenses',
-  requirePermission('license.create'),
+  requirePlatformPermission('license.create'),
   auditLog('create_license', 'license'),
   asyncHandler(licenseController.createLicense)
 )
 
 router.put('/licenses/:id',
-  requirePermission('license.edit'),
+  requirePlatformPermission('license.edit'),
   auditLog('update_license', 'license'),
   asyncHandler(licenseController.updateLicense)
 )
 
 router.post('/licenses/:id/renew',
-  requirePermission('license.renew'),
+  requirePlatformPermission('license.renew'),
   auditLog('renew_license', 'license'),
   asyncHandler(licenseController.renewLicense)
 )
 
 router.post('/licenses/:id/suspend',
-  requirePermission('license.suspend'),
+  requirePlatformPermission('license.suspend'),
   auditLog('suspend_license', 'license'),
   asyncHandler(licenseController.suspendLicense)
 )
 
 router.post('/licenses/:id/reactivate',
-  requirePermission('license.suspend'), // Same permission as suspend
+  requirePlatformPermission('license.suspend'), // Same permission as suspend
   auditLog('reactivate_license', 'license'),
   asyncHandler(licenseController.reactivateLicense)
 )
 
 router.get('/licenses/:id/download',
-  requirePermission('license.download'),
+  requirePlatformPermission('license.download'),
   auditLog('download_license_file', 'license'),
   asyncHandler(licenseController.generateLicenseFile)
 )
 
 router.delete('/licenses/:id',
-  requirePermission('license.delete'),
+  requirePlatformPermission('license.delete'),
   auditLog('delete_license', 'license'),
   asyncHandler(licenseController.deleteLicense)
 )

@@ -1,12 +1,10 @@
 /**
  * Integration Tests: Shift Swap API
- * Tests shift swapping marketplace and trade management
+ * Tests shift swapping marketplace and trade management with cookie-based authentication
  */
 
 import { jest } from '@jest/globals';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import request from 'supertest';
-import app from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
 import {
   createTestOrganization,
@@ -23,7 +21,7 @@ import {
 // SKIPPED: Bearer token auth incomplete - migrating to cookie-based auth
 // TODO: Re-enable once cookie auth is implemented for all apps
 
-describe.skip('Integration: Shift Swap API', () => {
+describe('Integration: Shift Swap API', () => {
   let organizationId;
   let userId;
   let token;
@@ -106,12 +104,9 @@ describe.skip('Integration: Shift Swap API', () => {
     await pool.end();
   });
 
-  describe.skip('POST /api/schedulehub/shift-swaps', () => {
+  describe('POST /api/schedulehub/shift-swaps', () => {
     it('should create open swap offer', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/shift-swaps')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/shift-swaps')        .send({
           shiftId: shift1Id,
           swapType: 'open',
           notes: 'Need someone to cover this shift'
@@ -127,10 +122,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should create direct swap offer', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/shift-swaps')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/shift-swaps')        .send({
           shiftId: shift2Id,
           swapType: 'direct',
           targetWorkerId: worker3Id,
@@ -144,10 +136,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should create trade swap offer', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/shift-swaps')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/shift-swaps')        .send({
           shiftId: shift3Id,
           swapType: 'trade',
           notes: 'Looking to trade shifts'
@@ -159,10 +148,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should validate swap type', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/shift-swaps')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/shift-swaps')        .send({
           shiftId: shift1Id,
           swapType: 'invalid_type'
         });
@@ -171,10 +157,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should require target worker for direct swap', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/shift-swaps')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/shift-swaps')        .send({
           shiftId: shift1Id,
           swapType: 'direct'
           // Missing targetWorkerId
@@ -197,10 +180,7 @@ describe.skip('Integration: Shift Swap API', () => {
          userId, userId]
       );
 
-      const response = await request(app)
-        .post('/api/schedulehub/shift-swaps')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/shift-swaps')        .send({
           shiftId: unassignedShift.rows[0].id,
           swapType: 'open'
         });
@@ -210,10 +190,9 @@ describe.skip('Integration: Shift Swap API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/shift-swaps/marketplace', () => {
+  describe('GET /api/schedulehub/shift-swaps/marketplace', () => {
     it('should browse marketplace', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/shift-swaps/marketplace')
+      const response = await agent.get('/api/products/schedulehub/shift-swaps/marketplace')
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -223,10 +202,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should filter by swap type', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/shift-swaps/marketplace')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ swapType: 'open' });
+      const response = await agent.get('/api/products/schedulehub/shift-swaps/marketplace')        .query({ swapType: 'open' });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(o => o.swap_type === 'open')).toBe(true);
@@ -236,38 +212,28 @@ describe.skip('Integration: Shift Swap API', () => {
       const startDate = new Date().toISOString().split('T')[0];
       const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const response = await request(app)
-        .get('/api/schedulehub/shift-swaps/marketplace')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ startDate, endDate });
+      const response = await agent.get('/api/products/schedulehub/shift-swaps/marketplace')        .query({ startDate, endDate });
 
       expect(response.status).toBe(200);
     });
 
     it('should filter by role', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/shift-swaps/marketplace')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ roleId });
+      const response = await agent.get('/api/products/schedulehub/shift-swaps/marketplace')        .query({ roleId });
 
       expect(response.status).toBe(200);
     });
 
     it('should support pagination', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/shift-swaps/marketplace')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ page: 1, limit: 5 });
+      const response = await agent.get('/api/products/schedulehub/shift-swaps/marketplace')        .query({ page: 1, limit: 5 });
 
       expect(response.status).toBe(200);
       expect(response.body.pagination).toBeDefined();
     });
   });
 
-  describe.skip('GET /api/schedulehub/shift-swaps/:id', () => {
+  describe('GET /api/schedulehub/shift-swaps/:id', () => {
     it('should get swap offer details', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/shift-swaps/${offerId}`)
+      const response = await agent.get(`/api/products/schedulehub/shift-swaps/${offerId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -278,20 +244,16 @@ describe.skip('Integration: Shift Swap API', () => {
 
     it('should return 404 for non-existent offer', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000';
-      const response = await request(app)
-        .get(`/api/schedulehub/shift-swaps/${fakeId}`)
+      const response = await agent.get(`/api/products/schedulehub/shift-swaps/${fakeId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe.skip('POST /api/schedulehub/shift-swaps/:offerId/request', () => {
+  describe('POST /api/schedulehub/shift-swaps/:offerId/request', () => {
     it('should request to take open swap', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shift-swaps/${offerId}/request`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/shift-swaps/${offerId}/request`)        .send({
           requestingWorkerId: worker2Id,
           notes: 'I can cover this shift'
         });
@@ -318,10 +280,7 @@ describe.skip('Integration: Shift Swap API', () => {
       );
       const tradeOfferId = tradeOffer.rows[0].id;
 
-      const response = await request(app)
-        .post(`/api/schedulehub/shift-swaps/${tradeOfferId}/request`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/shift-swaps/${tradeOfferId}/request`)        .send({
           requestingWorkerId: worker1Id,
           offeredShiftId: shift1Id,
           notes: 'Trade my shift for yours'
@@ -346,10 +305,7 @@ describe.skip('Integration: Shift Swap API', () => {
          userId, userId]
       );
 
-      const response = await request(app)
-        .post(`/api/schedulehub/shift-swaps/${tradeOffer.rows[0].id}/request`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/shift-swaps/${tradeOffer.rows[0].id}/request`)        .send({
           requestingWorkerId: worker1Id
           // Missing offeredShiftId
         });
@@ -359,10 +315,9 @@ describe.skip('Integration: Shift Swap API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/shift-swaps/:offerId/requests', () => {
+  describe('GET /api/schedulehub/shift-swaps/:offerId/requests', () => {
     it('should get requests for offer', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/shift-swaps/${offerId}/requests`)
+      const response = await agent.get(`/api/products/schedulehub/shift-swaps/${offerId}/requests`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -372,7 +327,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/shift-swap-requests/:requestId/accept', () => {
+  describe('POST /api/schedulehub/shift-swap-requests/:requestId/accept', () => {
     let requestId;
 
     beforeAll(async () => {
@@ -391,8 +346,7 @@ describe.skip('Integration: Shift Swap API', () => {
         [offerId]
       );
 
-      const response = await request(app)
-        .post(`/api/schedulehub/shift-swap-requests/${requestId}/accept`)
+      const response = await agent.post(`/api/products/schedulehub/shift-swap-requests/${requestId}/accept`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -401,7 +355,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/shift-swap-requests/:requestId/accept (with approval)', () => {
+  describe('POST /api/schedulehub/shift-swap-requests/:requestId/accept (with approval)', () => {
     let approvalRequestId;
     let approvalOfferId;
 
@@ -448,8 +402,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should accept and set to pending approval', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shift-swap-requests/${approvalRequestId}/accept`)
+      const response = await agent.post(`/api/products/schedulehub/shift-swap-requests/${approvalRequestId}/accept`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -458,10 +411,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should allow manager to approve swap', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shift-swaps/${approvalOfferId}/approve`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/shift-swaps/${approvalOfferId}/approve`)        .send({
           approvalNotes: 'Approved by manager'
         });
 
@@ -472,7 +422,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/shift-swaps/:offerId/cancel', () => {
+  describe('POST /api/schedulehub/shift-swaps/:offerId/cancel', () => {
     let cancelOfferId;
 
     beforeAll(async () => {
@@ -507,8 +457,7 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should cancel pending offer', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shift-swaps/${cancelOfferId}/cancel`)
+      const response = await agent.post(`/api/products/schedulehub/shift-swaps/${cancelOfferId}/cancel`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -518,8 +467,7 @@ describe.skip('Integration: Shift Swap API', () => {
 
     it('should not cancel completed offer', async () => {
       // Try to cancel already accepted offer
-      const response = await request(app)
-        .post(`/api/schedulehub/shift-swaps/${offerId}/cancel`)
+      const response = await agent.post(`/api/products/schedulehub/shift-swaps/${offerId}/cancel`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(400);
@@ -527,10 +475,9 @@ describe.skip('Integration: Shift Swap API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/workers/:workerId/swap-offers', () => {
+  describe('GET /api/schedulehub/workers/:workerId/swap-offers', () => {
     it('should get worker swap offers', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${worker1Id}/swap-offers`)
+      const response = await agent.get(`/api/products/schedulehub/workers/${worker1Id}/swap-offers`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -538,22 +485,18 @@ describe.skip('Integration: Shift Swap API', () => {
     });
 
     it('should filter by status', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${worker1Id}/swap-offers`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ status: 'pending' });
+      const response = await agent.get(`/api/products/schedulehub/workers/${worker1Id}/swap-offers`)        .query({ status: 'pending' });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(o => o.status === 'pending')).toBe(true);
     });
   });
 
-  describe.skip('Organization Isolation', () => {
+  describe('Organization Isolation', () => {
     it('should not access offers from other organizations', async () => {
       const org2 = await createTestOrganization();
 
-      const response = await request(app)
-        .get(`/api/schedulehub/shift-swaps/${offerId}`)
+      const response = await agent.get(`/api/products/schedulehub/shift-swaps/${offerId}`)
         .set('Authorization', `Bearer ${org2.token}`);
 
       expect(response.status).toBe(404);

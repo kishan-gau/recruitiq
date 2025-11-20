@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useContract, useDeleteContract, useActivateContract, useTerminateContract } from '@/hooks/useContracts';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { format } from 'date-fns';
 import type { ContractStatus } from '@/types/contract.types';
 
@@ -23,6 +24,9 @@ export default function ContractDetails() {
   const navigate = useNavigate();
   const [showTerminateModal, setShowTerminateModal] = useState(false);
   const [terminationDate, setTerminationDate] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
+  const [showTerminateDateError, setShowTerminateDateError] = useState(false);
 
   const { data: contract, isLoading, error } = useContract(id);
   const deleteMutation = useDeleteContract();
@@ -30,29 +34,25 @@ export default function ContractDetails() {
   const terminateMutation = useTerminateContract();
 
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this contract? This action cannot be undone.')) {
-      try {
-        await deleteMutation.mutateAsync(id!);
-        navigate('/contracts');
-      } catch (error) {
-        console.error('Failed to delete contract:', error);
-      }
+    try {
+      await deleteMutation.mutateAsync(id!);
+      navigate('/contracts');
+    } catch (error) {
+      console.error('Failed to delete contract:', error);
     }
   };
 
   const handleActivate = async () => {
-    if (confirm('Are you sure you want to activate this contract?')) {
-      try {
-        await activateMutation.mutateAsync(id!);
-      } catch (error) {
-        console.error('Failed to activate contract:', error);
-      }
+    try {
+      await activateMutation.mutateAsync(id!);
+    } catch (error) {
+      console.error('Failed to activate contract:', error);
     }
   };
 
   const handleTerminate = async () => {
     if (!terminationDate) {
-      alert('Please select a termination date');
+      setShowTerminateDateError(true);
       return;
     }
     try {
@@ -139,7 +139,7 @@ export default function ContractDetails() {
         <div className="flex gap-2">
           {contract.status === 'draft' && (
             <button
-              onClick={handleActivate}
+              onClick={() => setShowActivateDialog(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4 mr-2" />
@@ -163,7 +163,7 @@ export default function ContractDetails() {
             Edit
           </Link>
           <button
-            onClick={handleDelete}
+            onClick={() => setShowDeleteDialog(true)}
             className="inline-flex items-center px-4 py-2 border border-red-300 dark:border-red-600 rounded-md shadow-sm text-sm font-medium text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20"
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -452,6 +452,43 @@ export default function ContractDetails() {
           </div>
         </div>
       )}
+      
+      {/* Confirm Dialogs */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={() => {
+          setShowDeleteDialog(false);
+          handleDelete();
+        }}
+        title="Delete Contract"
+        message="Are you sure you want to delete this contract? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={showActivateDialog}
+        onClose={() => setShowActivateDialog(false)}
+        onConfirm={() => {
+          setShowActivateDialog(false);
+          handleActivate();
+        }}
+        title="Activate Contract"
+        message="Are you sure you want to activate this contract?"
+        confirmText="Activate"
+        variant="info"
+      />
+
+      <ConfirmDialog
+        isOpen={showTerminateDateError}
+        onClose={() => setShowTerminateDateError(false)}
+        onConfirm={() => setShowTerminateDateError(false)}
+        title="Missing Termination Date"
+        message="Please select a termination date before proceeding."
+        confirmText="OK"
+        variant="warning"
+      />
     </div>
   );
 }

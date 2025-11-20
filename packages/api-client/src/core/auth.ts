@@ -41,7 +41,7 @@ export class AuthAPI {
     // Fetch CSRF token before login (required for cookie-based auth)
     let csrfToken: string | undefined;
     try {
-      const csrfResponse = await this.client.get('/csrf-token', {
+      const csrfResponse = await this.client.get('/api/csrf-token', {
         headers: { 'skip-auth': 'true' },
       });
       csrfToken = csrfResponse.csrfToken;
@@ -74,7 +74,7 @@ export class AuthAPI {
     // Fetch CSRF token before registration (required for cookie-based auth)
     let csrfToken: string | undefined;
     try {
-      const csrfResponse = await this.client.get('/csrf-token', {
+      const csrfResponse = await this.client.get('/api/csrf-token', {
         headers: { 'skip-auth': 'true' },
       });
       csrfToken = csrfResponse.csrfToken;

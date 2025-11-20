@@ -20,7 +20,7 @@ class BenefitsController {
    */
   createPlan = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const plan = await this.service.createPlan(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: plan });
     } catch (error) {
@@ -35,7 +35,7 @@ class BenefitsController {
    */
   getPlan = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const plan = await this.service.getPlan(id, organizationId);
       res.json({ success: true, data: plan });
@@ -52,7 +52,7 @@ class BenefitsController {
    */
   listPlans = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { planType, isActive, limit = 50, offset = 0 } = req.query;
 
       const filters = {};
@@ -75,7 +75,7 @@ class BenefitsController {
    */
   updatePlan = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const plan = await this.service.updatePlan(id, req.body, organizationId, userId);
       res.json({ success: true, data: plan });
@@ -94,7 +94,7 @@ class BenefitsController {
    */
   enrollEmployee = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const enrollment = await this.service.enrollEmployee(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: enrollment });
     } catch (error) {
@@ -109,7 +109,7 @@ class BenefitsController {
    */
   updateEnrollment = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const enrollment = await this.service.updateEnrollment(id, req.body, organizationId, userId);
       res.json({ success: true, data: enrollment });
@@ -126,7 +126,7 @@ class BenefitsController {
    */
   terminateEnrollment = async (req, res) => {
     try {
-      const { organizationId, userId } = req.auth;
+      const { organizationId, userId } = req.user;
       const { id } = req.params;
       const { endDate, reason } = req.body;
       
@@ -151,7 +151,7 @@ class BenefitsController {
    */
   getEnrollment = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { id } = req.params;
       const enrollment = await this.service.getEnrollment(id, organizationId);
       res.json({ success: true, data: enrollment });
@@ -168,7 +168,7 @@ class BenefitsController {
    */
   getEmployeeEnrollments = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { employeeId } = req.params;
       const enrollments = await this.service.getEmployeeEnrollments(employeeId, organizationId);
       res.json({ success: true, data: enrollments });
@@ -184,7 +184,7 @@ class BenefitsController {
    */
   getActiveEnrollments = async (req, res) => {
     try {
-      const { organizationId } = req.auth;
+      const { organizationId } = req.user;
       const { planId } = req.query;
       const enrollments = await this.service.getActiveEnrollments(organizationId, planId);
       res.json({ success: true, data: enrollments });

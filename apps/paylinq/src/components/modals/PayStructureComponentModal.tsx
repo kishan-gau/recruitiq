@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertCircle, DollarSign, Percent, Clock, FileText, ListFilter, Settings } from 'lucide-react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea } from '@/components/ui/FormField';
+import CurrencySelector from '@/components/ui/CurrencySelector';
 import AvailableComponentsPicker from '@/components/ui/AvailableComponentsPicker';
 import ConditionsBuilder from '@/components/ui/ConditionsBuilder';
 import MetadataBuilder from '@/components/ui/MetadataBuilder';
@@ -62,6 +63,9 @@ export default function PayStructureComponentModal({
     displayOnPayslip: true,
     requiresApproval: false,
     accountingCode: '',
+    // Currency
+    defaultCurrency: 'SRD',
+    allowCurrencyOverride: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -128,6 +132,9 @@ export default function PayStructureComponentModal({
           displayOnPayslip: component.displayOnPayslip ?? true,
           requiresApproval: component.requiresApproval ?? false,
           accountingCode: component.accountingCode || '',
+          // Currency
+          defaultCurrency: component.currency || component.defaultCurrency || 'SRD',
+          allowCurrencyOverride: component.allowCurrencyOverride !== false,
         });
       } else {
         // Add mode - reset form
@@ -165,6 +172,9 @@ export default function PayStructureComponentModal({
           displayOnPayslip: true,
           requiresApproval: false,
           accountingCode: '',
+          // Currency
+          defaultCurrency: 'SRD',
+          allowCurrencyOverride: true,
         });
       }
       setErrors({});
@@ -283,13 +293,16 @@ export default function PayStructureComponentModal({
       // Display & Approval
       requiresApproval: formData.requiresApproval,
       accountingCode: formData.accountingCode || null,
+      // Currency
+      defaultCurrency: formData.defaultCurrency,
+      allowCurrencyOverride: formData.allowCurrencyOverride,
     };
 
     // Add calculation-specific fields with backend field names
     switch (formData.calculationType) {
       case 'fixed':
         submitData.defaultAmount = parseFloat(formData.fixedAmount);
-        submitData.defaultCurrency = 'USD'; // TODO: Get from org settings
+        submitData.defaultCurrency = formData.defaultCurrency;
         break;
       case 'percentage':
         submitData.percentageRate = parseFloat(formData.percentageValue) / 100; // Convert to decimal (0-1)
@@ -821,6 +834,33 @@ export default function PayStructureComponentModal({
                         />
                       </div>
                     </FormField>
+                  </div>
+                </div>
+
+                {/* Currency Settings Section */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Currency Settings</h3>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-4">
+                    <FormField 
+                      label="Default Currency" 
+                      hint="Currency used for this component in payroll calculations"
+                    >
+                      <CurrencySelector
+                        value={formData.defaultCurrency}
+                        onChange={(currency) => setFormData({ ...formData, defaultCurrency: currency })}
+                        supportedCurrencies={['SRD', 'USD', 'EUR', 'GBP', 'CAD', 'AUD']}
+                      />
+                    </FormField>
+
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.allowCurrencyOverride}
+                        onChange={(e) => setFormData({ ...formData, allowCurrencyOverride: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">Allow currency override at worker level</span>
+                    </label>
                   </div>
                 </div>
               </>

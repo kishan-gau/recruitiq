@@ -1,8 +1,8 @@
 # Testing Standards
 
 **Part of:** [RecruitIQ Coding Standards](../CODING_STANDARDS.md)  
-**Version:** 1.0  
-**Last Updated:** November 3, 2025
+**Version:** 1.2  
+**Last Updated:** November 18, 2025
 
 ---
 
@@ -10,12 +10,15 @@
 
 1. [Testing Philosophy](#testing-philosophy)
 2. [Test Coverage Requirements](#test-coverage-requirements)
-3. [Unit Testing Standards](#unit-testing-standards)
-4. [Integration Testing Standards](#integration-testing-standards)
-5. [E2E Testing Standards](#e2e-testing-standards)
-6. [Test Structure](#test-structure)
-7. [Mocking Standards](#mocking-standards)
-8. [Test Data Management](#test-data-management)
+3. [Test File Organization](#test-file-organization)
+4. [Import Path Standards](#import-path-standards)
+5. [Unit Testing Standards](#unit-testing-standards)
+6. [Integration Testing Standards](#integration-testing-standards)
+7. [E2E Testing Standards](#e2e-testing-standards)
+8. [Test Structure](#test-structure)
+9. [Mocking Standards](#mocking-standards)
+10. [Test Data Management](#test-data-management)
+11. [Refactoring Resilience](#refactoring-resilience)
 
 ---
 
@@ -73,6 +76,315 @@
 - Configuration files
 - Simple getters/setters
 - Database migrations
+
+---
+
+## Test File Organization
+
+### Location Standard (MANDATORY)
+
+**ALL tests MUST be in dedicated `tests/` folders, NEVER co-located in `src/`.**
+
+This is a critical architectural decision that affects:
+- Code maintainability
+- Deployment safety
+- CI/CD configuration
+- Refactoring ease
+
+#### Backend Test Structure (MANDATORY)
+
+```
+backend/
+├── src/                          ← Source code ONLY (no tests)
+│   ├── services/
+│   │   ├── JobService.js
+│   │   └── InterviewService.js
+│   ├── repositories/
+│   │   └── JobRepository.js
+│   ├── controllers/
+│   │   └── jobController.js
+│   ├── utils/
+│   │   ├── logger.js
+│   │   └── sanitization.js
+│   └── products/
+│       ├── paylinq/
+│       │   ├── services/
+│       │   └── repositories/
+│       └── nexus/
+│           ├── services/
+│           └── repositories/
+│
+└── tests/                        ← ALL tests here
+    ├── unit/                     ← Unit tests (70% of tests)
+    │   ├── services/             ← Mirrors src/services/
+    │   │   ├── JobService.test.js
+    │   │   └── InterviewService.test.js
+    │   ├── repositories/         ← Mirrors src/repositories/
+    │   │   └── JobRepository.test.js
+    │   ├── controllers/          ← Mirrors src/controllers/
+    │   │   └── jobController.test.js
+    │   ├── utils/                ← Mirrors src/utils/
+    │   │   ├── logger.test.js
+    │   │   └── sanitization.test.js
+    │   └── formula/              ← Domain-specific tests
+    │       ├── FormulaParser.test.js
+    │       └── FormulaExecutor.test.js
+    │
+    ├── integration/              ← API/integration tests (20%)
+    │   ├── auth.test.js
+    │   ├── tenant-isolation.test.js
+    │   ├── jobs-api.test.js
+    │   └── session-management.test.js
+    │
+    ├── e2e/                      ← End-to-end tests (10%)
+    │   ├── setup.js
+    │   ├── teardown.js
+    │   └── sso-integration.test.js
+    │
+    ├── security/                 ← Security-focused tests
+    │   ├── auth-security.test.js
+    │   ├── jwt-security.test.js
+    │   └── penetration.test.js
+    │
+    ├── products/                 ← Product-specific tests
+    │   ├── paylinq/              ← Mirrors src/products/paylinq/
+    │   │   ├── services/
+    │   │   │   ├── PayrollService.test.js
+    │   │   │   └── AllowanceService.test.js
+    │   │   ├── repositories/
+    │   │   └── integration/
+    │   │       └── payroll-api.test.js
+    │   └── nexus/                ← Mirrors src/products/nexus/
+    │       ├── services/
+    │       │   ├── EmployeeService.test.js
+    │       │   └── LocationService.test.js
+    │       ├── repositories/
+    │       └── integration/
+    │
+    ├── helpers/                  ← Test utilities & factories
+    │   ├── auth.js               ← Auth test helpers
+    │   ├── factories.js          ← Test data factories
+    │   └── assertions.js         ← Custom assertions
+    │
+    ├── setup.js                  ← Global test setup
+    └── teardown.js               ← Global test teardown
+```
+
+#### Frontend Test Structure
+
+```
+apps/nexus/                       ← Each app has its own tests
+├── src/
+│   ├── components/
+│   │   └── LocationCard.tsx
+│   ├── services/
+│   │   └── LocationsService.ts
+│   └── hooks/
+│       └── useAuth.ts
+│
+├── tests/                        ← Separate tests folder
+│   ├── components/               ← Component unit tests
+│   │   └── LocationCard.test.tsx
+│   ├── services/                 ← Service unit tests
+│   │   └── LocationsService.test.tsx
+│   ├── hooks/                    ← Hook unit tests
+│   │   └── useAuth.test.tsx
+│   ├── integration/              ← Integration tests
+│   │   └── locations-flow.test.tsx
+│   └── setup.ts                  ← Test configuration
+│
+├── e2e/                          ← Playwright E2E tests
+│   └── locations.spec.ts
+│
+└── playwright.config.ts
+```
+
+#### Shared Packages Test Structure
+
+```
+packages/
+├── api-client/
+│   ├── src/
+│   │   └── core/
+│   │       └── client.ts
+│   └── tests/                    ← Separate folder
+│       └── core/
+│           └── client.test.ts
+│
+└── utils/
+    ├── src/
+    │   └── dateUtils.ts
+    └── tests/
+        └── dateUtils.test.ts
+```
+
+### ❌ Anti-Patterns (DO NOT USE)
+
+```
+❌ WRONG: Co-located tests in src/
+backend/src/services/__tests__/JobService.test.js
+backend/src/utils/__tests__/logger.test.js
+backend/src/services/jobs/__tests__/JobService.test.js
+
+❌ WRONG: Mixed patterns (inconsistent)
+backend/src/services/__tests__/JobService.test.js  ← Some in src/
+backend/tests/services/InterviewService.test.js    ← Some in tests/
+
+❌ WRONG: Tests without type folders
+backend/tests/JobService.test.js  ← Should be tests/unit/services/
+backend/tests/auth.test.js        ← Should be tests/integration/
+```
+
+### Rationale for Separation
+
+| Benefit | Description |
+|---------|-------------|
+| **Clear Separation of Concerns** | Source code and test code serve different purposes |
+| **Easier CI/CD Configuration** | Test folder can be excluded from production builds |
+| **Prevents Accidental Deployment** | Tests never end up in production bundles |
+| **Industry Standard** | Used by Google, Microsoft, Netflix, Airbnb |
+| **Easier Refactoring** | Tests don't break when source files move |
+| **Better IDE Performance** | Editors can exclude test folders from indexing |
+| **Cleaner Coverage Reports** | Coverage tools work better with separated tests |
+
+### Industry Examples
+
+**Major frameworks that use separate test folders:**
+
+- ✅ **Express.js** - `test/` folder
+- ✅ **NestJS** - `test/` folder for E2E, unit tests near source (exception)
+- ✅ **Next.js** - `__tests__/` folders (co-located but consistent)
+- ✅ **React Testing Library** - Recommends co-location (smaller apps)
+- ✅ **Angular** - `.spec.ts` files co-located
+- ✅ **Vue.js** - `tests/` folder
+
+**For enterprise monorepos (like RecruitIQ):**
+- ✅ **Google** - Separate `test/` directories
+- ✅ **Microsoft** - Separate test projects
+- ✅ **Netflix** - Separate test folders
+
+**RecruitIQ Standard: Separate `tests/` folder** (enterprise pattern)
+
+### Migration from Co-Located Tests
+
+If you have tests in `src/`, they must be moved:
+
+```powershell
+# Example migration (don't run manually - use migration script)
+# backend/src/services/__tests__/JobService.test.js
+# → backend/tests/unit/services/JobService.test.js
+```
+
+**After moving, update import paths (see Import Path Standards below).**
+
+---
+
+## Import Path Standards
+
+### The Path Fragility Problem
+
+**Problem:** Relative imports create tight coupling between test location and source location.
+
+```javascript
+// ❌ FRAGILE: Test in src/services/__tests__/JobService.test.js
+import JobService from '../JobService.js';          // Works here
+import logger from '../../utils/logger.js';         // Works here
+import { query } from '../../config/database.js';   // Works here
+
+// After moving to tests/unit/services/JobService.test.js
+import JobService from '../JobService.js';          // ❌ BREAKS! Wrong path
+import logger from '../../utils/logger.js';         // ❌ BREAKS! Wrong path
+import { query } from '../../config/database.js';   // ❌ BREAKS! Wrong path
+```
+
+### Standard Import Patterns
+
+#### Pattern 1: Consistent Relative Paths (Current Standard)
+
+**When tests are in `tests/` folder, use consistent depth:**
+
+```javascript
+// ✅ CORRECT: Test in tests/unit/services/JobService.test.js
+import JobService from '../../../src/services/JobService.js';
+import logger from '../../../src/utils/logger.js';
+import { query } from '../../../src/config/database.js';
+
+// ✅ CORRECT: Test in tests/unit/utils/logger.test.js
+import logger from '../../../src/utils/logger.js';
+import { formatDate } from '../../../src/utils/dateUtils.js';
+
+// ✅ CORRECT: Test in tests/integration/auth.test.js
+import app from '../../src/app.js';
+import pool from '../../src/config/database.js';
+```
+
+**Rules:**
+1. Always count the depth from test file to `src/`
+2. Unit tests: Usually `../../../src/`
+3. Integration tests: Usually `../../src/`
+4. Document common import depths in test helpers
+
+#### Pattern 2: Path Mapping (Future Enhancement)
+
+**For larger codebases, consider Node.js subpath imports:**
+
+```javascript
+// package.json
+{
+  "imports": {
+    "#services/*": "./src/services/*.js",
+    "#utils/*": "./src/utils/*.js",
+    "#config/*": "./src/config/*.js"
+  }
+}
+
+// Then in tests (location-independent):
+import JobService from '#services/JobService';
+import logger from '#utils/logger';
+import { query } from '#config/database';
+```
+
+**Benefits:**
+- ✅ Tests work regardless of location
+- ✅ Easier refactoring
+- ✅ Cleaner imports
+- ✅ Industry standard (used by TypeScript, Next.js, etc.)
+
+**Status:** Not yet implemented (requires package.json changes)
+
+### Import Path Checklist
+
+**When writing tests:**
+
+- [ ] Count depth from test file to `src/` folder
+- [ ] Use correct number of `../` levels
+- [ ] Include `.js` extension (ES modules requirement)
+- [ ] Test the import by running the test file
+- [ ] Document unusual import paths in comments
+
+**When moving tests:**
+
+- [ ] Update ALL import paths (source code imports)
+- [ ] Update ALL mock paths (jest.unstable_mockModule calls)
+- [ ] Update relative path counts
+- [ ] Run tests to verify imports work
+- [ ] Check for any dynamic imports
+
+### Common Import Mistakes
+
+```javascript
+// ❌ WRONG: Missing .js extension
+import JobService from '../../../src/services/JobService';
+
+// ❌ WRONG: Incorrect depth
+import JobService from '../../services/JobService.js';  // Too few ../
+
+// ❌ WRONG: Absolute path (not portable)
+import JobService from '/home/user/project/src/services/JobService.js';
+
+// ✅ CORRECT: Proper relative path with extension
+import JobService from '../../../src/services/JobService.js';
+```
 
 ---
 
@@ -1136,10 +1448,11 @@ describe('Jobs API - Integration Tests', () => {
       const jobId = result.rows[0].id;
 
       // Act: Try to access with org2 user
+      // Should return 403 Forbidden (not 404) - don't reveal resource existence
       await request(app)
         .get(`/api/jobs/${jobId}`)
         .set('Authorization', `Bearer ${token2}`)
-        .expect(404);
+        .expect(403);
     });
 
     afterAll(async () => {
@@ -1169,6 +1482,184 @@ describe('Jobs API - Integration Tests', () => {
 - [ ] **Test HTTP status codes**
 - [ ] **Test response structure**
 - [ ] **Test database state** changes
+
+---
+
+## Security Response Testing
+
+### HTTP Status Codes for Security Scenarios (CRITICAL)
+
+**IMPORTANT:** When testing organization/tenant isolation and authorization, use the **correct HTTP status codes** that match security best practices.
+
+### Status Code Guidelines
+
+```javascript
+// 401 Unauthorized - No authentication credentials or invalid credentials
+// Use when: User is not logged in or has invalid token
+
+// 403 Forbidden - Valid credentials but insufficient permissions
+// Use when: Authenticated user lacks permission for the resource
+
+// 404 Not Found - Resource doesn't exist
+// WARNING: Can reveal information about resource existence!
+```
+
+### Organization Isolation Pattern (MANDATORY)
+
+**When testing cross-organization access attempts:**
+
+```javascript
+// ✅ CORRECT: Expect 403 Forbidden
+describe('Organization Isolation', () => {
+  it('should not access resources from other organizations', async () => {
+    // Arrange: Create resource in org1
+    const resource = await createResourceInOrg1();
+    
+    // Act: User from org2 tries to access org1's resource
+    const response = await authenticatedUserOrg2
+      .get(`/api/resources/${resource.id}`);
+    
+    // Assert: Should get 403 Forbidden (not 404)
+    // Reason: Don't reveal resource existence to unauthorized users
+    expect(response.status).toBe(403);
+    expect(response.body.errorCode).toBe('FORBIDDEN');
+  });
+});
+
+// ❌ WRONG: Expecting 404 reveals information
+describe('Organization Isolation', () => {
+  it('should not access resources from other organizations', async () => {
+    const resource = await createResourceInOrg1();
+    
+    const response = await authenticatedUserOrg2
+      .get(`/api/resources/${resource.id}`);
+    
+    // ❌ WRONG: 404 confirms resource exists in system
+    expect(response.status).toBe(404);
+  });
+});
+```
+
+### Security Rationale
+
+**Why 403 (Forbidden) instead of 404 (Not Found)?**
+
+1. **Information Disclosure Prevention**
+   - 404 confirms the resource exists in the system
+   - Attackers can enumerate resources across organizations
+   - Violates principle of least privilege
+
+2. **Proper HTTP Semantics**
+   - User **is authenticated** (not 401)
+   - User **lacks permission** (403 is correct)
+   - Resource existence is not the issue
+
+3. **Security Best Practice**
+   - OWASP recommends minimizing information leakage
+   - Don't reveal resource IDs from other organizations
+   - Consistent denial response prevents enumeration
+
+### Complete Status Code Matrix for Tests
+
+| Scenario | User State | Resource State | Expected Status | Error Code |
+|----------|-----------|----------------|-----------------|------------|
+| No credentials | Not authenticated | Exists | **401** | UNAUTHORIZED |
+| Invalid token | Not authenticated | Exists | **401** | UNAUTHORIZED |
+| Valid token, wrong org | Authenticated | Exists in other org | **403** | FORBIDDEN |
+| Valid token, own org | Authenticated | Not found in own org | **404** | NOT_FOUND |
+| Valid token, no permission | Authenticated | Exists, lacks role | **403** | FORBIDDEN |
+| Valid token, with permission | Authenticated | Exists | **200** | - |
+
+### Test Examples
+
+```javascript
+describe('Security Response Tests', () => {
+  describe('Authentication', () => {
+    it('should return 401 when not authenticated', async () => {
+      await request(app)
+        .get('/api/resources/123')
+        .expect(401);
+    });
+
+    it('should return 401 with invalid token', async () => {
+      await request(app)
+        .get('/api/resources/123')
+        .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+    });
+  });
+
+  describe('Cross-Organization Access', () => {
+    it('should return 403 for cross-org access (not 404)', async () => {
+      // User2 from org2 tries to access org1's resource
+      const response = await agent2
+        .get(`/api/resources/${org1ResourceId}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body.success).toBe(false);
+      expect(response.body.errorCode).toBe('FORBIDDEN');
+      // Should NOT reveal if resource exists
+    });
+  });
+
+  describe('Role-Based Access', () => {
+    it('should return 403 when user lacks required role', async () => {
+      // Regular user tries to access admin endpoint
+      await regularUserAgent
+        .delete(`/api/admin/users/${userId}`)
+        .expect(403);
+    });
+  });
+
+  describe('Resource Not Found in Own Organization', () => {
+    it('should return 404 when resource not found in own org', async () => {
+      const fakeId = uuidv4();
+      
+      // User searches in their own organization
+      await authenticatedAgent
+        .get(`/api/resources/${fakeId}`)
+        .expect(404);
+    });
+  });
+});
+```
+
+### Anti-Patterns to Avoid
+
+```javascript
+// ❌ WRONG: Reveals resource existence across organizations
+it('should not find resource from other org', async () => {
+  const response = await agent2.get(`/api/resources/${org1ResourceId}`);
+  expect(response.status).toBe(404); // ❌ Information leakage!
+});
+
+// ❌ WRONG: Generic error message
+it('should deny access', async () => {
+  const response = await agent2.get(`/api/resources/${org1ResourceId}`);
+  expect(response.body.error).toBe('Error'); // ❌ Not specific!
+});
+
+// ✅ CORRECT: Proper security response
+it('should return 403 for cross-org access', async () => {
+  const response = await agent2.get(`/api/resources/${org1ResourceId}`);
+  expect(response.status).toBe(403);
+  expect(response.body.errorCode).toBe('FORBIDDEN');
+  expect(response.body.error).toBe('Access denied');
+});
+```
+
+### Testing Checklist for Security
+
+**When writing organization isolation tests:**
+
+- [ ] ✅ User from org2 accessing org1 resource → **Expect 403**
+- [ ] ✅ User accessing non-existent resource in own org → **Expect 404**
+- [ ] ✅ Unauthenticated request → **Expect 401**
+- [ ] ✅ User with insufficient role → **Expect 403**
+- [ ] ✅ Valid access → **Expect 200/201**
+- [ ] ❌ Never use 404 for cross-org denial (information leakage)
+- [ ] ✅ Include errorCode in assertions for clarity
+- [ ] ✅ Verify error messages don't reveal sensitive info
 
 ---
 
@@ -1212,6 +1703,575 @@ describe('Candidates API Tests', () => {
 // Close connection ONCE after all suites
 afterAll(async () => {
   await pool.end();
+});
+```
+
+---
+
+## E2E Testing Standards
+
+### E2E Test Philosophy
+
+End-to-End (E2E) tests validate complete user journeys across the full application stack:
+- Real browser interactions (or API requests)
+- Full backend server running
+- Real database (test database)
+- Complete authentication flows
+- Cross-application scenarios (SSO)
+
+**When to write E2E tests:**
+- Critical user journeys (login, checkout, data submission)
+- Cross-application workflows (SSO across multiple apps)
+- Integration points between frontend and backend
+- Complex multi-step processes
+
+**When NOT to write E2E tests:**
+- Simple CRUD operations (use integration tests)
+- Edge cases and error conditions (use unit tests)
+- Internal service logic (use unit tests)
+
+### Automated Server Lifecycle with Jest
+
+**CRITICAL:** E2E tests should manage their own backend server lifecycle automatically using Jest's `globalSetup` and `globalTeardown`.
+
+#### Jest E2E Configuration
+
+```javascript
+// jest.e2e.config.js
+export default {
+  displayName: 'E2E Tests',
+  testEnvironment: 'node',
+  
+  // Set environment variables for test process
+  setupFiles: ['<rootDir>/tests/e2e/jest-setup-env.js'],
+  
+  // Use ES modules
+  transform: {},
+  
+  // Global setup/teardown for server lifecycle
+  globalSetup: '<rootDir>/tests/e2e/setup.js',
+  globalTeardown: '<rootDir>/tests/e2e/teardown.js',
+  
+  // Only run E2E tests
+  testMatch: [
+    '<rootDir>/tests/e2e/**/*.test.js'
+  ],
+  
+  // Increase timeout for E2E tests (server startup + test execution)
+  testTimeout: 60000,
+  
+  // Run tests serially (not in parallel) to avoid port conflicts
+  maxWorkers: 1,
+  
+  // Don't collect coverage for E2E tests (too slow)
+  collectCoverage: false,
+  
+  // Clear mocks between tests
+  clearMocks: true,
+  resetMocks: true,
+  restoreMocks: true,
+  
+  // Verbose output
+  verbose: true
+};
+```
+
+#### Environment Setup File
+
+```javascript
+// tests/e2e/jest-setup-env.js
+/**
+ * Jest E2E Environment Setup
+ * Sets environment variables for the Jest test process
+ * This ensures test database is used when importing database config
+ */
+
+// Force test database for Jest test process
+process.env.NODE_ENV = 'e2e';
+process.env.DATABASE_NAME = 'recruitiq_test';
+process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/recruitiq_test';
+
+console.log('📝 Jest E2E environment configured:', {
+  NODE_ENV: process.env.NODE_ENV,
+  DATABASE_NAME: process.env.DATABASE_NAME
+});
+```
+
+#### Global Setup (Server Start)
+
+```javascript
+// tests/e2e/setup.js
+import { spawn } from 'child_process';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = join(__filename, '..');
+
+let serverProcess;
+
+/**
+ * Starts backend server before E2E tests
+ * Server will use .env.test configuration automatically when NODE_ENV=e2e
+ */
+export default async function globalSetup() {
+  console.log('🚀 Starting backend server for E2E tests...');
+
+  return new Promise((resolve, reject) => {
+    const serverPath = join(__dirname, '../../src/server.js');
+    
+    // Start server with e2e environment
+    // Config will automatically load .env.test when NODE_ENV=e2e
+    serverProcess = spawn('node', [serverPath], {
+      env: {
+        ...process.env,
+        NODE_ENV: 'e2e',
+        PORT: '4000'
+      },
+      stdio: 'pipe'
+    });
+
+    let serverOutput = '';
+    let serverReady = false;
+
+    serverProcess.stdout.on('data', (data) => {
+      const output = data.toString();
+      serverOutput += output;
+      
+      // Check if server is ready (look for actual startup message)
+      if (output.includes('RecruitIQ API Server started')) {
+        if (!serverReady) {
+          serverReady = true;
+          console.log('✅ Backend server ready on port 4000');
+          
+          // Store PID for cleanup
+          global.__SERVER_PID__ = serverProcess.pid;
+          
+          // Give server a moment to fully initialize
+          setTimeout(resolve, 1000);
+        }
+      }
+    });
+
+    serverProcess.stderr.on('data', (data) => {
+      console.error('Server error:', data.toString());
+    });
+
+    serverProcess.on('error', (error) => {
+      console.error('Failed to start server:', error);
+      reject(error);
+    });
+
+    serverProcess.on('exit', (code) => {
+      if (code !== 0 && !serverReady) {
+        console.error('Server exited with code:', code);
+        console.error('Server output:', serverOutput);
+        reject(new Error(`Server failed to start. Exit code: ${code}`));
+      }
+    });
+
+    // Timeout if server doesn't start within 30 seconds
+    setTimeout(() => {
+      if (!serverReady) {
+        serverProcess.kill();
+        reject(new Error('Server startup timeout'));
+      }
+    }, 30000);
+  });
+}
+```
+
+#### Global Teardown (Server Stop)
+
+```javascript
+// tests/e2e/teardown.js
+/**
+ * Stops backend server after E2E tests
+ */
+export default async function globalTeardown() {
+  console.log('🛑 Stopping backend server...');
+  
+  const pid = global.__SERVER_PID__;
+  
+  if (pid) {
+    try {
+      process.kill(pid, 'SIGTERM');
+      console.log('✅ Backend server stopped');
+    } catch (error) {
+      console.error('Error stopping server:', error);
+    }
+  }
+}
+```
+
+### Configuration Loading for E2E Tests
+
+**CRITICAL:** Ensure your backend configuration loads `.env.test` when `NODE_ENV=e2e`:
+
+```javascript
+// src/config/index.js
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+// Use .env.test for E2E tests to ensure test database isolation
+const envFile = process.env.NODE_ENV === 'e2e' ? '.env.test' : '.env';
+dotenv.config({ path: path.join(__dirname, '../../', envFile) });
+
+// Rest of config...
+```
+
+### Test Database Setup
+
+**CRITICAL:** E2E tests require a properly initialized test database with schema and seed data.
+
+```bash
+# Run database setup script with test database name
+.\backend\src\database\setup-database.ps1 -DBName recruitiq_test
+```
+
+**`.env.test` Configuration:**
+
+```env
+# Test Database (using test database for E2E tests)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/recruitiq_test
+DATABASE_NAME=recruitiq_test
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+
+# Other test-specific settings...
+NODE_ENV=e2e
+PORT=4000
+```
+
+### E2E Test Template
+
+```javascript
+// tests/e2e/sso-integration.test.js
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import request from 'supertest';
+import pool from '../../src/config/database.js';
+
+const API_URL = 'http://localhost:4000';
+
+describe('SSO Integration - E2E Tests', () => {
+  let cookies = {};
+  const testUsers = {
+    tenant: {
+      email: 'tenant@testcompany.com',
+      password: 'Admin123!'
+    }
+  };
+
+  // Setup test data before all tests
+  beforeAll(async () => {
+    console.log('🔧 Setting up E2E test data...');
+    
+    // Verify test users exist (created by database seed)
+    const userCheck = await pool.query(
+      'SELECT email FROM hris.user_account WHERE email = $1',
+      [testUsers.tenant.email]
+    );
+    
+    if (userCheck.rows.length === 0) {
+      throw new Error(`Test user ${testUsers.tenant.email} not found. Run database setup.`);
+    }
+    
+    console.log('✅ Test data verified');
+  });
+
+  // Clean up after all tests
+  afterAll(async () => {
+    console.log('🧹 Cleaning up E2E test data...');
+    // Note: Don't close pool here - let Jest handle it
+  });
+
+  describe('Cross-App Authentication', () => {
+    it('should login successfully and set cookies', async () => {
+      // Act
+      const response = await request(API_URL)
+        .post('/api/auth/login')
+        .send(testUsers.tenant)
+        .expect(200);
+
+      // Assert
+      expect(response.body.success).toBe(true);
+      expect(response.body.user).toBeDefined();
+      expect(response.headers['set-cookie']).toBeDefined();
+      
+      // Store cookies for subsequent tests
+      cookies.auth = response.headers['set-cookie'];
+    });
+
+    it('should access protected route with session cookie', async () => {
+      // Act
+      const response = await request(API_URL)
+        .get('/api/auth/me')
+        .set('Cookie', cookies.auth)
+        .expect(200);
+
+      // Assert
+      expect(response.body.success).toBe(true);
+      expect(response.body.user.email).toBe(testUsers.tenant.email);
+    });
+
+    it('should maintain session across multiple requests', async () => {
+      // First request
+      const response1 = await request(API_URL)
+        .get('/api/auth/me')
+        .set('Cookie', cookies.auth)
+        .expect(200);
+
+      // Second request with same cookie
+      const response2 = await request(API_URL)
+        .get('/api/auth/me')
+        .set('Cookie', cookies.auth)
+        .expect(200);
+
+      // Assert both requests succeed with same user
+      expect(response1.body.user.id).toBe(response2.body.user.id);
+    });
+
+    it('should logout and clear cookies', async () => {
+      // Act
+      const response = await request(API_URL)
+        .post('/api/auth/logout')
+        .set('Cookie', cookies.auth)
+        .expect(200);
+
+      // Assert
+      expect(response.body.success).toBe(true);
+      
+      // Verify cookies are cleared (maxAge=0 or expired)
+      const setCookieHeader = response.headers['set-cookie'];
+      expect(setCookieHeader).toBeDefined();
+      expect(setCookieHeader.some(c => 
+        c.includes('Max-Age=0') || c.includes('Expires=Thu, 01 Jan 1970')
+      )).toBe(true);
+    });
+
+    it('should reject requests after logout', async () => {
+      // Act
+      await request(API_URL)
+        .get('/api/auth/me')
+        .set('Cookie', cookies.auth)
+        .expect(401);
+    });
+  });
+});
+```
+
+### E2E Test Best Practices
+
+```javascript
+// ✅ CORRECT: Test complete user journeys
+describe('Job Application Flow - E2E', () => {
+  it('should complete entire application process', async () => {
+    // 1. Login
+    const loginRes = await request(API_URL).post('/api/auth/login').send(...);
+    const cookies = loginRes.headers['set-cookie'];
+    
+    // 2. Browse jobs
+    const jobsRes = await request(API_URL).get('/api/jobs').set('Cookie', cookies);
+    const jobId = jobsRes.body.jobs[0].id;
+    
+    // 3. View job details
+    await request(API_URL).get(`/api/jobs/${jobId}`).set('Cookie', cookies);
+    
+    // 4. Submit application
+    const appRes = await request(API_URL)
+      .post(`/api/jobs/${jobId}/apply`)
+      .set('Cookie', cookies)
+      .send({ resume: '...', coverLetter: '...' });
+    
+    // 5. Verify application created
+    expect(appRes.body.application).toBeDefined();
+    
+    // 6. Verify in database
+    const dbCheck = await pool.query('SELECT * FROM applications WHERE id = $1', [appRes.body.application.id]);
+    expect(dbCheck.rows.length).toBe(1);
+  });
+});
+
+// ❌ WRONG: Testing implementation details
+it('should call the correct repository method', async () => {
+  // This is a unit test, not E2E
+});
+
+// ❌ WRONG: No connection to real backend
+it('should handle login with mocked API', async () => {
+  // E2E tests must use real backend
+});
+```
+
+### Playwright Browser E2E Tests
+
+**For frontend E2E tests with Playwright, follow these best practices:**
+
+#### Use Relative Paths (MANDATORY)
+
+**CRITICAL:** Always use relative paths instead of hardcoded URLs to leverage Playwright's `baseURL` configuration.
+
+```javascript
+// playwright.config.ts
+export default defineConfig({
+  use: {
+    baseURL: 'http://localhost:5175',  // Configured once
+  },
+  webServer: {
+    command: 'pnpm dev',
+    url: 'http://localhost:5175',      // Same as baseURL
+    reuseExistingServer: !process.env.CI,
+  },
+});
+
+// ❌ WRONG: Hardcoded URLs (not portable, harder to maintain)
+test('should login', async ({ page }) => {
+  await page.goto('http://localhost:5175/login');
+  await page.waitForURL('http://localhost:5175/', { timeout: 10000 });
+  expect(page.url()).toBe('http://localhost:5175/');
+});
+
+// ✅ CORRECT: Relative paths (uses baseURL from config)
+test('should login', async ({ page }) => {
+  await page.goto('/login');                    // Relative path
+  await page.waitForURL('/', { timeout: 10000 }); // Relative path
+  expect(page.url()).toMatch(/\/$/);            // Pattern matching
+});
+
+// ✅ CORRECT: Using constants for reusability
+const ROUTES = {
+  LOGIN: '/login',
+  DASHBOARD: '/',
+  EMPLOYEES: '/employees'
+};
+
+test('should navigate to employees', async ({ page }) => {
+  await page.goto(ROUTES.LOGIN);
+  // Login flow...
+  await page.goto(ROUTES.EMPLOYEES);
+});
+```
+
+**Why Relative Paths?**
+- **Portability:** Works across dev, staging, production
+- **Maintainability:** Change `baseURL` once, not in every test
+- **Consistency:** Matches Playwright best practices
+- **Flexibility:** Easy to test different environments
+
+### E2E Test Standards Checklist
+
+**EVERY E2E test suite MUST:**
+
+- [ ] **Use automated server lifecycle** (globalSetup/globalTeardown)
+- [ ] **Use test database** (recruitiq_test with proper schema)
+- [ ] **Run against real backend server**
+- [ ] **Test complete user journeys** (not isolated operations)
+- [ ] **Use actual HTTP requests** (supertest or real browser)
+- [ ] **Use relative paths** in Playwright tests (never hardcode URLs)
+- [ ] **Verify database state** when necessary
+- [ ] **Clean up test data** (if creating data beyond seeds)
+- [ ] **Run serially** (maxWorkers: 1 to avoid port conflicts)
+- [ ] **Have reasonable timeouts** (60s for server startup + tests)
+- [ ] **Be idempotent** (can run multiple times)
+- [ ] **Use seed data** (don't rely on manual data creation)
+
+### Running E2E Tests
+
+```bash
+# Single command - server starts automatically
+npm run test:e2e
+
+# The script handles:
+# 1. Starting backend server (NODE_ENV=e2e, port 4000)
+# 2. Running all E2E tests
+# 3. Stopping backend server
+# 4. Exit with appropriate code
+```
+
+### Common E2E Test Patterns
+
+#### Testing SSO Across Apps
+
+```javascript
+describe('SSO Cross-App Navigation', () => {
+  let sessionCookie;
+
+  it('should login in PayLinQ', async () => {
+    const response = await request(API_URL)
+      .post('/api/auth/login')
+      .send({ product: 'paylinq', ...credentials });
+    
+    sessionCookie = response.headers['set-cookie'];
+    expect(response.body.user.currentProduct).toBe('paylinq');
+  });
+
+  it('should access Nexus without re-login', async () => {
+    const response = await request(API_URL)
+      .post('/api/auth/switch-product')
+      .set('Cookie', sessionCookie)
+      .send({ product: 'nexus' })
+      .expect(200);
+    
+    expect(response.body.user.currentProduct).toBe('nexus');
+  });
+
+  it('should access RecruitIQ with same session', async () => {
+    const response = await request(API_URL)
+      .post('/api/auth/switch-product')
+      .set('Cookie', sessionCookie)
+      .send({ product: 'recruitiq' })
+      .expect(200);
+    
+    expect(response.body.user.currentProduct).toBe('recruitiq');
+  });
+});
+```
+
+#### Testing CSRF Protection
+
+```javascript
+describe('CSRF Protection - E2E', () => {
+  let cookies, csrfToken;
+
+  beforeAll(async () => {
+    // Login to get session
+    const loginRes = await request(API_URL)
+      .post('/api/auth/login')
+      .send(credentials);
+    
+    cookies = loginRes.headers['set-cookie'];
+    
+    // Get CSRF token
+    const csrfRes = await request(API_URL)
+      .get('/api/csrf-token')
+      .set('Cookie', cookies);
+    
+    csrfToken = csrfRes.body.csrfToken;
+  });
+
+  it('should reject POST without CSRF token', async () => {
+    await request(API_URL)
+      .post('/api/jobs')
+      .set('Cookie', cookies)
+      .send({ title: 'Test Job' })
+      .expect(403);
+  });
+
+  it('should accept POST with valid CSRF token', async () => {
+    await request(API_URL)
+      .post('/api/jobs')
+      .set('Cookie', cookies)
+      .set('X-CSRF-Token', csrfToken)
+      .send({ title: 'Test Job' })
+      .expect(201);
+  });
 });
 ```
 
@@ -1601,6 +2661,149 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 ```
+
+### Advanced Pattern: Proxy-Based Mocks for Functions with Methods
+
+**Use Case:** When mocking a function that also has methods attached (e.g., `query()` function with `query.getClient()` method), standard property assignment doesn't work with ES Modules.
+
+**The Challenge:**
+```javascript
+// ❌ WRONG: Property assignment doesn't survive ESM module system
+const mockDbQuery = jest.fn().mockResolvedValue({ rows: [] });
+mockDbQuery.getClient = jest.fn().mockResolvedValue(mockClient);
+// After import: query.getClient is undefined!
+
+// ❌ WRONG: Object.assign also fails
+const mockDbQuery = Object.assign(jest.fn(), {
+  getClient: jest.fn().mockResolvedValue(mockClient)
+});
+// After import: query.getClient is still undefined!
+```
+
+**The Solution: Proxy Pattern**
+```javascript
+// ✅ CORRECT: Use Proxy to intercept both function calls and property access
+const mockClient = {
+  query: jest.fn(),
+  release: jest.fn()
+};
+
+// Proxy intercepts both () calls and .property access
+const mockDbQuery = new Proxy(jest.fn().mockResolvedValue({ rows: [] }), {
+  get(target, prop) {
+    // Intercept property access before ESM processes it
+    if (prop === 'getClient') {
+      return jest.fn().mockResolvedValue(mockClient);
+    }
+    return target[prop];
+  },
+  apply(target, thisArg, args) {
+    // Handle function invocation
+    return target.apply(thisArg, args);
+  }
+});
+
+jest.unstable_mockModule('../../../../src/config/database.js', () => ({
+  query: mockDbQuery
+}));
+
+// Now both patterns work:
+const result = await query('SELECT * FROM table');        // ✅ Works via apply trap
+const client = await query.getClient();                   // ✅ Works via get trap
+await client.query('BEGIN');                              // ✅ Works
+client.release();                                         // ✅ Works
+```
+
+**Why This Works:**
+1. **`get` trap**: Intercepts property access (`query.getClient`) before ESM module system processes it
+2. **`apply` trap**: Handles function calls (`query(sql, params)`)
+3. **Dynamic Interception**: Works at runtime, survives module export/import cycle
+4. **ESM Compatible**: Proxy object persists through module boundaries
+
+**Real-World Example:**
+```javascript
+// Service code that requires both patterns
+async terminateEmployee(employeeId, organizationId, userId) {
+  const client = await query.getClient();  // Property access
+  try {
+    await client.query('BEGIN');           // Transaction method
+    
+    // Update operations using regular query()
+    await query('UPDATE employees...', [employeeId], organizationId);
+    await query('INSERT INTO employment_history...', [...], organizationId);
+    
+    await client.query('COMMIT');
+    return { success: true };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Test using Proxy pattern
+describe('terminateEmployee', () => {
+  let service, mockClient;
+
+  beforeEach(async () => {
+    mockClient = {
+      query: jest.fn().mockResolvedValue({ rows: [] }),
+      release: jest.fn()
+    };
+
+    const mockDbQuery = new Proxy(jest.fn().mockResolvedValue({ rows: [] }), {
+      get(target, prop) {
+        if (prop === 'getClient') {
+          return jest.fn().mockResolvedValue(mockClient);
+        }
+        return target[prop];
+      },
+      apply(target, thisArg, args) {
+        return target.apply(thisArg, args);
+      }
+    });
+
+    jest.unstable_mockModule('../../../../src/config/database.js', () => ({
+      query: mockDbQuery
+    }));
+
+    const { default: Service } = await import('../../../../src/services/EmployeeService.js');
+    service = new Service();
+  });
+
+  it('should commit transaction on success', async () => {
+    await service.terminateEmployee('emp-id', 'org-id', 'user-id');
+
+    // Verify transaction flow
+    expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+
+  it('should rollback on error', async () => {
+    mockClient.query.mockImplementation((sql) => {
+      if (sql === 'BEGIN') return Promise.resolve();
+      if (sql.includes('UPDATE')) throw new Error('Database error');
+    });
+
+    await expect(
+      service.terminateEmployee('emp-id', 'org-id', 'user-id')
+    ).rejects.toThrow();
+
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalled();
+  });
+});
+```
+
+**When to Use Proxy Pattern:**
+- Function needs both direct invocation AND method access
+- Transaction patterns (`db.query()` and `db.getClient()`)
+- API clients with helper methods (`api()` and `api.setToken()`)
+- Any dual-purpose function+object pattern in ESM
+
+**Performance Note:** Proxy adds minimal overhead and is the **only reliable solution** for ESM modules with attached methods.
 
 ---
 
@@ -2093,14 +3296,12 @@ export default {
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/server.js',
-    '!src/**/__tests__/**',
-    '!src/**/*.test.js',
+    '!src/**/*.test.js',  // Exclude test files (should not exist in src/)
   ],
 
   // Test file patterns
   testMatch: [
-    '**/__tests__/**/*.js',
-    '**/*.test.js',
+    '<rootDir>/tests/**/*.test.js',  // Only look in tests/ folder
   ],
 
   // Clear mocks between tests (IMPORTANT)
@@ -2175,14 +3376,215 @@ export default async function globalTeardown() {
 
 ---
 
+## Refactoring Resilience
+
+### Test Resilience Philosophy
+
+**Industry Standard:** *"If moving test files breaks tests, your tests are testing the file system structure, not your code."* - Martin Fowler
+
+### What Makes Tests Fragile?
+
+```javascript
+// ❌ FRAGILE TEST (breaks when files move)
+import JobService from '../JobService.js';           // Relative path
+import logger from '../../utils/logger.js';          // Relative path
+
+class JobService {
+  constructor() {
+    this.repository = new JobRepository();           // Hard-coded dependency
+  }
+}
+
+// ✅ RESILIENT TEST (survives restructuring)
+import JobService from '@services/JobService.js';    // Mapped path
+import logger from '@utils/logger.js';               // Mapped path
+
+class JobService {
+  constructor(repository = null) {
+    this.repository = repository || new JobRepository();  // Dependency injection
+  }
+}
+
+// Test uses DI
+const mockRepo = { create: jest.fn() };
+const service = new JobService(mockRepo);             // No file system coupling
+```
+
+### Refactoring Safety Checklist
+
+**Before major refactoring:**
+
+- [ ] All services use dependency injection
+- [ ] Tests are in separate `tests/` folder (not in `src/`)
+- [ ] Import paths are consistent and documented
+- [ ] Test helpers centralize common imports
+- [ ] Run full test suite to establish baseline
+
+**During refactoring:**
+
+- [ ] Move source files first
+- [ ] Update import paths in tests
+- [ ] Run tests incrementally
+- [ ] Commit working states frequently
+- [ ] Use version control to track changes
+
+**After refactoring:**
+
+- [ ] All tests pass
+- [ ] Coverage remains above thresholds
+- [ ] No orphaned test files
+- [ ] Update documentation
+- [ ] Remove old file references
+
+### Common Refactoring Scenarios
+
+#### Scenario 1: Moving a Service
+
+```javascript
+// Before: src/services/JobService.js
+// After:  src/services/jobs/JobService.js
+
+// Impact on test: tests/unit/services/JobService.test.js
+// Change: import JobService from '../../../src/services/JobService.js';
+// To:     import JobService from '../../../src/services/jobs/JobService.js';
+```
+
+**Steps:**
+1. Move source file
+2. Update test import
+3. Run test to verify
+4. Update any mocks that reference old path
+
+#### Scenario 2: Extracting a Module
+
+```javascript
+// Before: src/services/JobService.js (contains validation)
+// After:  src/services/JobService.js + src/validators/jobValidator.js
+
+// Impact: Need new test file
+// Action: Create tests/unit/validators/jobValidator.test.js
+```
+
+**Steps:**
+1. Create new source file
+2. Extract code
+3. Create new test file
+4. Update existing test to mock new dependency
+5. Run both tests
+
+#### Scenario 3: Renaming a Service
+
+```javascript
+// Before: JobService.js
+// After:  JobPostingService.js
+
+// Impact: Test file should also rename
+// From: tests/unit/services/JobService.test.js
+// To:   tests/unit/services/JobPostingService.test.js
+```
+
+**Steps:**
+1. Rename source file
+2. Update all imports that reference it
+3. Rename test file
+4. Update test imports
+5. Run tests
+
+### Migration from Co-Located Tests
+
+**Problem:** Tests in `src/` make refactoring risky.
+
+**Solution:** Migrate to `tests/` folder first, then refactor.
+
+#### Migration Script Pattern
+
+```powershell
+# 1. Create target directory structure
+New-Item -ItemType Directory -Path "tests/unit/services" -Force
+
+# 2. Move test file
+Move-Item "src/services/__tests__/JobService.test.js" `
+          "tests/unit/services/JobService.test.js"
+
+# 3. Update imports (manual or scripted)
+# Change: import JobService from '../JobService.js';
+# To:     import JobService from '../../../src/services/JobService.js';
+
+# 4. Run test to verify
+npm test -- JobService.test.js
+
+# 5. If passing, commit changes
+git add .
+git commit -m "test(structure): migrate JobService tests to tests/ folder"
+```
+
+#### Automated Migration (Recommended)
+
+Use a migration script that:
+1. Scans for tests in `src/`
+2. Calculates new import paths
+3. Moves files and updates imports
+4. Runs tests to verify
+5. Generates rollback script
+
+**See:** Migration script in `backend/scripts/migrate-tests.ps1` (to be created)
+
+### Test Independence Principles
+
+**Tests should be independent of:**
+
+1. ✅ **File location** - Use consistent import patterns
+2. ✅ **Other tests** - Each test should run in isolation
+3. ✅ **Test order** - Tests should pass in any order
+4. ✅ **External state** - Clean up after each test
+5. ✅ **Time** - Don't depend on current date/time
+6. ✅ **Environment** - Use test-specific configuration
+
+**Tests should depend on:**
+
+1. ✅ **Code contracts** - Test public APIs, not implementation
+2. ✅ **Behavior** - Test what code does, not how
+3. ✅ **Clear setup** - Explicit test data creation
+4. ✅ **Documented assumptions** - Comment edge cases
+
+### Measuring Test Resilience
+
+**Good indicators:**
+
+- ✅ Tests pass after moving test files
+- ✅ Tests pass after renaming source files
+- ✅ Tests pass after extracting modules
+- ✅ No hard-coded file paths in tests
+- ✅ All dependencies are injected or mocked
+
+**Bad indicators:**
+
+- ❌ Tests fail when moved to different folder
+- ❌ Tests have hard-coded absolute paths
+- ❌ Tests import from multiple relative depths
+- ❌ Tests break when source files reorganize
+- ❌ Tests depend on test execution order
+
+### Future Improvements
+
+**To make tests more resilient:**
+
+1. **Implement path mapping** - Use `#services/*` imports
+2. **Centralize test utilities** - Common imports in helpers
+3. **Use test factories** - Consistent test data creation
+4. **Document import conventions** - Clear patterns for team
+5. **Automate migration** - Scripts for bulk refactoring
+
+---
+
 ## Quick Reference: Test Template Checklist
 
 ### Unit Test Template
 
 ```javascript
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import ServiceClass from '../../src/services/ServiceClass.js'; // .js extension!
-import Repository from '../../src/repositories/Repository.js';
+import ServiceClass from '../../../src/services/ServiceClass.js'; // Correct depth for tests/unit/services/
+import Repository from '../../../src/repositories/Repository.js';
 
 describe('ServiceClass', () => {
   let service;
@@ -2215,7 +3617,7 @@ describe('ServiceClass', () => {
 ```javascript
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
-import app from '../../src/server.js';
+import app from '../../src/server.js'; // Correct depth for tests/integration/
 import pool from '../../src/config/database.js'; // For cleanup!
 
 describe('API Integration Tests', () => {

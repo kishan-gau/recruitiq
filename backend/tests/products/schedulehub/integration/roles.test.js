@@ -1,12 +1,10 @@
 /**
  * Integration Tests: Roles API
- * Tests role management and worker assignments
+ * Tests role management and worker assignments with cookie-based authentication
  */
 
 import { jest } from '@jest/globals';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import request from 'supertest';
-import app from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
 import {
   createTestOrganization,
@@ -17,15 +15,11 @@ import {
   createTestRole,
   cleanupTestData
 } from './setup.js';
-
-
-// SKIPPED: Bearer token auth incomplete - migrating to cookie-based auth
-// TODO: Re-enable once cookie auth is implemented for all apps
-
-describe.skip('Integration: Roles API', () => {
+describe('Integration: Roles API', () => {
   let organizationId;
   let userId;
-  let token;
+  let agent;
+  let csrfToken;
   let departmentId;
   let workerId;
   let roleId;
@@ -34,7 +28,8 @@ describe.skip('Integration: Roles API', () => {
     const org = await createTestOrganization();
     organizationId = org.organizationId;
     userId = org.userId;
-    token = org.token;
+    agent = org.agent;
+    csrfToken = org.csrfToken;
 
     departmentId = await createTestDepartment(organizationId, userId);
     const locationId = await createTestLocation(organizationId, userId);
@@ -47,12 +42,9 @@ describe.skip('Integration: Roles API', () => {
     await pool.end();
   });
 
-  describe.skip('POST /api/schedulehub/roles', () => {
+  describe('POST /api/schedulehub/roles', () => {
     it('should create a role', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/roles')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/roles')        .send({
           name: 'Cashier',
           code: `CASH-${Date.now()}`,
           description: 'Front-end cashier position',
@@ -74,20 +66,14 @@ describe.skip('Integration: Roles API', () => {
       const code = `UNIQUE-${Date.now()}`;
       
       // Create first role
-      await request(app)
-        .post('/api/schedulehub/roles')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      await agent.post('/api/products/schedulehub/roles')        .send({
           name: 'Role 1',
           code,
           departmentId
         });
 
       // Try to create duplicate
-      const response = await request(app)
-        .post('/api/schedulehub/roles')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/roles')        .send({
           name: 'Role 2',
           code, // Duplicate
           departmentId
@@ -98,10 +84,7 @@ describe.skip('Integration: Roles API', () => {
     });
 
     it('should require name and code', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/roles')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/roles')        .send({
           departmentId
         });
 
@@ -109,10 +92,9 @@ describe.skip('Integration: Roles API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/roles', () => {
+  describe('GET /api/schedulehub/roles', () => {
     it('should list roles', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/roles')
+      const response = await agent.get('/api/products/schedulehub/roles')
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -122,18 +104,14 @@ describe.skip('Integration: Roles API', () => {
     });
 
     it('should filter by department', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/roles')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ departmentId });
+      const response = await agent.get('/api/products/schedulehub/roles')        .query({ departmentId });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(r => r.department_id === departmentId)).toBe(true);
     });
 
     it('should filter active only by default', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/roles')
+      const response = await agent.get('/api/products/schedulehub/roles')
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -151,30 +129,23 @@ describe.skip('Integration: Roles API', () => {
          departmentId, false, userId, userId]
       );
 
-      const response = await request(app)
-        .get('/api/schedulehub/roles')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ includeInactive: true });
+      const response = await agent.get('/api/products/schedulehub/roles')        .query({ includeInactive: true });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.some(r => r.is_active === false)).toBe(true);
     });
 
     it('should support pagination', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/roles')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ page: 1, limit: 5 });
+      const response = await agent.get('/api/products/schedulehub/roles')        .query({ page: 1, limit: 5 });
 
       expect(response.status).toBe(200);
       expect(response.body.pagination).toBeDefined();
     });
   });
 
-  describe.skip('GET /api/schedulehub/roles/:id', () => {
+  describe('GET /api/schedulehub/roles/:id', () => {
     it('should get role by id', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/roles/${roleId}`)
+      const response = await agent.get(`/api/products/schedulehub/roles/${roleId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -185,20 +156,16 @@ describe.skip('Integration: Roles API', () => {
 
     it('should return 404 for non-existent role', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000';
-      const response = await request(app)
-        .get(`/api/schedulehub/roles/${fakeId}`)
+      const response = await agent.get(`/api/products/schedulehub/roles/${fakeId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe.skip('PATCH /api/schedulehub/roles/:id', () => {
+  describe('PATCH /api/schedulehub/roles/:id', () => {
     it('should update role details', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/roles/${roleId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/roles/${roleId}`)        .send({
           description: 'Updated description',
           defaultHourlyRate: 20.00
         });
@@ -210,10 +177,7 @@ describe.skip('Integration: Roles API', () => {
     });
 
     it('should update certifications', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/roles/${roleId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/roles/${roleId}`)        .send({
           requiredCertifications: ['Food Handler', 'POS System', 'Safety Training']
         });
 
@@ -225,10 +189,7 @@ describe.skip('Integration: Roles API', () => {
     it('should deactivate role', async () => {
       const tempRole = await createTestRole(organizationId, userId, departmentId);
 
-      const response = await request(app)
-        .patch(`/api/schedulehub/roles/${tempRole}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/roles/${tempRole}`)        .send({
           isActive: false
         });
 
@@ -238,12 +199,9 @@ describe.skip('Integration: Roles API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/roles/:roleId/workers', () => {
+  describe('POST /api/schedulehub/roles/:roleId/workers', () => {
     it('should assign worker to role', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/roles/${roleId}/workers`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/roles/${roleId}/workers`)        .send({
           workerId,
           proficiency: 'competent',
           certifications: ['Food Handler'],
@@ -263,10 +221,7 @@ describe.skip('Integration: Roles API', () => {
       const newEmp = await createTestEmployee(organizationId, userId, newDept, newLoc);
       const newWorker = await createTestWorker(organizationId, userId, newEmp, newDept, newLoc);
 
-      const response = await request(app)
-        .post(`/api/schedulehub/roles/${roleId}/workers`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/roles/${roleId}/workers`)        .send({
           workerId: newWorker,
           proficiency: 'invalid_level'
         });
@@ -275,10 +230,7 @@ describe.skip('Integration: Roles API', () => {
     });
 
     it('should prevent duplicate assignment', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/roles/${roleId}/workers`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/roles/${roleId}/workers`)        .send({
           workerId,
           proficiency: 'proficient'
         });
@@ -288,10 +240,9 @@ describe.skip('Integration: Roles API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/roles/:id/workers', () => {
+  describe('GET /api/schedulehub/roles/:id/workers', () => {
     it('should get workers for role', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/roles/${roleId}/workers`)
+      const response = await agent.get(`/api/products/schedulehub/roles/${roleId}/workers`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -301,18 +252,14 @@ describe.skip('Integration: Roles API', () => {
     });
 
     it('should filter by proficiency', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/roles/${roleId}/workers`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ proficiency: 'competent' });
+      const response = await agent.get(`/api/products/schedulehub/roles/${roleId}/workers`)        .query({ proficiency: 'competent' });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(w => w.proficiency === 'competent')).toBe(true);
     });
 
     it('should filter active only by default', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/roles/${roleId}/workers`)
+      const response = await agent.get(`/api/products/schedulehub/roles/${roleId}/workers`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -320,10 +267,9 @@ describe.skip('Integration: Roles API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/workers/:workerId/roles', () => {
+  describe('GET /api/schedulehub/workers/:workerId/roles', () => {
     it('should get roles for worker', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/roles`)
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/roles`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -333,10 +279,7 @@ describe.skip('Integration: Roles API', () => {
     });
 
     it('should include role details', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/roles`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ includeDetails: true });
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/roles`)        .query({ includeDetails: true });
 
       expect(response.status).toBe(200);
       expect(response.body.data[0]).toHaveProperty('role_name');
@@ -344,12 +287,9 @@ describe.skip('Integration: Roles API', () => {
     });
   });
 
-  describe.skip('PATCH /api/schedulehub/roles/:roleId/workers/:workerId', () => {
+  describe('PATCH /api/schedulehub/roles/:roleId/workers/:workerId', () => {
     it('should update worker assignment', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/roles/${roleId}/workers/${workerId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/roles/${roleId}/workers/${workerId}`)        .send({
           proficiency: 'proficient',
           certifications: ['Food Handler', 'Advanced POS'],
           certificationDate: new Date().toISOString().split('T')[0]
@@ -361,10 +301,7 @@ describe.skip('Integration: Roles API', () => {
     });
 
     it('should update proficiency level', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/roles/${roleId}/workers/${workerId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/roles/${roleId}/workers/${workerId}`)        .send({
           proficiency: 'expert'
         });
 
@@ -374,10 +311,9 @@ describe.skip('Integration: Roles API', () => {
     });
   });
 
-  describe.skip('DELETE /api/schedulehub/roles/:roleId/workers/:workerId', () => {
+  describe('DELETE /api/schedulehub/roles/:roleId/workers/:workerId', () => {
     it('should remove worker from role (soft delete)', async () => {
-      const response = await request(app)
-        .delete(`/api/schedulehub/roles/${roleId}/workers/${workerId}`)
+      const response = await agent.delete(`/api/products/schedulehub/roles/${roleId}/workers/${workerId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -392,20 +328,18 @@ describe.skip('Integration: Roles API', () => {
     });
 
     it('should return 404 for already removed assignment', async () => {
-      const response = await request(app)
-        .delete(`/api/schedulehub/roles/${roleId}/workers/${workerId}`)
+      const response = await agent.delete(`/api/products/schedulehub/roles/${roleId}/workers/${workerId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe.skip('Organization Isolation', () => {
+  describe('Organization Isolation', () => {
     it('should not access roles from other organizations', async () => {
       const org2 = await createTestOrganization();
 
-      const response = await request(app)
-        .get(`/api/schedulehub/roles/${roleId}`)
+      const response = await agent.get(`/api/products/schedulehub/roles/${roleId}`)
         .set('Authorization', `Bearer ${org2.token}`);
 
       expect(response.status).toBe(404);

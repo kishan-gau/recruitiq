@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { authenticate, requirePlatformUser, requirePermission } from '../middleware/auth.js';
+import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
 import bcrypt from 'bcryptjs';
@@ -12,51 +12,41 @@ import bcrypt from 'bcryptjs';
 const router = express.Router();
 
 // All routes require platform user authentication
-router.use(authenticate);
-router.use(requirePlatformUser);
+router.use(authenticatePlatform);
 
 /**
  * GET /api/portal/users
- * Get all users (platform and tenant)
+ * Get all platform users
  */
-router.get('/users', requirePermission('portal.view'), async (req, res) => {
+router.get('/users', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
-    const { user_type, role, search } = req.query;
+    const { role, search } = req.query;
     
     let query = `
       SELECT 
         u.id,
         u.email,
         u.name,
-        u.user_type,
-        u.legacy_role,
-        u.role_id,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.permissions,
         u.last_login_at,
         u.last_login_ip,
         u.email_verified,
         u.mfa_enabled,
+        u.is_active,
         u.created_at,
-        u.organization_id,
-        o.name as organization_name,
-        r.name as role_name,
-        array_length(u.additional_permissions, 1) as permission_count
-      FROM users u
-      LEFT JOIN organizations o ON u.organization_id = o.id
-      LEFT JOIN roles r ON u.role_id = r.id
+        u.created_by
+      FROM platform_users u
       WHERE u.deleted_at IS NULL
     `;
     
     const values = [];
     let paramIndex = 1;
     
-    if (user_type) {
-      query += ` AND u.user_type = $${paramIndex}`;
-      values.push(user_type);
-      paramIndex++;
-    }
-    
     if (role) {
-      query += ` AND (u.legacy_role = $${paramIndex} OR r.name = $${paramIndex})`;
+      query += ` AND u.role = $${paramIndex}`;
       values.push(role);
       paramIndex++;
     }
@@ -88,7 +78,7 @@ router.get('/users', requirePermission('portal.view'), async (req, res) => {
  * GET /api/portal/users/:id
  * Get user details with permissions
  */
-router.get('/users/:id', requirePermission('portal.view'), async (req, res) => {
+router.get('/users/:id', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -119,7 +109,7 @@ router.get('/users/:id', requirePermission('portal.view'), async (req, res) => {
           FROM permissions p 
           WHERE p.id = ANY(u.additional_permissions)
         ) as permissions
-      FROM users u
+      FROM platform_users u
       LEFT JOIN organizations o ON u.organization_id = o.id
       LEFT JOIN roles r ON u.role_id = r.id
       WHERE u.id = $1 AND u.deleted_at IS NULL
@@ -151,7 +141,7 @@ router.get('/users/:id', requirePermission('portal.view'), async (req, res) => {
  * POST /api/portal/users
  * Create a new user
  */
-router.post('/users', requirePermission('portal.manage'), async (req, res) => {
+router.post('/users', requirePlatformPermission('portal.manage'), async (req, res) => {
   const client = await pool.connect();
   
   try {
@@ -169,7 +159,7 @@ router.post('/users', requirePermission('portal.manage'), async (req, res) => {
     
     // Check if email already exists
     const existingUser = await client.query(
-      'SELECT id FROM users WHERE email = $1',
+      'SELECT id FROM platform_users WHERE email = $1',
       [email.toLowerCase()]
     );
     
@@ -201,7 +191,7 @@ router.post('/users', requirePermission('portal.manage'), async (req, res) => {
     
     // Create user
     const result = await client.query(
-      `INSERT INTO users (
+      `INSERT INTO platform_users (
         email, name, first_name, last_name, password_hash, user_type, legacy_role, 
         organization_id, additional_permissions, email_verified
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -248,7 +238,7 @@ router.post('/users', requirePermission('portal.manage'), async (req, res) => {
  * PUT /api/portal/users/:id
  * Update user details
  */
-router.put('/users/:id', requirePermission('portal.manage'), async (req, res) => {
+router.put('/users/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, phone, timezone, legacy_role } = req.body;
@@ -292,7 +282,7 @@ router.put('/users/:id', requirePermission('portal.manage'), async (req, res) =>
     values.push(id);
     
     const query = `
-      UPDATE users 
+      UPDATE platform_users 
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex} AND deleted_at IS NULL
       RETURNING id, email, name, user_type, legacy_role
@@ -329,7 +319,7 @@ router.put('/users/:id', requirePermission('portal.manage'), async (req, res) =>
  * PUT /api/portal/users/:id/permissions
  * Update user permissions
  */
-router.put('/users/:id/permissions', requirePermission('portal.manage'), async (req, res) => {
+router.put('/users/:id/permissions', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     const { permissions } = req.body;
@@ -349,7 +339,7 @@ router.put('/users/:id/permissions', requirePermission('portal.manage'), async (
     const permissionIds = permResult.rows.map(r => r.id);
     
     const result = await pool.query(
-      `UPDATE users 
+      `UPDATE platform_users 
        SET additional_permissions = $1, updated_at = NOW()
        WHERE id = $2 AND deleted_at IS NULL
        RETURNING id, email, name`,
@@ -386,7 +376,7 @@ router.put('/users/:id/permissions', requirePermission('portal.manage'), async (
  * DELETE /api/portal/users/:id
  * Soft delete a user
  */
-router.delete('/users/:id', requirePermission('portal.manage'), async (req, res) => {
+router.delete('/users/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -399,7 +389,7 @@ router.delete('/users/:id', requirePermission('portal.manage'), async (req, res)
     }
     
     const result = await pool.query(
-      `UPDATE users 
+      `UPDATE platform_users 
        SET deleted_at = NOW()
        WHERE id = $1 AND deleted_at IS NULL
        RETURNING id, email`,

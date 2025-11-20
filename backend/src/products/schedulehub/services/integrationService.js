@@ -295,7 +295,7 @@ class ScheduleHubIntegrationService {
          SET status = 'cancelled',
              updated_at = NOW(),
              updated_by = $1
-         WHERE worker_id = $2 
+         WHERE employee_id = $2 
          AND shift_date > CURRENT_DATE 
          AND status IN ('scheduled', 'published')
          AND deleted_at IS NULL`,
@@ -337,7 +337,7 @@ class ScheduleHubIntegrationService {
       await client.query(
         `INSERT INTO scheduling.worker_availability (
           organization_id,
-          worker_id,
+          employee_id,
           day_of_week,
           start_time,
           end_time,

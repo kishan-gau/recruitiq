@@ -75,7 +75,7 @@ export default function ScheduleCalendar() {
               day: dayLabels[dayIndex],
               startTime: s.startTime,
               endTime: s.endTime,
-              type: s.shiftType || 'regular',
+              type: s.shiftName || 'Regular', // Use shiftName from joined shift_type table
             };
           });
           setSchedules(transformedSchedules);

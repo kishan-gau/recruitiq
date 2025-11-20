@@ -5,46 +5,73 @@
 
 import pool from '../../../../src/config/database.js';
 import { v4 as uuidv4 } from 'uuid';
-import jwt from 'jsonwebtoken';
+import request from 'supertest';
+import app from '../../../../src/server.js';
+import bcrypt from 'bcrypt';
 
 /**
- * Create test organization with user
+ * Create test organization with user and return authenticated agent
  */
 export const createTestOrganization = async () => {
-  // Create organization
+  // Create organization with unique slug
+  const timestamp = Date.now();
+  const orgSlug = `test-org-schedulehub-${timestamp}`;
   const orgResult = await pool.query(
-    `INSERT INTO organizations (name, created_at) 
-     VALUES ('Test Org - ScheduleHub Integration', NOW()) 
-     RETURNING id`
+    `INSERT INTO organizations (name, slug, created_at) 
+     VALUES ('Test Org - ScheduleHub Integration', $1, NOW()) 
+     RETURNING id`,
+    [orgSlug]
   );
   const organizationId = orgResult.rows[0].id;
 
-  // Create test user (admin)
+  // Generate consistent email for both INSERT and LOGIN
+  const testEmail = `admin-${Date.now()}@schedulehub.test`;
+  
+  // Hash password for test user
+  const passwordHash = await bcrypt.hash('TestPassword123!', 10);
+  
+  // Create test user in hris.user_account (tenant user)
+  // Note: user_account table does NOT have first_name/last_name columns
+  // Those are in the hris.employee table linked via employee_id
   const userResult = await pool.query(
-    `INSERT INTO public.users (
+    `INSERT INTO hris.user_account (
       organization_id, email, password_hash, 
-      first_name, last_name, role, created_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      enabled_products, is_active, email_verified, account_status, created_at
+    ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, NOW())
     RETURNING id`,
     [
       organizationId,
-      `admin-${Date.now()}@schedulehub.test`,
-      'hash',
-      'Admin',
-      'User',
-      'admin'
+      testEmail,  // Use consistent email variable
+      passwordHash,
+      JSON.stringify(['schedulehub']), // Enable ScheduleHub product access (cast to JSONB)
+      true,
+      true,
+      'active'
     ]
   );
   const userId = userResult.rows[0].id;
 
-  // Generate JWT token
-  const token = jwt.sign(
-    { userId, organizationId, role: 'admin' },
-    process.env.JWT_SECRET || 'test-secret',
-    { expiresIn: '1h' }
-  );
+  // Create authenticated agent with cookie-based auth
+  const agent = request.agent(app);
+  
+  // Get CSRF token
+  const csrfResponse = await agent.get('/api/csrf-token');
+  const csrfToken = csrfResponse.body.csrfToken;
+  
+  // Login to get session cookies
+  const loginResponse = await agent
+    .post('/api/auth/tenant/login')
+    .set('X-CSRF-Token', csrfToken)
+    .send({
+      email: testEmail,  // Use same email variable
+      password: 'TestPassword123!'
+    });
+  
+  if (loginResponse.status !== 200) {
+    throw new Error(`Login failed: ${JSON.stringify(loginResponse.body)}`);
+  }
 
-  return { organizationId, userId, token };
+  return { organizationId, userId, agent, csrfToken };
 };
 
 /**
@@ -115,31 +142,13 @@ export const createTestEmployee = async (organizationId, userId, departmentId, l
 
 /**
  * Create test worker in ScheduleHub
+ * Note: Workers are stored in hris.employee table, not scheduling.workers
+ * This function creates an employee record for testing
  */
 export const createTestWorker = async (organizationId, userId, employeeId, departmentId, locationId) => {
-  const result = await pool.query(
-    `INSERT INTO scheduling.workers (
-      organization_id, employee_id, status, hire_date,
-      primary_department_id, primary_location_id,
-      default_hourly_rate, max_hours_per_week, employment_type,
-      created_at, created_by, updated_at, updated_by
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10, NOW(), $11)
-    RETURNING id`,
-    [
-      organizationId,
-      employeeId,
-      'active',
-      new Date(),
-      departmentId,
-      locationId,
-      25.00,
-      40,
-      'full_time',
-      userId,
-      userId
-    ]
-  );
-  return result.rows[0].id;
+  // Workers are already created in hris.employee during setup
+  // Just return the employeeId since that's what the tests expect
+  return employeeId;
 };
 
 /**
@@ -149,19 +158,16 @@ export const createTestRole = async (organizationId, userId, departmentId) => {
   const roleCode = `ROLE-${Date.now().toString().slice(-4)}`;
   const result = await pool.query(
     `INSERT INTO scheduling.roles (
-      organization_id, name, code, description, department_id,
-      default_hourly_rate, created_at, created_by, updated_at, updated_by
-    ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, NOW(), $8)
+      organization_id, role_name, role_code, description, hourly_rate, is_active
+    ) VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING id`,
     [
       organizationId,
       'Test Role',
       roleCode,
       'Test role description',
-      departmentId,
       20.00,
-      userId,
-      userId
+      true
     ]
   );
   return result.rows[0].id;
@@ -174,9 +180,8 @@ export const createTestStation = async (organizationId, userId, locationId) => {
   const stationCode = `STN-${Date.now().toString().slice(-4)}`;
   const result = await pool.query(
     `INSERT INTO scheduling.stations (
-      organization_id, name, code, location_id, capacity,
-      created_at, created_by, updated_at, updated_by
-    ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, NOW(), $7)
+      organization_id, station_name, station_code, location_id, capacity, is_active
+    ) VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING id`,
     [
       organizationId,
@@ -184,8 +189,7 @@ export const createTestStation = async (organizationId, userId, locationId) => {
       stationCode,
       locationId,
       10,
-      userId,
-      userId
+      true
     ]
   );
   return result.rows[0].id;
@@ -201,14 +205,13 @@ export const createTestSchedule = async (organizationId, userId, departmentId) =
 
   const result = await pool.query(
     `INSERT INTO scheduling.schedules (
-      organization_id, name, department_id, start_date, end_date,
+      organization_id, schedule_name, start_date, end_date,
       status, created_at, created_by, updated_at, updated_by
-    ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, NOW(), $8)
+    ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, NOW(), $7)
     RETURNING id`,
     [
       organizationId,
       'Test Schedule',
-      departmentId,
       startDate,
       endDate,
       'draft',
@@ -236,10 +239,9 @@ export const cleanupTestData = async (organizationId) => {
   await pool.query('DELETE FROM scheduling.stations WHERE organization_id = $1', [organizationId]);
   await pool.query('DELETE FROM scheduling.worker_roles WHERE organization_id = $1', [organizationId]);
   await pool.query('DELETE FROM scheduling.roles WHERE organization_id = $1', [organizationId]);
-  await pool.query('DELETE FROM scheduling.workers WHERE organization_id = $1', [organizationId]);
   await pool.query('DELETE FROM hris.employee WHERE organization_id = $1', [organizationId]);
   await pool.query('DELETE FROM hris.location WHERE organization_id = $1', [organizationId]);
   await pool.query('DELETE FROM hris.department WHERE organization_id = $1', [organizationId]);
-  await pool.query('DELETE FROM public.users WHERE organization_id = $1', [organizationId]);
+  await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [organizationId]);
   await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
 };

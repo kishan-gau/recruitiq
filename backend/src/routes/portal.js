@@ -9,18 +9,17 @@
  */
 
 import express from 'express';
-import { authenticate, requirePlatformUser, requirePermission } from '../middleware/auth.js';
+import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
 import { queryCentralDb } from '../config/centralDatabase.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
 
 // All portal routes require platform user authentication
-router.use(authenticate);
-router.use(requirePlatformUser);
+router.use(authenticatePlatform);
 
 // Most routes require portal.view permission
-router.use(requirePermission('portal.view'));
+router.use(requirePlatformPermission('portal.view'));
 
 // ============================================================================
 // SYSTEM LOGS

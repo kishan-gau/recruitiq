@@ -9,7 +9,8 @@
     "start": "node src/server.js",
     "start:loadtest": "cross-env LOAD_TEST=true node src/server.js",
     "start:prod": "NODE_ENV=production node src/server.js",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:e2e": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config=jest.e2e.config.js",
     "test:all": "powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1",
     "test:all:jest": "powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1 -JestOnly",
     "test:all:bdd": "powershell -ExecutionPolicy Bypass -File scripts/run-all-tests.ps1 -BDDOnly",
@@ -52,6 +53,7 @@
   "license": "MIT",
   "dependencies": {
     "aws-sdk": "^2.1501.0",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "bull": "^4.12.0",
     "cookie-parser": "^1.4.7",
@@ -60,13 +62,13 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
-    "expr-eval": "^2.0.2",
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
     "express-validator": "^7.3.0",
     "helmet": "^8.1.0",
     "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.2",
+    "mathjs": "^15.1.0",
     "multer": "^2.0.2",
     "node-cache": "^5.1.2",
     "nodemailer": "^7.0.10",
@@ -85,11 +87,14 @@
   "devDependencies": {
     "@faker-js/faker": "^10.1.0",
     "@playwright/test": "^1.56.1",
+    "axios": "^1.13.2",
+    "axios-cookiejar-support": "^6.0.4",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.10",
-    "supertest": "^7.1.4"
+    "supertest": "^7.1.4",
+    "tough-cookie": "^6.0.0"
   },
   "engines": {
     "node": ">=18.0.0",

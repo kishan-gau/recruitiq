@@ -6,7 +6,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+// Use .env.test for E2E tests to ensure test database isolation
+const envFile = process.env.NODE_ENV === 'e2e' ? '.env.test' : '.env';
+dotenv.config({ path: path.join(__dirname, '../../', envFile) });
 
 const config = {
   // Application
@@ -128,6 +130,13 @@ const config = {
     trustProxy: process.env.TRUST_PROXY === 'true',
     sessionSecret: process.env.SESSION_SECRET,
     cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE, 10) || 900000, // 15 minutes (aligned with JWT)
+  },
+  
+  // Cookie Configuration (centralized for consistency)
+  cookie: {
+    secure: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
+    sameSite: process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'strict' : 'none'),
+    domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? '.recruitiq.com' : undefined),
   },
   
   // Encryption

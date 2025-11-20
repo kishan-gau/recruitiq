@@ -4,14 +4,13 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5174,
+    host: 'localhost',
+    port: 5176,
     proxy: {
-      // Proxy API requests to unified backend
-      // This allows using relative URLs (/api) in the frontend
       '/api': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:4000',
+        target: 'http://localhost:4000',
         changeOrigin: true,
-        cookieDomainRewrite: 'localhost', // Rewrite cookie domain for SSO
+        secure: false,
       },
     },
   },

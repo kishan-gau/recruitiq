@@ -1,12 +1,10 @@
 /**
  * Integration Tests: Schedules & Shifts API
- * Tests schedule and shift management endpoints
+ * Tests schedule and shift management endpoints with cookie-based authentication
  */
 
 import { jest } from '@jest/globals';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import request from 'supertest';
-import app from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
 import {
   createTestOrganization,
@@ -23,7 +21,7 @@ import {
 // SKIPPED: Bearer token auth incomplete - migrating to cookie-based auth
 // TODO: Re-enable once cookie auth is implemented for all apps
 
-describe.skip('Integration: Schedules & Shifts API', () => {
+describe('Integration: Schedules & Shifts API', () => {
   let organizationId;
   let userId;
   let token;
@@ -53,16 +51,13 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     await pool.end();
   });
 
-  describe.skip('POST /api/schedulehub/schedules', () => {
+  describe('POST /api/schedulehub/schedules', () => {
     it('should create a draft schedule', async () => {
       const startDate = new Date();
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + 7);
 
-      const response = await request(app)
-        .post('/api/schedulehub/schedules')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/schedules')        .send({
           name: 'Weekly Schedule - Week 1',
           departmentId,
           startDate: startDate.toISOString().split('T')[0],
@@ -85,10 +80,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() - 1); // End before start
 
-      const response = await request(app)
-        .post('/api/schedulehub/schedules')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/schedules')        .send({
           name: 'Invalid Schedule',
           departmentId,
           startDate: startDate.toISOString().split('T')[0],
@@ -99,10 +91,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should require name and dates', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/schedules')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/schedules')        .send({
           departmentId
         });
 
@@ -110,12 +99,9 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/schedules', () => {
+  describe('GET /api/schedulehub/schedules', () => {
     it('should list schedules with pagination', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/schedules')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ page: 1, limit: 10 });
+      const response = await agent.get('/api/products/schedulehub/schedules')        .query({ page: 1, limit: 10 });
 
       expect(response.status).toBe(200);
       expect(response.body.data).toBeInstanceOf(Array);
@@ -123,20 +109,14 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should filter by department', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/schedules')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ departmentId });
+      const response = await agent.get('/api/products/schedulehub/schedules')        .query({ departmentId });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(s => s.department_id === departmentId)).toBe(true);
     });
 
     it('should filter by status', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/schedules')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ status: 'draft' });
+      const response = await agent.get('/api/products/schedulehub/schedules')        .query({ status: 'draft' });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(s => s.status === 'draft')).toBe(true);
@@ -144,19 +124,15 @@ describe.skip('Integration: Schedules & Shifts API', () => {
 
     it('should filter by date range', async () => {
       const startDate = new Date().toISOString().split('T')[0];
-      const response = await request(app)
-        .get('/api/schedulehub/schedules')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ startDate });
+      const response = await agent.get('/api/products/schedulehub/schedules')        .query({ startDate });
 
       expect(response.status).toBe(200);
     });
   });
 
-  describe.skip('GET /api/schedulehub/schedules/:id', () => {
+  describe('GET /api/schedulehub/schedules/:id', () => {
     it('should get schedule by id', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/schedules/${scheduleId}`)
+      const response = await agent.get(`/api/products/schedulehub/schedules/${scheduleId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -166,10 +142,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should include shifts when requested', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/schedules/${scheduleId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ includeShifts: true });
+      const response = await agent.get(`/api/products/schedulehub/schedules/${scheduleId}`)        .query({ includeShifts: true });
 
       expect(response.status).toBe(200);
       expect(response.body.data).toHaveProperty('shifts');
@@ -179,23 +152,19 @@ describe.skip('Integration: Schedules & Shifts API', () => {
 
     it('should return 404 for non-existent schedule', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000';
-      const response = await request(app)
-        .get(`/api/schedulehub/schedules/${fakeId}`)
+      const response = await agent.get(`/api/products/schedulehub/schedules/${fakeId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe.skip('POST /api/schedulehub/schedules/:scheduleId/shifts', () => {
+  describe('POST /api/schedulehub/schedules/:scheduleId/shifts', () => {
     it('should create a shift', async () => {
       const shiftDate = new Date();
       shiftDate.setDate(shiftDate.getDate() + 1);
 
-      const response = await request(app)
-        .post(`/api/schedulehub/schedules/${scheduleId}/shifts`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/schedules/${scheduleId}/shifts`)        .send({
           roleId,
           shiftDate: shiftDate.toISOString().split('T')[0],
           startTime: '09:00',
@@ -214,10 +183,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should validate time format', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/schedules/${scheduleId}/shifts`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/schedules/${scheduleId}/shifts`)        .send({
           roleId,
           shiftDate: new Date().toISOString().split('T')[0],
           startTime: '25:00', // Invalid
@@ -228,10 +194,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should validate end time after start time', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/schedules/${scheduleId}/shifts`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/schedules/${scheduleId}/shifts`)        .send({
           roleId,
           shiftDate: new Date().toISOString().split('T')[0],
           startTime: '17:00',
@@ -242,12 +205,9 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
   });
 
-  describe.skip('PATCH /api/schedulehub/shifts/:id', () => {
+  describe('PATCH /api/schedulehub/shifts/:id', () => {
     it('should update shift details', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/shifts/${shiftId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/shifts/${shiftId}`)        .send({
           startTime: '08:00',
           endTime: '16:00',
           breakMinutes: 30
@@ -261,10 +221,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should update shift notes', async () => {
-      const response = await request(app)
-        .patch(`/api/schedulehub/shifts/${shiftId}`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.patch(`/api/products/schedulehub/shifts/${shiftId}`)        .send({
           notes: 'Updated shift notes'
         });
 
@@ -274,12 +231,9 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/shifts/:id/assign', () => {
+  describe('POST /api/schedulehub/shifts/:id/assign', () => {
     it('should assign worker to shift', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shifts/${shiftId}/assign`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/shifts/${shiftId}/assign`)        .send({
           workerId
         });
 
@@ -290,10 +244,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should prevent double assignment', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shifts/${shiftId}/assign`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/shifts/${shiftId}/assign`)        .send({
           workerId
         });
 
@@ -302,10 +253,9 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/shifts/:id/unassign', () => {
+  describe('POST /api/schedulehub/shifts/:id/unassign', () => {
     it('should unassign worker from shift', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shifts/${shiftId}/unassign`)
+      const response = await agent.post(`/api/products/schedulehub/shifts/${shiftId}/unassign`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -315,10 +265,9 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/schedules/:id/publish', () => {
+  describe('POST /api/schedulehub/schedules/:id/publish', () => {
     it('should publish schedule', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/schedules/${scheduleId}/publish`)
+      const response = await agent.post(`/api/products/schedulehub/schedules/${scheduleId}/publish`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -328,8 +277,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should prevent double publish', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/schedules/${scheduleId}/publish`)
+      const response = await agent.post(`/api/products/schedulehub/schedules/${scheduleId}/publish`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(400);
@@ -337,7 +285,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/shifts/:id/clock-in', () => {
+  describe('POST /api/schedulehub/shifts/:id/clock-in', () => {
     let clockInShiftId;
 
     beforeAll(async () => {
@@ -362,8 +310,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should clock in to shift', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shifts/${clockInShiftId}/clock-in`)
+      const response = await agent.post(`/api/products/schedulehub/shifts/${clockInShiftId}/clock-in`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -373,8 +320,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should prevent double clock-in', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shifts/${clockInShiftId}/clock-in`)
+      const response = await agent.post(`/api/products/schedulehub/shifts/${clockInShiftId}/clock-in`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(400);
@@ -382,7 +328,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/shifts/:id/cancel', () => {
+  describe('POST /api/schedulehub/shifts/:id/cancel', () => {
     let cancelShiftId;
 
     beforeAll(async () => {
@@ -405,10 +351,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
 
     it('should cancel shift with reason', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/shifts/${cancelShiftId}/cancel`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/shifts/${cancelShiftId}/cancel`)        .send({
           reason: 'Weather closure'
         });
 
@@ -419,10 +362,9 @@ describe.skip('Integration: Schedules & Shifts API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/workers/:workerId/shifts', () => {
+  describe('GET /api/schedulehub/workers/:workerId/shifts', () => {
     it('should get worker shifts', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/shifts`)
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/shifts`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -433,10 +375,7 @@ describe.skip('Integration: Schedules & Shifts API', () => {
       const startDate = new Date().toISOString().split('T')[0];
       const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/shifts`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ startDate, endDate });
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/shifts`)        .query({ startDate, endDate });
 
       expect(response.status).toBe(200);
     });

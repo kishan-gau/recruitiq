@@ -28,9 +28,9 @@ export default function() {
   check(res, CHECKS.status200);
   sleep(SLEEP.SHORT);
 
-  // Test 2: Login
+  // Test 2: Tenant Login
   res = http.post(
-    `${BASE_URL}/api/auth/login`,
+    `${BASE_URL}/api/auth/tenant/login`,
     JSON.stringify({
       email: TEST_USER.email,
       password: TEST_USER.password,
@@ -43,46 +43,38 @@ export default function() {
   });
   
   if (res.status === 200) {
-    const body = res.json();
-    const token = body.accessToken || body.token;
-    
-    if (!token) {
-      console.error('No token in response:', body);
-      sleep(SLEEP.MEDIUM);
-      return;
-    }
-    
-    const authHeaders = {
-      ...HEADERS,
-      'Authorization': `Bearer ${token}`,
-    };
+    // Cookie-based authentication - cookies are automatically handled by k6
+    // No need to extract token, k6 maintains cookies across requests
     
     sleep(SLEEP.THINK);
     
-    // Test 3: Get User Profile (skip - endpoint has routing issue with /me)
-    // TODO: Fix /api/users/me endpoint to accept "me" as special case
-    // res = http.get(`${BASE_URL}/api/users/me`, { 
-    //   headers: authHeaders,
-    //   tags: TAGS.users 
-    // });
-    
-    // Test 4: Get Jobs
-    res = http.get(`${BASE_URL}/api/jobs`, { 
-      headers: authHeaders,
-      tags: TAGS.jobs 
+    // Test 3: Get User Profile
+    res = http.get(`${BASE_URL}/api/auth/tenant/me`, { 
+      headers: HEADERS,
+      tags: TAGS.users 
     });
     check(res, {
-      'jobs endpoint accessible': (r) => r.status === 200 || r.status === 404 || r.status === 403
+      'profile endpoint accessible': (r) => r.status === 200
     });
     sleep(SLEEP.SHORT);
     
-    // Test 5: Get Candidates
-    res = http.get(`${BASE_URL}/api/candidates`, { 
-      headers: authHeaders,
-      tags: TAGS.candidates 
+    // Test 4: Get Employees (Nexus product endpoint)
+    res = http.get(`${BASE_URL}/api/products/nexus/employees`, { 
+      headers: HEADERS,
+      tags: TAGS.workspaces 
     });
     check(res, {
-      'candidates endpoint accessible': (r) => r.status === 200 || r.status === 404 || r.status === 403
+      'employees endpoint accessible': (r) => r.status === 200
+    });
+    sleep(SLEEP.SHORT);
+    
+    // Test 5: Get PayLinQ Dashboard (PayLinQ product endpoint)
+    res = http.get(`${BASE_URL}/api/products/paylinq/dashboard`, { 
+      headers: HEADERS,
+      tags: TAGS.jobs 
+    });
+    check(res, {
+      'paylinq dashboard accessible': (r) => r.status === 200
     });
   }
   

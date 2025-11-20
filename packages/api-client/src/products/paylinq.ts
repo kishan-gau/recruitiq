@@ -103,9 +103,12 @@ import type {
  * Payroll management system endpoints
  * 
  * Complete API client for all 19 Paylinq modules with 149 endpoints
+ * 
+ * ARCHITECTURE: basePath is relative to APIClient's baseURL ('/api')
+ * Final URLs: /api + /products/paylinq/* = /api/products/paylinq/*
  */
 export class PaylinqClient {
-  private readonly basePath = '/products/paylinq';
+  private readonly basePath = 'products/paylinq';
 
   constructor(private client: APIClient) {}
 
@@ -409,7 +412,7 @@ export class PaylinqClient {
   async getShiftTypes(params?: PaginationParams & { status?: string }) {
     const query = new URLSearchParams(params as any).toString();
     return this.client.get<PaginatedResponse<ShiftType>>(
-      `${this.basePath}/shift-types${query ? '?' + query : ''}`
+      `${this.basePath}/time-attendance/shift-types${query ? '?' + query : ''}`
     );
   }
 
@@ -418,7 +421,7 @@ export class PaylinqClient {
    */
   async getShiftType(id: string) {
     return this.client.get<ApiResponse<ShiftType>>(
-      `${this.basePath}/shift-types/${id}`
+      `${this.basePath}/time-attendance/shift-types/${id}`
     );
   }
 
@@ -427,7 +430,7 @@ export class PaylinqClient {
    */
   async createShiftType(data: CreateShiftTypeRequest) {
     return this.client.post<ApiResponse<ShiftType>>(
-      `${this.basePath}/shift-types`,
+      `${this.basePath}/time-attendance/shift-types`,
       data
     );
   }
@@ -437,7 +440,7 @@ export class PaylinqClient {
    */
   async updateShiftType(id: string, data: UpdateShiftTypeRequest) {
     return this.client.put<ApiResponse<ShiftType>>(
-      `${this.basePath}/shift-types/${id}`,
+      `${this.basePath}/time-attendance/shift-types/${id}`,
       data
     );
   }
@@ -447,7 +450,7 @@ export class PaylinqClient {
    */
   async deleteShiftType(id: string) {
     return this.client.delete<ApiResponse<void>>(
-      `${this.basePath}/shift-types/${id}`
+      `${this.basePath}/time-attendance/shift-types/${id}`
     );
   }
 
@@ -1008,7 +1011,7 @@ export class PaylinqClient {
     try {
       // Use fetch directly for blob downloads to avoid axios response transformation issues
       const baseUrl = this.client.getClient().defaults.baseURL || '/api';
-      const url = `${baseUrl}${this.basePath}/paychecks/${id}/pdf`;
+      const url = `${baseUrl}/${this.basePath}/paychecks/${id}/pdf`;
       
       const response = await fetch(url, {
         method: 'GET',
@@ -1402,7 +1405,14 @@ export class PaylinqClient {
    * Get dashboard data
    */
   async getDashboard() {
-    return this.client.get(`${this.basePath}/dashboard`);
+    const url = `${this.basePath}/dashboard`;
+    console.log('[PaylinqClient] getDashboard called:', {
+      basePath: this.basePath,
+      fullURL: url,
+      clientBaseURL: this.client.getClient().defaults.baseURL,
+      finalURL: `${this.client.getClient().defaults.baseURL}/${url}`
+    });
+    return this.client.get(url);
   }
 
   /**

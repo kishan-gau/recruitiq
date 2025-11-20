@@ -37,9 +37,9 @@ try{
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
           <OrganizationProvider>
             <WorkspaceProvider>
               <DataProvider>
@@ -52,8 +52,8 @@ createRoot(document.getElementById('root')).render(
               </DataProvider>
             </WorkspaceProvider>
           </OrganizationProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+        </QueryClientProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </React.StrictMode>
 )

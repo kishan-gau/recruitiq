@@ -367,6 +367,8 @@ describe('Rate Limit Middleware', () => {
       
       expect(endpointConfig.keyGenerator).toBeDefined();
       
+      // Set authenticated user for keyGenerator to return endpoint-based key
+      mockReq.user = { id: 'user-123' };
       const key = endpointConfig.keyGenerator(mockReq);
       
       expect(key).toContain('endpoint:custom-endpoint');

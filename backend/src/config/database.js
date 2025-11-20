@@ -76,6 +76,14 @@ export const query = async (text, params, organizationId = null, metadata = {}) 
   }
 };
 
+// Get a client from the pool for manual transaction management
+export const getClient = async () => {
+  return await pool.connect();
+};
+
+// Attach getClient to query function for convenience
+query.getClient = getClient;
+
 // Transaction helper
 export const transaction = async (callback) => {
   const client = await pool.connect();

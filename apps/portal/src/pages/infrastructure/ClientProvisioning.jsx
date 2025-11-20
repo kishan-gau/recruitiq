@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Server, Users, Package, AlertCircle, CheckCircle, Loader } from 'lucide-react';
+import { Server, Users, Package, AlertCircle, CheckCircle, Loader, Terminal } from 'lucide-react';
 import axios from 'axios';
 
 export default function ClientProvisioning() {
@@ -17,6 +17,8 @@ export default function ClientProvisioning() {
   const [availableVPS, setAvailableVPS] = useState([]);
   const [loading, setLoading] = useState(false);
   const [deploymentStatus, setDeploymentStatus] = useState(null);
+  const [deploymentLogs, setDeploymentLogs] = useState([]);
+  const [pollingInterval, setPollingInterval] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -24,6 +26,15 @@ export default function ClientProvisioning() {
       fetchAvailableVPS();
     }
   }, [formData.deploymentModel]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   const fetchAvailableVPS = async () => {
     try {
@@ -76,11 +87,26 @@ export default function ClientProvisioning() {
 
       const response = await axios.post('/api/portal/instances', payload);
       
-      setDeploymentStatus({
-        type: 'success',
-        message: 'Client provisioned successfully!',
-        data: response.data
-      });
+      const result = response.data;
+      
+      // If dedicated deployment, start polling for status
+      if (formData.deploymentModel === 'dedicated') {
+        setDeploymentStatus({
+          type: 'provisioning',
+          message: 'VPS provisioning started. This will take 3-5 minutes...',
+          data: result
+        });
+
+        // Start polling for deployment status
+        startStatusPolling(result.deploymentId);
+      } else {
+        // Shared deployment completes immediately
+        setDeploymentStatus({
+          type: 'success',
+          message: 'Client provisioned successfully!',
+          data: result
+        });
+      }
 
       // Reset form
       setFormData({
@@ -106,6 +132,61 @@ export default function ClientProvisioning() {
     }
   };
 
+  /**
+   * Start polling deployment status
+   */
+  const startStatusPolling = (deploymentId) => {
+    // Poll every 5 seconds
+    const interval = setInterval(async () => {
+      try {
+        const response = await axios.get(`/api/portal/instances/${deploymentId}/status`);
+        const status = response.data;
+
+        // Update logs if available
+        if (status.logs && status.logs.length > 0) {
+          setDeploymentLogs(status.logs);
+        }
+
+        // Update status message
+        setDeploymentStatus(prev => ({
+          ...prev,
+          message: status.status_message || status.status,
+          data: {
+            ...prev.data,
+            status: status.status
+          }
+        }));
+
+        // Stop polling if completed or failed
+        if (status.status === 'active') {
+          clearInterval(interval);
+          setPollingInterval(null);
+          setDeploymentStatus({
+            type: 'success',
+            message: 'Deployment completed successfully!',
+            data: {
+              ...status,
+              url: status.access_url || `https://${status.slug}.recruitiq.nl`
+            }
+          });
+          setLoading(false);
+        } else if (status.status === 'failed') {
+          clearInterval(interval);
+          setPollingInterval(null);
+          setDeploymentStatus({
+            type: 'error',
+            message: status.error_message || status.status_message || 'Deployment failed'
+          });
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error polling status:', error);
+      }
+    }, 5000);
+
+    setPollingInterval(interval);
+  };
+
   const getTierDescription = (tier) => {
     const descriptions = {
       starter: 'Up to 10 users, 1 workspace - Perfect for small teams',
@@ -126,33 +207,73 @@ export default function ClientProvisioning() {
       {/* Deployment Status */}
       {deploymentStatus && (
         <div className={`rounded-lg p-4 ${
-          deploymentStatus.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+          deploymentStatus.type === 'success' ? 'bg-green-50 border border-green-200' : 
+          deploymentStatus.type === 'provisioning' ? 'bg-blue-50 border border-blue-200' :
+          'bg-red-50 border border-red-200'
         }`}>
           <div className="flex items-start gap-3">
             {deploymentStatus.type === 'success' ? (
               <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+            ) : deploymentStatus.type === 'provisioning' ? (
+              <Loader className="w-5 h-5 text-blue-600 mt-0.5 animate-spin" />
             ) : (
               <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
             )}
             <div className="flex-1">
               <h3 className={`font-medium ${
-                deploymentStatus.type === 'success' ? 'text-green-900' : 'text-red-900'
+                deploymentStatus.type === 'success' ? 'text-green-900' : 
+                deploymentStatus.type === 'provisioning' ? 'text-blue-900' :
+                'text-red-900'
               }`}>
-                {deploymentStatus.type === 'success' ? 'Provisioning Complete' : 'Provisioning Failed'}
+                {deploymentStatus.type === 'success' ? 'Provisioning Complete' : 
+                 deploymentStatus.type === 'provisioning' ? 'Provisioning in Progress' :
+                 'Provisioning Failed'}
               </h3>
               <p className={`text-sm mt-1 ${
-                deploymentStatus.type === 'success' ? 'text-green-700' : 'text-red-700'
+                deploymentStatus.type === 'success' ? 'text-green-700' : 
+                deploymentStatus.type === 'provisioning' ? 'text-blue-700' :
+                'text-red-700'
               }`}>
                 {deploymentStatus.message}
               </p>
               {deploymentStatus.type === 'success' && deploymentStatus.data && (
                 <div className="mt-3 space-y-1 text-sm text-green-700">
-                  <p><strong>Organization:</strong> {deploymentStatus.data.organization.name}</p>
-                  <p><strong>Subdomain:</strong> {deploymentStatus.data.deployment.subdomain}.recruitiq.sr</p>
-                  <p><strong>Status:</strong> {deploymentStatus.data.deployment.status}</p>
-                  {deploymentStatus.data.vps && (
-                    <p><strong>VPS:</strong> {deploymentStatus.data.vps.vps_name} ({deploymentStatus.data.vps.vps_ip})</p>
+                  <p><strong>Organization:</strong> {deploymentStatus.data.organization?.name || deploymentStatus.data.organization_name}</p>
+                  {deploymentStatus.data.url && (
+                    <p>
+                      <strong>URL:</strong>{' '}
+                      <a href={deploymentStatus.data.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-green-900">
+                        {deploymentStatus.data.url}
+                      </a>
+                    </p>
                   )}
+                  {deploymentStatus.data.credentials && (
+                    <div className="mt-3 p-3 bg-green-100 rounded border border-green-300">
+                      <p className="font-semibold mb-2">Login Credentials:</p>
+                      <p><strong>Email:</strong> {deploymentStatus.data.credentials.email}</p>
+                      <p><strong>Password:</strong> <code className="bg-green-200 px-2 py-1 rounded">{deploymentStatus.data.credentials.password}</code></p>
+                      <p className="text-xs mt-2 italic">⚠️ Save these credentials securely. They will not be shown again.</p>
+                    </div>
+                  )}
+                  {deploymentStatus.data.vps && (
+                    <p><strong>VPS:</strong> {deploymentStatus.data.vps.name} ({deploymentStatus.data.vps.location})</p>
+                  )}
+                </div>
+              )}
+              
+              {/* Deployment Logs */}
+              {deploymentLogs.length > 0 && (
+                <div className="mt-4 bg-gray-900 text-gray-100 rounded-lg p-4 max-h-64 overflow-y-auto font-mono text-xs">
+                  <div className="flex items-center gap-2 mb-2 text-blue-400">
+                    <Terminal className="w-4 h-4" />
+                    <span className="font-semibold">Deployment Logs</span>
+                  </div>
+                  {deploymentLogs.map((log, idx) => (
+                    <div key={idx} className="py-1">
+                      <span className="text-gray-500">[{new Date(log.timestamp).toLocaleTimeString()}]</span>{' '}
+                      <span>{log.message}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

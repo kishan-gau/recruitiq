@@ -343,26 +343,25 @@ export const errorHandler = (err, req, res, next) => {
     details = null;
   }
   
-  // Build response
+  // Build response following API Standards
   const response = {
-    error: {
-      type: err.name || 'Error',
-      message,
-      code: errorCode,
-      errorId,
-      timestamp: new Date().toISOString(),
-    },
+    success: false,  // API Standard: success at root level
+    error: message,  // API Standard: error message at root level
+    errorCode,       // API Standard: errorCode at root level
+    errorId,
+    timestamp: new Date().toISOString(),
   };
   
   // Add details in development or for operational errors
   if (details && (config.env === 'development' || isOperational)) {
-    response.error.details = details;
+    response.details = details;
   }
   
   // Add stack trace in development
   if (config.env === 'development') {
-    response.error.stack = err.stack;
-    response.error.raw = {
+    response.stack = err.stack;
+    response.debug = {
+      type: err.name || 'Error',
       message: err.message,
       code: err.code,
       name: err.name,

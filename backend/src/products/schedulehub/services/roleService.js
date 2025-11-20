@@ -154,7 +154,7 @@ class RoleService {
       // Check if already assigned
       const existingAssignment = await client.query(
         `SELECT id FROM scheduling.worker_roles
-         WHERE worker_id = $1 AND role_id = $2 AND removed_date IS NULL`,
+         WHERE employee_id = $1 AND role_id = $2 AND removed_date IS NULL`,
         [workerId, roleId]
       );
 
@@ -164,7 +164,7 @@ class RoleService {
 
       const result = await client.query(
         `INSERT INTO scheduling.worker_roles (
-          organization_id, worker_id, role_id, proficiency_level, certifications
+          organization_id, employee_id, role_id, proficiency_level, certifications
         ) VALUES ($1, $2, $3, $4, $5)
         RETURNING *`,
         [organizationId, workerId, roleId, proficiencyLevel, certifications]
@@ -187,7 +187,7 @@ class RoleService {
       const result = await pool.query(
         `UPDATE scheduling.worker_roles
          SET removed_date = NOW()
-         WHERE worker_id = $1 AND role_id = $2 AND organization_id = $3 AND removed_date IS NULL
+         WHERE employee_id = $1 AND role_id = $2 AND organization_id = $3 AND removed_date IS NULL
          RETURNING *`,
         [workerId, roleId, organizationId]
       );
@@ -206,7 +206,7 @@ class RoleService {
         `SELECT wr.*, r.role_name, r.role_code, r.color
          FROM scheduling.worker_roles wr
          JOIN scheduling.roles r ON wr.role_id = r.id
-         WHERE wr.worker_id = $1 AND wr.organization_id = $2 AND wr.removed_date IS NULL
+         WHERE wr.employee_id = $1 AND wr.organization_id = $2 AND wr.removed_date IS NULL
          ORDER BY r.role_name`,
         [workerId, organizationId]
       );
@@ -220,12 +220,12 @@ class RoleService {
   async getRoleWorkers(roleId, organizationId) {
     try {
       const result = await pool.query(
-        `SELECT wr.*, w.first_name, w.last_name, w.worker_number, w.status
+        `SELECT wr.*, e.first_name, e.last_name, e.employee_number as worker_number, e.employment_status as status
          FROM scheduling.worker_roles wr
-         JOIN scheduling.workers w ON wr.worker_id = w.id
+         JOIN hris.employee e ON wr.employee_id = e.id
          WHERE wr.role_id = $1 AND wr.organization_id = $2 AND wr.removed_date IS NULL
-         AND w.status = 'active'
-         ORDER BY w.last_name, w.first_name`,
+         AND e.employment_status = 'active'
+         ORDER BY e.last_name, e.first_name`,
         [roleId, organizationId]
       );
       return { success: true, data: result.rows };

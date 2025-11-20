@@ -42,11 +42,15 @@ export function mapComponentDbToApi(dbComponent) {
     // JSONB calculation_metadata
     calculationMetadata: dbComponent.calculation_metadata || {},
     
-    // Configuration
-    isActive: dbComponent.is_active,
+    // Configuration - database uses 'status' column, not 'is_active'
+    isActive: dbComponent.status === 'active',
     isTaxable: dbComponent.is_taxable,
     isSystemDefined: dbComponent.is_system_defined,
     displayOrder: dbComponent.display_order,
+    
+    // Multi-currency support
+    defaultCurrency: dbComponent.default_currency || null,
+    allowCurrencyOverride: dbComponent.allow_currency_override !== false,
     
     // UI
     icon: dbComponent.icon || null,
@@ -111,7 +115,8 @@ export function mapComponentApiToDb(apiData) {
     dbData.calculation_metadata = apiData.calculationMetadata;
   }
   if (apiData.isActive !== undefined) {
-    dbData.is_active = apiData.isActive;
+    // Database uses 'status' column, not 'is_active'
+    dbData.status = apiData.isActive ? 'active' : 'inactive';
   }
   if (apiData.isTaxable !== undefined) {
     dbData.is_taxable = apiData.isTaxable;
@@ -127,6 +132,33 @@ export function mapComponentApiToDb(apiData) {
   }
   if (apiData.category !== undefined) {
     dbData.category = apiData.category;
+  }
+  if (apiData.isRecurring !== undefined) {
+    dbData.is_recurring = apiData.isRecurring;
+  }
+  if (apiData.isPreTax !== undefined) {
+    dbData.is_pre_tax = apiData.isPreTax;
+  }
+  if (apiData.isSystemComponent !== undefined) {
+    dbData.is_system_component = apiData.isSystemComponent;
+  }
+  if (apiData.appliesToGross !== undefined) {
+    dbData.applies_to_gross = apiData.appliesToGross;
+  }
+  if (apiData.appliesToOvertime !== undefined) {
+    dbData.applies_to_overtime = apiData.appliesToOvertime;
+  }
+  if (apiData.affectsTaxableIncome !== undefined) {
+    dbData.affects_taxable_income = apiData.affectsTaxableIncome;
+  }
+  if (apiData.metadata !== undefined) {
+    dbData.metadata = apiData.metadata;
+  }
+  if (apiData.defaultCurrency !== undefined) {
+    dbData.default_currency = apiData.defaultCurrency;
+  }
+  if (apiData.allowCurrencyOverride !== undefined) {
+    dbData.allow_currency_override = apiData.allowCurrencyOverride;
   }
 
   return dbData;

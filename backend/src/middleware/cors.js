@@ -81,6 +81,7 @@ export function getCorsConfig() {
       'CSRF-Token',
       'XSRF-Token',
       'X-XSRF-Token',
+      'skip-auth', // Allow skip-auth header for CSRF token requests
     ],
     exposedHeaders: [
       'X-Request-ID',

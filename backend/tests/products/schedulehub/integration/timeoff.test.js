@@ -1,12 +1,10 @@
 /**
  * Integration Tests: Time Off API
- * Tests time off request and approval workflow
+ * Tests time off request and approval workflow with cookie-based authentication
  */
 
 import { jest } from '@jest/globals';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import request from 'supertest';
-import app from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
 import {
   createTestOrganization,
@@ -21,7 +19,7 @@ import {
 // SKIPPED: Bearer token auth incomplete - migrating to cookie-based auth
 // TODO: Re-enable once cookie auth is implemented for all apps
 
-describe.skip('Integration: Time Off API', () => {
+describe('Integration: Time Off API', () => {
   let organizationId;
   let userId;
   let token;
@@ -45,17 +43,14 @@ describe.skip('Integration: Time Off API', () => {
     await pool.end();
   });
 
-  describe.skip('POST /api/schedulehub/time-off', () => {
+  describe('POST /api/schedulehub/time-off', () => {
     it('should create time off request', async () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() + 7);
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + 3);
 
-      const response = await request(app)
-        .post('/api/schedulehub/time-off')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/time-off')        .send({
           workerId,
           requestType: 'vacation',
           startDate: startDate.toISOString().split('T')[0],
@@ -73,10 +68,7 @@ describe.skip('Integration: Time Off API', () => {
     });
 
     it('should validate request type', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/time-off')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/time-off')        .send({
           workerId,
           requestType: 'invalid_type',
           startDate: new Date().toISOString().split('T')[0],
@@ -91,10 +83,7 @@ describe.skip('Integration: Time Off API', () => {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() - 1);
 
-      const response = await request(app)
-        .post('/api/schedulehub/time-off')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/time-off')        .send({
           workerId,
           requestType: 'vacation',
           startDate: startDate.toISOString().split('T')[0],
@@ -105,10 +94,7 @@ describe.skip('Integration: Time Off API', () => {
     });
 
     it('should require worker and dates', async () => {
-      const response = await request(app)
-        .post('/api/schedulehub/time-off')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post('/api/products/schedulehub/time-off')        .send({
           requestType: 'sick'
         });
 
@@ -116,10 +102,9 @@ describe.skip('Integration: Time Off API', () => {
     });
   });
 
-  describe.skip('GET /api/schedulehub/time-off/:id', () => {
+  describe('GET /api/schedulehub/time-off/:id', () => {
     it('should get time off request', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/time-off/${requestId}`)
+      const response = await agent.get(`/api/products/schedulehub/time-off/${requestId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -130,18 +115,16 @@ describe.skip('Integration: Time Off API', () => {
 
     it('should return 404 for non-existent request', async () => {
       const fakeId = '00000000-0000-0000-0000-000000000000';
-      const response = await request(app)
-        .get(`/api/schedulehub/time-off/${fakeId}`)
+      const response = await agent.get(`/api/products/schedulehub/time-off/${fakeId}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(404);
     });
   });
 
-  describe.skip('GET /api/schedulehub/workers/:workerId/time-off', () => {
+  describe('GET /api/schedulehub/workers/:workerId/time-off', () => {
     it('should get worker time off requests', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/time-off`)
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/time-off`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -151,10 +134,7 @@ describe.skip('Integration: Time Off API', () => {
     });
 
     it('should filter by status', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/time-off`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ status: 'pending' });
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/time-off`)        .query({ status: 'pending' });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(r => r.status === 'pending')).toBe(true);
@@ -164,29 +144,22 @@ describe.skip('Integration: Time Off API', () => {
       const startDate = new Date().toISOString().split('T')[0];
       const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/time-off`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ startDate, endDate });
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/time-off`)        .query({ startDate, endDate });
 
       expect(response.status).toBe(200);
     });
 
     it('should filter by request type', async () => {
-      const response = await request(app)
-        .get(`/api/schedulehub/workers/${workerId}/time-off`)
-        .set('Authorization', `Bearer ${token}`)
-        .query({ requestType: 'vacation' });
+      const response = await agent.get(`/api/products/schedulehub/workers/${workerId}/time-off`)        .query({ requestType: 'vacation' });
 
       expect(response.status).toBe(200);
       expect(response.body?.data?.every(r => r.request_type === 'vacation')).toBe(true);
     });
   });
 
-  describe.skip('GET /api/schedulehub/time-off/pending', () => {
+  describe('GET /api/schedulehub/time-off/pending', () => {
     it('should get pending requests for manager', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/time-off/pending')
+      const response = await agent.get('/api/products/schedulehub/time-off/pending')
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -195,22 +168,16 @@ describe.skip('Integration: Time Off API', () => {
     });
 
     it('should support pagination', async () => {
-      const response = await request(app)
-        .get('/api/schedulehub/time-off/pending')
-        .set('Authorization', `Bearer ${token}`)
-        .query({ page: 1, limit: 5 });
+      const response = await agent.get('/api/products/schedulehub/time-off/pending')        .query({ page: 1, limit: 5 });
 
       expect(response.status).toBe(200);
       expect(response.body.pagination).toBeDefined();
     });
   });
 
-  describe.skip('POST /api/schedulehub/time-off/:id/review', () => {
+  describe('POST /api/schedulehub/time-off/:id/review', () => {
     it('should approve time off request', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/time-off/${requestId}/review`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/time-off/${requestId}/review`)        .send({
           decision: 'approved',
           reviewNotes: 'Approved - enjoy your vacation'
         });
@@ -232,10 +199,7 @@ describe.skip('Integration: Time Off API', () => {
     });
 
     it('should prevent double review', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/time-off/${requestId}/review`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/time-off/${requestId}/review`)        .send({
           decision: 'approved'
         });
 
@@ -244,7 +208,7 @@ describe.skip('Integration: Time Off API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/time-off/:id/review (denial)', () => {
+  describe('POST /api/schedulehub/time-off/:id/review (denial)', () => {
     let denyRequestId;
 
     beforeAll(async () => {
@@ -271,10 +235,7 @@ describe.skip('Integration: Time Off API', () => {
     });
 
     it('should deny time off request', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/time-off/${denyRequestId}/review`)
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const response = await agent.post(`/api/products/schedulehub/time-off/${denyRequestId}/review`)        .send({
           decision: 'denied',
           reviewNotes: 'Busy period - please reschedule'
         });
@@ -295,7 +256,7 @@ describe.skip('Integration: Time Off API', () => {
     });
   });
 
-  describe.skip('POST /api/schedulehub/time-off/:id/cancel', () => {
+  describe('POST /api/schedulehub/time-off/:id/cancel', () => {
     let cancelRequestId;
 
     beforeAll(async () => {
@@ -342,10 +303,7 @@ describe.skip('Integration: Time Off API', () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() + 30);
       
-      const createResponse = await request(app)
-        .post('/api/schedulehub/time-off')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
+      const createResponse = await agent.post('/api/products/schedulehub/time-off')        .send({
           workerId,
           requestType: 'sick',
           startDate: startDate.toISOString().split('T')[0],
@@ -354,8 +312,7 @@ describe.skip('Integration: Time Off API', () => {
 
       const pendingId = createResponse.body.data.id;
 
-      const response = await request(app)
-        .post(`/api/schedulehub/time-off/${pendingId}/cancel`)
+      const response = await agent.post(`/api/products/schedulehub/time-off/${pendingId}/cancel`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -364,8 +321,7 @@ describe.skip('Integration: Time Off API', () => {
     });
 
     it('should cancel approved request and remove unavailability', async () => {
-      const response = await request(app)
-        .post(`/api/schedulehub/time-off/${cancelRequestId}/cancel`)
+      const response = await agent.post(`/api/products/schedulehub/time-off/${cancelRequestId}/cancel`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
@@ -402,8 +358,7 @@ describe.skip('Integration: Time Off API', () => {
       );
       const deniedId = result.rows[0].id;
 
-      const response = await request(app)
-        .post(`/api/schedulehub/time-off/${deniedId}/cancel`)
+      const response = await agent.post(`/api/products/schedulehub/time-off/${deniedId}/cancel`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(400);
@@ -411,12 +366,11 @@ describe.skip('Integration: Time Off API', () => {
     });
   });
 
-  describe.skip('Authorization', () => {
+  describe('Authorization', () => {
     it('should enforce organization isolation', async () => {
       const org2 = await createTestOrganization();
 
-      const response = await request(app)
-        .get(`/api/schedulehub/time-off/${requestId}`)
+      const response = await agent.get(`/api/products/schedulehub/time-off/${requestId}`)
         .set('Authorization', `Bearer ${org2.token}`);
 
       expect(response.status).toBe(404);

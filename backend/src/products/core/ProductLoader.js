@@ -168,16 +168,18 @@ class ProductLoader {
    * Resolve local product path
    */
   resolveLocalPath(product) {
-    // Common locations to check
+    // Common locations to check (ORDER MATTERS!)
     const possiblePaths = [
-      // Standard location: backend/src/products/{slug}/routes/index.js
-      path.join(__dirname, '..', product.slug, 'routes', 'index.js'),
-      
-      // Alternative: backend/src/products/{slug}/index.js
+      // PRIORITY 1: Standard product module entry point
+      // backend/src/products/{slug}/index.js
       path.join(__dirname, '..', product.slug, 'index.js'),
       
-      // Development: direct path if specified
-      product.basePath ? path.join(process.cwd(), 'src', 'products', product.slug, 'routes', 'index.js') : null
+      // PRIORITY 2: Legacy direct routes (backwards compatibility)
+      // backend/src/products/{slug}/routes/index.js
+      path.join(__dirname, '..', product.slug, 'routes', 'index.js'),
+      
+      // PRIORITY 3: Development path if specified
+      product.basePath ? path.join(process.cwd(), 'src', 'products', product.slug, 'index.js') : null
     ].filter(Boolean);
 
     for (const possiblePath of possiblePaths) {

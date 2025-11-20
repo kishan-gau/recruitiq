@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@recruitiq/auth';
 import { useOrganization } from './OrganizationContext';
-import api from '../services/api';
+import { authService } from '../services';
 
 const WorkspaceContext = createContext();
 

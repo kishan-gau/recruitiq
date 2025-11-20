@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import api from '../services/api'
+import { authService } from '../services'
 import { toast } from 'react-hot-toast'
 
 export default function MFASetup() {

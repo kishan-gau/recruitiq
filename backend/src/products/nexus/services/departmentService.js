@@ -42,7 +42,7 @@ class DepartmentService {
       const sql = `
         INSERT INTO hris.department (
           organization_id, department_name, department_code,
-          description, parent_department_id, manager_id,
+          description, parent_department_id,
           cost_center, is_active, created_by, updated_by
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
@@ -56,7 +56,6 @@ class DepartmentService {
         departmentData.department_code || null,
         departmentData.description || null,
         departmentData.parent_department_id || null,
-        departmentData.manager_id || null,
         departmentData.cost_center || null,
         departmentData.is_active !== false,
         userId,
@@ -94,16 +93,14 @@ class DepartmentService {
       const sql = `
         SELECT d.*, 
                pd.department_name as parent_department_name,
-               m.first_name || ' ' || m.last_name as manager_name,
                COUNT(e.id) as employee_count
         FROM hris.department d
         LEFT JOIN hris.department pd ON d.parent_department_id = pd.id AND pd.deleted_at IS NULL
-        LEFT JOIN hris.employee m ON d.manager_id = m.id AND m.deleted_at IS NULL
         LEFT JOIN hris.employee e ON d.id = e.department_id AND e.deleted_at IS NULL
         WHERE d.id = $1 
           AND d.organization_id = $2
           AND d.deleted_at IS NULL
-        GROUP BY d.id, pd.department_name, m.first_name, m.last_name
+        GROUP BY d.id, pd.department_name
       `;
 
       const result = await query(sql, [id, organizationId], organizationId, {
@@ -142,11 +139,9 @@ class DepartmentService {
       let sql = `
         SELECT d.*,
                pd.department_name as parent_department_name,
-               m.first_name || ' ' || m.last_name as manager_name,
                COUNT(e.id) as employee_count
         FROM hris.department d
         LEFT JOIN hris.department pd ON d.parent_department_id = pd.id AND pd.deleted_at IS NULL
-        LEFT JOIN hris.employee m ON d.manager_id = m.id AND m.deleted_at IS NULL
         LEFT JOIN hris.employee e ON d.id = e.department_id AND e.deleted_at IS NULL
         WHERE d.organization_id = $1 AND d.deleted_at IS NULL
       `;
@@ -171,12 +166,12 @@ class DepartmentService {
       }
 
       if (filters.managerId) {
-        sql += ` AND d.manager_id = $${paramIndex}`;
+        sql += ` `;
         params.push(filters.managerId);
         paramIndex++;
       }
 
-      sql += ` GROUP BY d.id, pd.department_name, m.first_name, m.last_name`;
+      sql += ` GROUP BY d.id, pd.department_name`;
       sql += ` ORDER BY d.department_name ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
@@ -212,7 +207,7 @@ class DepartmentService {
       }
 
       if (filters.managerId) {
-        countSql += ` AND d.manager_id = $${countIndex}`;
+        countSql += ` `;
         countParams.push(filters.managerId);
         countIndex++;
       }
@@ -286,7 +281,7 @@ class DepartmentService {
 
       const updateableFields = [
         'department_name', 'department_code', 'description',
-        'parent_department_id', 'manager_id', 'cost_center', 'is_active'
+        'parent_department_id', 'cost_center', 'is_active'
       ];
 
       updateableFields.forEach(field => {
@@ -427,12 +422,10 @@ class DepartmentService {
           -- Base case: root departments (no parent)
           SELECT 
             d.id, d.department_name, d.department_code, 
-            d.parent_department_id, d.manager_id,
-            m.first_name || ' ' || m.last_name as manager_name,
+            d.parent_department_id,
             0 as level,
             ARRAY[d.id] as path
           FROM hris.department d
-          LEFT JOIN hris.employee m ON d.manager_id = m.id AND m.deleted_at IS NULL
           WHERE d.organization_id = $1 
             AND d.parent_department_id IS NULL
             AND d.deleted_at IS NULL
@@ -442,12 +435,10 @@ class DepartmentService {
           -- Recursive case: child departments
           SELECT 
             d.id, d.department_name, d.department_code,
-            d.parent_department_id, d.manager_id,
-            m.first_name || ' ' || m.last_name as manager_name,
+            d.parent_department_id,
             dt.level + 1,
             dt.path || d.id
           FROM hris.department d
-          LEFT JOIN hris.employee m ON d.manager_id = m.id AND m.deleted_at IS NULL
           INNER JOIN dept_tree dt ON d.parent_department_id = dt.id
           WHERE d.organization_id = $1 
             AND d.deleted_at IS NULL
@@ -473,3 +464,4 @@ class DepartmentService {
 }
 
 export default DepartmentService;
+

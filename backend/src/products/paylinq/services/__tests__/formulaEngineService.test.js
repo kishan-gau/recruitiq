@@ -1,7 +1,7 @@
 /**
  * Formula Engine Service Tests
  * 
- * Tests formula evaluation with the secure expr-eval parser.
+ * Tests formula evaluation with the secure mathjs library.
  * Ensures formulas work correctly after security fix.
  */
 

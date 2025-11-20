@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useShiftTypes } from '@/hooks';
 
 interface ShiftModalProps {
   isOpen: boolean;
@@ -13,7 +14,7 @@ interface ShiftModalProps {
     id: string;
     startTime: string;
     endTime: string;
-    type: string;
+    shiftTypeId?: string;
   };
   onSuccess: () => void;
 }
@@ -21,14 +22,25 @@ interface ShiftModalProps {
 export default function ShiftModal({ isOpen, onClose, employeeId, date, existingShift, onSuccess }: ShiftModalProps) {
   const { success, error } = useToast();
   const { paylinq } = usePaylinqAPI();
+  const { data: shiftTypes = [], isLoading: loadingShiftTypes } = useShiftTypes({ status: 'active' });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     startTime: existingShift?.startTime || '09:00',
     endTime: existingShift?.endTime || '17:00',
-    type: existingShift?.type || 'regular',
+    shiftTypeId: existingShift?.shiftTypeId || '',
     notes: '',
   });
+
+  // Update form when shift types load and no shift type is selected
+  useEffect(() => {
+    if (shiftTypes.length > 0 && !formData.shiftTypeId) {
+      setFormData(prev => ({
+        ...prev,
+        shiftTypeId: shiftTypes[0].id
+      }));
+    }
+  }, [shiftTypes, formData.shiftTypeId]);
 
   // Debug logging
   console.log('ShiftModal props:', { employeeId, date, dateType: typeof date, dateValue: date });
@@ -48,6 +60,7 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
 
     if (!formData.startTime) newErrors.startTime = 'Start time is required';
     if (!formData.endTime) newErrors.endTime = 'End time is required';
+    if (!formData.shiftTypeId) newErrors.shiftTypeId = 'Shift type is required';
     if (formData.startTime && formData.endTime && formData.startTime >= formData.endTime) {
       newErrors.endTime = 'End time must be after start time';
     }
@@ -80,6 +93,7 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
         scheduleDate: date,
         startTime: formData.startTime,
         endTime: formData.endTime,
+        shiftTypeId: formData.shiftTypeId,
         breakMinutes: 0,
         notes: formData.notes,
         status: 'scheduled',
@@ -194,16 +208,27 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
           </FormField>
         </div>
 
-        <FormField label="Shift Type" required>
+        <FormField label="Shift Type" required error={errors.shiftTypeId}>
           <Select
-            value={formData.type}
-            onChange={(e) => handleChange('type', e.target.value)}
-            options={[
-              { value: 'regular', label: 'Regular' },
-              { value: 'overtime', label: 'Overtime' },
-              { value: 'holiday', label: 'Holiday' },
-            ]}
+            value={formData.shiftTypeId}
+            onChange={(e) => handleChange('shiftTypeId', e.target.value)}
+            disabled={loadingShiftTypes}
+            options={
+              loadingShiftTypes
+                ? [{ value: '', label: 'Loading shift types...' }]
+                : shiftTypes.length === 0
+                ? [{ value: '', label: 'No shift types available' }]
+                : shiftTypes.map((st: any) => ({
+                    value: st.id,
+                    label: `${st.shiftName} (${st.startTime} - ${st.endTime})`,
+                  }))
+            }
           />
+          {shiftTypes.length === 0 && !loadingShiftTypes && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              No shift types found. Please create shift types in Settings first.
+            </p>
+          )}
         </FormField>
 
         <FormField label="Notes">

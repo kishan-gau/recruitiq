@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 // Configuration
-const BASE_URL = 'http://localhost:5175';
 const API_URL = 'http://localhost:3000';
 
 test.describe('Employee CRUD Workflow', () => {
   test.beforeEach(async ({ page }) => {
+    // ✅ Authentication loaded from storage state (playwright/.auth/user.json)
     // Navigate to the employees page
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto('/employees');
     
     // Wait for the page to load
     await page.waitForLoadState('networkidle');
@@ -18,7 +18,7 @@ test.describe('Employee CRUD Workflow', () => {
     await expect(page.getByRole('heading', { name: 'Employees' })).toBeVisible();
     
     // Check for search input
-    await expect(page.getByPlaceholder('Search employees...')).toBeVisible();
+    await expect(page.getByPlaceholder(/search by name.*email.*employee number/i)).toBeVisible();
     
     // Check for Add Employee button
     await expect(page.getByRole('link', { name: 'Add Employee' })).toBeVisible();
@@ -29,7 +29,7 @@ test.describe('Employee CRUD Workflow', () => {
     await page.waitForSelector('table', { timeout: 10000 });
     
     // Type in the search box
-    const searchInput = page.getByPlaceholder('Search employees...');
+    const searchInput = page.getByPlaceholder(/search by name.*email.*employee number/i);
     await searchInput.fill('John');
     
     // Wait for search to filter results
@@ -50,7 +50,7 @@ test.describe('Employee CRUD Workflow', () => {
     await page.getByRole('link', { name: 'Add Employee' }).click();
     
     // Verify navigation to create page
-    await expect(page).toHaveURL(/\/employees\/create/);
+    await expect(page).toHaveURL(/\/employees\/new/);
     
     // Check that the form title is present
     await expect(page.getByText('Create Employee')).toBeVisible();
@@ -63,7 +63,7 @@ test.describe('Employee CRUD Workflow', () => {
 
   test('should show validation errors when submitting empty form', async ({ page }) => {
     // Navigate to create page
-    await page.goto(`${BASE_URL}/employees/create`);
+    await page.goto('/employees/create');
     await page.waitForLoadState('networkidle');
     
     // Click submit button without filling any fields
@@ -81,7 +81,7 @@ test.describe('Employee CRUD Workflow', () => {
 
   test('should create a new employee', async ({ page }) => {
     // Navigate to create page
-    await page.goto(`${BASE_URL}/employees/create`);
+    await page.goto('/employees/create');
     await page.waitForLoadState('networkidle');
     
     // Generate unique employee number
@@ -291,13 +291,13 @@ test.describe('Employee CRUD Workflow', () => {
     await page.getByRole('button', { name: 'Back to Employees' }).click();
     
     // Verify navigation back to list
-    await expect(page).toHaveURL(`${BASE_URL}/employees`);
+    await expect(page).toHaveURL('/employees');
     await expect(page.getByRole('heading', { name: 'Employees' })).toBeVisible();
   });
 
   test('should display empty state when no employees found', async ({ page }) => {
     // Search for non-existent employee
-    const searchInput = page.getByPlaceholder('Search employees...');
+    const searchInput = page.getByPlaceholder(/search by name.*email.*employee number/i);
     await searchInput.fill('NonExistentEmployee99999');
     
     // Wait for search to filter results
@@ -318,7 +318,7 @@ test.describe('Employee CRUD Workflow', () => {
 
   test('should cancel employee creation', async ({ page }) => {
     // Navigate to create page
-    await page.goto(`${BASE_URL}/employees/create`);
+    await page.goto('/employees/create');
     await page.waitForLoadState('networkidle');
     
     // Fill in some data
@@ -328,7 +328,7 @@ test.describe('Employee CRUD Workflow', () => {
     await page.getByRole('button', { name: 'Cancel' }).click();
     
     // Verify navigation back to list
-    await expect(page).toHaveURL(`${BASE_URL}/employees`);
+    await expect(page).toHaveURL('/employees');
   });
 
   test('should cancel employee edit', async ({ page }) => {
@@ -357,7 +357,7 @@ test.describe('Employee CRUD Workflow', () => {
 
 test.describe('Employee List Features', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${BASE_URL}/employees`);
+    await page.goto('/employees');
     await page.waitForLoadState('networkidle');
   });
 
@@ -402,7 +402,7 @@ test.describe('Employee List Features', () => {
 
   test('should clear search input', async ({ page }) => {
     // Type in the search box
-    const searchInput = page.getByPlaceholder('Search employees...');
+    const searchInput = page.getByPlaceholder(/search by name.*email.*employee number/i);
     await searchInput.fill('Test Search');
     
     // Clear the search

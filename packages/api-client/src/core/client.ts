@@ -27,7 +27,16 @@ export class APIClient {
   private refreshSubscribers: Array<(token: string) => void> = [];
 
   constructor(config: APIClientConfig = {}, tokenStorage?: TokenStorage) {
-    const baseURL = config.baseURL || (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) || '/api';
+    // ARCHITECTURE: Default baseURL is /api for all core and product endpoints
+    // Products use: /api/products/{slug}/* (e.g., /api/products/paylinq/dashboard)
+    // Core uses: /api/auth/*, /api/csrf-token, /api/organizations
+    const baseURL = config.baseURL !== undefined ? config.baseURL : '/api';
+    
+    console.log('[APIClient] Constructor called with config:', { 
+      providedBaseURL: config.baseURL, 
+      resolvedBaseURL: baseURL,
+      baseURLType: typeof config.baseURL
+    });
     
     this.client = axios.create({
       baseURL,

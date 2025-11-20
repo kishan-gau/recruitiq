@@ -24,10 +24,12 @@ export function validate(schema, source = 'body') {
       // Get data from the specified source
       const data = req[source];
       
-      // Debug logging for payroll-runs endpoint
-      if (req.path === '/payroll-runs' || req.path.includes('/payroll-runs')) {
+      // Debug logging for payroll-runs AND compensation endpoints
+      const isDebugPath = req.path === '/payroll-runs' || req.path.includes('/payroll-runs') || req.path.includes('compensation');
+      if (isDebugPath) {
         console.log('=== VALIDATION DEBUG ===');
         console.log('Path:', req.path);
+        console.log('Full URL:', req.url);
         console.log('Source:', source);
         console.log('Data received:', JSON.stringify(data, null, 2));
         console.log('Schema keys:', Object.keys(schema.describe().keys));

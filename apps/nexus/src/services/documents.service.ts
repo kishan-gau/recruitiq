@@ -1,9 +1,10 @@
 /**
  * Documents Service
  * API service for document management and file operations
+ * NOW USES: @recruitiq/api-client for type-safe API calls
  */
 
-import { apiClient } from './api';
+import { NexusClient, APIClient } from '@recruitiq/api-client';
 import type {
   Document,
   CreateDocumentDTO,
@@ -24,200 +25,184 @@ import type {
   UserDocumentActivity,
 } from '@/types/documents.types';
 
+// Create singleton instance
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
+
 export const documentsService = {
   // ============ Documents ============
   
   async listDocuments(filters?: DocumentFilters): Promise<Document[]> {
-    const params = new URLSearchParams();
-    if (filters?.category) params.append('category', filters.category);
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.accessLevel) params.append('accessLevel', filters.accessLevel);
-    if (filters?.employeeId) params.append('employeeId', filters.employeeId);
-    if (filters?.departmentId) params.append('departmentId', filters.departmentId);
-    if (filters?.uploadedBy) params.append('uploadedBy', filters.uploadedBy);
-    if (filters?.startDate) params.append('startDate', filters.startDate);
-    if (filters?.endDate) params.append('endDate', filters.endDate);
-    if (filters?.search) params.append('search', filters.search);
-    if (filters?.tags) filters.tags.forEach(tag => params.append('tags', tag));
-    
-    const queryString = params.toString();
-    const { data } = await apiClient.get<Document[]>(`/documents${queryString ? `?${queryString}` : ''}`);
-    return data;
+    const response = await nexusClient.listDocuments(filters);
+    // Backend returns { success: true, data: { documents: [...], total, limit, offset } }
+    return response.data.documents as Document[];
   },
 
   async getDocument(id: string): Promise<Document> {
-    const { data } = await apiClient.get<Document>(`/documents/${id}`);
-    return data;
+    const response = await nexusClient.getDocument(id);
+    return response.data as Document;
   },
 
   async createDocument(data: CreateDocumentDTO): Promise<Document> {
-    const response = await apiClient.post<Document>('/documents', data);
-    return response.data;
+    const response = await nexusClient.createDocument(data);
+    return response.data as Document;
   },
 
   async updateDocument(id: string, updates: UpdateDocumentDTO): Promise<Document> {
-    const { data } = await apiClient.put<Document>(`/documents/${id}`, updates);
-    return data;
+    const response = await nexusClient.updateDocument(id, updates);
+    return response.data as Document;
   },
 
   async deleteDocument(id: string): Promise<void> {
-    await apiClient.delete(`/documents/${id}`);
+    await nexusClient.deleteDocument(id);
   },
 
   async downloadDocument(id: string): Promise<Blob> {
-    const { data } = await apiClient.get<Blob>(`/documents/${id}/download`, { responseType: 'blob' });
-    return data;
+    const response = await nexusClient.downloadDocument(id);
+    return response.data;
   },
 
   async getDocumentUrl(id: string): Promise<{ url: string; expiresAt: string }> {
-    const { data } = await apiClient.get<{ url: string; expiresAt: string }>(`/documents/${id}/url`);
-    return data;
+    const response = await nexusClient.getDocumentUrl(id);
+    return response.data as { url: string; expiresAt: string };
   },
 
   async archiveDocument(id: string): Promise<Document> {
-    const { data } = await apiClient.post<Document>(`/documents/${id}/archive`);
-    return data;
+    const response = await nexusClient.archiveDocument(id);
+    return response.data as Document;
   },
 
   async restoreDocument(id: string): Promise<Document> {
-    const { data } = await apiClient.post<Document>(`/documents/${id}/restore`);
-    return data;
+    const response = await nexusClient.restoreDocument(id);
+    return response.data as Document;
   },
 
   // ============ Folders ============
-  
+
   async listFolders(parentId?: string): Promise<DocumentFolder[]> {
-    const url = parentId ? `/documents/folders?parentId=${parentId}` : '/documents/folders';
-    const { data } = await apiClient.get<DocumentFolder[]>(url);
-    return data;
+    const response = await nexusClient.listFolders(parentId);
+    return response.data as DocumentFolder[];
   },
 
   async getFolder(id: string): Promise<DocumentFolder> {
-    const { data } = await apiClient.get<DocumentFolder>(`/documents/folders/${id}`);
-    return data;
+    const response = await nexusClient.getFolder(id);
+    return response.data as DocumentFolder;
   },
 
   async createFolder(data: CreateFolderDTO): Promise<DocumentFolder> {
-    const response = await apiClient.post<DocumentFolder>('/documents/folders', data);
-    return response.data;
+    const response = await nexusClient.createFolder(data);
+    return response.data as DocumentFolder;
   },
 
   async updateFolder(id: string, updates: UpdateFolderDTO): Promise<DocumentFolder> {
-    const { data } = await apiClient.put<DocumentFolder>(`/documents/folders/${id}`, updates);
-    return data;
+    const response = await nexusClient.updateFolder(id, updates);
+    return response.data as DocumentFolder;
   },
 
   async deleteFolder(id: string): Promise<void> {
-    await apiClient.delete(`/documents/folders/${id}`);
+    await nexusClient.deleteFolder(id);
   },
 
   async getFolderDocuments(folderId: string): Promise<Document[]> {
-    const { data } = await apiClient.get<Document[]>(`/documents/folders/${folderId}/documents`);
-    return data;
+    const response = await nexusClient.getFolderDocuments(folderId);
+    return response.data as Document[];
   },
 
   // ============ Access Logs ============
-  
+
   async getDocumentAccessLogs(documentId: string): Promise<DocumentAccessLog[]> {
-    const { data } = await apiClient.get<DocumentAccessLog[]>(`/documents/${documentId}/access-logs`);
-    return data;
+    const response = await nexusClient.getDocumentAccessLogs(documentId);
+    return response.data as DocumentAccessLog[];
   },
 
   async logDocumentAccess(documentId: string, action: string): Promise<void> {
-    await apiClient.post(`/documents/${documentId}/log-access`, { action });
+    await nexusClient.logDocumentAccess(documentId, action);
   },
 
   // ============ Signatures ============
-  
+
   async listSignatureRequests(): Promise<DocumentSignature[]> {
-    const { data } = await apiClient.get<DocumentSignature[]>('/documents/signatures');
-    return data;
+    const response = await nexusClient.listSignatureRequests();
+    return response.data as DocumentSignature[];
   },
 
   async getSignatureRequest(id: string): Promise<DocumentSignature> {
-    const { data } = await apiClient.get<DocumentSignature>(`/documents/signatures/${id}`);
-    return data;
+    const response = await nexusClient.getSignatureRequest(id);
+    return response.data as DocumentSignature;
   },
 
   async requestSignature(data: RequestSignatureDTO): Promise<DocumentSignature> {
-    const response = await apiClient.post<DocumentSignature>('/documents/signatures/request', data);
-    return response.data;
+    const response = await nexusClient.requestSignature(data);
+    return response.data as DocumentSignature;
   },
 
   async submitSignature(id: string, data: SubmitSignatureDTO): Promise<DocumentSignature> {
-    const response = await apiClient.post<DocumentSignature>(`/documents/signatures/${id}/sign`, data);
-    return response.data;
+    const response = await nexusClient.submitSignature(id, data);
+    return response.data as DocumentSignature;
   },
 
   async declineSignature(id: string, reason: string): Promise<DocumentSignature> {
-    const response = await apiClient.post<DocumentSignature>(`/documents/signatures/${id}/decline`, { reason });
-    return response.data;
+    const response = await nexusClient.declineSignature(id, reason);
+    return response.data as DocumentSignature;
   },
 
   // ============ Templates ============
-  
+
   async listTemplates(category?: string): Promise<DocumentTemplate[]> {
-    const url = category ? `/documents/templates?category=${category}` : '/documents/templates';
-    const { data } = await apiClient.get<DocumentTemplate[]>(url);
-    return data;
+    const response = await nexusClient.listTemplates(category);
+    return response.data as DocumentTemplate[];
   },
 
   async getTemplate(id: string): Promise<DocumentTemplate> {
-    const { data } = await apiClient.get<DocumentTemplate>(`/documents/templates/${id}`);
-    return data;
+    const response = await nexusClient.getTemplate(id);
+    return response.data as DocumentTemplate;
   },
 
   async createTemplate(data: CreateTemplateDTO): Promise<DocumentTemplate> {
-    const response = await apiClient.post<DocumentTemplate>('/documents/templates', data);
-    return response.data;
+    const response = await nexusClient.createTemplate(data);
+    return response.data as DocumentTemplate;
   },
 
   async updateTemplate(id: string, updates: UpdateTemplateDTO): Promise<DocumentTemplate> {
-    const { data } = await apiClient.put<DocumentTemplate>(`/documents/templates/${id}`, updates);
-    return data;
+    const response = await nexusClient.updateTemplate(id, updates);
+    return response.data as DocumentTemplate;
   },
 
   async deleteTemplate(id: string): Promise<void> {
-    await apiClient.delete(`/documents/templates/${id}`);
+    await nexusClient.deleteTemplate(id);
   },
 
   async generateFromTemplate(templateId: string, data: Record<string, any>): Promise<Document> {
-    const response = await apiClient.post<Document>(`/documents/templates/${templateId}/generate`, data);
-    return response.data;
+    const response = await nexusClient.generateFromTemplate(templateId, data);
+    return response.data as Document;
   },
 
   // ============ Upload ============
-  
+
   async uploadFile(file: File, metadata: Partial<CreateDocumentDTO>): Promise<Document> {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('metadata', JSON.stringify(metadata));
-    
-    const { data } = await apiClient.post<Document>('/documents/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return data;
+    const response = await nexusClient.uploadFile(file, metadata);
+    return response.data as Document;
   },
 
   // ============ Statistics & Reports ============
-  
+
   async getStatistics(): Promise<DocumentStatistics> {
-    const { data } = await apiClient.get<DocumentStatistics>('/documents/statistics');
-    return data;
+    const response = await nexusClient.getDocumentStatistics();
+    return response.data as DocumentStatistics;
   },
 
   async getDocumentActivity(documentId: string): Promise<DocumentActivityReport> {
-    const { data } = await apiClient.get<DocumentActivityReport>(`/documents/${documentId}/activity`);
-    return data;
+    const response = await nexusClient.getDocumentActivity(documentId);
+    return response.data as DocumentActivityReport;
   },
 
   async getUserActivity(userId: string, startDate: string, endDate: string): Promise<UserDocumentActivity> {
-    const { data } = await apiClient.get<UserDocumentActivity>(`/documents/activity/user/${userId}?startDate=${startDate}&endDate=${endDate}`);
-    return data;
+    const response = await nexusClient.getUserDocumentActivity(userId, startDate, endDate);
+    return response.data as UserDocumentActivity;
   },
 
   async getExpiringDocuments(days: number = 30): Promise<Document[]> {
-    const { data } = await apiClient.get<Document[]>(`/documents/expiring?days=${days}`);
-    return data;
+    const response = await nexusClient.getExpiringDocuments(days);
+    return response.data as Document[];
   },
 };
