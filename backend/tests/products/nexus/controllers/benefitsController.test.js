@@ -72,10 +72,14 @@ describe('BenefitsController', () => {
         coverageAmount: 50000
       };
 
+      // Service returns DB format (snake_case)
       const createdPlan = {
         id: 'plan-123',
-        ...planData,
-        organizationId: 'org-123'
+        plan_name: 'Health Insurance',
+        plan_type: 'health',
+        description: 'Comprehensive health coverage',
+        coverage_amount: 50000,
+        organization_id: 'org-123'
       };
 
       mockReq.body = planData;
@@ -83,15 +87,20 @@ describe('BenefitsController', () => {
 
       await controller.createPlan(mockReq, mockRes);
 
+      // Controller transforms API data (camelCase) to DB format (snake_case)
       expect(controller.service.createPlan).toHaveBeenCalledWith(
-        planData,
+        expect.objectContaining({
+          plan_name: 'Health Insurance'
+        }),
         'org-123',
         'user-123'
       );
       expect(mockRes.status).toHaveBeenCalledWith(201);
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: createdPlan
+        plan: expect.objectContaining({
+          planName: 'Health Insurance'  // Transformed back to camelCase by DTO
+        })
       });
     });
 
@@ -112,10 +121,11 @@ describe('BenefitsController', () => {
 
   describe('getPlan', () => {
     it('should get a plan by ID successfully', async () => {
+      // Service returns DB format (snake_case)
       const plan = {
         id: 'plan-123',
-        planName: 'Health Insurance',
-        planType: 'health'
+        plan_name: 'Health Insurance',
+        plan_type: 'health'
       };
 
       mockReq.params = { id: 'plan-123' };
@@ -126,7 +136,9 @@ describe('BenefitsController', () => {
       expect(controller.service.getPlan).toHaveBeenCalledWith('plan-123', 'org-123');
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: plan
+        plan: expect.objectContaining({
+          planName: 'Health Insurance'  // Transformed to camelCase by DTO
+        })
       });
     });
 
@@ -159,9 +171,10 @@ describe('BenefitsController', () => {
 
   describe('listPlans', () => {
     it('should list plans with filters', async () => {
+      // Service returns DB format (snake_case)
       const plans = [
-        { id: 'plan-1', planName: 'Health', planType: 'health' },
-        { id: 'plan-2', planName: 'Dental', planType: 'dental' }
+        { id: 'plan-1', plan_name: 'Health', plan_type: 'health' },
+        { id: 'plan-2', plan_name: 'Dental', plan_type: 'dental' }
       ];
 
       mockReq.query = {
@@ -171,7 +184,12 @@ describe('BenefitsController', () => {
         offset: '0'
       };
 
-      controller.service.listPlans.mockResolvedValue(plans);
+      controller.service.listPlans.mockResolvedValue({
+        plans,
+        total: 2,
+        limit: 20,
+        offset: 0
+      });
 
       await controller.listPlans(mockReq, mockRes);
 
@@ -182,7 +200,13 @@ describe('BenefitsController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: plans
+        plans: expect.arrayContaining([
+          expect.objectContaining({ planName: 'Health' }),  // Transformed to camelCase
+          expect.objectContaining({ planName: 'Dental' })
+        ]),
+        total: 2,
+        limit: 20,
+        offset: 0
       });
     });
 
@@ -214,10 +238,11 @@ describe('BenefitsController', () => {
 
   describe('updatePlan', () => {
     it('should update a plan successfully', async () => {
-      const updateData = { planName: 'Updated Plan' };
+      const updateData = { planName: 'Updated Plan', contributionFrequency: 'monthly' };
       const updatedPlan = {
         id: 'plan-123',
-        planName: 'Updated Plan'
+        plan_name: 'Updated Plan',
+        contribution_frequency: 'monthly'
       };
 
       mockReq.params = { id: 'plan-123' };
@@ -226,15 +251,21 @@ describe('BenefitsController', () => {
 
       await controller.updatePlan(mockReq, mockRes);
 
+      // Controller transforms API data (camelCase) to DB format (snake_case)
       expect(controller.service.updatePlan).toHaveBeenCalledWith(
         'plan-123',
-        updateData,
+        expect.objectContaining({
+          plan_name: 'Updated Plan',
+          contribution_frequency: 'monthly'
+        }),
         'org-123',
         'user-123'
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: updatedPlan
+        plan: expect.objectContaining({
+          id: 'plan-123'
+        })
       });
     });
 
@@ -280,7 +311,7 @@ describe('BenefitsController', () => {
       expect(mockRes.status).toHaveBeenCalledWith(201);
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: createdEnrollment
+        enrollment: createdEnrollment
       });
     });
 
@@ -320,7 +351,7 @@ describe('BenefitsController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: updatedEnrollment
+        enrollment: updatedEnrollment
       });
     });
 
@@ -380,7 +411,7 @@ describe('BenefitsController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: terminatedEnrollment
+        enrollment: terminatedEnrollment
       });
     });
 
@@ -415,7 +446,7 @@ describe('BenefitsController', () => {
       expect(controller.service.getEnrollment).toHaveBeenCalledWith('enrollment-123', 'org-123');
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: enrollment
+        enrollment
       });
     });
 
@@ -461,7 +492,7 @@ describe('BenefitsController', () => {
       expect(controller.service.getEmployeeEnrollments).toHaveBeenCalledWith('emp-123', 'org-123');
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: enrollments
+        enrollments
       });
     });
 
@@ -494,7 +525,7 @@ describe('BenefitsController', () => {
       expect(controller.service.getActiveEnrollments).toHaveBeenCalledWith('org-123', 'plan-123');
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: enrollments
+        enrollments
       });
     });
 
@@ -509,7 +540,7 @@ describe('BenefitsController', () => {
       expect(controller.service.getActiveEnrollments).toHaveBeenCalledWith('org-123', undefined);
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: enrollments
+        enrollments
       });
     });
 

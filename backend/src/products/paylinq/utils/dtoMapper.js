@@ -596,6 +596,7 @@ export function mapPayrollRunApiToDb(apiData) {
   if (apiData.paymentDate) mapped.paymentDate = apiData.paymentDate;
   if (apiData.runType) mapped.runType = apiData.runType;
   if (apiData.status) mapped.status = apiData.status;
+  if (apiData.metadata) mapped.metadata = apiData.metadata;
   
   // Generate runNumber if not provided (required by service)
   if (!mapped.runNumber && apiData.periodStart) {

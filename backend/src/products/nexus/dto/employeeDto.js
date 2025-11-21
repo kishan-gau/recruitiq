@@ -64,20 +64,21 @@ export function mapEmployeeApiToDb(apiData) {
   const dbData = {};
 
   // Only include fields present in API data
-  if (apiData.employeeNumber !== undefined) {
-    dbData.employee_number = apiData.employeeNumber;
+  // Support both camelCase (API) and snake_case (direct DB format)
+  if (apiData.employeeNumber !== undefined || apiData.employee_number !== undefined) {
+    dbData.employee_number = apiData.employee_number || apiData.employeeNumber;
   }
-  if (apiData.firstName !== undefined) {
-    dbData.first_name = apiData.firstName;
+  if (apiData.firstName !== undefined || apiData.first_name !== undefined) {
+    dbData.first_name = apiData.first_name || apiData.firstName;
   }
-  if (apiData.middleName !== undefined) {
-    dbData.middle_name = apiData.middleName;
+  if (apiData.middleName !== undefined || apiData.middle_name !== undefined) {
+    dbData.middle_name = apiData.middle_name || apiData.middleName;
   }
-  if (apiData.lastName !== undefined) {
-    dbData.last_name = apiData.lastName;
+  if (apiData.lastName !== undefined || apiData.last_name !== undefined) {
+    dbData.last_name = apiData.last_name || apiData.lastName;
   }
-  if (apiData.preferredName !== undefined) {
-    dbData.preferred_name = apiData.preferredName;
+  if (apiData.preferredName !== undefined || apiData.preferred_name !== undefined) {
+    dbData.preferred_name = apiData.preferred_name || apiData.preferredName;
   }
   if (apiData.email !== undefined) {
     dbData.email = apiData.email;
@@ -85,32 +86,32 @@ export function mapEmployeeApiToDb(apiData) {
   if (apiData.phone !== undefined) {
     dbData.phone = apiData.phone;
   }
-  if (apiData.mobilePhone !== undefined) {
-    dbData.mobile_phone = apiData.mobilePhone;
+  if (apiData.mobilePhone !== undefined || apiData.mobile_phone !== undefined) {
+    dbData.mobile_phone = apiData.mobile_phone || apiData.mobilePhone;
   }
-  if (apiData.hireDate !== undefined) {
-    dbData.hire_date = apiData.hireDate;
+  if (apiData.hireDate !== undefined || apiData.hire_date !== undefined) {
+    dbData.hire_date = apiData.hire_date || apiData.hireDate;
   }
-  if (apiData.terminationDate !== undefined) {
-    dbData.termination_date = apiData.terminationDate;
+  if (apiData.terminationDate !== undefined || apiData.termination_date !== undefined) {
+    dbData.termination_date = apiData.termination_date || apiData.terminationDate;
   }
-  if (apiData.employmentStatus !== undefined) {
-    dbData.employment_status = apiData.employmentStatus;
+  if (apiData.employmentStatus !== undefined || apiData.employment_status !== undefined) {
+    dbData.employment_status = apiData.employment_status || apiData.employmentStatus;
   }
-  if (apiData.employmentType !== undefined) {
-    dbData.employment_type = apiData.employmentType;
+  if (apiData.employmentType !== undefined || apiData.employment_type !== undefined) {
+    dbData.employment_type = apiData.employment_type || apiData.employmentType;
   }
-  if (apiData.departmentId !== undefined) {
-    dbData.department_id = apiData.departmentId;
+  if (apiData.departmentId !== undefined || apiData.department_id !== undefined) {
+    dbData.department_id = apiData.department_id || apiData.departmentId;
   }
-  if (apiData.locationId !== undefined) {
-    dbData.location_id = apiData.locationId;
+  if (apiData.locationId !== undefined || apiData.location_id !== undefined) {
+    dbData.location_id = apiData.location_id || apiData.locationId;
   }
-  if (apiData.managerId !== undefined) {
-    dbData.manager_id = apiData.managerId;
+  if (apiData.managerId !== undefined || apiData.manager_id !== undefined) {
+    dbData.manager_id = apiData.manager_id || apiData.managerId;
   }
-  if (apiData.jobTitle !== undefined) {
-    dbData.job_title = apiData.jobTitle;
+  if (apiData.jobTitle !== undefined || apiData.job_title !== undefined) {
+    dbData.job_title = apiData.job_title || apiData.jobTitle;
   }
 
   // Compensation fields (for initial employee creation)

@@ -57,10 +57,13 @@ class CacheService {
       const redisHost = process.env.REDIS_HOST || 'localhost';
       const redisPort = process.env.REDIS_PORT || 6379;
       const redisUrl = `redis://${redisHost}:${redisPort}`;
+      
+      // Only include password if it's set and not empty
+      const redisPassword = process.env.REDIS_PASSWORD?.trim();
 
-      logger.info('Connecting to Redis cache...', { url: redisUrl });
+      logger.info('Connecting to Redis cache...', { url: redisUrl, hasPassword: !!redisPassword });
 
-      this.client = createClient({
+      const redisConfig = {
         url: redisUrl,
         socket: {
           reconnectStrategy: (retries) => {
@@ -72,7 +75,14 @@ class CacheService {
             return Math.min(retries * 100, 3000);
           }
         }
-      });
+      };
+      
+      // Only add password if it's actually set
+      if (redisPassword) {
+        redisConfig.password = redisPassword;
+      }
+      
+      this.client = createClient(redisConfig);
 
       // Event handlers
       this.client.on('error', (err) => {
@@ -394,6 +404,28 @@ class CacheService {
    */
   getRefreshTokenKey(token) {
     return `refresh_token:${token}`;
+  }
+
+  /**
+   * Disconnect from Redis
+   * Should be called during graceful shutdown or test cleanup
+   */
+  async disconnect() {
+    if (this.client && this.isConnected) {
+      try {
+        await this.client.quit();
+        this.isConnected = false;
+        logger.info('Redis client disconnected gracefully');
+      } catch (error) {
+        logger.error('Error disconnecting Redis client:', { error: error.message });
+        // Force disconnect
+        try {
+          await this.client.disconnect();
+        } catch (e) {
+          // Ignore
+        }
+      }
+    }
   }
 
   /**

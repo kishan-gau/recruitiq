@@ -4,7 +4,7 @@
  * Direct service-to-service calls for monolithic architecture
  */
 
-import pool from '../../../config/database.js';
+import pool, { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import integrationErrorHandler from '../../../shared/utils/integrationErrorHandler.js';
 import PayrollRepository from '../repositories/payrollRepository.js';
@@ -57,9 +57,9 @@ class PaylinqIntegrationService {
    * @param {string} contractData.jobTitle - Job title
    * @param {string} contractData.employmentType - Employment type (full_time, part_time, etc.)
    * @param {string} createdBy - UUID of user creating the record
-   * @returns {Promise<Object>} Created payroll records
+   * @returns {Promise<Object>} Updated payroll records
    */
-  async setupPayrollFromNexusContractInternal(contractData, createdBy) {
+  async updatePayrollFromNexusContractInternal(contractData, updatedBy) {
     const client = await pool.connect();
     
     try {

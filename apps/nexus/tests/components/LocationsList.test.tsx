@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import LocationsList from '../../src/pages/locations/LocationsList';
 import { ToastProvider } from '../../src/contexts/ToastContext';
-import { setupServer } from 'msw/node';
+import { server } from '../mocks/server';
 import { http, HttpResponse } from 'msw';
 import type { Location } from '../../src/types/location.types';
 
@@ -24,82 +24,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mock data
-const mockLocations: Location[] = [
-  {
-    id: 'loc-1',
-    organizationId: 'org-1',
-    locationCode: 'HQ',
-    locationName: 'Headquarters',
-    locationType: 'headquarters',
-    addressLine1: '123 Main St',
-    city: 'San Francisco',
-    stateProvince: 'CA',
-    postalCode: '94105',
-    country: 'USA',
-    phone: '+1-555-0100',
-    email: 'hq@company.com',
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 'loc-2',
-    organizationId: 'org-1',
-    locationCode: 'NYC',
-    locationName: 'New York Branch',
-    locationType: 'branch',
-    addressLine1: '456 Broadway',
-    city: 'New York',
-    stateProvince: 'NY',
-    postalCode: '10013',
-    country: 'USA',
-    phone: '+1-555-0200',
-    isActive: true,
-    createdAt: '2024-01-02T00:00:00Z',
-    updatedAt: '2024-01-02T00:00:00Z',
-  },
-  {
-    id: 'loc-3',
-    organizationId: 'org-1',
-    locationCode: 'WH1',
-    locationName: 'Warehouse 1',
-    locationType: 'warehouse',
-    addressLine1: '789 Industrial Blvd',
-    city: 'Newark',
-    stateProvince: 'NJ',
-    postalCode: '07102',
-    country: 'USA',
-    isActive: false,
-    createdAt: '2024-01-03T00:00:00Z',
-    updatedAt: '2024-01-03T00:00:00Z',
-  },
-];
-
-// MSW server setup
-const server = setupServer(
-  http.get('/api/nexus/locations', ({ request }) => {
-    const url = new URL(request.url);
-    const locationType = url.searchParams.get('locationType');
-    const isActive = url.searchParams.get('isActive');
-
-    let filtered = [...mockLocations];
-
-    if (locationType) {
-      filtered = filtered.filter((loc) => loc.locationType === locationType);
-    }
-
-    if (isActive !== null) {
-      const activeFilter = isActive === 'true';
-      filtered = filtered.filter((loc) => loc.isActive === activeFilter);
-    }
-
-    return HttpResponse.json(filtered);
-  }),
-  http.delete('/api/nexus/locations/:id', () => {
-    return new HttpResponse(null, { status: 204 });
-  })
-);
+// Use centralized MSW server with all handlers
 
 beforeEach(() => {
   server.listen();
@@ -485,8 +410,8 @@ describe('LocationsList', () => {
   describe('Empty States', () => {
     it('displays empty state when no locations exist', async () => {
       server.use(
-        http.get('/api/nexus/locations', () => {
-          return HttpResponse.json([]);
+        http.get('*/api/products/nexus/locations', () => {
+          return HttpResponse.json({ success: true, data: [] });
         })
       );
 
@@ -519,7 +444,7 @@ describe('LocationsList', () => {
   describe('Error Handling', () => {
     it('displays error message when fetch fails', async () => {
       server.use(
-        http.get('/api/nexus/locations', () => {
+        http.get('*/api/products/nexus/locations', () => {
           return new HttpResponse(null, { status: 500 });
         })
       );

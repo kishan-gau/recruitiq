@@ -133,7 +133,7 @@ describe('Pay Template Workflow E2E Tests', () => {
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@test.com`,
       hireDate: '2024-01-15T00:00:00.000Z',
       status: 'active',
-      paymentMethod: 'direct_deposit',
+      paymentMethod: 'ach',
       bankAccountNumber: '1234567890',
       bankRoutingNumber: '987654321',
       metadata: {

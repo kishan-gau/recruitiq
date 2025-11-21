@@ -20,10 +20,11 @@ This document establishes the coding standards, architectural patterns, and best
 4. [Testing Standards](#testing-standards)
 5. [Security Standards](#security-standards)
 6. [Database Standards](#database-standards)
-7. [API Standards](#api-standards)
-8. [Git & Version Control](#git--version-control)
-9. [Documentation Standards](#documentation-standards)
-10. [Performance Standards](#performance-standards)
+7. [RBAC & Authorization](#rbac--authorization)
+8. [API Standards](#api-standards)
+9. [Git & Version Control](#git--version-control)
+10. [Documentation Standards](#documentation-standards)
+11. [Performance Standards](#performance-standards)
 
 ---
 
@@ -291,6 +292,11 @@ describe('ServiceName', () => {
 
 See [SECURITY_STANDARDS.md](./docs/SECURITY_STANDARDS.md) for complete security guidelines.
 
+**Role-Based Access Control (RBAC):**
+- [RBAC Implementation Guide](./docs/RBAC_IMPLEMENTATION_GUIDE.md) - Complete RBAC system design
+- [RBAC Quick Reference](./docs/RBAC_QUICK_REFERENCE.md) - Common patterns and examples
+- [RBAC Migration Checklist](./docs/RBAC_MIGRATION_CHECKLIST.md) - Step-by-step migration guide
+
 ### Critical Security Rules
 
 1. **NEVER trust user input** - Always validate and sanitize
@@ -298,6 +304,7 @@ See [SECURITY_STANDARDS.md](./docs/SECURITY_STANDARDS.md) for complete security 
 3. **ALWAYS filter by organizationId** - Enforce tenant isolation
 4. **NEVER expose sensitive data** - Redact in logs and responses
 5. **ALWAYS use HTTPS** - No exceptions in production
+6. **ALWAYS check permissions** - Implement RBAC for all protected endpoints
 
 ---
 
@@ -501,12 +508,60 @@ Standards should evolve. To propose changes:
 
 ---
 
+## RBAC Standards
+
+### Role-Based Access Control (MANDATORY)
+
+**ALL authorization decisions MUST use the RBAC middleware.**
+
+**Comprehensive Documentation:**
+- **[RBAC Implementation Guide](./RBAC_IMPLEMENTATION_GUIDE.md)** - Complete guide with examples
+- **[RBAC Quick Reference](./RBAC_QUICK_REFERENCE.md)** - Cheat sheet for common patterns
+- **[RBAC Migration Checklist](./RBAC_MIGRATION_CHECKLIST.md)** - Step-by-step migration guide
+
+**Core Principles:**
+1. **Permission-Based** - Check permissions, not roles
+2. **Declarative** - Use middleware, not inline checks
+3. **Centralized** - All permissions defined in `backend/src/config/rbac.js`
+4. **Testable** - Comprehensive test coverage for authorization logic
+
+**Quick Example:**
+```javascript
+// ✅ CORRECT: Permission-based middleware
+router.post('/employees', 
+  authenticate, 
+  requirePermission('employees.create'),
+  createEmployee
+);
+
+// ❌ WRONG: Role-based checks
+router.post('/employees', 
+  authenticate, 
+  requireRole('admin'),  // Don't check roles!
+  createEmployee
+);
+```
+
+**See RBAC documentation for:**
+- Permission naming conventions
+- Resource ownership patterns
+- Conditional permissions
+- Frontend integration
+- Testing strategies
+
+---
+
 ## References
 
-- [Phase 1: Service Testing Complete](./backend/docs/PHASE1_SERVICE_TESTING_COMPLETE.md)
-- [Phase 2: Controller Migration Complete](./backend/docs/PHASE2_CONTROLLER_MIGRATION_COMPLETE.md)
-- [Architecture Decision Records](./docs/ADR/)
-- [API Documentation](./docs/API.md)
+- **[Backend Standards](./BACKEND_STANDARDS.md)** - Layer architecture, services, repositories
+- **[Frontend Standards](./FRONTEND_STANDARDS.md)** - React components, hooks, state management
+- **[Testing Standards](./TESTING_STANDARDS.md)** - Unit, integration, E2E testing
+- **[Security Standards](./SECURITY_STANDARDS.md)** - Authentication, authorization, data protection
+- **[RBAC Implementation Guide](./RBAC_IMPLEMENTATION_GUIDE.md)** - Complete RBAC documentation
+- **[Database Standards](./DATABASE_STANDARDS.md)** - Query patterns, migrations, indexing
+- **[API Standards](./API_STANDARDS.md)** - REST conventions, response format, error handling
+- **[Git Standards](./GIT_STANDARDS.md)** - Commit messages, branching, PR process
+- **[Performance Standards](./PERFORMANCE_STANDARDS.md)** - Optimization, caching, monitoring
 
 ---
 

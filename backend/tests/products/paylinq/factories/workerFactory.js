@@ -59,7 +59,7 @@ export function createWorkerEntity(overrides = {}) {
     hire_date: faker.date.past({ years: 2 }),
     termination_date: null,
     status: 'active',
-    payment_method: 'direct_deposit',
+    payment_method: 'ach',
     bank_account_number: faker.finance.accountNumber(),
     bank_routing_number: faker.finance.routingNumber(),
     tax_info: {

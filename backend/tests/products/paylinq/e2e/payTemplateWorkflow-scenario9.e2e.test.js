@@ -13,8 +13,9 @@
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
-import app from '../../../../src/server.js';
+import appPromise from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
+import cacheService from '../../../../src/services/cacheService.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { cleanupTestEmployees } from '../helpers/employeeTestHelper.js';
@@ -22,6 +23,7 @@ import { cleanupTestEmployees } from '../helpers/employeeTestHelper.js';
 // Uses cookie-based authentication per security requirements
 describe('Scenario 9: Hourly and Unit-Based Workers', () => {
   // Store cookies and CSRF token for authenticated requests
+  let app;
   let authCookies;
   let csrfToken;
   let organizationId;
@@ -31,6 +33,9 @@ describe('Scenario 9: Hourly and Unit-Based Workers', () => {
   let testPayrollRuns = [];
 
   beforeAll(async () => {
+    // Initialize app
+    app = await appPromise;
+    
     // Create test organization with unique slug to avoid conflicts
     organizationId = uuidv4();
     const uniqueSlug = `testhourly-${organizationId.slice(0, 8)}`;
@@ -117,6 +122,8 @@ describe('Scenario 9: Hourly and Unit-Based Workers', () => {
     await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [organizationId]);
     await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
 
+    // Close Redis connection
+    await cacheService.disconnect();
     await pool.end();
   });
 

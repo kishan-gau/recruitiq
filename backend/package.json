@@ -41,7 +41,14 @@
     "audit:fix": "npm audit fix",
     "audit:app": "node scripts/security-audit.js",
     "build:check": "echo 'Checking production readiness...' && npm run lint && npm run test",
-    "deploy:check": "node scripts/deployment-check.js"
+    "deploy:check": "node scripts/deployment-check.js",
+    "secrets:generate": "node scripts/secrets-cli.js generate",
+    "secrets:store": "node scripts/secrets-cli.js store",
+    "secrets:get": "node scripts/secrets-cli.js get",
+    "secrets:rotate": "node scripts/secrets-cli.js rotate",
+    "secrets:delete": "node scripts/secrets-cli.js delete",
+    "secrets:list": "node scripts/secrets-cli.js list",
+    "secrets:health": "node scripts/secrets-cli.js health"
   },
   "keywords": [
     "recruitment",
@@ -104,3 +111,4 @@
     "cookie": "^0.7.0"
   }
 }
+

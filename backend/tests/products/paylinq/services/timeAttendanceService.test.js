@@ -217,7 +217,7 @@ describe('TimeAttendanceService - Shift Type Management', () => {
 
       expect(result).toEqual(mockShiftTypes);
       expect(result.length).toBe(2);
-      expect(mockRepository.findShiftTypes).toHaveBeenCalledWith({}, testOrgId);
+      expect(mockRepository.findShiftTypes).toHaveBeenCalledWith(testOrgId, {});
     });
 
     it('should filter by status when provided', async () => {
@@ -234,9 +234,9 @@ describe('TimeAttendanceService - Shift Type Management', () => {
       const result = await service.getAllShiftTypes(testOrgId, { status: 'active' });
 
       expect(result).toEqual(activeShiftTypes);
-      expect(mockRepository.findShiftTypes).toHaveBeenCalledWith({
+      expect(mockRepository.findShiftTypes).toHaveBeenCalledWith(testOrgId, {
         status: 'active',
-      }, testOrgId);
+      });
     });
 
     it('should return empty array when no shift types exist', async () => {

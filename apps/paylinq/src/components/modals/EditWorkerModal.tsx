@@ -53,7 +53,33 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
   });
 
   useEffect(() => {
-    if (worker) {
+    if (worker && workerTypes.length > 0) {
+      // Find the worker type ID from the name/code
+      // The worker.workerType might be a name, code, or ID
+      // Try exact match first, then case-insensitive, then fuzzy match
+      let matchedType = workerTypes.find((type: any) => 
+        type.id === worker.workerType || 
+        type.name === worker.workerType || 
+        type.code === worker.workerType
+      );
+      
+      // If no exact match, try case-insensitive
+      if (!matchedType) {
+        matchedType = workerTypes.find((type: any) =>
+          type.name?.toLowerCase() === worker.workerType?.toLowerCase() ||
+          type.code?.toLowerCase() === worker.workerType?.toLowerCase()
+        );
+      }
+      
+      // If still no match, try partial/fuzzy match (remove spaces, hyphens)
+      if (!matchedType) {
+        const normalizedWorkerType = worker.workerType?.replace(/[\s-]/g, '').toLowerCase();
+        matchedType = workerTypes.find((type: any) =>
+          type.name?.replace(/[\s-]/g, '').toLowerCase() === normalizedWorkerType ||
+          type.code?.replace(/[\s-]/g, '').toLowerCase() === normalizedWorkerType
+        );
+      }
+      
       setFormData({
         fullName: worker.fullName,
         email: worker.email,
@@ -61,7 +87,7 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
         nationalId: worker.nationalId,
         dateOfBirth: worker.dateOfBirth,
         startDate: worker.startDate,
-        workerType: worker.workerType,
+        workerType: matchedType?.id || '',
         department: worker.department,
         position: worker.position,
         compensation: worker.compensation.toString(),
@@ -71,7 +97,7 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
         address: worker.address || '',
       });
     }
-  }, [worker]);
+  }, [worker, workerTypes]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -107,7 +133,7 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || nameParts[0] || '';
 
-      const response = await paylinq.updateWorker(worker.id, {
+      const updateData = {
         firstName: firstName,
         lastName: lastName,
         email: formData.email,
@@ -125,7 +151,13 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
           compensation: Number(formData.compensation),
           address: formData.address,
         },
-      });
+      };
+
+      console.log('[EditWorkerModal] Sending update data:', updateData);
+
+      const response = await paylinq.updateWorker(worker.id, updateData);
+
+      console.log('[EditWorkerModal] Update response:', response);
 
       if (response.success) {
         success(`Worker ${formData.fullName} has been updated successfully`);
@@ -133,6 +165,9 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
         onClose();
       }
     } catch (err: any) {
+      console.error('[EditWorkerModal] Update error:', err);
+      console.error('[EditWorkerModal] Error response:', err.response?.data);
+      
       // Handle validation errors from API
       if (err.response?.status === 400 && err.response?.data?.errors) {
         const apiErrors = err.response.data.errors;

@@ -29,11 +29,17 @@ class IPTrackingService {
     }
 
     try {
-      this.client = createClient({
+      const redisConfig = {
         url: config.redis.url,
-        password: config.redis.password,
         database: config.redis.db,
-      });
+      };
+      
+      // Only add password if it's actually set
+      if (config.redis.password) {
+        redisConfig.password = config.redis.password;
+      }
+      
+      this.client = createClient(redisConfig);
 
       this.client.on('error', (err) => {
         logger.error('IP Tracking Redis Client Error:', err);

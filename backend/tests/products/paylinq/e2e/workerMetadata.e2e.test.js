@@ -76,7 +76,7 @@ describe.skip('Worker Metadata E2E Tests', () => {
         email: 'john.metadata@test.com',
         hireDate: '2024-01-15T00:00:00.000Z',
         status: 'active',
-        paymentMethod: 'direct_deposit',
+        paymentMethod: 'ach',
         bankAccountNumber: '1234567890',
         bankRoutingNumber: '987654321',
         metadata: {
@@ -338,7 +338,7 @@ describe.skip('Worker Metadata E2E Tests', () => {
         email: 'alice.partial@test.com',
         hireDate: '2024-03-01T00:00:00.000Z',
         status: 'active',
-        paymentMethod: 'direct_deposit',
+        paymentMethod: 'ach',
         metadata: {
           phone: '+597-111-2222',
           department: 'Sales',
@@ -393,7 +393,7 @@ describe.skip('Worker Metadata E2E Tests', () => {
         email: 'jose.special@test.com',
         hireDate: '2024-04-01T00:00:00.000Z',
         status: 'active',
-        paymentMethod: 'direct_deposit',
+        paymentMethod: 'ach',
         metadata: {
           phone: '+597-555-1234',
           department: 'R&D',
@@ -433,7 +433,7 @@ describe.skip('Worker Metadata E2E Tests', () => {
         email: 'carlos.nested@test.com',
         hireDate: '2024-05-01T00:00:00.000Z',
         status: 'active',
-        paymentMethod: 'direct_deposit',
+        paymentMethod: 'ach',
         metadata: {
           phone: '+597-666-7777',
           department: 'IT',
@@ -507,7 +507,7 @@ describe.skip('Worker Metadata E2E Tests', () => {
         email: formData.email,
         hireDate: hireDateISO,
         status: 'active',
-        paymentMethod: 'direct_deposit',
+        paymentMethod: 'ach',
         bankAccountNumber: formData.bankAccount,
         bankRoutingNumber: '',
         metadata: {

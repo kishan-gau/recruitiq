@@ -94,7 +94,7 @@ describe('EmployeeController', () => {
       expect(mockRes.status).toHaveBeenCalledWith(201);
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: expect.objectContaining({
+        employee: expect.objectContaining({
           id: 'emp-123',
           firstName: 'John'
         })
@@ -139,7 +139,7 @@ describe('EmployeeController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: mockEmployee
+        employee: mockEmployee
       });
     });
 
@@ -213,7 +213,7 @@ describe('EmployeeController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: mockResult.employees,
+        employees: mockResult.employees,
         total: 2,
         limit: 20,
         offset: 0
@@ -274,7 +274,7 @@ describe('EmployeeController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: expect.objectContaining({ id: 'emp-123' })
+        employee: expect.objectContaining({ id: 'emp-123' })
       });
     });
 
@@ -336,7 +336,7 @@ describe('EmployeeController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: expect.objectContaining({ employmentStatus: 'terminated' })
+        employee: expect.objectContaining({ employmentStatus: 'terminated' })
       });
     });
 
@@ -390,7 +390,7 @@ describe('EmployeeController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: expect.objectContaining({ employmentStatus: 'active' })
+        rehire: expect.objectContaining({ employmentStatus: 'active' })
       });
     });
 
@@ -466,7 +466,7 @@ describe('EmployeeController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: mockHistory
+        employmentHistory: mockHistory
       });
     });
 
@@ -506,7 +506,7 @@ describe('EmployeeController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: mockEligibility
+        eligibility: mockEligibility
       });
     });
 
@@ -594,7 +594,7 @@ describe('EmployeeController', () => {
       expect(controller.service.getOrgChart).toHaveBeenCalledWith('org-123');
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: mockOrgChart
+        orgChart: mockOrgChart
       });
     });
 
@@ -633,7 +633,7 @@ describe('EmployeeController', () => {
       );
       expect(mockRes.json).toHaveBeenCalledWith({
         success: true,
-        data: mockResults
+        employees: mockResults
       });
     });
 

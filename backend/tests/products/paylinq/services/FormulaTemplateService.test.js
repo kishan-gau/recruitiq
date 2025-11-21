@@ -30,6 +30,7 @@ jest.unstable_mockModule('../../../../src/services/formula/FormulaEngine.js', ()
 const { default: FormulaTemplateService } = await import('../../../../src/products/paylinq/services/FormulaTemplateService.js');
 
 describe('FormulaTemplateService', () => {
+  let service;
   const orgId = '123e4567-e89b-12d3-a456-426614174000';
   const userId = '123e4567-e89b-12d3-a456-426614174010';
   const templateId = '123e4567-e89b-12d3-a456-426614174001';
@@ -68,6 +69,13 @@ describe('FormulaTemplateService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Set up default mock behavior for formulaEngine
+    mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
+    mockFormulaEngine.parse.mockResolvedValue({ type: 'multiply', args: [] });
+    
+    // Create service instance with mocked formulaEngine
+    service = new FormulaTemplateService(mockFormulaEngine);
   });
 
   // ==================== GET TEMPLATES ====================
@@ -81,7 +89,7 @@ describe('FormulaTemplateService', () => {
 
       mockPool.query.mockResolvedValue({ rows: templates });
 
-      const result = await FormulaTemplateService.getTemplates(orgId);
+      const result = await service.getTemplates(orgId);
 
       expect(result).toEqual(templates);
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -93,7 +101,7 @@ describe('FormulaTemplateService', () => {
     it('should filter by category', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getTemplates(orgId, { category: 'overtime' });
+      await service.getTemplates(orgId, { category: 'overtime' });
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('AND category = $2'),
@@ -104,7 +112,7 @@ describe('FormulaTemplateService', () => {
     it('should filter by complexity level', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getTemplates(orgId, { complexity_level: 'advanced' });
+      await service.getTemplates(orgId, { complexity_level: 'advanced' });
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('AND complexity_level = $2'),
@@ -115,7 +123,7 @@ describe('FormulaTemplateService', () => {
     it('should filter by popularity', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getTemplates(orgId, { is_popular: true });
+      await service.getTemplates(orgId, { is_popular: true });
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('AND is_popular = $2'),
@@ -126,7 +134,7 @@ describe('FormulaTemplateService', () => {
     it('should filter by tags', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getTemplates(orgId, { tags: ['overtime', 'hourly'] });
+      await service.getTemplates(orgId, { tags: ['overtime', 'hourly'] });
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('AND tags && $2::text[]'),
@@ -137,7 +145,7 @@ describe('FormulaTemplateService', () => {
     it('should search by text', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getTemplates(orgId, { search: 'overtime' });
+      await service.getTemplates(orgId, { search: 'overtime' });
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('ILIKE'),
@@ -148,7 +156,7 @@ describe('FormulaTemplateService', () => {
     it('should apply multiple filters together', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getTemplates(orgId, {
+      await service.getTemplates(orgId, {
         category: 'overtime',
         complexity_level: 'simple',
         is_popular: true,
@@ -164,7 +172,7 @@ describe('FormulaTemplateService', () => {
     it('should order by popularity and usage count', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getTemplates(orgId);
+      await service.getTemplates(orgId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('ORDER BY is_popular DESC, usage_count DESC'),
@@ -180,7 +188,7 @@ describe('FormulaTemplateService', () => {
       const template = createDbTemplate();
       mockPool.query.mockResolvedValue({ rows: [template] });
 
-      const result = await FormulaTemplateService.getTemplateById(templateId, orgId);
+      const result = await service.getTemplateById(templateId, orgId);
 
       expect(result).toEqual(template);
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -193,7 +201,7 @@ describe('FormulaTemplateService', () => {
       const globalTemplate = createDbTemplate({ is_global: true });
       mockPool.query.mockResolvedValue({ rows: [globalTemplate] });
 
-      const result = await FormulaTemplateService.getTemplateById(templateId, orgId);
+      const result = await service.getTemplateById(templateId, orgId);
 
       expect(result.is_global).toBe(true);
     });
@@ -202,7 +210,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
       await expect(
-        FormulaTemplateService.getTemplateById('nonexistent', orgId)
+        service.getTemplateById('nonexistent', orgId)
       ).rejects.toThrow('Template not found or access denied');
     });
 
@@ -210,7 +218,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
       await expect(
-        FormulaTemplateService.getTemplateById(templateId, orgId)
+        service.getTemplateById(templateId, orgId)
       ).rejects.toThrow();
 
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -227,7 +235,7 @@ describe('FormulaTemplateService', () => {
       const template = createDbTemplate();
       mockPool.query.mockResolvedValue({ rows: [template] });
 
-      const result = await FormulaTemplateService.getTemplateByCode('OVERTIME_CALC', orgId);
+      const result = await service.getTemplateByCode('OVERTIME_CALC', orgId);
 
       expect(result).toEqual(template);
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -240,7 +248,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
       await expect(
-        FormulaTemplateService.getTemplateByCode('NONEXISTENT', orgId)
+        service.getTemplateByCode('NONEXISTENT', orgId)
       ).rejects.toThrow('Template not found');
     });
   });
@@ -269,7 +277,7 @@ describe('FormulaTemplateService', () => {
         template_name: 'Bonus Calculation'
       });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
       mockFormulaEngine.parse.mockResolvedValue({
         ast: { type: 'multiply', args: [] }
       });
@@ -277,7 +285,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [] }) // Check for duplicates
         .mockResolvedValueOnce({ rows: [createdTemplate] }); // Insert
 
-      const result = await FormulaTemplateService.createTemplate(validData, orgId, userId);
+      const result = await service.createTemplate(validData, orgId, userId);
 
       expect(result).toEqual(createdTemplate);
       expect(mockFormulaEngine.validate).toHaveBeenCalledWith('base_salary * 0.10');
@@ -288,7 +296,7 @@ describe('FormulaTemplateService', () => {
       const invalidData = { template_code: 'TEST' };
 
       await expect(
-        FormulaTemplateService.createTemplate(invalidData, orgId, userId)
+        service.createTemplate(invalidData, orgId, userId)
       ).rejects.toThrow('Missing required fields');
     });
 
@@ -299,25 +307,25 @@ describe('FormulaTemplateService', () => {
       });
 
       await expect(
-        FormulaTemplateService.createTemplate(validData, orgId, userId)
+        service.createTemplate(validData, orgId, userId)
       ).rejects.toThrow('Invalid formula: Syntax error');
     });
 
     it('should check for duplicate template code', async () => {
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
       mockPool.query.mockResolvedValue({
         rows: [{ id: 'existing-id' }]
       });
 
       await expect(
-        FormulaTemplateService.createTemplate(validData, orgId, userId)
+        service.createTemplate(validData, orgId, userId)
       ).rejects.toThrow('Template code already exists');
     });
 
     it('should set is_global to false for org templates', async () => {
       const createdTemplate = createDbTemplate({ is_global: false });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
       mockFormulaEngine.parse.mockResolvedValue({
         ast: { type: 'multiply', args: [] }
       });
@@ -325,20 +333,20 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [createdTemplate] });
 
-      const result = await FormulaTemplateService.createTemplate(validData, orgId, userId);
+      const result = await service.createTemplate(validData, orgId, userId);
 
       expect(result.is_global).toBe(false);
     });
 
     it('should store formula AST', async () => {
       const ast = { type: 'multiply', left: 'base_salary', right: 0.10 };
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
-      mockFormulaEngine.parse.mockResolvedValue({ ast });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
+      mockFormulaEngine.parse.mockResolvedValue(ast);
       mockPool.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [createDbTemplate()] });
 
-      await FormulaTemplateService.createTemplate(validData, orgId, userId);
+      await service.createTemplate(validData, orgId, userId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('formula_ast'),
@@ -351,13 +359,13 @@ describe('FormulaTemplateService', () => {
       delete dataWithoutComplexity.complexity_level;
 
       const createdTemplate = createDbTemplate();
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
       mockFormulaEngine.parse.mockResolvedValue({ ast: {} });
       mockPool.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [createdTemplate] });
 
-      await FormulaTemplateService.createTemplate(dataWithoutComplexity, orgId, userId);
+      await service.createTemplate(dataWithoutComplexity, orgId, userId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.any(String),
@@ -382,7 +390,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [existingTemplate] }) // Check existence
         .mockResolvedValueOnce({ rows: [updatedTemplate] }); // Update
 
-      const result = await FormulaTemplateService.updateTemplate(templateId, updates, orgId, userId);
+      const result = await service.updateTemplate(templateId, updates, orgId, userId);
 
       expect(result).toEqual(updatedTemplate);
     });
@@ -391,7 +399,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
       await expect(
-        FormulaTemplateService.updateTemplate(templateId, {}, orgId, userId)
+        service.updateTemplate(templateId, {}, orgId, userId)
       ).rejects.toThrow('Template not found or access denied');
     });
 
@@ -400,7 +408,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [globalTemplate] });
 
       await expect(
-        FormulaTemplateService.updateTemplate(templateId, { template_name: 'New' }, orgId, userId)
+        service.updateTemplate(templateId, { template_name: 'New' }, orgId, userId)
       ).rejects.toThrow('Cannot modify global templates');
     });
 
@@ -414,7 +422,7 @@ describe('FormulaTemplateService', () => {
       });
 
       await expect(
-        FormulaTemplateService.updateTemplate(
+        service.updateTemplate(
           templateId,
           { formula_expression: 'invalid@@formula' },
           orgId,
@@ -431,10 +439,10 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [existingTemplate] })
         .mockResolvedValueOnce({ rows: [createDbTemplate()] });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
-      mockFormulaEngine.parse.mockResolvedValue({ ast: newAst });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
+      mockFormulaEngine.parse.mockResolvedValue(newAst);
 
-      await FormulaTemplateService.updateTemplate(
+      await service.updateTemplate(
         templateId,
         { formula_expression: 'gross_pay / hours' },
         orgId,
@@ -453,7 +461,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [existingTemplate] });
 
       await expect(
-        FormulaTemplateService.updateTemplate(templateId, {}, orgId, userId)
+        service.updateTemplate(templateId, {}, orgId, userId)
       ).rejects.toThrow('No fields to update');
     });
 
@@ -463,7 +471,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [existingTemplate] })
         .mockResolvedValueOnce({ rows: [createDbTemplate()] });
 
-      await FormulaTemplateService.updateTemplate(
+      await service.updateTemplate(
         templateId,
         { template_name: 'New Name' },
         orgId,
@@ -489,7 +497,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [existingTemplate] })
         .mockResolvedValueOnce({ rows: [createDbTemplate()] });
 
-      await FormulaTemplateService.updateTemplate(templateId, updates, orgId, userId);
+      await service.updateTemplate(templateId, updates, orgId, userId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('template_name'),
@@ -507,7 +515,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [existingTemplate] })
         .mockResolvedValueOnce({ rows: [{ id: templateId }] });
 
-      const result = await FormulaTemplateService.deleteTemplate(templateId, orgId, userId);
+      const result = await service.deleteTemplate(templateId, orgId, userId);
 
       expect(result).toEqual({ success: true, id: templateId });
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -520,7 +528,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
       await expect(
-        FormulaTemplateService.deleteTemplate(templateId, orgId, userId)
+        service.deleteTemplate(templateId, orgId, userId)
       ).rejects.toThrow('Template not found or access denied');
     });
 
@@ -529,7 +537,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [globalTemplate] });
 
       await expect(
-        FormulaTemplateService.deleteTemplate(templateId, orgId, userId)
+        service.deleteTemplate(templateId, orgId, userId)
       ).rejects.toThrow('Cannot delete global templates');
     });
 
@@ -539,7 +547,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [existingTemplate] })
         .mockResolvedValueOnce({ rows: [{ id: templateId }] });
 
-      await FormulaTemplateService.deleteTemplate(templateId, orgId, userId);
+      await service.deleteTemplate(templateId, orgId, userId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('deleted_at = NOW()'),
@@ -571,9 +579,9 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [parsedTemplate] }) // getTemplateById
         .mockResolvedValueOnce({ rows: [] }); // Update usage count
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
 
-      const result = await FormulaTemplateService.applyTemplate(
+      const result = await service.applyTemplate(
         templateId,
         { hours: 40, rate: 25 },
         orgId
@@ -597,9 +605,9 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [parsedTemplate] })
         .mockResolvedValueOnce({ rows: [] });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
 
-      await FormulaTemplateService.applyTemplate(templateId, { base: 100 }, orgId);
+      await service.applyTemplate(templateId, { base: 100 }, orgId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('usage_count = usage_count + 1'),
@@ -622,7 +630,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValueOnce({ rows: [parsedTemplate] });
 
       await expect(
-        FormulaTemplateService.applyTemplate(templateId, { hours: 10 }, orgId)
+        service.applyTemplate(templateId, { hours: 10 }, orgId)
       ).rejects.toThrow('Missing required parameter: rate');
     });
 
@@ -641,7 +649,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValueOnce({ rows: [parsedTemplate] });
 
       await expect(
-        FormulaTemplateService.applyTemplate(templateId, { base: 1000, percent: 150 }, orgId)
+        service.applyTemplate(templateId, { base: 1000, percent: 150 }, orgId)
       ).rejects.toThrow('must be between 0 and 100');
     });
 
@@ -659,7 +667,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValueOnce({ rows: [parsedTemplate] });
 
       await expect(
-        FormulaTemplateService.applyTemplate(templateId, { amount: 50 }, orgId)
+        service.applyTemplate(templateId, { amount: 50 }, orgId)
       ).rejects.toThrow('must be at least 100');
     });
 
@@ -684,7 +692,7 @@ describe('FormulaTemplateService', () => {
       });
 
       await expect(
-        FormulaTemplateService.applyTemplate(templateId, { value: 10 }, orgId)
+        service.applyTemplate(templateId, { value: 10 }, orgId)
       ).rejects.toThrow('Generated formula is invalid');
     });
 
@@ -705,9 +713,9 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [parsedTemplate] })
         .mockResolvedValueOnce({ rows: [] });
 
-      mockFormulaEngine.validate.mockResolvedValue({ isValid: true, errors: [] });
+      mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
 
-      const result = await FormulaTemplateService.applyTemplate(
+      const result = await service.applyTemplate(
         templateId,
         { rate: 20, hours: 40, overtime: 5 },
         orgId
@@ -728,7 +736,7 @@ describe('FormulaTemplateService', () => {
 
       mockPool.query.mockResolvedValue({ rows: templates });
 
-      const result = await FormulaTemplateService.getPopularTemplates(orgId);
+      const result = await service.getPopularTemplates(orgId);
 
       expect(result).toEqual(templates);
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -740,7 +748,7 @@ describe('FormulaTemplateService', () => {
     it('should accept custom limit', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getPopularTemplates(orgId, 5);
+      await service.getPopularTemplates(orgId, 5);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('LIMIT $2'),
@@ -751,7 +759,7 @@ describe('FormulaTemplateService', () => {
     it('should order by usage count', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getPopularTemplates(orgId);
+      await service.getPopularTemplates(orgId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('ORDER BY usage_count DESC'),
@@ -771,7 +779,7 @@ describe('FormulaTemplateService', () => {
 
       mockPool.query.mockResolvedValue({ rows: templates });
 
-      const result = await FormulaTemplateService.getRecommendedTemplates('overtime', orgId);
+      const result = await service.getRecommendedTemplates('overtime', orgId);
 
       expect(result).toEqual(templates);
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -783,7 +791,7 @@ describe('FormulaTemplateService', () => {
     it('should filter by recommended flag', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.getRecommendedTemplates('bonus', orgId);
+      await service.getRecommendedTemplates('bonus', orgId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('is_recommended = true'),
@@ -794,7 +802,7 @@ describe('FormulaTemplateService', () => {
     it('should return empty array when no recommendations', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      const result = await FormulaTemplateService.getRecommendedTemplates('custom', orgId);
+      const result = await service.getRecommendedTemplates('custom', orgId);
 
       expect(result).toEqual([]);
     });
@@ -811,7 +819,7 @@ describe('FormulaTemplateService', () => {
 
       mockPool.query.mockResolvedValue({ rows: templates });
 
-      const result = await FormulaTemplateService.searchByTags(['overtime'], orgId);
+      const result = await service.searchByTags(['overtime'], orgId);
 
       expect(result).toEqual(templates);
       expect(mockPool.query).toHaveBeenCalledWith(
@@ -823,7 +831,7 @@ describe('FormulaTemplateService', () => {
     it('should prioritize popular templates', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.searchByTags(['bonus'], orgId);
+      await service.searchByTags(['bonus'], orgId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('CASE WHEN is_popular THEN 0 ELSE 1 END'),
@@ -834,7 +842,7 @@ describe('FormulaTemplateService', () => {
     it('should search with multiple tags', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await FormulaTemplateService.searchByTags(['overtime', 'hourly', 'premium'], orgId);
+      await service.searchByTags(['overtime', 'hourly', 'premium'], orgId);
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.any(String),
@@ -845,7 +853,7 @@ describe('FormulaTemplateService', () => {
     it('should return empty array when no matches', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      const result = await FormulaTemplateService.searchByTags(['nonexistent'], orgId);
+      const result = await service.searchByTags(['nonexistent'], orgId);
 
       expect(result).toEqual([]);
     });

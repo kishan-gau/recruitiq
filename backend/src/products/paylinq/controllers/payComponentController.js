@@ -258,6 +258,15 @@ async function deletePayComponent(req, res) {
       userId: req.user?.id,
     });
 
+    // Handle NotFoundError (component doesn't exist)
+    if (error.constructor.name === 'NotFoundError' || error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Pay component not found',
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
     if (error.message.includes('in use')) {
       return res.status(409).json({
         success: false,

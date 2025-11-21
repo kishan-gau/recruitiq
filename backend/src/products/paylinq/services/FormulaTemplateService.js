@@ -11,6 +11,14 @@ import { ValidationError, NotFoundError, ForbiddenError } from '../../../middlew
 
 class FormulaTemplateService {
   /**
+   * Constructor with dependency injection
+   * @param {Object} formulaEngineInstance - Formula engine instance for testing
+   */
+  constructor(formulaEngineInstance = null) {
+    this.formulaEngine = formulaEngineInstance || formulaEngine;
+  }
+
+  /**
    * Get all available templates (global + organization-specific)
    */
   async getTemplates(organizationId, filters = {}) {
@@ -147,7 +155,7 @@ class FormulaTemplateService {
     }
     
     try {
-      const validation = await formulaEngine.validate(formulaToValidate);
+      const validation = await this.formulaEngine.validate(formulaToValidate);
       if (!validation.valid) {
         throw new ValidationError(
           `Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`
@@ -175,7 +183,7 @@ class FormulaTemplateService {
     // Parse formula to get AST (use substituted version for parsing)
     let parsed;
     try {
-      parsed = await formulaEngine.parse(formulaToValidate);
+      parsed = await this.formulaEngine.parse(formulaToValidate);
     } catch (error) {
       // If validation passed but parsing failed, re-throw as ValidationError
       throw new ValidationError(`Formula parsing failed: ${error.message}`);
@@ -264,7 +272,7 @@ class FormulaTemplateService {
           }
           
           try {
-            const validation = await formulaEngine.validate(formulaToValidate);
+            const validation = await this.formulaEngine.validate(formulaToValidate);
             if (!validation.valid) {
               throw new ValidationError(`Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`);
             }
@@ -279,7 +287,7 @@ class FormulaTemplateService {
           // Parse and store AST (with dummy values for parameters)
           let parsed;
           try {
-            parsed = await formulaEngine.parse(formulaToValidate);
+            parsed = await this.formulaEngine.parse(formulaToValidate);
           } catch (error) {
             throw new ValidationError(`Formula parsing failed: ${error.message}`);
           }
@@ -418,7 +426,7 @@ class FormulaTemplateService {
 
     // Validate resulting formula
     try {
-      const validation = await formulaEngine.validate(formula);
+      const validation = await this.formulaEngine.validate(formula);
       if (!validation.valid) {
         throw new ValidationError(
           `Generated formula is invalid: ${validation.errors.map(e => e.message).join(', ')}`
@@ -506,4 +514,4 @@ class FormulaTemplateService {
   }
 }
 
-export default new FormulaTemplateService();
+export default FormulaTemplateService;

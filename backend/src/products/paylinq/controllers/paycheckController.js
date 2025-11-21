@@ -3,7 +3,9 @@
  * Handles HTTP requests for paycheck/pay stub management
  */
 
-import payrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.js';
+
+const payrollService = new PayrollService();
 import payslipPdfService from '../services/payslipPdfService.js';
 import emailService from '../../../services/emailService.js';
 import { query as db } from '../../../config/database.js';

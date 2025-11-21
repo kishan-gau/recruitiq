@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from '../mocks/server';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import LocationDetails from '../../src/pages/locations/LocationDetails';
@@ -83,34 +83,7 @@ const mockMinimalLocation: Location = {
   updatedBy: 'user-1',
 };
 
-// MSW server setup
-const server = setupServer(
-  http.get('*/api/nexus/locations/:id', ({ params }) => {
-    if (params.id === 'loc-1') {
-      return HttpResponse.json(mockLocation);
-    }
-    if (params.id === 'loc-2') {
-      return HttpResponse.json(mockBranchLocation);
-    }
-    if (params.id === 'loc-3') {
-      return HttpResponse.json(mockInactiveLocation);
-    }
-    if (params.id === 'loc-4') {
-      return HttpResponse.json(mockMinimalLocation);
-    }
-    if (params.id === 'not-found') {
-      return new HttpResponse(null, { status: 404 });
-    }
-    return HttpResponse.json(mockLocation);
-  }),
-
-  http.delete('*/api/nexus/locations/:id', ({ params }) => {
-    if (params.id === 'loc-1' || params.id === 'loc-2' || params.id === 'loc-3') {
-      return new HttpResponse(null, { status: 204 });
-    }
-    return new HttpResponse(null, { status: 404 });
-  })
-);
+// Use centralized MSW server
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());

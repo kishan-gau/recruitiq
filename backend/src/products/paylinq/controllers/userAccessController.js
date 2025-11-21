@@ -6,7 +6,9 @@
  * @module products/paylinq/controllers/userAccessController
  */
 
-import payrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.js';
+
+const payrollService = new PayrollService();
 import logger from '../../../utils/logger.js';
 
 /**

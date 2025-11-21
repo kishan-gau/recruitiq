@@ -3,7 +3,9 @@
  * Handles HTTP requests for payroll run management
  */
 
-import payrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.js';
+
+const payrollService = new PayrollService();
 import PayrollRepository from '../repositories/payrollRepository.js';
 import { mapPayrollRunApiToDb, mapPayrollRunUpdateApiToDb, mapPayrollRunDbToApi } from '../utils/dtoMapper.js';
 import { mapPaychecksToDto } from '../dto/paycheckDto.js';
@@ -255,6 +257,7 @@ async function calculatePayroll(req, res) {
 
     res.status(200).json({
       success: true,
+      employeesProcessed: result.totalEmployees,
       result: resultWithSummary,
       message: 'Payroll calculated successfully',
     });
@@ -464,13 +467,16 @@ async function getPayrollRunPaychecks(req, res) {
       // No need to transform them again - they're already in the correct format
       const components = paycheck.components || [];
       
-      // Calculate total_deductions as sum of ONLY deduction fields (NOT taxes)
-      // Taxes are separate and stored in wageTax, aovTax, etc.
-      const totalDeductions = (
-        parseFloat(paycheck.preTaxDeductions || 0) +
-        parseFloat(paycheck.postTaxDeductions || 0) +
-        parseFloat(paycheck.otherDeductions || 0)
-      );
+      // Calculate totalDeductions from ONLY deduction-type components (NOT tax components)
+      // Taxes (wage_tax, aov_tax, aww_tax) are separate fields and should NOT be included in totalDeductions
+      const totalDeductions = components
+        .filter(c => c.componentType === 'deduction' || c.componentCategory === 'deduction')
+        .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
+      
+      // Calculate tax totals separately (already in dedicated fields, but recalculate for verification)
+      const calculatedWageTax = components
+        .filter(c => c.componentCode === 'LOONBELASTING' || c.componentCode === 'WAGE_TAX')
+        .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
 
       // Add tax law compliance metadata
       const metadata = {
@@ -487,7 +493,8 @@ async function getPayrollRunPaychecks(req, res) {
 
       return {
         ...paycheck,
-        totalDeductions,
+        totalDeductions, // ONLY deductions (NOT taxes)
+        wageTax: calculatedWageTax || paycheck.wageTax || 0, // Use calculated or fallback to DB value
         components, // Already in correct format from DTO
         metadata
       };

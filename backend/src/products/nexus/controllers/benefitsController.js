@@ -31,7 +31,7 @@ class BenefitsController {
       // Transform DB format back to API format
       const apiPlan = mapPlanDbToApi(plan);
       
-      res.status(201).json({ success: true, data: apiPlan });
+      res.status(201).json({ success: true, plan: apiPlan });
     } catch (error) {
       this.logger.error('Error in createPlan controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
@@ -51,7 +51,7 @@ class BenefitsController {
       // Transform DB format to API format
       const apiPlan = mapPlanDbToApi(plan);
       
-      res.json({ success: true, data: apiPlan });
+      res.json({ success: true, plan: apiPlan });
     } catch (error) {
       this.logger.error('Error in getPlan controller', { error: error.message });
       const status = error.message === 'Benefit plan not found' ? 404 : 500;
@@ -81,12 +81,10 @@ class BenefitsController {
       
       res.json({ 
         success: true, 
-        data: {
-          plans: apiPlans,
-          total: result.total,
-          limit: result.limit,
-          offset: result.offset
-        }
+        plans: apiPlans,
+        total: result.total,
+        limit: result.limit,
+        offset: result.offset
       });
     } catch (error) {
       this.logger.error('Error in listPlans controller', { error: error.message });
@@ -111,7 +109,7 @@ class BenefitsController {
       // Transform DB format to API format
       const apiPlan = mapPlanDbToApi(plan);
       
-      res.json({ success: true, data: apiPlan });
+      res.json({ success: true, plan: apiPlan });
     } catch (error) {
       this.logger.error('Error in updatePlan controller', { error: error.message });
       const status = error.message === 'Benefit plan not found' ? 404 : 400;
@@ -130,7 +128,7 @@ class BenefitsController {
       
       const summary = await this.service.getEnrollmentSummary(id, organizationId);
       
-      res.json({ success: true, data: summary });
+      res.json({ success: true, summary });
     } catch (error) {
       this.logger.error('Error in getEnrollmentSummary controller', { error: error.message });
       const status = error.message.includes('not found') ? 404 : 500;
@@ -148,7 +146,7 @@ class BenefitsController {
     try {
       const { organizationId, userId } = req.user;
       const enrollment = await this.service.enrollEmployee(req.body, organizationId, userId);
-      res.status(201).json({ success: true, data: enrollment });
+      res.status(201).json({ success: true, enrollment });
     } catch (error) {
       this.logger.error('Error in enrollEmployee controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
@@ -164,7 +162,7 @@ class BenefitsController {
       const { organizationId, userId } = req.user;
       const { id } = req.params;
       const enrollment = await this.service.updateEnrollment(id, req.body, organizationId, userId);
-      res.json({ success: true, data: enrollment });
+      res.json({ success: true, enrollment });
     } catch (error) {
       this.logger.error('Error in updateEnrollment controller', { error: error.message });
       const status = error.message === 'Enrollment not found' ? 404 : 400;
@@ -189,7 +187,7 @@ class BenefitsController {
         organizationId, 
         userId
       );
-      res.json({ success: true, data: enrollment });
+      res.json({ success: true, enrollment });
     } catch (error) {
       this.logger.error('Error in terminateEnrollment controller', { error: error.message });
       const status = error.message === 'Enrollment not found' ? 404 : 400;
@@ -206,7 +204,7 @@ class BenefitsController {
       const { organizationId } = req.user;
       const { id } = req.params;
       const enrollment = await this.service.getEnrollment(id, organizationId);
-      res.json({ success: true, data: enrollment });
+      res.json({ success: true, enrollment });
     } catch (error) {
       this.logger.error('Error in getEnrollment controller', { error: error.message });
       const status = error.message === 'Enrollment not found' ? 404 : 500;
@@ -226,13 +224,13 @@ class BenefitsController {
       // If employeeId is provided, use the specific method
       if (employeeId) {
         const enrollments = await this.service.getEmployeeEnrollments(employeeId, organizationId);
-        return res.json({ success: true, data: enrollments });
+        return res.json({ success: true, enrollments });
       }
       
       // Otherwise use general list with filters
       const filters = { status, planId };
       const enrollments = await this.service.listEnrollments(organizationId, filters);
-      res.json({ success: true, data: enrollments });
+      res.json({ success: true, enrollments });
     } catch (error) {
       this.logger.error('Error in listEnrollments controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
@@ -248,7 +246,7 @@ class BenefitsController {
       const { organizationId } = req.user;
       const { employeeId } = req.params;
       const enrollments = await this.service.getEmployeeEnrollments(employeeId, organizationId);
-      res.json({ success: true, data: enrollments });
+      res.json({ success: true, enrollments });
     } catch (error) {
       this.logger.error('Error in getEmployeeEnrollments controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
@@ -264,7 +262,7 @@ class BenefitsController {
       const { organizationId } = req.user;
       const { planId } = req.query;
       const enrollments = await this.service.getActiveEnrollments(organizationId, planId);
-      res.json({ success: true, data: enrollments });
+      res.json({ success: true, enrollments });
     } catch (error) {
       this.logger.error('Error in getActiveEnrollments controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });

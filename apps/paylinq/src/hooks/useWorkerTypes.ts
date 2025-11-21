@@ -32,8 +32,14 @@ export function useWorkerTypeTemplates(params?: PaginationParams & { status?: st
   return useQuery({
     queryKey: [...WORKER_TYPE_TEMPLATES_KEY, 'list', params],
     queryFn: async () => {
-      const response = await paylinq.getWorkerTypeTemplates(params);
-      return response.data || [];
+      // APIClient.get() returns response.data directly, not the full axios response
+      // So 'response' here is already { success: true, workerTypeTemplates: [...], pagination: {...} }
+      const apiResponse = await paylinq.getWorkerTypeTemplates(params);
+      
+      // Extract resource-specific key from API response
+      const templates = (apiResponse as any)?.workerTypeTemplates || [];
+      
+      return templates;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -48,8 +54,10 @@ export function useWorkerTypeTemplate(id: string) {
   return useQuery({
     queryKey: [...WORKER_TYPE_TEMPLATES_KEY, id],
     queryFn: async () => {
-      const response = await paylinq.getWorkerTypeTemplate(id);
-      return response.data;
+      // APIClient.get() returns response.data directly
+      const apiResponse = await paylinq.getWorkerTypeTemplate(id);
+      // Extract resource-specific key: { success: true, workerTypeTemplate: {...} }
+      return (apiResponse as any)?.workerTypeTemplate || null;
     },
     enabled: !!id,
   });
@@ -65,8 +73,10 @@ export function useCreateWorkerTypeTemplate() {
 
   return useMutation({
     mutationFn: async (data: CreateWorkerTypeTemplateRequest) => {
-      const response = await paylinq.createWorkerTypeTemplate(data);
-      return response.data;
+      // APIClient.post() returns response.data directly
+      const apiResponse = await paylinq.createWorkerTypeTemplate(data);
+      // Extract resource-specific key: { success: true, workerTypeTemplate: {...} }
+      return (apiResponse as any)?.workerTypeTemplate || apiResponse;
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: WORKER_TYPE_TEMPLATES_KEY });
@@ -75,7 +85,18 @@ export function useCreateWorkerTypeTemplate() {
       }
     },
     onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to create worker type template');
+      const errorData = err?.response?.data;
+      
+      // Handle validation errors with detailed field-level messages
+      if (errorData?.errorCode === 'VALIDATION_ERROR' && errorData?.details?.errors) {
+        const fieldErrors = errorData.details.errors
+          .map((e: any) => `${e.field}: ${e.message}`)
+          .join(', ');
+        error(`Validation failed: ${fieldErrors}`);
+      } else {
+        // Use error message from response, fallback to generic
+        error(errorData?.error || errorData?.message || 'Failed to create worker type template');
+      }
     },
   });
 }
@@ -90,8 +111,10 @@ export function useUpdateWorkerTypeTemplate() {
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateWorkerTypeTemplateRequest }) => {
-      const response = await paylinq.updateWorkerTypeTemplate(id, data);
-      return response.data;
+      // APIClient.put() returns response.data directly
+      const apiResponse = await paylinq.updateWorkerTypeTemplate(id, data);
+      // Extract resource-specific key: { success: true, workerTypeTemplate: {...} }
+      return (apiResponse as any)?.workerTypeTemplate || apiResponse;
     },
     onSuccess: (data: any) => {
       if (data) {
@@ -101,7 +124,18 @@ export function useUpdateWorkerTypeTemplate() {
       }
     },
     onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to update worker type template');
+      const errorData = err?.response?.data;
+      
+      // Handle validation errors with detailed field-level messages
+      if (errorData?.errorCode === 'VALIDATION_ERROR' && errorData?.details?.errors) {
+        const fieldErrors = errorData.details.errors
+          .map((e: any) => `${e.field}: ${e.message}`)
+          .join(', ');
+        error(`Validation failed: ${fieldErrors}`);
+      } else {
+        // Use error message from response, fallback to generic
+        error(errorData?.error || errorData?.message || 'Failed to update worker type template');
+      }
     },
   });
 }
@@ -201,7 +235,18 @@ export function useAssignWorkerType() {
       success('Worker type assigned successfully');
     },
     onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to assign worker type');
+      const errorData = err?.response?.data;
+      
+      // Handle validation errors with detailed field-level messages
+      if (errorData?.errorCode === 'VALIDATION_ERROR' && errorData?.details?.errors) {
+        const fieldErrors = errorData.details.errors
+          .map((e: any) => `${e.field}: ${e.message}`)
+          .join(', ');
+        error(`Validation failed: ${fieldErrors}`);
+      } else {
+        // Use error message from response, fallback to generic
+        error(errorData?.error || errorData?.message || 'Failed to assign worker type');
+      }
     },
   });
 }

@@ -91,8 +91,6 @@ describe('Scenario 12: Allowances and Benefits', () => {
 
     await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [organizationId]);
     await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
-
-    await pool.end();
   });
 
   /**

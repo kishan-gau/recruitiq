@@ -1570,6 +1570,9 @@ class PayStructureService {
         templateVersionId: templateId,
         effectiveFrom: assignmentData.effectiveFrom,
         effectiveTo: assignmentData.effectiveTo || null,
+        baseSalary: assignmentData.baseSalary || null,
+        hourlyRate: assignmentData.hourlyRate || null,
+        payFrequency: assignmentData.payFrequency || null,
         assignmentSource: 'manual',
         assignmentType: 'custom',  // Valid values: default, department, group, custom, temporary
         isCurrent: true

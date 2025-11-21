@@ -3,7 +3,9 @@
  * Handles HTTP requests for employee compensation management
  */
 
-import payrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.js';
+
+const payrollService = new PayrollService();
 import { mapCompensationApiToDb } from '../utils/dtoMapper.js';
 import logger from '../../../utils/logger.js';
 

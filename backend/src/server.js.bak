@@ -1,0 +1,247 @@
+/**
+ * Server Entry Point
+ * 
+ * Industry Standard: Factory pattern with dependency injection
+ * - Lazy initialization to avoid circular dependencies
+ * - Configuration validation
+ * - App creation (from factory)
+ * - Server startup
+ * - Graceful shutdown
+ */
+
+// Lazy imports to avoid circular dependencies
+let config, validateConfiguration, logger, dbHealthCheck, closePool, closeCentralPool, createApp, productManager;
+
+/**
+ * Initialize dependencies lazily
+ * Industry standard: Lazy initialization pattern
+ */
+async function initDependencies() {
+  if (!config) {
+    const configModule = await import('./config/index.js');
+    config = configModule.default;
+    
+    const validatorModule = await import('./config/validator.js');
+    validateConfiguration = validatorModule.validateConfiguration;
+    
+    const loggerModule = await import('./utils/logger.js');
+    logger = loggerModule.default;
+    
+    const dbModule = await import('./config/database.js');
+    dbHealthCheck = dbModule.healthCheck;
+    closePool = dbModule.closePool;
+    
+    const centralDbModule = await import('./config/centralDatabase.js');
+    closeCentralPool = centralDbModule.closeCentralPool;
+    
+    const appModule = await import('./app.js');
+    createApp = appModule.default;
+    
+    const pmModule = await import('./products/core/ProductManager.js');
+    productManager = pmModule.default;
+  }
+}
+
+// ============================================================================
+// CONFIGURATION VALIDATION
+// ============================================================================
+
+/**
+ * Factory function to create and initialize the Express app
+ * Industry Standard: Factory pattern with dependency injection
+ */
+export async function createAndInitializeApp() {
+  // Initialize dependencies lazily
+  await initDependencies();
+  
+  // Validate configuration at startup
+  logger.info('Validating configuration...');
+  try {
+    validateConfiguration();
+  } catch (error) {
+    logger.error('Configuration validation failed. Exiting...', error);
+    throw error;
+  }
+
+  // Initialize products
+  const dynamicProductRouter = await initializeProducts();
+  
+  // Create app with injected dependencies
+  const app = createApp(dynamicProductRouter);
+  
+  return app;
+}
+
+/**
+ * Initialize Dynamic Product System
+ */
+async function initializeProducts() {
+  try {
+    logger.info('🔧 Initializing Dynamic Product System...');
+    const router = await productManager.initialize();
+    logger.info('✅ Dynamic Product System ready');
+    logger.info('📍 Dynamic product routes available at /api/products');
+    return router;
+  } catch (error) {
+    logger.error('Failed to initialize Product Manager:', error);
+    logger.warn('⚠️  Server will continue without dynamic product loading');
+    return null;
+  }
+}
+
+// ============================================================================
+// APP CREATION
+// ============================================================================
+
+const createAndInitializeApp = async () => {
+  // Initialize products first (in test mode) or create app with placeholder
+  if (process.env.NODE_ENV === 'test') {
+    logger.info('🧪 Test mode: Initializing products before app creation...');
+    dynamicProductRouter = await initializeProducts();
+  }
+
+  // Create app with dependencies injected
+  app = createApp({
+    config,
+    logger,
+    dbHealthCheck,
+    dynamicProductRouter
+  });
+
+  return app;
+};
+
+// ============================================================================
+// SERVER STARTUP
+// ============================================================================
+
+const PORT = config.port;
+let server;
+
+// Main startup function
+const startServer = async () => {
+  try {
+    // Create app with injected dependencies
+    app = await createAndInitializeApp();
+
+    // Only start HTTP server if not in test mode
+    if (process.env.NODE_ENV !== 'test') {
+      server = app.listen(PORT, async () => {
+        logger.info(`🚀 RecruitIQ API Server started`);
+        logger.info(`📍 Environment: ${config.env}`);
+        logger.info(`🌐 Server running on: ${config.appUrl}`);
+        logger.info(`📊 Health check: ${config.appUrl}/health`);
+        logger.info(`🔐 CORS enabled for: ${config.frontend.allowedOrigins.join(', ')}`);
+        logger.info(`🎯 Feature Management: /api/features, /api/admin (feature management)`);
+        
+        // Log secrets validation status
+        if (config.env === 'production') {
+          logger.info('✅ All production secrets validated (JWT, encryption, database, Redis)');
+        } else {
+          logger.info(`⚠️  ${config.env} mode: Using development secrets (validation relaxed)`);
+        }
+        logger.info('');
+        
+        // Initialize dynamic product loading after server starts (if not already done in test mode)
+        if (!dynamicProductRouter) {
+          dynamicProductRouter = await initializeProducts();
+          // Update the middleware reference
+          if (dynamicProductRouter && app.dynamicProductMiddleware) {
+            // The middleware will now use the initialized router
+            app.apiRouter._router.stack.forEach(layer => {
+              if (layer.name === 'dynamicProductMiddleware') {
+                layer.handle = (req, res, next) => {
+                  dynamicProductRouter(req, res, next);
+                };
+              }
+            });
+          }
+        }
+      });
+    } else {
+      logger.info('🧪 Test mode: App initialized without starting HTTP server');
+    }
+
+    return app;
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start server if not in test mode, otherwise just export app
+if (process.env.NODE_ENV !== 'test') {
+  startServer().catch(error => {
+    logger.error('Fatal error during startup:', error);
+    process.exit(1);
+  });
+} else {
+  // In test mode, export a promise that resolves to the app
+  const appPromise = createAndInitializeApp();
+  appPromise.then(initializedApp => {
+    app = initializedApp;
+  });
+}
+
+// ============================================================================
+// GRACEFUL SHUTDOWN
+// ============================================================================
+
+const gracefulShutdown = async (signal) => {
+  logger.info(`\n${signal} received, shutting down gracefully...`);
+  
+  // Close HTTP server if it's running (not in test mode)
+  if (server) {
+    server.close(async () => {
+      logger.info('HTTP server closed');
+      
+      try {
+        await closePool();
+        logger.info('Database connections closed');
+        await closeCentralPool();
+        logger.info('Central database connections closed');
+        process.exit(0);
+      } catch (error) {
+        logger.error('Error during shutdown:', error);
+        process.exit(1);
+      }
+    });
+  } else {
+    // In test mode, just close database connections
+    try {
+      await closePool();
+      logger.info('Database connections closed');
+      await closeCentralPool();
+      logger.info('Central database connections closed');
+      process.exit(0);
+    } catch (error) {
+      logger.error('Error during shutdown:', error);
+      process.exit(1);
+    }
+  }
+  
+  // Force shutdown after 10 seconds
+  setTimeout(() => {
+    logger.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
+});
+
+// Export app for testing
+// In test mode, this will be set after createAndInitializeApp() completes
+export default app;
+export { createAndInitializeApp };

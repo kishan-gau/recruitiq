@@ -75,14 +75,14 @@ class WorkerTypeService {
       // Check tier limits
       await this.checkWorkerTypeLimit(organizationId);
 
-      // Check for duplicate code
+      // Check for duplicate code (only active records)
       const existing = await this.workerTypeRepository.findTemplateByCode(
         value.code,
         organizationId
       );
 
       if (existing) {
-        throw new ConflictError(`Worker type template with code '${value.code}' already exists`);
+        throw new ConflictError(`Worker type template with code '${value.code}' already exists in your organization`);
       }
 
       const dbTemplate = await this.workerTypeRepository.createTemplate(

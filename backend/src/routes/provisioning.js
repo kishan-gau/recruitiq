@@ -13,6 +13,7 @@ import pool from '../config/database.js';
 import logger from '../utils/logger.js';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
+import config from '../config/index.js';
 
 const router = express.Router();
 
@@ -22,7 +23,7 @@ const licenseManagerPool = new pg.Pool({
   port: process.env.LICENSE_MANAGER_DB_PORT || 5432,
   database: process.env.LICENSE_MANAGER_DB_NAME || 'license_manager_db',
   user: process.env.LICENSE_MANAGER_DB_USER || process.env.DATABASE_USER,
-  password: process.env.LICENSE_MANAGER_DB_PASSWORD || process.env.DATABASE_PASSWORD,
+  password: process.env.LICENSE_MANAGER_DB_PASSWORD || config.database.password, // Use validated secret
   max: 5, // Smaller pool since we query infrequently
 });
 

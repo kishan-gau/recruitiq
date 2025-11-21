@@ -3,7 +3,9 @@
  * Handles HTTP requests for payroll reports and analytics
  */
 
-import payrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.js';
+
+const payrollService = new PayrollService();
 import timeAttendanceService from '../services/timeAttendanceService.js';
 import taxCalculationService from '../services/taxCalculationService.js';
 import logger from '../../../utils/logger.js';

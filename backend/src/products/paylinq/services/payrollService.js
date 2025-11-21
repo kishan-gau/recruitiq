@@ -19,12 +19,18 @@ import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from 
 import compensationService from '../../../shared/services/compensationService.js';
 
 class PayrollService {
-  constructor() {
-    this.payrollRepository = new PayrollRepository();
-    this.deductionRepository = new DeductionRepository();
-    this.taxCalculationService = taxCalculationService;
-    this.payStructureService = new PayStructureService();
-    this.payrollRunTypeService = new PayrollRunTypeService();
+  constructor(
+    payrollRepository = null,
+    deductionRepository = null,
+    taxCalcService = null,
+    payStructureService = null,
+    payrollRunTypeService = null
+  ) {
+    this.payrollRepository = payrollRepository || new PayrollRepository();
+    this.deductionRepository = deductionRepository || new DeductionRepository();
+    this.taxCalculationService = taxCalcService || taxCalculationService;
+    this.payStructureService = payStructureService || new PayStructureService();
+    this.payrollRunTypeService = payrollRunTypeService || new PayrollRunTypeService();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -497,6 +503,14 @@ class PayrollService {
         throw new NotFoundError('Employee record not found');
       }
 
+      // Merge metadata if provided (preserve existing metadata fields)
+      if (updates.metadata) {
+        updates.metadata = {
+          ...(currentRecord.metadata || {}),
+          ...updates.metadata
+        };
+      }
+
       // Map camelCase to snake_case for database fields
       const fieldMapping = {
         firstName: 'first_name', // Not in payroll table but accept for compatibility
@@ -597,8 +611,9 @@ class PayrollService {
 
         if (!existingCompensation && compensationAmount > 0) {
           // Create compensation record from metadata
+          // CRITICAL: Use employee_id (HRIS ID), not employeeRecordId (payroll config ID)
           const newCompensation = {
-            employeeId: employeeRecordId,
+            employeeId: currentRecord.employee_id, // HRIS employee ID from payroll config
             compensationType,
             amount: compensationAmount,
             currency: metadata.currency || 'SRD',
@@ -620,6 +635,7 @@ class PayrollService {
 
           logger.info('Created compensation record from metadata during update', {
             employeeRecordId,
+            hrisEmployeeId: currentRecord.employee_id,
             organizationId,
             compensationType,
             amount: newCompensation.amount
@@ -2468,4 +2484,4 @@ class PayrollService {
   }
 }
 
-export default new PayrollService();
+export default PayrollService;

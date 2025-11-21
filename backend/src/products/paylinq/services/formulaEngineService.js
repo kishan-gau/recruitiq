@@ -173,7 +173,8 @@ class FormulaEngineService {
     }
 
     // MVP: Check for allowed characters only
-    const allowedPattern = /^[\d\s+\-*/().{}\w]+$/;
+    // Allow: alphanumeric, whitespace (including newlines), operators (+, -, *, /), parentheses, braces, dots, commas, semicolons, colons (ternary), quotes, square brackets, comparison operators
+    const allowedPattern = /^[\d\s+\-*/().{}\w:;,'"[\]<>=!&|\n\r]+$/;
     if (!allowedPattern.test(formula)) {
       throw new Error('Formula contains invalid characters');
     }

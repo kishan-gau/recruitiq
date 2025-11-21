@@ -176,8 +176,14 @@ class LocationService {
         paramIndex++;
       }
 
+      if (filters.isPrimary !== undefined) {
+        sql += ` AND l.is_primary = $${paramIndex}`;
+        params.push(filters.isPrimary);
+        paramIndex++;
+      }
+
       sql += ` GROUP BY l.id`;
-      sql += ` ORDER BY l.location_name ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      sql += ` ORDER BY l.is_primary DESC, l.location_name ASC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(limit, offset);
 
       const result = await query(sql, params, organizationId, {
@@ -216,6 +222,12 @@ class LocationService {
       if (filters.city) {
         countSql += ` AND l.city = $${countIndex}`;
         countParams.push(filters.city);
+        countIndex++;
+      }
+
+      if (filters.isPrimary !== undefined) {
+        countSql += ` AND l.is_primary = $${countIndex}`;
+        countParams.push(filters.isPrimary);
         countIndex++;
       }
 
@@ -555,6 +567,87 @@ class LocationService {
     } catch (error) {
       this.logger.error('Error getting all location statistics', { 
         error: error.message,
+        organizationId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get primary location for organization
+   */
+  async getPrimaryLocation(organizationId) {
+    try {
+      this.logger.debug('Getting primary location', { organizationId });
+
+      const sql = `
+        SELECT * FROM hris.location
+        WHERE organization_id = $1
+          AND is_primary = true
+          AND is_active = true
+          AND deleted_at IS NULL
+        LIMIT 1
+      `;
+
+      const result = await query(sql, [organizationId], organizationId, {
+        operation: 'findPrimary',
+        table: 'hris.location'
+      });
+
+      return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+      this.logger.error('Error getting primary location', { 
+        error: error.message,
+        organizationId 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Set a location as primary (unsets any other primary location)
+   */
+  async setPrimaryLocation(id, organizationId, userId) {
+    try {
+      this.logger.info('Setting primary location', { 
+        id, 
+        organizationId, 
+        userId 
+      });
+
+      // Check if location exists
+      const checkSql = `
+        SELECT id FROM hris.location
+        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+      `;
+      const checkResult = await query(checkSql, [id, organizationId], organizationId);
+
+      if (checkResult.rows.length === 0) {
+        throw new Error('Location not found');
+      }
+
+      // Unset current primary location
+      const unsetSql = `
+        UPDATE hris.location
+        SET is_primary = false, updated_by = $2, updated_at = NOW()
+        WHERE organization_id = $1 AND is_primary = true AND deleted_at IS NULL
+      `;
+      await query(unsetSql, [organizationId, userId], organizationId);
+
+      // Set new primary location
+      const setSql = `
+        UPDATE hris.location
+        SET is_primary = true, updated_by = $2, updated_at = NOW()
+        WHERE id = $1 AND organization_id = $3 AND deleted_at IS NULL
+        RETURNING *
+      `;
+      const result = await query(setSql, [id, userId, organizationId], organizationId);
+
+      return result.rows[0];
+    } catch (error) {
+      this.logger.error('Error setting primary location', { 
+        error: error.message,
+        id,
         organizationId 
       });
       throw error;

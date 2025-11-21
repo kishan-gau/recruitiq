@@ -7,6 +7,11 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 // Mock dependencies
 const mockQuery = jest.fn();
+const mockPool = {
+  connect: jest.fn(),
+  query: jest.fn(),
+  end: jest.fn()
+};
 const mockLogger = {
   info: jest.fn(),
   error: jest.fn(),
@@ -15,12 +20,18 @@ const mockLogger = {
 };
 
 jest.unstable_mockModule('../../../../src/config/database.js', () => ({
+  default: mockPool,
   query: mockQuery
 }));
 
 jest.unstable_mockModule('../../../../src/utils/logger.js', () => ({
   default: mockLogger
 }));
+
+// Mock IntegrationService
+const mockIntegrationService = {
+  addBenefitsDeductionFromNexus: jest.fn().mockResolvedValue({ success: true })
+};
 
 // Import service after mocks
 const { default: BenefitsService } = await import('../../../../src/products/nexus/services/benefitsService.js');
@@ -35,7 +46,7 @@ describe('BenefitsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new BenefitsService();
+    service = new BenefitsService(mockIntegrationService);
   });
 
   describe('createPlan', () => {
@@ -58,7 +69,7 @@ describe('BenefitsService', () => {
       // Assert
       expect(result.id).toBe(mockPlanId);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO hris.benefit_plan'),
+        expect.stringContaining('INSERT INTO hris.benefits_plan'),
         expect.any(Array),
         mockOrganizationId,
         expect.any(Object)
@@ -270,8 +281,9 @@ describe('BenefitsService', () => {
       };
 
       mockQuery
-        .mockResolvedValueOnce({ rows: [] }) // Check existing
-        .mockResolvedValueOnce({ rows: [{ id: mockEnrollmentId }] }); // Insert
+        .mockResolvedValueOnce({ rows: [] }) // Check existing enrollment
+        .mockResolvedValueOnce({ rows: [{ id: mockEnrollmentId }] }) // Insert enrollment
+        .mockResolvedValueOnce({ rows: [{ plan_name: 'Test Plan' }] }); // Get plan details
 
       // Act
       const result = await service.enrollEmployee(enrollmentData, mockOrganizationId, mockUserId);
@@ -327,8 +339,9 @@ describe('BenefitsService', () => {
       };
 
       mockQuery
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [{ id: mockEnrollmentId }] });
+        .mockResolvedValueOnce({ rows: [] }) // Check existing enrollment
+        .mockResolvedValueOnce({ rows: [{ id: mockEnrollmentId }] }) // Insert enrollment
+        .mockResolvedValueOnce({ rows: [{ plan_name: 'Test Plan' }] }); // Get plan details
 
       // Act
       await service.enrollEmployee(enrollmentData, mockOrganizationId, mockUserId);
@@ -482,7 +495,7 @@ describe('BenefitsService', () => {
       // Assert
       expect(result).toEqual(mockEnrollments);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('JOIN hris.benefit_plan'),
+        expect.stringContaining('JOIN hris.benefits_plan'),
         [mockEmployeeId, mockOrganizationId],
         mockOrganizationId,
         expect.any(Object)

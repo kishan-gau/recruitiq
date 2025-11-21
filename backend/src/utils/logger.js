@@ -1,6 +1,5 @@
 import winston from 'winston';
 import Transport from 'winston-transport';
-import config from '../config/index.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -9,6 +8,60 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const { combine, timestamp, printf, colorize, errors, json, metadata } = winston.format;
+
+// ============================================================================
+// LAZY CONFIG PROXY (Avoid Circular Dependency)
+// ============================================================================
+
+/**
+ * Lazy config proxy to avoid circular dependency
+ * Industry Standard: Proxy pattern for lazy initialization
+ * 
+ * This allows the logger module to be imported before config is fully initialized.
+ */
+let _configCache = null;
+
+const config = new Proxy({}, {
+  get(target, prop) {
+    // Lazy load config on first access
+    if (!_configCache) {
+      try {
+        // Synchronous require for ES modules workaround
+        // In this case, we'll use environment variables as fallback
+        _configCache = {
+          env: process.env.NODE_ENV || 'development',
+          logging: {
+            level: process.env.LOG_LEVEL || 'info',
+            colorize: process.env.LOG_COLORIZE !== 'false'
+          },
+          deployment: {
+            type: process.env.DEPLOYMENT_TYPE || 'local',
+            tenantId: process.env.TENANT_ID || null,
+            instanceId: process.env.INSTANCE_ID || process.env.HOSTNAME || 'unknown'
+          },
+          centralLogging: {
+            enabled: process.env.CENTRAL_LOGGING_ENABLED === 'true',
+            host: process.env.CENTRAL_LOG_HOST,
+            port: parseInt(process.env.CENTRAL_LOG_PORT) || 5432,
+            database: process.env.CENTRAL_LOG_DATABASE,
+            user: process.env.CENTRAL_LOG_USER,
+            password: process.env.CENTRAL_LOG_PASSWORD,
+            ssl: process.env.CENTRAL_LOG_SSL !== 'false'
+          }
+        };
+      } catch (error) {
+        // Fallback if config module not available
+        _configCache = {
+          env: 'development',
+          logging: { level: 'info', colorize: true },
+          deployment: { type: 'local', tenantId: null, instanceId: 'unknown' },
+          centralLogging: { enabled: false }
+        };
+      }
+    }
+    return _configCache[prop];
+  }
+});
 
 // ============================================================================
 // SENSITIVE DATA FILTERING

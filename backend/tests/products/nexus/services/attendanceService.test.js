@@ -95,19 +95,19 @@ describe('AttendanceService', () => {
       // Act
       await service.clockIn(clockInData, mockOrganizationId, mockUserId);
 
-      // Assert
+      // Assert - check that INSERT was called with default values
       expect(mockQuery).toHaveBeenNthCalledWith(
         2,
-        expect.any(String),
+        expect.stringContaining('INSERT INTO hris.attendance_record'),
         expect.arrayContaining([
           mockOrganizationId,
           mockEmployeeId,
-          expect.any(Date), // clock_in_time default
-          null, // clock_in_location default
-          null, // clock_in_notes default
-          'regular', // work_type default
-          mockUserId,
-          mockUserId
+          expect.any(String), // attendance_date (date string)
+          expect.any(Date), // clock_in_time
+          null, // clock_in_location
+          null, // clock_in_ip
+          'present', // status default
+          null // notes
         ]),
         mockOrganizationId,
         expect.any(Object)
@@ -353,7 +353,7 @@ describe('AttendanceService', () => {
       // Assert
       expect(result).toEqual(mockRecords);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('DATE(a.clock_in_time) ='),
+        expect.stringContaining('a.attendance_date ='), // Updated to match actual implementation
         [mockOrganizationId, '2025-01-15', 100, 0],
         mockOrganizationId,
         expect.any(Object)

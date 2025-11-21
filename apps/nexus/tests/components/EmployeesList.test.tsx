@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import EmployeesList from '../../src/pages/employees/EmployeesList';
 import { ToastProvider } from '../../src/contexts/ToastContext';
-import { setupServer } from 'msw/node';
+import { server } from '../mocks/server';
 import { http, HttpResponse } from 'msw';
 
 // Mock data

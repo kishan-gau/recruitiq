@@ -75,7 +75,7 @@ export async function createTestEmployee(options = {}) {
     organization_id: organizationId,
     employee_id: employeeId,
     pay_frequency: payrollConfig.pay_frequency || 'monthly',
-    payment_method: payrollConfig.payment_method || 'direct_deposit',
+    payment_method: payrollConfig.payment_method || 'ach',
     currency: payrollConfig.currency || 'SRD',
     payroll_status: payrollConfig.payroll_status || 'active',
     payroll_start_date: payrollConfig.payroll_start_date || employeeData.hire_date,

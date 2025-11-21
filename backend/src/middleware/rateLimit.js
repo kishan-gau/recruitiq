@@ -27,9 +27,10 @@ class RateLimitManager {
    */
   async initializeRedis() {
     try {
-      this.redisClient = createClient({
+      // Only include password if it's set and not empty
+      const redisPassword = process.env.REDIS_PASSWORD?.trim();
+      const redisConfig = {
         url: process.env.REDIS_URL || 'redis://localhost:6379',
-        password: process.env.REDIS_PASSWORD,
         socket: {
           connectTimeout: 10000,
           reconnectStrategy: (retries) => {
@@ -40,7 +41,14 @@ class RateLimitManager {
             return Math.min(retries * 100, 3000);
           },
         },
-      });
+      };
+      
+      // Only add password if it's actually set
+      if (redisPassword) {
+        redisConfig.password = redisPassword;
+      }
+      
+      this.redisClient = createClient(redisConfig);
 
       this.redisClient.on('error', (err) => {
         logger.error('Redis Client Error:', err);

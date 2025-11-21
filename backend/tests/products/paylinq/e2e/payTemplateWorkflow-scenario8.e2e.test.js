@@ -23,8 +23,9 @@
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
-import app from '../../../../src/server.js';
+import appPromise from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
+import cacheService from '../../../../src/services/cacheService.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { cleanupTestEmployees } from '../helpers/employeeTestHelper.js';
@@ -32,6 +33,7 @@ import { cleanupTestEmployees } from '../helpers/employeeTestHelper.js';
 // Uses cookie-based authentication per security requirements
 describe('Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting)', () => {
   // Store cookies and CSRF token for authenticated requests
+  let app;
   let authCookies;
   let csrfToken;
   let organizationId;
@@ -41,6 +43,9 @@ describe('Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting)', () => 
   let testPayrollRuns = [];
 
   beforeAll(async () => {
+    // Initialize app
+    app = await appPromise;
+    
     // Create test organization with unique slug to avoid conflicts
     organizationId = uuidv4();
     const uniqueSlug = `testsrtax-${organizationId.slice(0, 8)}`;
@@ -98,38 +103,45 @@ describe('Scenario 8: Surinamese Tax Law Compliance (Wet Loonbelasting)', () => 
   });
 
   afterAll(async () => {
-    // Cleanup in reverse dependency order
-    if (testPayrollRuns.length > 0) {
-      await pool.query(
-        'DELETE FROM payroll.payroll_run WHERE id = ANY($1::uuid[])',
-        [testPayrollRuns]
-      );
+    try {
+      // Cleanup in reverse dependency order
+      if (testPayrollRuns.length > 0) {
+        await pool.query(
+          'DELETE FROM payroll.payroll_run WHERE id = ANY($1::uuid[])',
+          [testPayrollRuns]
+        );
+      }
+
+      if (testWorkers.length > 0) {
+        await pool.query(
+          'DELETE FROM payroll.worker_pay_structure WHERE employee_id = ANY($1::uuid[])',
+          [testWorkers]
+        );
+      }
+
+      if (testTemplates.length > 0) {
+        await pool.query(
+          'DELETE FROM payroll.pay_structure_component WHERE template_id = ANY($1::uuid[])',
+          [testTemplates]
+        );
+        await pool.query(
+          'DELETE FROM payroll.pay_structure_template WHERE id = ANY($1::uuid[])',
+          [testTemplates]
+        );
+      }
+
+      await cleanupTestEmployees(organizationId, 24); // 24 hours lookback
+
+      await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [organizationId]);
+      await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
+    } catch (error) {
+      console.error('Cleanup error:', error);
+    } finally {
+      // Close Redis connection
+      await cacheService.disconnect();
+      // Always close database connection
+      await pool.end();
     }
-
-    if (testWorkers.length > 0) {
-      await pool.query(
-        'DELETE FROM payroll.worker_pay_structure WHERE employee_id = ANY($1::uuid[])',
-        [testWorkers]
-      );
-    }
-
-    if (testTemplates.length > 0) {
-      await pool.query(
-        'DELETE FROM payroll.pay_structure_component WHERE template_id = ANY($1::uuid[])',
-        [testTemplates]
-      );
-      await pool.query(
-        'DELETE FROM payroll.pay_structure_template WHERE id = ANY($1::uuid[])',
-        [testTemplates]
-      );
-    }
-
-    await cleanupTestEmployees(organizationId, 24); // 24 hours lookback
-
-    await pool.query('DELETE FROM hris.user_account WHERE organization_id = $1', [organizationId]);
-    await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
-
-    await pool.end();
   });
 
   /**

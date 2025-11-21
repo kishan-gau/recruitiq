@@ -2,18 +2,49 @@
  * Encryption Utility
  * 
  * Provides encryption/decryption for sensitive data like passwords and API keys
+ * Uses AES-256-CBC with authenticated encryption
  */
 
 import crypto from 'crypto';
 import logger from './logger.js';
+import config from '../config/index.js';
 
-// Get encryption key from environment or use default (SHOULD BE CHANGED IN PRODUCTION)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-encryption-key-change-this-in-production-32chars';
 const ALGORITHM = 'aes-256-cbc';
 const IV_LENGTH = 16;
 
-// Ensure key is 32 bytes for AES-256
-const KEY = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+/**
+ * Get encryption key from config (fail-fast if missing)
+ * @returns {Buffer} - 32-byte encryption key
+ */
+function getEncryptionKey() {
+  const keyHex = config.encryption?.masterKey;
+  
+  if (!keyHex) {
+    throw new Error(
+      'CRITICAL: ENCRYPTION_KEY is not configured!\n' +
+      'Set ENCRYPTION_KEY environment variable with a 64-character hex string.\n' +
+      'Generate with: openssl rand -hex 32'
+    );
+  }
+  
+  if (keyHex.length < 64) {
+    throw new Error(
+      `CRITICAL: ENCRYPTION_KEY is too short!\n` +
+      `Current length: ${keyHex.length} characters\n` +
+      `Required minimum: 64 characters (256 bits)\n` +
+      `Generate with: openssl rand -hex 32`
+    );
+  }
+  
+  // Convert hex string to 32-byte buffer for AES-256
+  const key = Buffer.from(keyHex.substring(0, 64), 'hex');
+  
+  if (key.length !== 32) {
+    throw new Error('ENCRYPTION_KEY must decode to exactly 32 bytes');
+  }
+  
+  return key;
+}
 
 /**
  * Encrypt a string
@@ -26,6 +57,7 @@ export function encrypt(text) {
   }
 
   try {
+    const KEY = getEncryptionKey(); // Get validated key
     const iv = crypto.randomBytes(IV_LENGTH);
     const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
     
@@ -51,6 +83,7 @@ export function decrypt(encryptedText) {
   }
 
   try {
+    const KEY = getEncryptionKey(); // Get validated key
     // Split IV and encrypted data
     const parts = encryptedText.split(':');
     if (parts.length !== 2) {

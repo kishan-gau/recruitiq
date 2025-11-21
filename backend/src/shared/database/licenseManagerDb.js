@@ -6,6 +6,7 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import logger from '../../utils/logger.js';
+import config from '../../config/index.js';
 
 // Create connection pool for License Manager database
 const licensePool = new Pool({
@@ -13,7 +14,7 @@ const licensePool = new Pool({
   port: process.env.LICENSE_MANAGER_DB_PORT || process.env.DB_PORT || 5432,
   database: process.env.LICENSE_MANAGER_DB_NAME || 'license_manager_db',
   user: process.env.LICENSE_MANAGER_DB_USER || process.env.DB_USER || 'postgres',
-  password: process.env.LICENSE_MANAGER_DB_PASSWORD || process.env.DB_PASSWORD || 'postgres',
+  password: process.env.LICENSE_MANAGER_DB_PASSWORD || config.database.password, // Use validated secret
   max: 10, // Maximum pool size
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,

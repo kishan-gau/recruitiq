@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from '../mocks/server';
 import LocationForm from '../../src/components/LocationForm';
 import type { Location } from '../../src/types/location.types';
 
@@ -13,33 +13,6 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return { ...actual, useNavigate: () => mockNavigate };
 });
-
-const server = setupServer(
-  http.post('/api/nexus/locations', async ({ request }) => {
-    const body = await request.json() as Record<string, unknown>;
-    return HttpResponse.json({ 
-      id: 'new-loc-id', 
-      organizationId: 'org-1',
-      ...body, 
-      createdAt: new Date().toISOString(), 
-      updatedAt: new Date().toISOString(),
-      createdBy: 'user-1',
-      updatedBy: 'user-1',
-    }, { status: 201 });
-  }),
-  http.patch('/api/nexus/locations/:id', async ({ params, request }) => {
-    const body = await request.json() as Record<string, unknown>;
-    return HttpResponse.json({ 
-      id: params.id, 
-      organizationId: 'org-1',
-      ...body, 
-      updatedAt: new Date().toISOString(),
-      createdAt: '2024-01-01T00:00:00Z',
-      createdBy: 'user-1',
-      updatedBy: 'user-1',
-    });
-  })
-);
 
 beforeAll(() => server.listen());
 afterEach(() => { server.resetHandlers(); mockNavigate.mockClear(); });

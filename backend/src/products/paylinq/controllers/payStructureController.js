@@ -498,12 +498,12 @@ export async function assignTemplateToWorker(req, res) {
     const organizationId = req.user.organization_id;
     const userId = req.user.id;
     const { employeeId } = req.params;
-    const { templateId, effectiveFrom, effectiveTo } = req.body;
+    const { templateId, effectiveFrom, effectiveTo, baseSalary, hourlyRate, payFrequency } = req.body;
 
     const assignment = await payStructureService.assignTemplateToWorker(
       employeeId,
       templateId,
-      { effectiveFrom, effectiveTo },
+      { effectiveFrom, effectiveTo, baseSalary, hourlyRate, payFrequency },
       organizationId,
       userId
     );

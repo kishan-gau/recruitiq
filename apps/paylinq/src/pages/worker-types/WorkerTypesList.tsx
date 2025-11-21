@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, Users, Briefcase, CheckCircle, XCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -278,7 +278,7 @@ function WorkerTypeCard({ workerType, onEdit, onDelete }: WorkerTypeCardProps) {
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-500 dark:text-gray-400">Payment Method</span>
           <span className="font-medium text-gray-900 dark:text-white capitalize">
-            {workerType.defaultPaymentMethod?.replace('_', ' ') || 'Not set'}
+            {workerType.defaultPaymentMethod === 'ach' ? 'ACH' : workerType.defaultPaymentMethod?.replace('_', ' ') || 'Not set'}
           </span>
         </div>
         <div className="flex items-center justify-between text-sm">
@@ -347,8 +347,8 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
     name: workerType?.name || '',
     code: workerType?.code || '',
     description: workerType?.description || '',
-    defaultPayFrequency: workerType?.defaultPayFrequency || 'biweekly',
-    defaultPaymentMethod: workerType?.defaultPaymentMethod || 'direct_deposit',
+    defaultPayFrequency: workerType?.defaultPayFrequency || 'bi-weekly',
+    defaultPaymentMethod: workerType?.defaultPaymentMethod || 'ach',
     benefitsEligible: workerType?.benefitsEligible ?? true,
     overtimeEligible: workerType?.overtimeEligible ?? true,
     ptoEligible: workerType?.ptoEligible ?? true,
@@ -358,6 +358,40 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Update form data when workerType changes (for edit mode)
+  useEffect(() => {
+    if (workerType) {
+      setFormData({
+        name: workerType.name || '',
+        code: workerType.code || '',
+        description: workerType.description || '',
+        defaultPayFrequency: workerType.defaultPayFrequency || 'bi-weekly',
+        defaultPaymentMethod: workerType.defaultPaymentMethod || 'ach',
+        benefitsEligible: workerType.benefitsEligible ?? true,
+        overtimeEligible: workerType.overtimeEligible ?? true,
+        ptoEligible: workerType.ptoEligible ?? true,
+        sickLeaveEligible: workerType.sickLeaveEligible ?? true,
+        vacationAccrualRate: workerType.vacationAccrualRate || 0,
+      });
+    } else {
+      // Reset form for add mode
+      setFormData({
+        name: '',
+        code: '',
+        description: '',
+        defaultPayFrequency: 'bi-weekly',
+        defaultPaymentMethod: 'ach',
+        benefitsEligible: true,
+        overtimeEligible: true,
+        ptoEligible: true,
+        sickLeaveEligible: true,
+        vacationAccrualRate: 0,
+      });
+    }
+    // Clear errors when switching modes
+    setErrors({});
+  }, [workerType, mode]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -378,6 +412,8 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
 
     if (formData.vacationAccrualRate < 0) {
       newErrors.vacationAccrualRate = 'Cannot be negative';
+    } else if (formData.vacationAccrualRate > 1) {
+      newErrors.vacationAccrualRate = 'Cannot exceed 1 hour per pay period';
     }
 
     setErrors(newErrors);
@@ -498,8 +534,8 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
                   <option value="weekly">Weekly</option>
-                  <option value="biweekly">Bi-weekly</option>
-                  <option value="semimonthly">Semi-monthly</option>
+                  <option value="bi-weekly">Bi-weekly</option>
+                  <option value="semi-monthly">Semi-monthly</option>
                   <option value="monthly">Monthly</option>
                 </select>
               </div>
@@ -513,7 +549,7 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
                   onChange={(e) => setFormData({ ...formData, defaultPaymentMethod: e.target.value as any })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
-                  <option value="direct_deposit">Direct Deposit</option>
+                  <option value="ach">ACH (Direct Deposit)</option>
                   <option value="check">Check</option>
                   <option value="wire">Wire Transfer</option>
                   <option value="cash">Cash</option>
@@ -531,14 +567,15 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
                 onChange={(e) => setFormData({ ...formData, vacationAccrualRate: parseFloat(e.target.value) || 0 })}
                 step="0.01"
                 min="0"
+                max="1"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                placeholder="3.08"
+                placeholder="0.50"
               />
               {errors.vacationAccrualRate && (
                 <p className="mt-1 text-sm text-red-600">{errors.vacationAccrualRate}</p>
               )}
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Example: 3.08 hours per period ≈ 2 weeks/year for biweekly pay
+                Maximum 1 hour per pay period. Example: 0.5 hours = ~13 days/year for biweekly pay
               </p>
             </div>
           </div>

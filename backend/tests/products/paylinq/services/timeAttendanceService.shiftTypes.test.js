@@ -318,7 +318,7 @@ describe('TimeAttendanceService - Shift Types', () => {
       // Assert
       expect(result).toEqual(dbShiftTypes);
       expect(result.length).toBe(2);
-      expect(mockRepository.findShiftTypes).toHaveBeenCalledWith({}, orgId);
+      expect(mockRepository.findShiftTypes).toHaveBeenCalledWith(orgId, {});
     });
 
     it('should filter shift types by status', async () => {
@@ -331,7 +331,7 @@ describe('TimeAttendanceService - Shift Types', () => {
       const result = await service.getShiftTypes(orgId, filters);
 
       // Assert
-      expect(mockRepository.findShiftTypes).toHaveBeenCalledWith(filters, orgId);
+      expect(mockRepository.findShiftTypes).toHaveBeenCalledWith(orgId, filters);
       expect(result).toEqual(dbShiftTypes);
     });
 

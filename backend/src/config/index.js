@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loadSecrets } from './secrets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,6 +10,9 @@ const __dirname = path.dirname(__filename);
 // Use .env.test for E2E tests to ensure test database isolation
 const envFile = process.env.NODE_ENV === 'e2e' ? '.env.test' : '.env';
 dotenv.config({ path: path.join(__dirname, '../../', envFile) });
+
+// Load and validate all secrets (will be loaded during server startup)
+let secrets = {};
 
 const config = {
   // Application
@@ -25,7 +29,7 @@ const config = {
     port: parseInt(process.env.DATABASE_PORT, 10) || 5432,
     name: process.env.DATABASE_NAME || 'recruitiq_dev',
     user: process.env.DATABASE_USER || 'postgres',
-    password: process.env.DATABASE_PASSWORD || 'password',
+    password: secrets.DATABASE_PASSWORD || process.env.DATABASE_PASSWORD, // Validated secret
     ssl: process.env.DATABASE_SSL === 'true',
     pool: {
       // Increased for load testing and production scalability
@@ -38,9 +42,9 @@ const config = {
   
   // JWT - Industry standard: short-lived access tokens, longer refresh tokens
   jwt: {
-    secret: process.env.JWT_SECRET,
-    accessSecret: process.env.JWT_SECRET, // Alias for compatibility
-    refreshSecret: process.env.JWT_REFRESH_SECRET,
+    secret: secrets.JWT_SECRET || process.env.JWT_SECRET, // Validated secret (fallback for init)
+    accessSecret: secrets.JWT_SECRET || process.env.JWT_SECRET, // Alias for compatibility
+    refreshSecret: secrets.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET, // Validated secret
     // Access tokens: 15 minutes (industry standard for security)
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
     accessExpiresIn: process.env.JWT_EXPIRES_IN || '15m', // Alias
@@ -108,7 +112,7 @@ const config = {
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    secretAccessKey: secrets.AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY, // Validated
     s3: {
       bucket: process.env.AWS_S3_BUCKET || 'recruitiq-uploads',
       region: process.env.AWS_S3_BUCKET_REGION || 'us-east-1',
@@ -128,7 +132,7 @@ const config = {
     rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100,
     requireHttps: process.env.REQUIRE_HTTPS === 'true' || process.env.NODE_ENV === 'production',
     trustProxy: process.env.TRUST_PROXY === 'true',
-    sessionSecret: process.env.SESSION_SECRET,
+    sessionSecret: secrets.SESSION_SECRET || process.env.SESSION_SECRET, // Validated secret
     cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE, 10) || 900000, // 15 minutes (aligned with JWT)
   },
   
@@ -141,7 +145,7 @@ const config = {
   
   // Encryption
   encryption: {
-    masterKey: process.env.ENCRYPTION_MASTER_KEY,
+    masterKey: secrets.ENCRYPTION_MASTER_KEY || process.env.ENCRYPTION_KEY, // Validated secret
     algorithm: 'aes-256-gcm',
     keyLength: 32, // 256 bits
   },
@@ -160,7 +164,7 @@ const config = {
   redis: {
     enabled: process.env.REDIS_ENABLED === 'true',
     url: process.env.REDIS_URL || 'redis://localhost:6379',
-    password: process.env.REDIS_PASSWORD,
+    password: (secrets.REDIS_PASSWORD || process.env.REDIS_PASSWORD)?.trim() || undefined, // Only set if not empty
     db: parseInt(process.env.REDIS_DB, 10) || 0,
   },
   
@@ -237,123 +241,34 @@ const config = {
   },
 };
 
-// JWT Security Validation
-// For 256-bit security, we need at least 32 bytes (256 bits / 8 bits per byte)
-// Base64 encoding: 32 bytes = 44 characters (32 * 4/3 = 42.67, rounded up)
-const MIN_JWT_SECRET_LENGTH = 43; // 256 bits minimum for production security
+// ============================================================================
+// VALIDATION NOW HANDLED BY secrets.js
+// ============================================================================
+// JWT validation, weak password detection, and production security checks
+// are now centralized in config/secrets.js with fail-fast behavior.
+// This removes ~150 lines of duplicate validation code.
 
-if (!config.jwt.secret) {
-  console.error('❌ JWT_SECRET environment variable is required');
-  process.exit(1);
-}
-
-if (config.jwt.secret.length < MIN_JWT_SECRET_LENGTH) {
-  console.error(`❌ JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters long (256+ bits)`);
-  console.error(`   Current length: ${config.jwt.secret.length} characters`);
-  console.error(`   Generate a secure secret with: openssl rand -base64 48`);
-  process.exit(1);
-}
-
-if (!config.jwt.refreshSecret) {
-  console.error('❌ JWT_REFRESH_SECRET environment variable is required');
-  process.exit(1);
-}
-
-if (config.jwt.refreshSecret.length < MIN_JWT_SECRET_LENGTH) {
-  console.error(`❌ JWT_REFRESH_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters long (256+ bits)`);
-  console.error(`   Current length: ${config.jwt.refreshSecret.length} characters`);
-  console.error(`   Generate a secure secret with: openssl rand -base64 48`);
-  process.exit(1);
-}
-
-// Ensure JWT secrets are different for better security
-if (config.jwt.secret === config.jwt.refreshSecret) {
-  console.error('❌ JWT_SECRET and JWT_REFRESH_SECRET must be different');
-  console.error('   Using the same secret for access and refresh tokens is a security risk');
-  process.exit(1);
-}
-
-// Warn about weak secrets (not truly random)
-const weakPatterns = [
-  /^(test|dev|demo|example|secret|password|admin|default)/i,
-  /^(.)\1{10,}$/, // Repeated characters
-  /^(123|abc|qwerty)/i,
-];
-
-weakPatterns.forEach(pattern => {
-  if (pattern.test(config.jwt.secret)) {
-    console.warn('⚠️  WARNING: JWT_SECRET appears to be weak or test data');
-    console.warn('   Use cryptographically random secrets in production');
-  }
-  if (pattern.test(config.jwt.refreshSecret)) {
-    console.warn('⚠️  WARNING: JWT_REFRESH_SECRET appears to be weak or test data');
-    console.warn('   Use cryptographically random secrets in production');
-  }
-});
-
+// Basic config validation (non-secret)
 if (!config.database.url && !config.database.host) {
   console.error('❌ Database configuration is missing');
   process.exit(1);
 }
 
-// ============================================================================
-// PRODUCTION SECURITY VALIDATIONS
-// ============================================================================
-
-if (config.env === 'production') {
-  // Validate encryption key strength
-  if (!config.encryption?.masterKey || config.encryption.masterKey.length < 128) {
-    console.error('❌ ENCRYPTION_MASTER_KEY must be at least 128 characters in production');
-    console.error('   Generate with: openssl rand -hex 64');
-    process.exit(1);
-  }
+// Helper function to reload secrets after initialization
+export async function reloadSecrets() {
+  secrets = await loadSecrets(process.env.NODE_ENV);
   
-  // Check for weak/development encryption keys
-  const weakKeyPatterns = [/^dev-/i, /^test-/i, /^demo-/i, /change.*production/i];
-  if (weakKeyPatterns.some(pattern => pattern.test(config.encryption.masterKey))) {
-    console.error('❌ ENCRYPTION_MASTER_KEY appears to be a development key');
-    console.error('   Generate production key with: openssl rand -hex 64');
-    process.exit(1);
-  }
+  // Update config with validated secrets
+  config.jwt.secret = secrets.JWT_SECRET;
+  config.jwt.accessSecret = secrets.JWT_SECRET;
+  config.jwt.refreshSecret = secrets.JWT_REFRESH_SECRET;
+  config.database.password = secrets.DATABASE_PASSWORD;
+  config.redis.password = secrets.REDIS_PASSWORD;
+  config.security.sessionSecret = secrets.SESSION_SECRET;
+  config.encryption.masterKey = secrets.ENCRYPTION_MASTER_KEY;
+  config.aws.secretAccessKey = secrets.AWS_SECRET_ACCESS_KEY;
   
-  // Validate session secret strength
-  if (!config.security.sessionSecret || config.security.sessionSecret.length < 64) {
-    console.error('❌ SESSION_SECRET must be at least 64 characters in production');
-    console.error('   Generate with: openssl rand -base64 64');
-    process.exit(1);
-  }
-  
-  // Check for weak session secrets
-  if (weakKeyPatterns.some(pattern => pattern.test(config.security.sessionSecret))) {
-    console.error('❌ SESSION_SECRET appears to be a development secret');
-    console.error('   Generate production secret with: openssl rand -base64 64');
-    process.exit(1);
-  }
-  
-  // Validate Redis authentication in production
-  if (config.redis.enabled && !config.redis.password) {
-    console.error('❌ REDIS_PASSWORD is required when Redis is enabled in production');
-    console.error('   Set a strong Redis password to prevent unauthorized access');
-    process.exit(1);
-  }
-  
-  // Warn about weak database passwords
-  const weakDbPasswords = ['postgres', 'password', 'admin', 'root', '123456'];
-  if (weakDbPasswords.some(weak => config.database.password?.toLowerCase().includes(weak))) {
-    console.error('❌ Database password appears to be weak or default');
-    console.error('   Use a strong, randomly generated password in production');
-    process.exit(1);
-  }
-  
-  // Ensure HTTPS is required in production
-  if (!config.security.requireHttps) {
-    console.warn('⚠️  WARNING: HTTPS is not required. Set REQUIRE_HTTPS=true in production');
-  }
-  
-  // Ensure trust proxy is configured correctly
-  if (!config.security.trustProxy) {
-    console.warn('⚠️  WARNING: Trust proxy not enabled. Set TRUST_PROXY=true if behind a proxy');
-  }
+  return secrets;
 }
 
 export default config;

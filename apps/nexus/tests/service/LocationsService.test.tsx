@@ -3,11 +3,11 @@
  * Tests all CRUD operations and TanStack Query hooks
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { server } from '../mocks/server';
 import {
   useLocations,
   useLocation,
@@ -16,160 +16,6 @@ import {
   useDeleteLocation,
   locationKeys,
 } from '../../src/services/LocationsService';
-import type { Location } from '../../src/types/location.types';
-
-// Mock data
-const mockLocations: Location[] = [
-  {
-    id: 'loc-1',
-    organizationId: 'org-1',
-    locationCode: 'HQ',
-    locationName: 'Headquarters',
-    locationType: 'headquarters',
-    addressLine1: '123 Main St',
-    city: 'San Francisco',
-    stateProvince: 'CA',
-    postalCode: '94105',
-    country: 'USA',
-    phone: '+1-555-0100',
-    email: 'hq@company.com',
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    createdBy: 'user-1',
-    updatedAt: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: 'loc-2',
-    organizationId: 'org-1',
-    locationCode: 'NYC',
-    locationName: 'New York Branch',
-    locationType: 'branch',
-    addressLine1: '456 Broadway',
-    city: 'New York',
-    stateProvince: 'NY',
-    postalCode: '10013',
-    country: 'USA',
-    phone: '+1-555-0200',
-    isActive: true,
-    createdAt: '2024-01-02T00:00:00Z',
-    createdBy: 'user-1',
-    updatedAt: '2024-01-02T00:00:00Z',
-  },
-  {
-    id: 'loc-3',
-    organizationId: 'org-1',
-    locationCode: 'WH1',
-    locationName: 'Warehouse 1',
-    locationType: 'warehouse',
-    addressLine1: '789 Industrial Blvd',
-    city: 'Newark',
-    stateProvince: 'NJ',
-    postalCode: '07102',
-    country: 'USA',
-    isActive: false,
-    createdAt: '2024-01-03T00:00:00Z',
-    createdBy: 'user-1',
-    updatedAt: '2024-01-03T00:00:00Z',
-  },
-];
-
-// Setup MSW server
-const server = setupServer(
-  // GET all locations
-  http.get('/api/nexus/locations', ({ request }) => {
-    const url = new URL(request.url);
-    const search = url.searchParams.get('search');
-    const locationType = url.searchParams.get('locationType');
-    const isActive = url.searchParams.get('isActive');
-    const country = url.searchParams.get('country');
-
-    let filtered = [...mockLocations];
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(
-        (loc) =>
-          loc.locationName.toLowerCase().includes(searchLower) ||
-          loc.locationCode.toLowerCase().includes(searchLower)
-      );
-    }
-
-    if (locationType) {
-      filtered = filtered.filter((loc) => loc.locationType === locationType);
-    }
-
-    if (isActive !== null) {
-      const activeFilter = isActive === 'true';
-      filtered = filtered.filter((loc) => loc.isActive === activeFilter);
-    }
-
-    if (country) {
-      filtered = filtered.filter((loc) => loc.country === country);
-    }
-
-    return HttpResponse.json(filtered);
-  }),
-
-  // GET single location
-  http.get('/api/nexus/locations/:id', ({ params }) => {
-    const location = mockLocations.find((loc) => loc.id === params.id);
-    if (!location) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    return HttpResponse.json(location);
-  }),
-
-  // POST create location
-  http.post('/api/nexus/locations', async ({ request }) => {
-    const body = await request.json();
-    const data = body as any;
-    const newLocation: Location = {
-      id: 'loc-new',
-      organizationId: 'org-1',
-      ...data,
-      isActive: data.isActive ?? true,
-      createdAt: new Date().toISOString(),
-      createdBy: 'user-1',
-      updatedAt: new Date().toISOString(),
-    };
-    return HttpResponse.json(newLocation, { status: 201 });
-  }),
-
-  // PATCH update location
-  http.patch('/api/nexus/locations/:id', async ({ params, request }) => {
-    const location = mockLocations.find((loc) => loc.id === params.id);
-    if (!location) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    const body = await request.json();
-    const data = body as any;
-    const updated = {
-      ...location,
-      ...data,
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'user-1',
-    };
-    return HttpResponse.json(updated);
-  }),
-
-  // DELETE location
-  http.delete('/api/nexus/locations/:id', ({ params }) => {
-    const location = mockLocations.find((loc) => loc.id === params.id);
-    if (!location) {
-      return new HttpResponse(null, { status: 404 });
-    }
-    return new HttpResponse(null, { status: 204 });
-  })
-);
-
-beforeEach(() => {
-  server.listen();
-});
-
-afterEach(() => {
-  server.resetHandlers();
-  vi.clearAllMocks();
-});
 
 // Test wrapper
 function createWrapper() {
@@ -247,7 +93,7 @@ describe('LocationsService', () => {
 
     it('should handle fetch error', async () => {
       server.use(
-        http.get('/api/nexus/locations', () => {
+        http.get('*/api/products/nexus/locations', () => {
           return new HttpResponse(null, { status: 500 });
         })
       );

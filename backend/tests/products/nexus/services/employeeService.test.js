@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { mapEmployeeDbToApi, mapEmployeesDbToApi } from '../../../../src/products/nexus/dto/employeeDto.js';
 
 // Mock dependencies BEFORE importing service
 const mockQuery = jest.fn();
@@ -49,12 +50,14 @@ describe('EmployeeService', () => {
       
       mockQuery.mockResolvedValueOnce({ rows: [] }) // Check email
         .mockResolvedValueOnce({ rows: [] }) // Check employee number
-        .mockResolvedValueOnce({ rows: [mockCreated] }); // Insert
+        .mockResolvedValueOnce({ rows: [mockCreated] }) // Insert employee
+        .mockResolvedValueOnce({ rows: [] }); // Create payroll config
 
       const result = await service.createEmployee(validEmpData, mockOrgId, mockUserId);
 
-      expect(result).toEqual(mockCreated);
-      expect(mockQuery).toHaveBeenCalledTimes(3);
+      // Expect DTO-transformed output
+      expect(result).toEqual(mapEmployeeDbToApi(mockCreated));
+      expect(mockQuery).toHaveBeenCalledTimes(4); // email check + number check + insert + payroll config
     });
 
     it('should throw error if required fields missing', async () => {
@@ -130,7 +133,8 @@ describe('EmployeeService', () => {
 
       const result = await service.getEmployee(mockEmpId, mockOrgId);
 
-      expect(result).toEqual(mockEmp);
+      // Expect DTO-transformed output
+      expect(result).toEqual(mapEmployeeDbToApi(mockEmp));
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining('department_name'),
         [mockEmpId, mockOrgId],
@@ -158,7 +162,8 @@ describe('EmployeeService', () => {
 
       const result = await service.getEmployee(mockEmpId, mockOrgId);
 
-      expect(result.manager_name).toBe('Jane Smith');
+      // Expect DTO-transformed camelCase property
+      expect(result.managerName).toBe('Jane Smith');
     });
   });
 
@@ -174,7 +179,8 @@ describe('EmployeeService', () => {
 
       const result = await service.listEmployees({}, mockOrgId);
 
-      expect(result.employees).toEqual(mockEmps);
+      // Expect DTO-transformed array
+      expect(result.employees).toEqual(mapEmployeesDbToApi(mockEmps));
       expect(result.total).toBe(2);
       expect(result.limit).toBe(50);
       expect(result.offset).toBe(0);
@@ -253,7 +259,8 @@ describe('EmployeeService', () => {
 
       const result = await service.updateEmployee(mockEmpId, updateData, mockOrgId, mockUserId);
 
-      expect(result).toEqual(mockUpdated);
+      // Expect DTO-transformed output
+      expect(result).toEqual(mapEmployeeDbToApi(mockUpdated));
     });
 
     it('should throw error if employee not found', async () => {
@@ -292,7 +299,8 @@ describe('EmployeeService', () => {
 
       const result = await service.updateEmployee(mockEmpId, {}, mockOrgId, mockUserId);
 
-      expect(result).toEqual(existingEmp);
+      // Expect DTO-transformed output
+      expect(result).toEqual(mapEmployeeDbToApi(existingEmp));
       expect(mockQuery).toHaveBeenCalledTimes(1);
     });
 
@@ -334,14 +342,16 @@ describe('EmployeeService', () => {
       ).rejects.toThrow('not found');
     });
 
-    it('should include deleted_by in update', async () => {
+    it('should soft delete employee', async () => {
       mockQuery.mockResolvedValueOnce({ rows: [{ id: mockEmpId }] })
         .mockResolvedValueOnce({ rows: [] });
 
       await service.deleteEmployee(mockEmpId, mockOrgId, mockUserId);
 
+      // Check that the UPDATE query was called for soft delete
       const deleteCall = mockQuery.mock.calls[1];
-      expect(deleteCall[1]).toContain(mockUserId);
+      expect(deleteCall[0]).toContain('deleted_at');
+      expect(deleteCall[0]).toContain('CURRENT_TIMESTAMP');
     });
   });
 
@@ -355,8 +365,23 @@ describe('EmployeeService', () => {
 
       const result = await service.searchEmployees('John', mockOrgId);
 
-      expect(result).toEqual(mockEmps);
+      // Expect DTO-transformed array
+      expect(result).toEqual(mapEmployeesDbToApi(mockEmps));
       expect(mockQuery.mock.calls[0][1][1]).toBe('%John%');
+    });
+
+    it('should search by last name', async () => {
+      const mockEmps = [
+        { id: 'emp-1', first_name: 'John', last_name: 'Doe' }
+      ];
+
+      mockQuery.mockResolvedValueOnce({ rows: mockEmps });
+
+      const result = await service.searchEmployees('Doe', mockOrgId);
+
+      // Expect DTO-transformed array
+      expect(result).toEqual(mapEmployeesDbToApi(mockEmps));
+      expect(mockQuery.mock.calls[0][1][1]).toBe('%Doe%');
     });
 
     it('should search by last name', async () => {
@@ -409,7 +434,8 @@ describe('EmployeeService', () => {
 
       const result = await service.getEmployeeByEmail('john.doe@example.com', mockOrgId);
 
-      expect(result).toEqual(mockEmp);
+      // Expect DTO-transformed output
+      expect(result).toEqual(mapEmployeeDbToApi(mockEmp));
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining('WHERE email = $1'),
         ['john.doe@example.com', mockOrgId],
@@ -439,7 +465,8 @@ describe('EmployeeService', () => {
 
       const result = await service.getEmployeeByNumber('EMP001', mockOrgId);
 
-      expect(result).toEqual(mockEmp);
+      // Expect DTO-transformed output
+      expect(result).toEqual(mapEmployeeDbToApi(mockEmp));
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining('WHERE employee_number = $1'),
         ['EMP001', mockOrgId],

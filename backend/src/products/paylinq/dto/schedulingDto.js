@@ -22,7 +22,7 @@ export function mapScheduleDbToApi(dbSchedule) {
     startTime: dbSchedule.start_time,
     endTime: dbSchedule.end_time,
     durationHours: dbSchedule.duration_hours,
-    breakMinutes: dbSchedule.break_minutes,
+    breakDurationMinutes: dbSchedule.break_duration_minutes,
     location: dbSchedule.location,
     status: dbSchedule.status,
     scheduleType: dbSchedule.schedule_type,
@@ -86,8 +86,8 @@ export function mapScheduleApiToDb(apiData) {
   if (apiData.durationHours !== undefined) {
     dbData.duration_hours = apiData.durationHours;
   }
-  if (apiData.breakMinutes !== undefined) {
-    dbData.break_minutes = apiData.breakMinutes;
+  if (apiData.breakDurationMinutes !== undefined) {
+    dbData.break_duration_minutes = apiData.breakDurationMinutes;
   }
   if (apiData.location !== undefined) {
     dbData.location = apiData.location;
@@ -118,18 +118,21 @@ export function mapScheduleChangeRequestDbToApi(dbRequest) {
 
   return {
     id: dbRequest.id,
-    organizationId: dbRequest.organization_id,
     scheduleId: dbRequest.schedule_id,
     requestedBy: dbRequest.requested_by,
-    requestType: dbRequest.request_type,
-    requestedChanges: dbRequest.requested_changes,
+    changeType: dbRequest.change_type,
+    requestedDate: dbRequest.requested_date,
+    requestedShiftTypeId: dbRequest.requested_shift_type_id,
     reason: dbRequest.reason,
     status: dbRequest.status,
-    reviewedBy: dbRequest.reviewed_by,
-    reviewedAt: dbRequest.reviewed_at,
-    reviewNotes: dbRequest.review_notes,
+    approvedBy: dbRequest.approved_by ?? null,
+    approvedAt: dbRequest.approved_at ?? null,
+    rejectionReason: dbRequest.rejection_reason ?? null,
+    organizationId: dbRequest.organization_id,
     createdAt: dbRequest.created_at,
-    updatedAt: dbRequest.updated_at,
+    updatedAt: dbRequest.updated_at ?? null,
+    requesterName: dbRequest.requester_name ?? null,
+    approverName: dbRequest.approver_name ?? null,
   };
 }
 
@@ -159,8 +162,14 @@ export function mapScheduleChangeRequestApiToDb(apiData) {
   if (apiData.requestedBy !== undefined) {
     dbData.requested_by = apiData.requestedBy;
   }
-  if (apiData.requestType !== undefined) {
-    dbData.request_type = apiData.requestType;
+  if (apiData.changeType !== undefined) {
+    dbData.change_type = apiData.changeType;
+  }
+  if (apiData.requestedDate !== undefined) {
+    dbData.requested_date = apiData.requestedDate;
+  }
+  if (apiData.requestedShiftTypeId !== undefined) {
+    dbData.requested_shift_type_id = apiData.requestedShiftTypeId;
   }
   if (apiData.requestedChanges !== undefined) {
     dbData.requested_changes = apiData.requestedChanges;

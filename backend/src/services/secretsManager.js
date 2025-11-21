@@ -408,6 +408,12 @@ class VaultProvider extends SecretProvider {
 
 /**
  * TransIP/OpenStack Barbican Provider
+ * 
+ * Barbican is OpenStack's secret management service that provides:
+ * - Secure storage of secrets (encrypted at rest)
+ * - Secret generation (random keys, certificates, etc.)
+ * - Access control via OpenStack authentication
+ * - RESTful API for secret management
  */
 class BarbicanProvider extends SecretProvider {
   constructor(options = {}) {
@@ -415,11 +421,14 @@ class BarbicanProvider extends SecretProvider {
     this.endpoint = options.endpoint || process.env.BARBICAN_ENDPOINT;
     this.token = options.token || process.env.BARBICAN_TOKEN;
     this.projectId = options.projectId || process.env.BARBICAN_PROJECT_ID;
+    this.tokenExpiry = null;
   }
 
   async _getAuthToken() {
-    // If we have a token, use it
-    if (this.token) return this.token;
+    // If we have a token and it's not expired, use it
+    if (this.token && this.tokenExpiry && Date.now() < this.tokenExpiry) {
+      return this.token;
+    }
     
     // Otherwise, authenticate with OpenStack Keystone
     try {
@@ -454,6 +463,10 @@ class BarbicanProvider extends SecretProvider {
       }
       
       this.token = authResponse.headers.get('X-Subject-Token');
+      // Token typically expires in 1 hour, cache for 55 minutes
+      this.tokenExpiry = Date.now() + (55 * 60 * 1000);
+      
+      logger.info('Authenticated with OpenStack Barbican');
       return this.token;
     } catch (error) {
       logger.error('Failed to authenticate with OpenStack', {
@@ -523,6 +536,9 @@ class BarbicanProvider extends SecretProvider {
         ? secretValue 
         : JSON.stringify(secretValue);
       
+      // Base64 encode the payload
+      const base64Payload = Buffer.from(payload).toString('base64');
+      
       const response = await fetch(`${this.endpoint}/v1/secrets`, {
         method: 'POST',
         headers: {
@@ -531,22 +547,94 @@ class BarbicanProvider extends SecretProvider {
         },
         body: JSON.stringify({
           name: secretName,
-          payload: payload,
-          payload_content_type: 'text/plain',
+          payload: base64Payload,
+          payload_content_type: 'application/octet-stream',
           payload_content_encoding: 'base64',
           algorithm: 'aes',
           bit_length: 256,
           mode: 'cbc',
+          secret_type: 'opaque',
         }),
       });
       
       if (!response.ok) {
-        throw new Error(`Barbican returned ${response.status}`);
+        const errorData = await response.text();
+        throw new Error(`Barbican returned ${response.status}: ${errorData}`);
       }
       
-      logger.info('Secret stored in Barbican', { secretName });
+      const result = await response.json();
+      logger.info('Secret stored in Barbican', { 
+        secretName,
+        secretRef: result.secret_ref 
+      });
+      
+      return result.secret_ref;
     } catch (error) {
       logger.error('Failed to store secret in Barbican', {
+        secretName,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Generate a new secret in Barbican
+   * Barbican will generate a cryptographically secure random secret
+   * 
+   * @param {string} secretName - Name for the secret
+   * @param {Object} options - Generation options
+   * @param {string} options.algorithm - Algorithm (aes, rsa, dsa, ec, octets)
+   * @param {number} options.bit_length - Key size in bits (128, 192, 256 for AES)
+   * @param {string} options.mode - Encryption mode (cbc, gcm, etc.)
+   * @param {string} options.secret_type - Type (symmetric, asymmetric, passphrase, opaque)
+   * @param {Date} options.expiration - Optional expiration date
+   * @returns {Promise<string>} Secret reference URL
+   */
+  async generateSecret(secretName, options = {}) {
+    const token = await this._getAuthToken();
+    
+    const payload = {
+      name: secretName,
+      algorithm: options.algorithm || 'aes',
+      bit_length: options.bit_length || 256,
+      mode: options.mode || 'cbc',
+      secret_type: options.secret_type || 'symmetric',
+    };
+
+    // Add optional expiration
+    if (options.expiration) {
+      payload.expiration = options.expiration.toISOString();
+    }
+
+    try {
+      // POST without payload - Barbican generates the secret
+      const response = await fetch(`${this.endpoint}/v1/secrets`, {
+        method: 'POST',
+        headers: {
+          'X-Auth-Token': token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Barbican returned ${response.status}: ${errorData}`);
+      }
+
+      const result = await response.json();
+      
+      logger.info('Secret generated in Barbican', {
+        secretName,
+        secretRef: result.secret_ref,
+        algorithm: payload.algorithm,
+        bit_length: payload.bit_length,
+      });
+
+      return result.secret_ref;
+    } catch (error) {
+      logger.error('Failed to generate secret in Barbican', {
         secretName,
         error: error.message,
       });
@@ -592,8 +680,57 @@ class BarbicanProvider extends SecretProvider {
   }
 
   async rotateSecret(secretName) {
-    // Barbican doesn't have built-in rotation, implement manual rotation
-    throw new Error('Manual secret rotation required for Barbican');
+    const token = await this._getAuthToken();
+    
+    try {
+      // Get the old secret metadata to preserve settings
+      const listResponse = await fetch(`${this.endpoint}/v1/secrets?name=${secretName}`, {
+        headers: {
+          'X-Auth-Token': token,
+        },
+      });
+      
+      if (!listResponse.ok) {
+        throw new Error('Failed to find secret for rotation');
+      }
+      
+      const secrets = await listResponse.json();
+      if (!secrets.secrets || secrets.secrets.length === 0) {
+        throw new Error(`Secret ${secretName} not found`);
+      }
+      
+      const oldSecret = secrets.secrets[0];
+      
+      // Generate new secret with same settings
+      const newSecretRef = await this.generateSecret(secretName, {
+        algorithm: oldSecret.algorithm,
+        bit_length: oldSecret.bit_length,
+        mode: oldSecret.mode,
+        secret_type: oldSecret.secret_type,
+      });
+      
+      // Delete old secret
+      await fetch(oldSecret.secret_ref, {
+        method: 'DELETE',
+        headers: {
+          'X-Auth-Token': token,
+        },
+      });
+      
+      logger.info('Secret rotated in Barbican', {
+        secretName,
+        oldRef: oldSecret.secret_ref,
+        newRef: newSecretRef,
+      });
+      
+      return newSecretRef;
+    } catch (error) {
+      logger.error('Failed to rotate secret in Barbican', {
+        secretName,
+        error: error.message,
+      });
+      throw error;
+    }
   }
 }
 
@@ -789,6 +926,41 @@ class SecretsManager {
       });
     } catch (error) {
       logger.error('Failed to rotate secret', {
+        secretName,
+        provider: this.provider.name,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Generate a new secret (if provider supports it)
+   * Currently supported by: Barbican
+   * 
+   * @param {string} secretName - Name for the generated secret
+   * @param {Object} options - Generation options (provider-specific)
+   * @returns {Promise<string>} Secret reference or identifier
+   */
+  async generateSecret(secretName, options = {}) {
+    await this.initialize();
+    
+    if (typeof this.provider.generateSecret !== 'function') {
+      throw new Error(`Secret generation not supported by ${this.provider.name} provider`);
+    }
+    
+    try {
+      const secretRef = await this.provider.generateSecret(secretName, options);
+      
+      logger.info('Secret generated', {
+        secretName,
+        provider: this.provider.name,
+        options,
+      });
+      
+      return secretRef;
+    } catch (error) {
+      logger.error('Failed to generate secret', {
         secretName,
         provider: this.provider.name,
         error: error.message,

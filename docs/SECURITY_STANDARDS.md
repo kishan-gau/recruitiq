@@ -718,47 +718,75 @@ async function updateJob(jobId, data, organizationId, userId) {
 
 ## Secrets Management
 
-### Environment Variables
+### Secrets Management with Barbican
 
 ```javascript
 // ❌ WRONG: Hard-coded secrets
 const JWT_SECRET = 'my-secret-key-123';
 const DB_PASSWORD = 'password123';
 
-// ✅ CORRECT: Environment variables
+// ❌ WRONG: Even environment variables can be leaked
 import dotenv from 'dotenv';
 dotenv.config();
+const JWT_SECRET = process.env.JWT_SECRET; // Still in filesystem
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const DB_PASSWORD = process.env.DB_PASSWORD;
+// ✅ CORRECT: Use SecretsManager with Barbican (RECOMMENDED)
+import secretsManager from './services/SecretsManager.js';
 
-// ✅ CORRECT: Validate required secrets
-function validateConfig() {
+// Generate cryptographically secure secrets automatically
+const jwtSecretRef = await secretsManager.generateSecret('JWT_SECRET', {
+  algorithm: 'aes',
+  bit_length: 256,
+  mode: 'cbc',
+  secret_type: 'symmetric',
+});
+
+// Retrieve secrets (with caching)
+const JWT_SECRET = await secretsManager.getSecret('JWT_SECRET');
+
+// Rotate secrets regularly
+await secretsManager.rotateSecret('JWT_SECRET');
+
+// ✅ CORRECT: Validate required secrets exist
+async function validateConfig() {
   const required = [
     'JWT_SECRET',
+    'JWT_REFRESH_SECRET',
     'DB_PASSWORD',
     'ENCRYPTION_KEY',
-    'AWS_SECRET_KEY'
   ];
   
-  const missing = required.filter(key => !process.env[key]);
+  const missing = [];
   
-  if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  for (const secretName of required) {
+    try {
+      await secretsManager.getSecret(secretName);
+    } catch (error) {
+      missing.push(secretName);
+    }
   }
   
-  // Validate secret strength
-  if (JWT_SECRET.length < 32) {
-    throw new Error('JWT_SECRET must be at least 32 characters');
+  if (missing.length > 0) {
+    throw new Error(`Missing required secrets: ${missing.join(', ')}`);
   }
 }
 
-// ❌ WRONG: Committing .env file
+// ❌ WRONG: Committing .env file with secrets
 // .env should ALWAYS be in .gitignore
 
-// ✅ CORRECT: .env.example for reference
-// Commit .env.example with placeholder values
+// ✅ CORRECT: Store only configuration, not secrets
+// .env contains Barbican endpoint, not actual secrets
 ```
+
+**Barbican Secret Generation Benefits:**
+- ✅ Cryptographically secure random generation
+- ✅ Never stored in filesystem or version control
+- ✅ Automatic encryption at rest
+- ✅ Built-in rotation support
+- ✅ Audit logging of all access
+- ✅ Expiration support for temporary secrets
+
+**See:** [Barbican Secret Generation Guide](./BARBICAN_SECRET_GENERATION.md) for full documentation.
 
 ---
 

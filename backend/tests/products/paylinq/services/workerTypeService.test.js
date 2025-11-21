@@ -237,8 +237,7 @@ describe('WorkerTypeService', () => {
     it('should return DTO-transformed template', async () => {
       const dbTemplate = createDbTemplate();
 
-      mockRepository.findTemplateByIdAnyOrg.mockResolvedValue(dbTemplate); // Check existence
-      mockRepository.findTemplateById.mockResolvedValue(dbTemplate);
+      mockRepository.findTemplateByIdAnyOrg.mockResolvedValue(dbTemplate);
 
       const result = await service.getWorkerTypeTemplateById(templateId, orgId);
 
@@ -247,7 +246,7 @@ describe('WorkerTypeService', () => {
       expect(result.defaultPayFrequency).toBe('bi-weekly'); // camelCase
       expect(result.benefitsEligible).toBe(true); // camelCase
       expect(result.default_pay_frequency).toBeUndefined(); // DB field should not exist
-      expect(mockRepository.findTemplateById).toHaveBeenCalledWith(templateId, orgId);
+      expect(mockRepository.findTemplateByIdAnyOrg).toHaveBeenCalledWith(templateId);
     });
 
     it('should throw NotFoundError when template does not exist', async () => {

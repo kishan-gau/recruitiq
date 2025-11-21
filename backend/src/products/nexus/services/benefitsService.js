@@ -5,10 +5,15 @@
 
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import IntegrationService from '../../paylinq/services/integrationService.js';
 
 class BenefitsService {
-  constructor() {
+  /**
+   * @param {IntegrationService} integrationService - Optional for testing
+   */
+  constructor(integrationService = null) {
     this.logger = logger;
+    this.integrationService = integrationService || new IntegrationService();
   }
 
   // ========== BENEFIT PLANS ==========
@@ -365,8 +370,6 @@ class BenefitsService {
    * Automatically creates payroll deduction in PayLinQ
    */
   async enrollEmployee(enrollmentData, organizationId, userId) {
-    const IntegrationService = (await import('../../paylinq/services/integrationService.js')).default;
-    const integrationService = new IntegrationService();
 
     try {
       this.logger.info('Enrolling employee in benefit plan', { 
@@ -454,7 +457,7 @@ class BenefitsService {
           contribution: enrollmentData.employee_contribution_amount
         });
 
-        const deductionResult = await integrationService.addBenefitsDeductionFromNexus(
+        const deductionResult = await this.integrationService.addBenefitsDeductionFromNexus(
           {
             employeeId: enrollmentData.employee_id,
             enrollmentId: enrollment.id,
