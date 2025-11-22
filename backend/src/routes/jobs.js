@@ -10,7 +10,7 @@ import {
   publishJob,
   updatePortalSettings
 } from '../controllers/jobController.js';
-import { authenticate, optionalAuth } from '../middleware/auth.js';
+import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -21,25 +21,21 @@ router.get('/public/:id', getPublicJob);
 // Protected routes (authentication required)
 router.use(authenticate);
 
-// GET /api/jobs - List all jobs
-router.get('/', listJobs);
+// View operations - require 'job:view'
+router.get('/', requirePermission('job:view'), listJobs);
+router.get('/:id', requirePermission('job:view'), getJob);
 
-// POST /api/jobs - Create job
-router.post('/', createJob);
+// Create operations - require 'job:create'
+router.post('/', requirePermission('job:create'), createJob);
 
-// GET /api/jobs/:id - Get job details
-router.get('/:id', getJob);
+// Edit operations - require 'job:edit'
+router.put('/:id', requirePermission('job:edit'), updateJob);
+router.put('/:id/portal-settings', requirePermission('job:edit'), updatePortalSettings);
 
-// PUT /api/jobs/:id - Update job
-router.put('/:id', updateJob);
+// Publish operations - require 'job:publish'
+router.put('/:id/publish', requirePermission('job:publish'), publishJob);
 
-// PUT /api/jobs/:id/publish - Publish/unpublish job
-router.put('/:id/publish', publishJob);
-
-// PUT /api/jobs/:id/portal-settings - Update portal settings
-router.put('/:id/portal-settings', updatePortalSettings);
-
-// DELETE /api/jobs/:id - Delete job
-router.delete('/:id', deleteJob);
+// Delete operations - require 'job:delete'
+router.delete('/:id', requirePermission('job:delete'), deleteJob);
 
 export default router;
