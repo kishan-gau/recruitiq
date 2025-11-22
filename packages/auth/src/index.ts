@@ -10,3 +10,11 @@ export type { User, AuthContextValue, MFAResponse, AuthProviderProps } from './A
 
 export { ProtectedRoute } from './ProtectedRoute';
 export type { ProtectedRouteProps } from './ProtectedRoute';
+
+// RBAC Hooks
+export { usePermissions } from './hooks/usePermissions';
+export type { UsePermissionsReturn } from './hooks/usePermissions';
+
+export { useHasPermission } from './hooks/useHasPermission';
+export { useCheckPermissions } from './hooks/useCheckPermissions';
+export type { PermissionCheckResult } from './hooks/useCheckPermissions';
