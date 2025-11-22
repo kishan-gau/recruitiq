@@ -1,8 +1,21 @@
 /**
- * RBAC Service
+ * RBAC Service - Platform Admin Only
  * 
- * Service for Role-Based Access Control management in Portal
- * Handles roles, permissions, and user role assignments
+ * Service for Platform/System RBAC management in Portal
+ * 
+ * CRITICAL: Portal manages ONLY platform-level RBAC:
+ * - System roles (platform admins, system operators)
+ * - Platform permissions (not tenant permissions)
+ * - Role templates that tenants can use
+ * 
+ * Portal does NOT manage:
+ * - Tenant users (managed in tenant apps)
+ * - Tenant role assignments (managed in tenant apps)
+ * - Tenant-specific permissions
+ * 
+ * Architecture:
+ * - Portal = Platform admin tool (manages the platform itself)
+ * - Tenant Apps (Nexus, PayLinQ, etc.) = Manage their own users/roles
  */
 
 import { APIClient } from '@recruitiq/api-client';
@@ -10,65 +23,105 @@ import { APIClient } from '@recruitiq/api-client';
 const apiClient = new APIClient();
 
 /**
- * RBAC Service
+ * Platform RBAC Service (Portal Admin Only)
  */
-export const rbacService = {
+export const platformRbacService = {
   /**
-   * Get all permissions
+   * Get system permissions (platform-level only)
    */
-  async getPermissions(filters?: { product?: string; category?: string }) {
+  async getSystemPermissions() {
     try {
-      const response = await apiClient.get('/api/rbac/permissions', { params: filters });
+      const response = await apiClient.get('/api/rbac/permissions', { 
+        params: { scope: 'platform' } 
+      });
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch permissions:', error);
+      console.error('Failed to fetch system permissions:', error);
       throw error;
     }
   },
 
   /**
-   * Get grouped permissions (by product and category)
+   * Get all permission templates (for tenant role creation)
    */
-  async getGroupedPermissions() {
+  async getPermissionTemplates() {
     try {
-      const response = await apiClient.get('/api/rbac/permissions/grouped');
+      const response = await apiClient.get('/api/rbac/permissions/templates');
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch grouped permissions:', error);
+      console.error('Failed to fetch permission templates:', error);
       throw error;
     }
   },
 
   /**
-   * Get all roles
+   * Get system roles (platform admin roles only)
    */
-  async getRoles(filters?: { product?: string; includeSystem?: boolean }) {
+  async getSystemRoles() {
     try {
-      const response = await apiClient.get('/api/rbac/roles', { params: filters });
+      const response = await apiClient.get('/api/rbac/roles', { 
+        params: { scope: 'platform' } 
+      });
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch roles:', error);
+      console.error('Failed to fetch system roles:', error);
       throw error;
     }
   },
 
   /**
-   * Get single role by ID
+   * Get system roles (platform admin roles only)
    */
-  async getRole(roleId: string) {
+  async getSystemRoles() {
     try {
-      const response = await apiClient.get(`/api/rbac/roles/${roleId}`);
+      const response = await apiClient.get('/api/rbac/roles', { 
+        params: { scope: 'platform' } 
+      });
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch role:', error);
+      console.error('Failed to fetch system roles:', error);
       throw error;
     }
   },
 
   /**
-   * Create new role
+   * Get role templates (for tenants to use)
    */
-  async createRole(data: {
+  async getRoleTemplates() {
+    try {
+      const response = await apiClient.get('/api/rbac/roles/templates');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch role templates:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create system role (platform admin only)
+   */
+  async createSystemRole(data: {
+    name: string;
+    display_name?: string;
+    description?: string;
+    permissionIds?: string[];
+  }) {
+    try {
+      const response = await apiClient.post('/api/rbac/roles', {
+        ...data,
+        scope: 'platform',
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create system role:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create role template (for tenants to use)
+   */
+  async createRoleTemplate(data: {
     name: string;
     display_name?: string;
     description?: string;
@@ -76,110 +129,10 @@ export const rbacService = {
     permissionIds?: string[];
   }) {
     try {
-      const response = await apiClient.post('/api/rbac/roles', data);
+      const response = await apiClient.post('/api/rbac/roles/templates', data);
       return response.data;
     } catch (error: any) {
-      console.error('Failed to create role:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Update existing role
-   */
-  async updateRole(roleId: string, data: {
-    display_name?: string;
-    description?: string;
-    permissionIds?: string[];
-  }) {
-    try {
-      const response = await apiClient.patch(`/api/rbac/roles/${roleId}`, data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to update role:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Delete role
-   */
-  async deleteRole(roleId: string) {
-    try {
-      const response = await apiClient.delete(`/api/rbac/roles/${roleId}`);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to delete role:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Assign permissions to role
-   */
-  async assignPermissionsToRole(roleId: string, permissionIds: string[]) {
-    try {
-      const response = await apiClient.post(`/api/rbac/roles/${roleId}/permissions`, {
-        permissionIds,
-      });
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to assign permissions:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get user's roles
-   */
-  async getUserRoles(userId: string, product?: string) {
-    try {
-      const params = product ? { product } : {};
-      const response = await apiClient.get(`/api/rbac/user-roles/${userId}`, { params });
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch user roles:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get user's permissions
-   */
-  async getUserPermissions(userId: string, product?: string) {
-    try {
-      const params = product ? { product } : {};
-      const response = await apiClient.get(`/api/rbac/user-roles/${userId}/permissions`, { params });
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch user permissions:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Assign role to user
-   */
-  async assignRoleToUser(data: { userId: string; roleId: string; product?: string }) {
-    try {
-      const response = await apiClient.post('/api/rbac/user-roles', data);
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to assign role to user:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Revoke role from user
-   */
-  async revokeRoleFromUser(userId: string, roleId: string, product?: string) {
-    try {
-      const params = product ? { product } : {};
-      const response = await apiClient.delete(`/api/rbac/user-roles/${userId}/roles/${roleId}`, { params });
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to revoke role from user:', error);
+      console.error('Failed to create role template:', error);
       throw error;
     }
   },

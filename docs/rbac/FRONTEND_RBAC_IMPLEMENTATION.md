@@ -8,11 +8,54 @@
 
 ## Overview
 
-Frontend RBAC integration follows a **hybrid architecture**:
+Frontend RBAC integration follows a **hybrid architecture** with **clear separation of concerns**:
 - **80% Shared Foundation** - Core components and hooks in `packages/`
 - **20% App-Specific** - Custom UI per product in `apps/`
 
-This provides consistency across all apps while allowing product-specific customization.
+### Critical Architecture Principle
+
+**Portal vs Tenant Apps Separation:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        PORTAL                               │
+│  (Platform Admin - manages the platform itself)            │
+│                                                             │
+│  Manages:                                                   │
+│  ✅ Platform admins (portal users)                         │
+│  ✅ System roles (for platform admins)                     │
+│  ✅ Role templates (that tenants can use)                  │
+│  ✅ License management                                      │
+│  ✅ Customer/organization management                        │
+│                                                             │
+│  Does NOT manage:                                          │
+│  ❌ Tenant users (those belong to tenant orgs)            │
+│  ❌ Tenant role assignments                                │
+│  ❌ Tenant-specific permissions                            │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│              TENANT APPS (Nexus, PayLinQ, etc.)             │
+│  (Tenant-specific - each org manages its own users)        │
+│                                                             │
+│  Each organization manages:                                 │
+│  ✅ Their own users                                         │
+│  ✅ Role assignments for their users                        │
+│  ✅ Custom roles within their organization                  │
+│  ✅ Permission grants for their team                        │
+│                                                             │
+│  Cannot access:                                            │
+│  ❌ Other organizations' users                             │
+│  ❌ Platform admin functions                               │
+│  ❌ Cross-organization data                                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why This Matters:**
+- **Data Isolation** - Tenant users are isolated per organization
+- **Security** - Portal has no knowledge of tenant users
+- **Scalability** - Each organization manages its own RBAC
+- **Compliance** - Proper multi-tenant data separation
 
 ---
 
@@ -105,6 +148,68 @@ const checks = useCheckPermissions([
 - `HasAllPermissions.tsx` - AND logic wrapper
 - `AccessDenied.tsx` - Generic access denied page
 
+### RBAC Services
+
+#### Platform Service (Portal Only)
+
+**For Portal admin - manages platform-level RBAC:**
+
+```typescript
+// apps/portal/src/services/rbac.service.ts
+import { platformRbacService } from './services';
+
+// Get system roles (for platform admins)
+const systemRoles = await platformRbacService.getSystemRoles();
+
+// Create role template (for tenants to use)
+await platformRbacService.createRoleTemplate({
+  name: 'payroll_manager',
+  display_name: 'Payroll Manager',
+  product: 'paylinq',
+  permissionIds: ['payroll:run:view', 'payroll:run:create']
+});
+
+// Get system permissions
+const platformPermissions = await platformRbacService.getSystemPermissions();
+```
+
+#### Tenant Service (Product Apps)
+
+**For tenant apps - manages organization users:**
+
+```typescript
+// apps/nexus/src/services/rbac.service.ts
+import { createTenantRbacService } from '@recruitiq/auth';
+
+const nexusRbacService = createTenantRbacService('nexus');
+
+// Get roles for current organization
+const roles = await nexusRbacService.getRoles();
+
+// Assign role to user in organization
+await nexusRbacService.assignRoleToUser(userId, roleId);
+
+// Create custom role for organization
+await nexusRbacService.createRole({
+  name: 'hr_manager',
+  display_name: 'HR Manager',
+  permissionIds: ['employee:view', 'employee:edit']
+});
+
+// Get organization users (for role assignment UI)
+const users = await nexusRbacService.getOrganizationUsers();
+```
+
+**Key Differences:**
+
+| Feature | Portal (Platform) | Tenant Apps |
+|---------|------------------|-------------|
+| Users | Platform admins only | Organization users |
+| Roles | System roles + Templates | Organization roles |
+| Scope | Platform-wide | Organization-scoped |
+| API Path | `/api/rbac/*` | `/api/products/{slug}/rbac/*` |
+| Purpose | Manage platform | Manage tenant users |
+
 ### Route Protection
 
 **ProtectedRoute already supports permissions:**
@@ -140,20 +245,22 @@ import { ProtectedRoute } from '@recruitiq/auth';
 ### What's Implemented
 
 **Packages:**
-- ✅ `@recruitiq/auth` - 3 permission hooks
+- ✅ `@recruitiq/auth` - 3 permission hooks + tenant RBAC service factory
 - ✅ `@recruitiq/ui` - 5 RBAC components
 - ✅ Full TypeScript support
 - ✅ Comprehensive JSDoc documentation
 
 **Portal:**
-- ✅ `rbacService` - Complete RBAC API client
-  - Permission queries (all, grouped, by product)
-  - Role management (CRUD)
-  - User role assignments (assign, revoke)
-  - Permission queries per user
+- ✅ `platformRbacService` - Platform RBAC API client (system roles, templates)
+- ✅ Proper separation from tenant management
+
+**Tenant Apps:**
+- ✅ `createTenantRbacService()` - Factory for org-scoped RBAC
+- ✅ Example implementation in Nexus
 
 **Infrastructure:**
 - ✅ Hybrid architecture established
+- ✅ Clear portal vs tenant separation
 - ✅ All exports configured
 - ✅ Ready for app integration
 
@@ -163,39 +270,79 @@ import { ProtectedRoute } from '@recruitiq/auth';
 
 ### Portal Admin UI
 
-**Create role management interface:**
+**Create platform role management interface:**
 
-1. **Role List Page** (`apps/portal/src/pages/roles/RolesList.tsx`)
-   - Display all roles with filters (product, system/custom)
-   - Create/Edit/Delete actions
-   - Permission assignment interface
+1. **System Role List Page** (`apps/portal/src/pages/roles/SystemRoles.tsx`)
+   - Display platform admin roles
+   - Create/Edit platform roles
+   - System permission assignment
    - Audit log viewer
 
-2. **Role Form** (`apps/portal/src/pages/roles/RoleForm.tsx`)
-   - Create/Edit role
-   - Select permissions from grouped list
-   - Product assignment
-   - Validation
+2. **Role Template Manager** (`apps/portal/src/pages/roles/RoleTemplates.tsx`)
+   - Create role templates for tenants
+   - Per-product templates
+   - Permission presets
+   - Template versioning
 
-3. **User Role Manager** (`apps/portal/src/pages/users/UserRoleManager.tsx`)
-   - Assign/revoke roles per user
-   - Per-product role assignment
-   - Visual permission summary
+3. **Platform Permissions Viewer** (`apps/portal/src/pages/permissions/PlatformPermissions.tsx`)
+   - View all platform permissions
+   - Documentation for each permission
+   - Permission categories
 
-### Product Apps Integration
+**CRITICAL: Portal does NOT manage tenant users or tenant role assignments!**
+
+### Tenant App Integration (Nexus, PayLinQ, RecruitIQ, ScheduleHub)
 
 **Each app needs:**
 
-1. **Update AuthContext** to load permissions from backend
-2. **Add route guards** using `ProtectedRoute`
-3. **Wrap features** with `<PermissionGate>`
-4. **Update navigation** to hide/show based on permissions
-5. **Custom AccessDenied** pages (optional)
+1. **Role Management Page** (`apps/{app}/src/pages/settings/Roles.tsx`)
+   - List organization roles
+   - Create/Edit/Delete custom roles
+   - Assign permissions to roles
+   - View role members
+
+2. **User Role Assignment** (`apps/{app}/src/pages/settings/UserRoles.tsx`)
+   - List organization users
+   - Assign/revoke roles per user
+   - View user permissions
+   - Bulk role assignment
+
+3. **Update AuthContext** to load permissions from backend
+4. **Add route guards** using `ProtectedRoute`
+5. **Wrap features** with `<PermissionGate>`
+6. **Update navigation** to hide/show based on permissions
 
 ### Example: Nexus Integration
 
 ```tsx
-// 1. Route Protection
+// 1. Create RBAC Service (apps/nexus/src/services/rbac.service.ts)
+import { createTenantRbacService } from '@recruitiq/auth';
+export const nexusRbacService = createTenantRbacService('nexus');
+
+// 2. Role Management Page (apps/nexus/src/pages/settings/Roles.tsx)
+import { nexusRbacService } from '../../services/rbac.service';
+
+function RoleManagementPage() {
+  const [roles, setRoles] = useState([]);
+  
+  useEffect(() => {
+    nexusRbacService.getRoles().then(data => setRoles(data.roles));
+  }, []);
+
+  const handleAssignRole = async (userId, roleId) => {
+    await nexusRbacService.assignRoleToUser(userId, roleId);
+    toast.success('Role assigned successfully');
+  };
+
+  return (
+    <div>
+      <h1>Manage Roles</h1>
+      <RoleList roles={roles} onAssign={handleAssignRole} />
+    </div>
+  );
+}
+
+// 3. Route Protection
 <Route 
   path="/employees" 
   element={
@@ -208,7 +355,7 @@ import { ProtectedRoute } from '@recruitiq/auth';
   } 
 />
 
-// 2. Feature Gating
+// 4. Feature Gating
 import { PermissionGate } from '@recruitiq/ui';
 
 function EmployeesList() {
@@ -229,7 +376,7 @@ function EmployeesList() {
   );
 }
 
-// 3. Navigation Menu
+// 5. Navigation Menu
 function NavigationMenu() {
   const { hasPermission } = usePermissions();
 
@@ -238,28 +385,13 @@ function NavigationMenu() {
       {hasPermission('employee:view') && (
         <NavLink to="/employees">Employees</NavLink>
       )}
-      {hasPermission('payroll:view') && (
-        <NavLink to="/payroll">Payroll</NavLink>
+      {hasPermission('department:view') && (
+        <NavLink to="/departments">Departments</NavLink>
       )}
-      {hasPermission('reports:view') && (
-        <NavLink to="/reports">Reports</NavLink>
+      {hasPermission('attendance:view') && (
+        <NavLink to="/attendance">Attendance</NavLink>
       )}
     </nav>
-  );
-}
-
-// 4. Custom Access Denied (optional)
-// apps/nexus/src/pages/AccessDenied.tsx
-import { AccessDenied as BaseAccessDenied } from '@recruitiq/ui';
-
-export function NexusAccessDenied({ missingPermissions }) {
-  return (
-    <BaseAccessDenied
-      title="Nexus Access Required"
-      message="You need additional permissions to access this Nexus feature."
-      missingPermissions={missingPermissions}
-      showContactAdmin
-    />
   );
 }
 ```
@@ -618,12 +750,33 @@ pnpm build
 
 ## Summary
 
-✅ **Phase 1 Complete** - Shared foundation implemented
+✅ **Phase 1 Complete** - Shared foundation implemented with proper separation
 - 3 hooks in `@recruitiq/auth`
 - 5 components in `@recruitiq/ui`
-- RBAC service for Portal
+- Tenant RBAC service factory (`createTenantRbacService`)
+- Platform RBAC service (Portal only)
+- **Clear separation: Portal = Platform, Apps = Tenants**
 - Full TypeScript support
 
-📋 **Next Phase** - Portal admin UI + app integration
+📋 **Next Phase** - Portal admin UI for platform roles + tenant app RBAC UIs
 
-🎯 **Goal** - Fine-grained permission control across all RecruitIQ products with consistent UX
+🎯 **Goal** - Fine-grained permission control with proper multi-tenant isolation
+
+---
+
+## Key Architectural Decisions
+
+1. **Portal manages PLATFORM, not tenants**
+   - Portal users ≠ Tenant users
+   - System roles ≠ Organization roles
+   - Role templates provided to tenants
+
+2. **Each tenant app manages its own RBAC**
+   - Organization-scoped user management
+   - Custom role creation per org
+   - Independent role assignments
+
+3. **Shared foundation for consistency**
+   - Same hooks/components across all apps
+   - Consistent permission checking
+   - Unified UX patterns

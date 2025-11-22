@@ -18,3 +18,8 @@ export type { UsePermissionsReturn } from './hooks/usePermissions';
 export { useHasPermission } from './hooks/useHasPermission';
 export { useCheckPermissions } from './hooks/useCheckPermissions';
 export type { PermissionCheckResult } from './hooks/useCheckPermissions';
+
+// RBAC Services
+export { createTenantRbacService } from './services/tenantRbacService';
+export type { TenantRbacService } from './services/tenantRbacService';
+
