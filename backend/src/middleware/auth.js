@@ -3,6 +3,7 @@ import PlatformUser from '../models/PlatformUser.js';
 import TenantUser from '../models/TenantUser.js';
 import db from '../config/database.js';
 import logger from '../utils/logger.js';
+import UserRoleService from '../modules/rbac/services/UserRoleService.js';
 
 /**
  * New Authentication Middleware
@@ -226,6 +227,13 @@ export const authenticateTenant = async (req, res, next) => {
       }
     }
     
+    // Load user's RBAC permissions
+    const userRoleService = new UserRoleService();
+    const permissions = await userRoleService.getUserPermissions(
+      user.id,
+      user.organization_id
+    );
+    
     // Attach user to request
     req.user = {
       id: user.id,
@@ -241,7 +249,10 @@ export const authenticateTenant = async (req, res, next) => {
       enabledProducts: user.enabled_products || [],
       productRoles: user.product_roles || {},
       type: 'tenant',
-      user_type: 'tenant' // Add for compatibility
+      user_type: 'tenant', // Add for compatibility
+      // NEW: RBAC permissions
+      permissions: permissions.map(p => p.code),
+      permissionsDetails: permissions // Full permission objects
     };
     
     // DEBUG: Log what's in req.user (dev mode only)
@@ -249,8 +260,7 @@ export const authenticateTenant = async (req, res, next) => {
       console.log('=== MIDDLEWARE AUTH CHECK ===');
       console.log('User email:', req.user.email);
       console.log('enabledProducts:', req.user.enabledProducts);
-      console.log('Type:', typeof req.user.enabledProducts);
-      console.log('Is array?:', Array.isArray(req.user.enabledProducts));
+      console.log('RBAC Permissions:', req.user.permissions.length);
     }
     
     next();
@@ -467,7 +477,99 @@ export const authenticate = async (req, res, next) => {
 export const requirePlatformUser = authenticatePlatform;
 export const requireTenantUser = authenticateTenant;
 export const requireRole = requirePlatformRole; // Backward compatibility
-export const requirePermission = requirePlatformPermission; // Backward compatibility
+
+/**
+ * NEW: Require Permission (Tenant RBAC)
+ * Must be used AFTER authenticateTenant
+ * Checks if tenant user has specific permission(s)
+ * OR logic - user needs at least one permission
+ */
+export const requirePermission = (...permissions) => {
+  return (req, res, next) => {
+    if (!req.user || req.user.type !== 'tenant') {
+      return res.status(401).json({
+        success: false,
+        message: 'Tenant authentication required'
+      });
+    }
+    
+    const userPermissions = req.user.permissions || [];
+    
+    // Check if user has at least one required permission
+    const hasPermission = permissions.some(p => userPermissions.includes(p));
+    
+    if (!hasPermission) {
+      logger.warn('Permission check failed', {
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        userPermissions,
+        requiredPermissions: permissions,
+        endpoint: req.originalUrl
+      });
+      
+      return res.status(403).json({
+        success: false,
+        message: `Access denied. Required permissions: ${permissions.join(' OR ')}`,
+        requiredPermissions: permissions
+      });
+    }
+    
+    next();
+  };
+};
+
+/**
+ * NEW: Require ALL Permissions (Tenant RBAC)
+ * User must have ALL specified permissions (AND logic)
+ */
+export const requireAllPermissions = (...permissions) => {
+  return (req, res, next) => {
+    if (!req.user || req.user.type !== 'tenant') {
+      return res.status(401).json({
+        success: false,
+        message: 'Tenant authentication required'
+      });
+    }
+    
+    const userPermissions = req.user.permissions || [];
+    
+    // Check if user has ALL required permissions
+    const hasAllPermissions = permissions.every(p => userPermissions.includes(p));
+    
+    if (!hasAllPermissions) {
+      const missingPermissions = permissions.filter(p => !userPermissions.includes(p));
+      
+      logger.warn('Permission check failed - missing permissions', {
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        requiredPermissions: permissions,
+        missingPermissions,
+        endpoint: req.originalUrl
+      });
+      
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Missing required permissions.',
+        missingPermissions
+      });
+    }
+    
+    next();
+  };
+};
+
+/**
+ * NEW: Check Permission (Optional)
+ * Attaches permission status to request but doesn't block
+ */
+export const checkPermission = (...permissions) => {
+  return (req, res, next) => {
+    req.hasPermission = permissions.some(perm => 
+      req.user?.permissions?.includes(perm)
+    );
+    next();
+  };
+};
 
 /**
  * Optional Authentication
