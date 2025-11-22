@@ -452,7 +452,7 @@ describe('LocationsList', () => {
       renderWithProviders(<LocationsList />);
 
       await waitFor(() => {
-        expect(screen.getByText(/failed to fetch locations/i)).toBeInTheDocument();
+        expect(screen.getByText(/Request failed with status code 500/i)).toBeInTheDocument();
       });
     });
   });

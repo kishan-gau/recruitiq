@@ -19,7 +19,7 @@
  * @module tests/products/paylinq/e2e/payTemplateWorkflow-scenario10
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals';
 import request from 'supertest';
 import appPromise from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
@@ -27,6 +27,9 @@ import cacheService from '../../../../src/services/cacheService.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { cleanupTestEmployees } from '../helpers/employeeTestHelper.js';
+
+// Set timeout for slow E2E tests
+jest.setTimeout(120000); // 2 minutes for app initialization + tests
 
 // Uses cookie-based authentication per security requirements
 describe('Scenario 10: Multi-Currency Payroll', () => {

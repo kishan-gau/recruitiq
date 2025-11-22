@@ -45,31 +45,6 @@ const mockEmployee = {
   updatedAt: '2024-01-15T10:00:00Z',
 };
 
-// MSW server setup
-const server = setupServer(
-  http.get('/api/nexus/employees/:id', ({ params }) => {
-    if (params.id === mockEmployee.id) {
-      return HttpResponse.json(mockEmployee);
-    }
-    return new HttpResponse(null, { status: 404 });
-  }),
-  http.post('/api/nexus/employees/:id/terminate', () => {
-    return HttpResponse.json({ ...mockEmployee, employmentStatus: 'terminated' });
-  })
-);
-
-beforeEach(() => {
-  server.listen();
-});
-
-afterEach(() => {
-  server.resetHandlers();
-});
-
-afterAll(() => {
-  server.close();
-});
-
 // Test wrapper with all providers
 function renderWithProviders(component: React.ReactElement, initialRoute = `/employees/${mockEmployee.id}`) {
   const queryClient = new QueryClient({
@@ -256,7 +231,7 @@ describe('EmployeeDetails', () => {
     const terminatedEmployee = { ...mockEmployee, employmentStatus: 'terminated' };
     
     server.use(
-      http.get('/api/nexus/employees/:id', () => {
+      http.get('*/api/products/nexus/employees/:id', () => {
         return HttpResponse.json(terminatedEmployee);
       })
     );
@@ -335,7 +310,7 @@ describe('EmployeeDetails', () => {
 
   it('displays error when employee not found', async () => {
     server.use(
-      http.get('/api/nexus/employees/:id', () => {
+      http.get('*/api/products/nexus/employees/:id', () => {
         return new HttpResponse(null, { status: 404 });
       })
     );
@@ -425,7 +400,7 @@ describe('EmployeeDetails', () => {
     };
 
     server.use(
-      http.get('/api/nexus/employees/:id', () => {
+      http.get('*/api/products/nexus/employees/:id', () => {
         return HttpResponse.json(minimalEmployee);
       })
     );

@@ -271,4 +271,210 @@ export const nexusHandlers = [
     mockDepartments.splice(deptIndex, 1);
     return new HttpResponse(null, { status: 204 });
   }),
+
+  // Employees endpoints
+  http.get(`${API_BASE_URL}/employees`, ({ request }) => {
+    const url = new URL(request.url);
+    const search = url.searchParams.get('search');
+    const employmentStatus = url.searchParams.get('employmentStatus');
+    const departmentId = url.searchParams.get('departmentId');
+
+    const mockEmployees = [
+      {
+        id: '1',
+        employeeNumber: 'EMP001',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        jobTitle: 'Software Engineer',
+        employmentStatus: 'active',
+        employmentType: 'full_time',
+        hireDate: '2024-01-15',
+        department: { id: 'dept-1', departmentName: 'Engineering' },
+        location: { id: 'loc-1', locationName: 'New York' },
+      },
+      {
+        id: '2',
+        employeeNumber: 'EMP002',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        email: 'jane.smith@example.com',
+        jobTitle: 'Product Manager',
+        employmentStatus: 'active',
+        employmentType: 'full_time',
+        hireDate: '2024-02-01',
+        department: { id: 'dept-2', departmentName: 'Product' },
+        location: { id: 'loc-1', locationName: 'New York' },
+      },
+    ];
+
+    let filtered = [...mockEmployees];
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(
+        (emp) =>
+          emp.firstName.toLowerCase().includes(searchLower) ||
+          emp.lastName.toLowerCase().includes(searchLower) ||
+          emp.email.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (employmentStatus) {
+      filtered = filtered.filter((emp) => emp.employmentStatus === employmentStatus);
+    }
+
+    if (departmentId) {
+      filtered = filtered.filter((emp) => emp.department.id === departmentId);
+    }
+
+    return HttpResponse.json({
+      data: filtered,
+      total: filtered.length,
+      page: 1,
+      limit: 50,
+    });
+  }),
+
+  http.get(`${API_BASE_URL}/employees/:id`, ({ params }) => {
+    if (params.id === '123e4567-e89b-12d3-a456-426614174000') {
+      return HttpResponse.json({
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        organizationId: 'org-123',
+        employeeNumber: 'EMP001',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        jobTitle: 'Senior Software Engineer',
+        employmentStatus: 'active',
+        employmentType: 'full_time',
+        hireDate: '2024-01-15',
+        department: { id: 'dept-1', departmentName: 'Engineering' },
+        location: { id: 'loc-1', locationName: 'New York Office' },
+      });
+    }
+    return new HttpResponse(null, { status: 404 });
+  }),
+
+  http.delete(`${API_BASE_URL}/employees/:id`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${API_BASE_URL}/employees/:id/terminate`, ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      employmentStatus: 'terminated',
+    });
+  }),
+
+  // Documents endpoints
+  http.get(`${API_BASE_URL}/documents`, ({ request }) => {
+    const url = new URL(request.url);
+    const search = url.searchParams.get('search');
+    const category = url.searchParams.get('category');
+    const status = url.searchParams.get('status');
+
+    const mockDocuments = [
+      {
+        id: 'doc-1',
+        organizationId: 'org-123',
+        name: 'Employee Handbook 2024',
+        description: 'Company policies and procedures',
+        category: 'handbook',
+        status: 'active',
+        fileName: 'handbook.pdf',
+        fileSize: 1024000,
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        fileUrl: 'https://storage.example.com/handbook.pdf',
+        version: 1,
+        isLatestVersion: true,
+        accessLevel: 'internal',
+        tags: ['policy', 'handbook', '2024'],
+        uploadedAt: '2024-01-15T10:00:00Z',
+        accessCount: 42,
+      },
+      {
+        id: 'doc-2',
+        organizationId: 'org-123',
+        name: 'Employment Contract Template',
+        description: 'Standard employment contract',
+        category: 'contract',
+        status: 'active',
+        fileName: 'contract-template.docx',
+        fileSize: 524288,
+        fileType: 'word',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        fileUrl: 'https://storage.example.com/contract.docx',
+        version: 2,
+        isLatestVersion: true,
+        accessLevel: 'confidential',
+        tags: ['contract', 'template'],
+        uploadedAt: '2024-02-01T10:00:00Z',
+        accessCount: 25,
+      },
+    ];
+
+    let filtered = [...mockDocuments];
+
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(
+        (doc) =>
+          doc.name.toLowerCase().includes(searchLower) ||
+          (doc.description && doc.description.toLowerCase().includes(searchLower))
+      );
+    }
+
+    if (category) {
+      filtered = filtered.filter((doc) => doc.category === category);
+    }
+
+    if (status) {
+      filtered = filtered.filter((doc) => doc.status === status);
+    }
+
+    return HttpResponse.json({
+      data: filtered,
+      total: filtered.length,
+      page: 1,
+      limit: 50,
+    });
+  }),
+
+  http.get(`${API_BASE_URL}/documents/:id`, ({ params }) => {
+    if (params.id === 'doc-1') {
+      return HttpResponse.json({
+        id: 'doc-1',
+        name: 'Employee Handbook 2024',
+        category: 'handbook',
+        status: 'active',
+      });
+    }
+    return new HttpResponse(null, { status: 404 });
+  }),
+
+  http.delete(`${API_BASE_URL}/documents/:id`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post(`${API_BASE_URL}/documents/:id/download`, () => {
+    return HttpResponse.json({ downloadUrl: 'https://example.com/download' });
+  }),
+
+  http.get(`${API_BASE_URL}/documents/statistics`, () => {
+    return HttpResponse.json({
+      totalDocuments: 150,
+      activeDocuments: 130,
+      archivedDocuments: 20,
+      totalSize: 52428800,
+      byCategory: [
+        { category: 'contract', count: 25, size: 10485760 },
+        { category: 'policy', count: 30, size: 15728640 },
+        { category: 'handbook', count: 15, size: 7340032 },
+      ],
+      recentUploads: 12,
+      pendingSignatures: 5,
+    });
+  }),
 ];

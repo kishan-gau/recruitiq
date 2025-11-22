@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import DocumentsList from '../../src/pages/documents/DocumentsList';
 import { server } from '../mocks/server';
-import { http, HttpResponse } from 'msw';
 
 // Mock data
 const mockDocuments = [
@@ -99,47 +98,6 @@ const mockStatistics = {
   recentUploads: 12,
   pendingSignatures: 5,
 };
-
-// MSW server setup
-const server = setupServer(
-  http.get('/api/nexus/documents', ({ request }) => {
-    const url = new URL(request.url);
-    const category = url.searchParams.get('category');
-    const status = url.searchParams.get('status');
-    const search = url.searchParams.get('search');
-
-    let filteredDocs = [...mockDocuments];
-
-    if (category) {
-      filteredDocs = filteredDocs.filter((doc) => doc.category === category);
-    }
-    if (status) {
-      filteredDocs = filteredDocs.filter((doc) => doc.status === status);
-    }
-    if (search) {
-      filteredDocs = filteredDocs.filter((doc) =>
-        doc.name.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    return HttpResponse.json(filteredDocs);
-  }),
-  http.get('/api/nexus/documents/statistics', () => {
-    return HttpResponse.json(mockStatistics);
-  })
-);
-
-beforeEach(() => {
-  server.listen({ onUnhandledRequest: 'warn' });
-});
-
-afterEach(() => {
-  server.resetHandlers();
-});
-
-afterAll(() => {
-  server.close();
-});
 
 // Helper function to render component with providers
 function renderWithProviders(component: React.ReactElement) {
@@ -272,7 +230,7 @@ describe('DocumentsList Component', () => {
 
   it('should display empty state when no documents', async () => {
     server.use(
-      http.get('/api/nexus/documents', () => {
+      http.get('*/api/products/nexus/documents', () => {
         return HttpResponse.json([]);
       })
     );

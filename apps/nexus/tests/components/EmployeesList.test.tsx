@@ -51,33 +51,6 @@ const mockEmployees = [
   },
 ];
 
-// MSW server setup
-const server = setupServer(
-  http.get('/api/nexus/employees', () => {
-    return HttpResponse.json({
-      data: mockEmployees,
-      total: mockEmployees.length,
-      page: 1,
-      limit: 50,
-    });
-  }),
-  http.delete('/api/nexus/employees/:id', () => {
-    return new HttpResponse(null, { status: 204 });
-  })
-);
-
-beforeEach(() => {
-  server.listen();
-});
-
-afterEach(() => {
-  server.resetHandlers();
-});
-
-afterAll(() => {
-  server.close();
-});
-
 // Test wrapper with all providers
 function renderWithProviders(component: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -214,7 +187,7 @@ describe('EmployeesList', () => {
   it('displays empty state when no employees exist', async () => {
     // Override the handler to return empty array
     server.use(
-      http.get('/api/nexus/employees', () => {
+      http.get('*/api/products/nexus/employees', () => {
         return HttpResponse.json({
           data: [],
           total: 0,
@@ -236,7 +209,7 @@ describe('EmployeesList', () => {
   it('displays error message when API fails', async () => {
     // Override the handler to return error
     server.use(
-      http.get('/api/nexus/employees', () => {
+      http.get('*/api/products/nexus/employees', () => {
         return new HttpResponse(null, { status: 500 });
       })
     );

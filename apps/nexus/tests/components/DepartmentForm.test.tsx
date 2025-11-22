@@ -21,12 +21,12 @@ const mockDepartments = [
 ];
 
 const server = setupServer(
-  http.get('/api/nexus/departments', () => HttpResponse.json(mockDepartments)),
-  http.post('/api/nexus/departments', async ({ request }) => {
+  http.get('*/api/products/nexus/departments', () => HttpResponse.json(mockDepartments)),
+  http.post('*/api/products/nexus/departments', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json({ id: 'new-dept-id', ...body, parentDepartment: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, { status: 201 });
   }),
-  http.patch('/api/nexus/departments/:id', async ({ params, request }) => {
+  http.patch('*/api/products/nexus/departments/:id', async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>;
     const dept = mockDepartments.find(d => d.id === params.id);
     return HttpResponse.json({ ...dept, ...body, updatedAt: new Date().toISOString() });

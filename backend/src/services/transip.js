@@ -1,23 +1,33 @@
 /**
  * TransIP VPS API Integration Service
  * Handles VPS provisioning via TransIP API
- * 
- * TODO: Install @transip/transip-api-javascript package
- * npm install @transip/transip-api-javascript
  */
 
+import TransIP from 'transip-api';
 import logger from '../utils/logger.js';
 
 class TransIPService {
   constructor() {
-    // TODO: Initialize TransIP client when ready
-    // this.client = new TransIP({
-    //   login: process.env.TRANSIP_USERNAME,
-    //   privateKey: process.env.TRANSIP_PRIVATE_KEY,
-    //   readOnly: false
-    // });
-    
-    logger.info('⚠️  TransIP service initialized (API integration pending)');
+    try {
+      // Initialize TransIP client with credentials
+      this.client = new TransIP({
+        login: process.env.TRANSIP_USERNAME,
+        privateKey: process.env.TRANSIP_PRIVATE_KEY,
+        readOnly: false,
+        testMode: process.env.NODE_ENV !== 'production',
+        allowBilling: process.env.NODE_ENV === 'production'
+      });
+      
+      logger.info('✅ TransIP service initialized', {
+        testMode: process.env.NODE_ENV !== 'production',
+        username: process.env.TRANSIP_USERNAME || 'NOT_SET'
+      });
+    } catch (error) {
+      logger.error('❌ Failed to initialize TransIP client', {
+        error: error.message
+      });
+      throw error;
+    }
   }
 
   /**
@@ -28,26 +38,57 @@ class TransIPService {
   async createDedicatedVPS(config) {
     const { organizationId, slug, tier } = config;
 
-    logger.info(`🚧 TODO: Create VPS via TransIP API for ${slug}`);
+    logger.info(`🚀 Creating VPS via TransIP API for ${slug}`, { tier });
     
-    // TODO: Implement actual TransIP API call
-    // const vpsSpecs = this.getVPSSpecs(tier);
-    // const vps = await this.client.vps.create({
-    //   productName: vpsSpecs.productName,
-    //   addons: vpsSpecs.addons,
-    //   operatingSystem: 'ubuntu-22.04',
-    //   hostname: `${slug}.recruitiq.nl`,
-    //   description: `RecruitIQ - ${slug}`,
-    //   base64InstallText: this.getCloudInitScript(config)
-    // });
-    
-    // For now, return mock data
-    return {
-      vpsName: `vps-${slug}-${Date.now()}`,
-      ipAddress: '192.168.1.100',  // Mock IP
-      status: 'running',
-      hostname: `${slug}.recruitiq.nl`
-    };
+    try {
+      const vpsSpecs = this.getVPSSpecs(tier);
+      const cloudInitScript = this.getCloudInitScript(config);
+      
+      // Create VPS via TransIP API
+      const vpsData = {
+        productName: vpsSpecs.productName,
+        addons: vpsSpecs.addons,
+        operatingSystem: 'ubuntu-22.04',
+        hostname: `${slug}.recruitiq.nl`,
+        description: `RecruitIQ - ${slug} (${tier})`,
+        base64InstallText: Buffer.from(cloudInitScript).toString('base64')
+      };
+      
+      logger.info('📤 Sending VPS creation request to TransIP', {
+        productName: vpsData.productName,
+        hostname: vpsData.hostname
+      });
+      
+      const response = await this.client.vps.order(vpsData);
+      
+      // Wait for VPS to be provisioned
+      const vpsName = response.vps?.name || `vps-${slug}`;
+      await this.waitForVPSReady(vpsName);
+      
+      // Get VPS details
+      const vpsDetails = await this.client.vps.get(vpsName);
+      
+      logger.info('✅ VPS created successfully', {
+        vpsName: vpsDetails.name,
+        ipAddress: vpsDetails.ipAddress,
+        status: vpsDetails.status
+      });
+      
+      return {
+        vpsName: vpsDetails.name,
+        ipAddress: vpsDetails.ipAddress,
+        status: vpsDetails.status,
+        hostname: vpsDetails.hostname || vpsData.hostname
+      };
+    } catch (error) {
+      logger.error('❌ Failed to create VPS', {
+        slug,
+        tier,
+        error: error.message,
+        stack: error.stack
+      });
+      throw new Error(`Failed to create VPS: ${error.message}`);
+    }
   }
 
   /**
@@ -147,73 +188,142 @@ echo "✅ VPS setup complete for ${config.slug}"
       try {
         const status = await this.getVPSStatus(vpsName);
 
-        if (status.status === 'running' && status.ipAddress) {
+        // Check if VPS is ready: running, has IP, not locked, not blocked
+        if (status.status === 'running' && 
+            status.ipAddress && 
+            !status.isLocked && 
+            !status.isBlocked) {
           logger.info(`✅ VPS ${vpsName} is ready at ${status.ipAddress}`);
           return status;
         }
 
-        logger.info(`   VPS status: ${status.status}, waiting...`);
+        // Log current status
+        const issues = [];
+        if (status.status !== 'running') issues.push(`status=${status.status}`);
+        if (!status.ipAddress) issues.push('no IP');
+        if (status.isLocked) issues.push('locked');
+        if (status.isBlocked) issues.push('blocked');
+
+        logger.info(`   VPS not ready: ${issues.join(', ')}, waiting...`);
         await new Promise(resolve => setTimeout(resolve, pollInterval));
 
       } catch (error) {
-        logger.warn(`Error checking VPS status: ${error.message}`);
+        logger.warn(`Error checking VPS status: ${error.message}, retrying...`);
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
     }
 
-    throw new Error(`Timeout waiting for VPS ${vpsName} to be ready`);
+    throw new Error(`Timeout: VPS ${vpsName} did not become ready within ${timeout}ms`);
   }
 
   /**
    * Get VPS status
    */
   async getVPSStatus(vpsName) {
-    logger.info(`🚧 TODO: Get VPS status from TransIP API: ${vpsName}`);
+    logger.info(`📊 Getting VPS status from TransIP API: ${vpsName}`);
     
-    // TODO: Implement actual API call
-    // const vps = await this.client.vps.get(vpsName);
-    
-    // Mock response - simulates VPS being ready immediately
-    return {
-      name: vpsName,
-      status: 'running',
-      ipAddress: '192.168.1.100', // Mock IP - replace with actual
-      cpus: 2,
-      memoryInMb: 4096,
-      diskInGb: 100
-    };
+    try {
+      const vps = await this.client.vps.get(vpsName);
+      
+      return {
+        name: vps.name,
+        status: vps.status,
+        ipAddress: vps.ipAddress,
+        cpus: vps.cpus,
+        memoryInMb: vps.memoryInMb,
+        diskInGb: vps.diskInGb,
+        isLocked: vps.isLocked || false,
+        isBlocked: vps.isBlocked || false
+      };
+    } catch (error) {
+      logger.error(`❌ Failed to get VPS status for ${vpsName}`, {
+        error: error.message
+      });
+      throw new Error(`Failed to get VPS status: ${error.message}`);
+    }
   }
 
   /**
    * Stop VPS
    */
   async stopVPS(vpsName) {
-    logger.info(`🚧 TODO: Stop VPS via TransIP API: ${vpsName}`);
-    // TODO: await this.client.vps.stop(vpsName);
+    logger.info(`🛑 Stopping VPS via TransIP API: ${vpsName}`);
+    
+    try {
+      await this.client.vps.stop(vpsName);
+      logger.info(`✅ VPS ${vpsName} stopped successfully`);
+    } catch (error) {
+      logger.error(`❌ Failed to stop VPS ${vpsName}`, {
+        error: error.message
+      });
+      throw new Error(`Failed to stop VPS: ${error.message}`);
+    }
   }
 
   /**
    * Start VPS
    */
   async startVPS(vpsName) {
-    logger.info(`🚧 TODO: Start VPS via TransIP API: ${vpsName}`);
-    // TODO: await this.client.vps.start(vpsName);
+    logger.info(`▶️  Starting VPS via TransIP API: ${vpsName}`);
+    
+    try {
+      await this.client.vps.start(vpsName);
+      logger.info(`✅ VPS ${vpsName} started successfully`);
+    } catch (error) {
+      logger.error(`❌ Failed to start VPS ${vpsName}`, {
+        error: error.message
+      });
+      throw new Error(`Failed to start VPS: ${error.message}`);
+    }
   }
 
   /**
    * Delete VPS
    */
   async deleteVPS(vpsName) {
-    logger.info(`🚧 TODO: Delete VPS via TransIP API: ${vpsName}`);
-    // TODO: await this.client.vps.cancel(vpsName, 'end');
+    logger.info(`🗑️  Deleting VPS via TransIP API: ${vpsName}`);
+    
+    try {
+      // Cancel at end of billing period to avoid immediate termination
+      await this.client.vps.cancel(vpsName, 'end');
+      logger.info(`✅ VPS ${vpsName} scheduled for deletion at end of billing period`);
+    } catch (error) {
+      logger.error(`❌ Failed to delete VPS ${vpsName}`, {
+        error: error.message
+      });
+      throw new Error(`Failed to delete VPS: ${error.message}`);
+    }
   }
 
   /**
    * Create VPS snapshot (backup)
    */
   async createSnapshot(vpsName, description) {
-    logger.info(`🚧 TODO: Create snapshot via TransIP API: ${vpsName}`);
-    // TODO: await this.client.vps.createSnapshot(vpsName, description);
+    logger.info(`📸 Creating snapshot via TransIP API: ${vpsName}`);
+    
+    try {
+      const snapshot = await this.client.vps.snapshots.create(vpsName, {
+        description,
+        shouldStartVps: true
+      });
+      
+      logger.info(`✅ Snapshot created successfully`, {
+        vpsName,
+        snapshotId: snapshot.id,
+        description
+      });
+      
+      return {
+        snapshotId: snapshot.id,
+        description: snapshot.description,
+        createdAt: snapshot.dateTimeCreate
+      };
+    } catch (error) {
+      logger.error(`❌ Failed to create snapshot for ${vpsName}`, {
+        error: error.message
+      });
+      throw new Error(`Failed to create snapshot: ${error.message}`);
+    }
   }
 }
 

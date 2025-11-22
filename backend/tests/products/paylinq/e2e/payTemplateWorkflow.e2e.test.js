@@ -23,7 +23,7 @@
  * @module tests/products/paylinq/e2e/payTemplateWorkflow
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals';
 import request from 'supertest';
 import app from '../../../../src/server.js';
 import pool from '../../../../src/config/database.js';
@@ -31,8 +31,10 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { cleanupTestEmployees } from '../helpers/employeeTestHelper.js';
 
-// Uses cookie-based authentication per security requirements
+// Set timeout for slow E2E tests
+jest.setTimeout(120000); // 2 minutes for app initialization + tests
 
+// Uses cookie-based authentication per security requirements
 describe('Pay Template Workflow E2E Tests', () => {
   let authCookies;
   let organizationId;

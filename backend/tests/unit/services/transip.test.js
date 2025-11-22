@@ -1,18 +1,45 @@
 /**
  * TransIP Service Unit Tests
  * 
- * Tests the TransIP VPS API integration service
- * 
- * NOTE: TransIP API SDK (@transip/transip-api-javascript) is not yet installed.
- * These tests currently validate the mock implementation and service interface.
+ * Tests the TransIP VPS API integration service with mocked TransIP client
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import transipService from '../../../src/services/transip.js';
-import logger from '../../../src/utils/logger.js';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+
+// Mock the TransIP client before importing the service
+const mockTransIPClient = {
+  vps: {
+    order: jest.fn(),
+    get: jest.fn(),
+    stop: jest.fn(),
+    start: jest.fn(),
+    cancel: jest.fn(),
+    snapshots: {
+      create: jest.fn()
+    }
+  }
+};
+
+jest.unstable_mockModule('transip-api', () => ({
+  default: jest.fn(() => mockTransIPClient)
+}));
+
+// Now import the service (after mocking)
+const { default: transipServiceModule } = await import('../../../src/services/transip.js');
+const logger = (await import('../../../src/utils/logger.js')).default;
+
+// Create a new instance for testing
+let transipService;
 
 describe('TransIPService', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
+    // Reset service to use mock client
+    transipService = transipServiceModule;
+    transipService.client = mockTransIPClient;
+  });
+
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
@@ -71,25 +98,37 @@ describe('TransIPService', () => {
         tier: 'professional'
       };
 
+      // Mock the TransIP API responses
+      mockTransIPClient.vps.order.mockResolvedValue({
+        vps: { name: 'vps-testcompany-12345' }
+      });
+      
+      mockTransIPClient.vps.get.mockResolvedValue({
+        name: 'vps-testcompany-12345',
+        ipAddress: '192.168.1.100',
+        status: 'running',
+        hostname: 'testcompany.recruitiq.nl',
+        cpus: 2,
+        memoryInMb: 4096,
+        diskInGb: 100
+      });
+
       const result = await transipService.createDedicatedVPS(config);
 
       // Validate response structure
-      expect(result).toHaveProperty('vpsName');
-      expect(result).toHaveProperty('ipAddress');
-      expect(result).toHaveProperty('status');
+      expect(result).toHaveProperty('vpsName', 'vps-testcompany-12345');
+      expect(result).toHaveProperty('ipAddress', '192.168.1.100');
+      expect(result).toHaveProperty('status', 'running');
       expect(result).toHaveProperty('hostname');
 
-      // Validate VPS name format
-      expect(result.vpsName).toMatch(/^vps-testcompany-\d+$/);
-
-      // Validate hostname
-      expect(result.hostname).toBe('testcompany.recruitiq.nl');
-
-      // Validate status
-      expect(result.status).toBe('running');
-
-      // Validate IP address format (mock)
-      expect(result.ipAddress).toMatch(/^\d+\.\d+\.\d+\.\d+$/);
+      // Verify API calls
+      expect(mockTransIPClient.vps.order).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productName: 'vps-bladevps-x4',
+          operatingSystem: 'ubuntu-22.04',
+          hostname: 'testcompany.recruitiq.nl'
+        })
+      );
     });
 
     it('should create VPS with starter tier', async () => {
@@ -99,10 +138,28 @@ describe('TransIPService', () => {
         tier: 'starter'
       };
 
+      mockTransIPClient.vps.order.mockResolvedValue({
+        vps: { name: 'vps-startercompany-12345' }
+      });
+      
+      mockTransIPClient.vps.get.mockResolvedValue({
+        name: 'vps-startercompany-12345',
+        ipAddress: '192.168.1.101',
+        status: 'running',
+        hostname: 'startercompany.recruitiq.nl'
+      });
+
       const result = await transipService.createDedicatedVPS(config);
 
-      expect(result.vpsName).toMatch(/^vps-startercompany-\d+$/);
+      expect(result.vpsName).toBe('vps-startercompany-12345');
       expect(result.hostname).toBe('startercompany.recruitiq.nl');
+      
+      // Verify starter tier specs were used
+      expect(mockTransIPClient.vps.order).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productName: 'vps-bladevps-x2'
+        })
+      );
     });
 
     it('should create VPS with enterprise tier', async () => {
@@ -112,25 +169,43 @@ describe('TransIPService', () => {
         tier: 'enterprise'
       };
 
+      mockTransIPClient.vps.order.mockResolvedValue({
+        vps: { name: 'vps-enterprise-12345' }
+      });
+      
+      mockTransIPClient.vps.get.mockResolvedValue({
+        name: 'vps-enterprise-12345',
+        ipAddress: '192.168.1.102',
+        status: 'running',
+        hostname: 'enterprise.recruitiq.nl'
+      });
+
       const result = await transipService.createDedicatedVPS(config);
 
-      expect(result.vpsName).toMatch(/^vps-enterprise-\d+$/);
-      expect(result.hostname).toBe('enterprise.recruitiq.nl');
+      expect(result.vpsName).toBe('vps-enterprise-12345');
+      
+      // Verify enterprise tier specs were used
+      expect(mockTransIPClient.vps.order).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productName: 'vps-bladevps-x8'
+        })
+      );
     });
 
-    it('should log VPS creation', async () => {
-      const loggerSpy = jest.spyOn(logger, 'info');
+    it('should handle VPS creation errors', async () => {
       const config = {
-        organizationId: 'org-123',
-        slug: 'logtest',
+        organizationId: 'org-error',
+        slug: 'errortest',
         tier: 'professional'
       };
 
-      await transipService.createDedicatedVPS(config);
-
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining('TODO: Create VPS via TransIP API for logtest')
+      mockTransIPClient.vps.order.mockRejectedValue(
+        new Error('TransIP API Error: Insufficient quota')
       );
+
+      await expect(
+        transipService.createDedicatedVPS(config)
+      ).rejects.toThrow('Failed to create VPS');
     });
   });
 
@@ -227,36 +302,41 @@ describe('TransIPService', () => {
 
   describe('getVPSStatus', () => {
     it('should return VPS status', async () => {
-      const vpsName = 'vps-testcompany-123456789';
+      const vpsName = 'vps-testcompany-12345';
+
+      mockTransIPClient.vps.get.mockResolvedValue({
+        name: vpsName,
+        status: 'running',
+        ipAddress: '192.168.1.100',
+        cpus: 2,
+        memoryInMb: 4096,
+        diskInGb: 100,
+        isLocked: false,
+        isBlocked: false
+      });
 
       const status = await transipService.getVPSStatus(vpsName);
 
       expect(status).toHaveProperty('name', vpsName);
-      expect(status).toHaveProperty('status');
-      expect(status).toHaveProperty('ipAddress');
-      expect(status).toHaveProperty('cpus');
-      expect(status).toHaveProperty('memoryInMb');
-      expect(status).toHaveProperty('diskInGb');
+      expect(status).toHaveProperty('status', 'running');
+      expect(status).toHaveProperty('ipAddress', '192.168.1.100');
+      expect(status).toHaveProperty('cpus', 2);
+      expect(status).toHaveProperty('memoryInMb', 4096);
+      expect(status).toHaveProperty('diskInGb', 100);
+      expect(status).toHaveProperty('isLocked', false);
+      expect(status).toHaveProperty('isBlocked', false);
     });
 
-    it('should return running status for mock', async () => {
-      const vpsName = 'vps-test-999';
+    it('should handle VPS not found', async () => {
+      const vpsName = 'vps-notfound-999';
 
-      const status = await transipService.getVPSStatus(vpsName);
-
-      expect(status.status).toBe('running');
-      expect(status.ipAddress).toBeTruthy();
-    });
-
-    it('should log status check', async () => {
-      const loggerSpy = jest.spyOn(logger, 'info');
-      const vpsName = 'vps-logtest-123';
-
-      await transipService.getVPSStatus(vpsName);
-
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining('TODO: Get VPS status from TransIP API')
+      mockTransIPClient.vps.get.mockRejectedValue(
+        new Error('VPS not found')
       );
+
+      await expect(
+        transipService.getVPSStatus(vpsName)
+      ).rejects.toThrow('Failed to get VPS status');
     });
   });
 
@@ -264,82 +344,160 @@ describe('TransIPService', () => {
     it('should resolve when VPS is ready', async () => {
       const vpsName = 'vps-ready-123';
 
-      // Mock implementation returns 'running' immediately
+      mockTransIPClient.vps.get.mockResolvedValue({
+        name: vpsName,
+        status: 'running',
+        ipAddress: '192.168.1.100',
+        isLocked: false,
+        isBlocked: false
+      });
+
       const result = await transipService.waitForVPSReady(vpsName, 5000);
 
       expect(result).toHaveProperty('status', 'running');
       expect(result).toHaveProperty('ipAddress');
     });
 
-    it('should log waiting message', async () => {
-      const loggerSpy = jest.spyOn(logger, 'info');
-      const vpsName = 'vps-wait-456';
+    it('should wait for VPS to unlock', async () => {
+      const vpsName = 'vps-locked-456';
 
-      await transipService.waitForVPSReady(vpsName, 5000);
+      // First call: locked, second call: unlocked
+      mockTransIPClient.vps.get
+        .mockResolvedValueOnce({
+          name: vpsName,
+          status: 'running',
+          ipAddress: '192.168.1.101',
+          isLocked: true
+        })
+        .mockResolvedValueOnce({
+          name: vpsName,
+          status: 'running',
+          ipAddress: '192.168.1.101',
+          isLocked: false
+        });
 
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining(`Waiting for VPS ${vpsName} to be ready`)
-      );
-    });
+      const result = await transipService.waitForVPSReady(vpsName, 30000);
 
-    it('should timeout if VPS not ready (when API is connected)', async () => {
-      // Note: Current mock implementation returns ready immediately
-      // This test documents expected behavior when real API is integrated
+      expect(result).toHaveProperty('isLocked', false);
+      expect(mockTransIPClient.vps.get).toHaveBeenCalledTimes(2);
+    }, 35000);
+
+    it('should timeout if VPS never becomes ready', async () => {
       const vpsName = 'vps-timeout-789';
-      const shortTimeout = 100; // Very short timeout
 
-      // With mock, this will succeed immediately
-      // When real API is integrated, update this test to mock a non-ready VPS
+      mockTransIPClient.vps.get.mockRejectedValue(
+        new Error('VPS not found')
+      );
+
       await expect(
-        transipService.waitForVPSReady(vpsName, shortTimeout)
-      ).resolves.toBeDefined();
+        transipService.waitForVPSReady(vpsName, 100)
+      ).rejects.toThrow('did not become ready');
     });
   });
 
   describe('VPS management operations', () => {
     it('should stop VPS', async () => {
-      const loggerSpy = jest.spyOn(logger, 'info');
       const vpsName = 'vps-stop-123';
+
+      mockTransIPClient.vps.stop.mockResolvedValue(undefined);
 
       await transipService.stopVPS(vpsName);
 
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining('TODO: Stop VPS via TransIP API')
+      expect(mockTransIPClient.vps.stop).toHaveBeenCalledWith(vpsName);
+    });
+
+    it('should handle stop VPS errors', async () => {
+      const vpsName = 'vps-stop-error';
+
+      mockTransIPClient.vps.stop.mockRejectedValue(
+        new Error('VPS already stopped')
       );
+
+      await expect(
+        transipService.stopVPS(vpsName)
+      ).rejects.toThrow('Failed to stop VPS');
     });
 
     it('should start VPS', async () => {
-      const loggerSpy = jest.spyOn(logger, 'info');
       const vpsName = 'vps-start-456';
+
+      mockTransIPClient.vps.start.mockResolvedValue(undefined);
 
       await transipService.startVPS(vpsName);
 
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining('TODO: Start VPS via TransIP API')
+      expect(mockTransIPClient.vps.start).toHaveBeenCalledWith(vpsName);
+    });
+
+    it('should handle start VPS errors', async () => {
+      const vpsName = 'vps-start-error';
+
+      mockTransIPClient.vps.start.mockRejectedValue(
+        new Error('VPS already running')
       );
+
+      await expect(
+        transipService.startVPS(vpsName)
+      ).rejects.toThrow('Failed to start VPS');
     });
 
     it('should delete VPS', async () => {
-      const loggerSpy = jest.spyOn(logger, 'info');
       const vpsName = 'vps-delete-789';
+
+      mockTransIPClient.vps.cancel.mockResolvedValue(undefined);
 
       await transipService.deleteVPS(vpsName);
 
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining('TODO: Delete VPS via TransIP API')
+      expect(mockTransIPClient.vps.cancel).toHaveBeenCalledWith(vpsName, 'end');
+    });
+
+    it('should handle delete VPS errors', async () => {
+      const vpsName = 'vps-delete-error';
+
+      mockTransIPClient.vps.cancel.mockRejectedValue(
+        new Error('Cannot cancel active VPS')
       );
+
+      await expect(
+        transipService.deleteVPS(vpsName)
+      ).rejects.toThrow('Failed to delete VPS');
     });
 
     it('should create snapshot', async () => {
-      const loggerSpy = jest.spyOn(logger, 'info');
       const vpsName = 'vps-snapshot-999';
       const description = 'Daily backup';
 
-      await transipService.createSnapshot(vpsName, description);
+      mockTransIPClient.vps.snapshots.create.mockResolvedValue({
+        id: 'snapshot-12345',
+        description: 'Daily backup',
+        dateTimeCreate: '2025-11-21T12:00:00Z'
+      });
 
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining('TODO: Create snapshot via TransIP API')
+      const result = await transipService.createSnapshot(vpsName, description);
+
+      expect(result).toHaveProperty('snapshotId', 'snapshot-12345');
+      expect(result).toHaveProperty('description', 'Daily backup');
+      expect(result).toHaveProperty('createdAt', '2025-11-21T12:00:00Z');
+      
+      expect(mockTransIPClient.vps.snapshots.create).toHaveBeenCalledWith(
+        vpsName,
+        expect.objectContaining({
+          description: 'Daily backup',
+          shouldStartVps: true
+        })
       );
+    });
+
+    it('should handle snapshot creation errors', async () => {
+      const vpsName = 'vps-snapshot-error';
+      const description = 'Failed backup';
+
+      mockTransIPClient.vps.snapshots.create.mockRejectedValue(
+        new Error('Snapshot limit exceeded')
+      );
+
+      await expect(
+        transipService.createSnapshot(vpsName, description)
+      ).rejects.toThrow('Failed to create snapshot');
     });
   });
 });

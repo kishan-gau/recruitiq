@@ -236,7 +236,7 @@ describe('LocationForm', () => {
       
       // Delay the response to test loading state
       server.use(
-        http.post('/api/nexus/locations', async () => {
+        http.post('*/api/products/nexus/locations', async () => {
           await new Promise(resolve => setTimeout(resolve, 100));
           return HttpResponse.json({ id: 'new-id' }, { status: 201 });
         })
@@ -373,7 +373,7 @@ describe('LocationForm', () => {
       
       // Delay the response to test loading state
       server.use(
-        http.patch('/api/nexus/locations/:id', async () => {
+        http.patch('*/api/products/nexus/locations/:id', async () => {
           await new Promise(resolve => setTimeout(resolve, 100));
           return HttpResponse.json({ id: 'loc-1' });
         })
