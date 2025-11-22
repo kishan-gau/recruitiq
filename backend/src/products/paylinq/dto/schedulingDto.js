@@ -125,14 +125,15 @@ export function mapScheduleChangeRequestDbToApi(dbRequest) {
     requestedShiftTypeId: dbRequest.requested_shift_type_id,
     reason: dbRequest.reason,
     status: dbRequest.status,
-    approvedBy: dbRequest.approved_by ?? null,
-    approvedAt: dbRequest.approved_at ?? null,
-    rejectionReason: dbRequest.rejection_reason ?? null,
+    approvedBy: dbRequest.approved_by,
+    approvedAt: dbRequest.approved_at,
+    rejectionReason: dbRequest.rejection_reason,
     organizationId: dbRequest.organization_id,
     createdAt: dbRequest.created_at,
-    updatedAt: dbRequest.updated_at ?? null,
-    requesterName: dbRequest.requester_name ?? null,
-    approverName: dbRequest.approver_name ?? null,
+    updatedAt: dbRequest.updated_at,
+    // Joined fields
+    requesterName: dbRequest.requester_name,
+    approverName: dbRequest.approver_name,
   };
 }
 
@@ -171,23 +172,20 @@ export function mapScheduleChangeRequestApiToDb(apiData) {
   if (apiData.requestedShiftTypeId !== undefined) {
     dbData.requested_shift_type_id = apiData.requestedShiftTypeId;
   }
-  if (apiData.requestedChanges !== undefined) {
-    dbData.requested_changes = apiData.requestedChanges;
-  }
   if (apiData.reason !== undefined) {
     dbData.reason = apiData.reason;
   }
   if (apiData.status !== undefined) {
     dbData.status = apiData.status;
   }
-  if (apiData.reviewedBy !== undefined) {
-    dbData.reviewed_by = apiData.reviewedBy;
+  if (apiData.approvedBy !== undefined) {
+    dbData.approved_by = apiData.approvedBy;
   }
-  if (apiData.reviewedAt !== undefined) {
-    dbData.reviewed_at = apiData.reviewedAt;
+  if (apiData.approvedAt !== undefined) {
+    dbData.approved_at = apiData.approvedAt;
   }
-  if (apiData.reviewNotes !== undefined) {
-    dbData.review_notes = apiData.reviewNotes;
+  if (apiData.rejectionReason !== undefined) {
+    dbData.rejection_reason = apiData.rejectionReason;
   }
 
   return dbData;

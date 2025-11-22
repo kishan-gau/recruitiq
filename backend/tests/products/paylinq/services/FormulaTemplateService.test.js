@@ -302,7 +302,7 @@ describe('FormulaTemplateService', () => {
 
     it('should validate formula expression', async () => {
       mockFormulaEngine.validate.mockResolvedValue({
-        isValid: false,
+        valid: false,
         errors: [{ message: 'Syntax error' }]
       });
 
@@ -341,7 +341,7 @@ describe('FormulaTemplateService', () => {
     it('should store formula AST', async () => {
       const ast = { type: 'multiply', left: 'base_salary', right: 0.10 };
       mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
-      mockFormulaEngine.parse.mockResolvedValue(ast);
+      mockFormulaEngine.parse.mockResolvedValue(ast); // Return AST directly, not wrapped
       mockPool.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [createDbTemplate()] });
@@ -360,7 +360,7 @@ describe('FormulaTemplateService', () => {
 
       const createdTemplate = createDbTemplate();
       mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
-      mockFormulaEngine.parse.mockResolvedValue({ ast: {} });
+      mockFormulaEngine.parse.mockResolvedValue({});
       mockPool.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [createdTemplate] });
@@ -417,7 +417,7 @@ describe('FormulaTemplateService', () => {
       mockPool.query.mockResolvedValue({ rows: [existingTemplate] });
 
       mockFormulaEngine.validate.mockResolvedValue({
-        isValid: false,
+        valid: false,
         errors: [{ message: 'Invalid syntax' }]
       });
 
@@ -440,7 +440,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [createDbTemplate()] });
 
       mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
-      mockFormulaEngine.parse.mockResolvedValue(newAst);
+      mockFormulaEngine.parse.mockResolvedValue(newAst); // Return AST directly
 
       await service.updateTemplate(
         templateId,
@@ -687,7 +687,7 @@ describe('FormulaTemplateService', () => {
         .mockResolvedValueOnce({ rows: [] });
 
       mockFormulaEngine.validate.mockResolvedValue({
-        isValid: false,
+        valid: false,
         errors: [{ message: 'Invalid operator' }]
       });
 

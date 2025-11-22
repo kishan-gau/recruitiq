@@ -102,12 +102,12 @@ describe('AttendanceService', () => {
         expect.arrayContaining([
           mockOrganizationId,
           mockEmployeeId,
-          expect.any(String), // attendance_date (date string)
-          expect.any(Date), // clock_in_time
-          null, // clock_in_location
-          null, // clock_in_ip
+          expect.any(String), // attendance_date default
+          expect.any(Date), // clock_in_time default
+          null, // clock_in_location default
+          null, // clock_in_ip default
           'present', // status default
-          null // notes
+          null // notes default
         ]),
         mockOrganizationId,
         expect.any(Object)
@@ -353,7 +353,7 @@ describe('AttendanceService', () => {
       // Assert
       expect(result).toEqual(mockRecords);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('a.attendance_date ='), // Updated to match actual implementation
+        expect.stringContaining('a.attendance_date = $2'),
         [mockOrganizationId, '2025-01-15', 100, 0],
         mockOrganizationId,
         expect.any(Object)

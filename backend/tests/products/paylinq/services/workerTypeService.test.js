@@ -237,7 +237,7 @@ describe('WorkerTypeService', () => {
     it('should return DTO-transformed template', async () => {
       const dbTemplate = createDbTemplate();
 
-      mockRepository.findTemplateByIdAnyOrg.mockResolvedValue(dbTemplate);
+      mockRepository.findTemplateByIdAnyOrg.mockResolvedValue(dbTemplate); // Check existence
 
       const result = await service.getWorkerTypeTemplateById(templateId, orgId);
 
