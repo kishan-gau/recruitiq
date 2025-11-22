@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import DocumentsList from '../../src/pages/documents/DocumentsList';
 import { server } from '../mocks/server';
+import { http, HttpResponse } from 'msw';
 
 // Mock data
 const mockDocuments = [

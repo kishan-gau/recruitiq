@@ -209,7 +209,12 @@ export const nexusHandlers = [
 
     return HttpResponse.json({
       success: true,
-      data: filtered,
+      data: {
+        departments: filtered,
+        total: filtered.length,
+        limit: 50,
+        offset: 0,
+      },
     });
   }),
 
@@ -220,7 +225,7 @@ export const nexusHandlers = [
     }
     return HttpResponse.json({
       success: true,
-      data: department,
+      department: department,
     });
   }),
 
@@ -329,28 +334,32 @@ export const nexusHandlers = [
     }
 
     return HttpResponse.json({
-      data: filtered,
+      success: true,
+      employees: filtered,
       total: filtered.length,
-      page: 1,
       limit: 50,
+      offset: 0,
     });
   }),
 
   http.get(`${API_BASE_URL}/employees/:id`, ({ params }) => {
     if (params.id === '123e4567-e89b-12d3-a456-426614174000') {
       return HttpResponse.json({
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        organizationId: 'org-123',
-        employeeNumber: 'EMP001',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        jobTitle: 'Senior Software Engineer',
-        employmentStatus: 'active',
-        employmentType: 'full_time',
-        hireDate: '2024-01-15',
-        department: { id: 'dept-1', departmentName: 'Engineering' },
-        location: { id: 'loc-1', locationName: 'New York Office' },
+        success: true,
+        employee: {
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          organizationId: 'org-123',
+          employeeNumber: 'EMP001',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          jobTitle: 'Senior Software Engineer',
+          employmentStatus: 'active',
+          employmentType: 'full_time',
+          hireDate: '2024-01-15',
+          department: { id: 'dept-1', departmentName: 'Engineering' },
+          location: { id: 'loc-1', locationName: 'New York Office' },
+        },
       });
     }
     return new HttpResponse(null, { status: 404 });
@@ -435,10 +444,13 @@ export const nexusHandlers = [
     }
 
     return HttpResponse.json({
-      data: filtered,
-      total: filtered.length,
-      page: 1,
-      limit: 50,
+      success: true,
+      data: {
+        documents: filtered,
+        total: filtered.length,
+        limit: 50,
+        offset: 0,
+      },
     });
   }),
 
