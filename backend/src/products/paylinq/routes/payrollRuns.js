@@ -5,6 +5,7 @@
 import express from 'express';
 import payrollRunController from '../controllers/payrollRunController.js';
 import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -62,18 +63,31 @@ const idParamSchema = Joi.object({
 });
 
 // Routes
-router.post('/', validate(createPayrollRunSchema, 'body'), payrollRunController.createPayrollRun);
-router.get('/', payrollRunController.getPayrollRuns);
-router.get('/:id', validate(idParamSchema, 'params'), payrollRunController.getPayrollRunById);
-router.post('/:id/calculate', validate(idParamSchema, 'params'), validate(calculatePayrollSchema, 'body'), payrollRunController.calculatePayroll);
-router.post('/:id/mark-for-review', validate(idParamSchema, 'params'), payrollRunController.markPayrollRunForReview);
-router.post('/:id/process', validate(idParamSchema, 'params'), payrollRunController.processPayrollRun);
-router.post('/:id/approve', validate(idParamSchema, 'params'), payrollRunController.approvePayrollRun);
-router.post('/:id/cancel', validate(idParamSchema, 'params'), payrollRunController.cancelPayrollRun);
-router.post('/:id/send-payslips', validate(idParamSchema, 'params'), payrollRunController.sendPayslips);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updatePayrollRunSchema, 'body'), payrollRunController.updatePayrollRun);
-router.post('/:id/finalize', validate(idParamSchema, 'params'), payrollRunController.finalizePayrollRun);
-router.delete('/:id', validate(idParamSchema, 'params'), payrollRunController.deletePayrollRun);
-router.get('/:id/paychecks', validate(idParamSchema, 'params'), payrollRunController.getPayrollRunPaychecks);
+// View operations - require 'payroll:run:view'
+router.get('/', requirePermission('payroll:run:view'), payrollRunController.getPayrollRuns);
+router.get('/:id', requirePermission('payroll:run:view'), validate(idParamSchema, 'params'), payrollRunController.getPayrollRunById);
+router.get('/:id/paychecks', requirePermission('payroll:run:view'), validate(idParamSchema, 'params'), payrollRunController.getPayrollRunPaychecks);
+
+// Create operations - require 'payroll:run:create'
+router.post('/', requirePermission('payroll:run:create'), validate(createPayrollRunSchema, 'body'), payrollRunController.createPayrollRun);
+
+// Edit operations - require 'payroll:run:edit'
+router.put('/:id', requirePermission('payroll:run:edit'), validate(idParamSchema, 'params'), validate(updatePayrollRunSchema, 'body'), payrollRunController.updatePayrollRun);
+
+// Calculate/Review operations - require 'payroll:run:edit'
+router.post('/:id/calculate', requirePermission('payroll:run:edit'), validate(idParamSchema, 'params'), validate(calculatePayrollSchema, 'body'), payrollRunController.calculatePayroll);
+router.post('/:id/mark-for-review', requirePermission('payroll:run:edit'), validate(idParamSchema, 'params'), payrollRunController.markPayrollRunForReview);
+
+// Approve operations - require 'payroll:run:approve'
+router.post('/:id/approve', requirePermission('payroll:run:approve'), validate(idParamSchema, 'params'), payrollRunController.approvePayrollRun);
+router.post('/:id/finalize', requirePermission('payroll:run:approve'), validate(idParamSchema, 'params'), payrollRunController.finalizePayrollRun);
+
+// Process operations - require 'payroll:run:process'
+router.post('/:id/process', requirePermission('payroll:run:process'), validate(idParamSchema, 'params'), payrollRunController.processPayrollRun);
+router.post('/:id/send-payslips', requirePermission('payroll:run:process'), validate(idParamSchema, 'params'), payrollRunController.sendPayslips);
+
+// Cancel/Delete operations - require 'payroll:run:delete'
+router.post('/:id/cancel', requirePermission('payroll:run:delete'), validate(idParamSchema, 'params'), payrollRunController.cancelPayrollRun);
+router.delete('/:id', requirePermission('payroll:run:delete'), validate(idParamSchema, 'params'), payrollRunController.deletePayrollRun);
 
 export default router;

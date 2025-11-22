@@ -48,6 +48,7 @@ import licenseTelemetryRoutes from './modules/license/routes/telemetry.js';
 import licenseTierRoutes from './modules/license/routes/tiers.js';
 import productManagementRoutes from './products/nexus/routes/productManagementRoutes.js';
 import systemRoutes from './products/nexus/routes/systemRoutes.js';
+import rbacRoutes from './modules/rbac/routes/index.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -285,6 +286,9 @@ export function createApp(options = {}) {
   apiRouter.use('/features', authenticate, featuresRoutes);
   apiRouter.use('/admin', productManagementRoutes);
   apiRouter.use('/system/products', systemRoutes);
+
+  // RBAC Routes
+  apiRouter.use('/rbac', rbacRoutes);
 
   // Dynamic Product Routes
   apiRouter.use('/products', dynamicProductMiddleware);
