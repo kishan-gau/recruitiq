@@ -7,7 +7,7 @@
 -- Based on: docs/rbac/01-DATABASE-DESIGN.md
 -- ============================================================================
 
-BEGIN;
+-- NOTE: No transaction wrapper - each INSERT handles errors independently
 
 -- ============================================================================
 -- GLOBAL PERMISSIONS

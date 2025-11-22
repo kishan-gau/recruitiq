@@ -189,13 +189,54 @@ if (Test-Path $deploymentSchemaPath) {
 
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "[*] Seeding permissions and roles..." -ForegroundColor Cyan
+Write-Host "[*] Running RBAC migrations..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+Write-Host "[*] Step 1/4: Enhancing RBAC system tables..." -ForegroundColor Yellow
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f migrations\20251122000001_enhance_rbac_system.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error enhancing RBAC system" -ForegroundColor Red
+    exit 1
+}
+Write-Host "[OK] RBAC system enhanced" -ForegroundColor Green
+
+Write-Host "[*] Step 2/4: Seeding RBAC permissions..." -ForegroundColor Yellow
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f migrations\20251122000002_seed_rbac_permissions.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding RBAC permissions" -ForegroundColor Red
+    exit 1
+}
+Write-Host "[OK] RBAC permissions seeded" -ForegroundColor Green
+
+Write-Host "[*] Step 3/4: Seeding system roles and role-permission mappings..." -ForegroundColor Yellow
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f migrations\20251122000003_seed_roles_permissions.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding roles and permissions" -ForegroundColor Red
+    exit 1
+}
+Write-Host "[OK] System roles and permissions seeded" -ForegroundColor Green
+
+Write-Host "[*] Step 4/4: Migrating product_roles to user_roles..." -ForegroundColor Yellow
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f migrations\20251122000004_migrate_product_roles_to_user_roles.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error migrating product roles" -ForegroundColor Red
+    exit 1
+}
+Write-Host "[OK] Product roles migrated to RBAC system" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding legacy permissions and roles (backward compatibility)..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
 & $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-permissions-roles.sql
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error seeding permissions" -ForegroundColor Red
+    Write-Host "[ERROR] Error seeding legacy permissions" -ForegroundColor Red
     exit 1
 }
 
@@ -362,6 +403,14 @@ Write-Host "   - Paylinq Payroll: 12 features (payments, time, compliance)" -For
 Write-Host "   - Portal Platform: 11 features (branding, SSO, analytics)" -ForegroundColor Gray
 Write-Host "   - Tier-based access control (Starter/Professional/Enterprise)" -ForegroundColor Gray
 Write-Host "   - Usage tracking & limits for metered features" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Enhanced RBAC System: Organization-scoped dynamic roles" -ForegroundColor Cyan
+Write-Host "   - Global system roles: Super Admin, Org Owner, Org Admin, Manager, User, Viewer" -ForegroundColor Gray
+Write-Host "   - Product-specific roles: Payroll Admin/Processor, HR Admin/Manager, Recruiter, Scheduler" -ForegroundColor Gray
+Write-Host "   - 150+ granular permissions across all products" -ForegroundColor Gray
+Write-Host "   - Dynamic user_roles table with product context" -ForegroundColor Gray
+Write-Host "   - Full audit trail for role changes" -ForegroundColor Gray
+Write-Host "   - Backward compatible with legacy product_roles" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[INFO] ScheduleHub: 16 scheduling tables created" -ForegroundColor Cyan
 Write-Host "   - Worker & role management" -ForegroundColor Gray

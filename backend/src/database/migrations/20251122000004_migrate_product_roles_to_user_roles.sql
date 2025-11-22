@@ -12,7 +12,7 @@
 -- 3. Creates user_roles entries with product context
 -- 4. Preserves audit trail
 
-BEGIN;
+-- NOTE: No transaction wrapper - operations handle errors independently
 
 -- ============================================================================
 -- 1. CREATE TEMPORARY ROLE MAPPING TABLE
@@ -86,7 +86,7 @@ WHERE
   u.product_roles IS NOT NULL
   AND u.product_roles != '{}'::jsonb
   AND u.deleted_at IS NULL
-ON CONFLICT (user_id, role_id, COALESCE(product, '')) DO NOTHING;
+ON CONFLICT (user_id, role_id, product) DO NOTHING;
 
 -- ============================================================================
 -- 3. VERIFICATION QUERY
@@ -124,8 +124,6 @@ BEGIN
   RAISE NOTICE 'Total role assignments created: %', total_role_assignments;
   RAISE NOTICE '========================================';
 END $$;
-
-COMMIT;
 
 -- ============================================================================
 -- VERIFICATION QUERIES (Run these manually after migration)

@@ -7,7 +7,7 @@
 -- Based on: docs/rbac/RBAC_IMPLEMENTATION_ROADMAP.md
 -- ============================================================================
 
-BEGIN;
+-- NOTE: No transaction wrapper - each INSERT handles errors independently
 
 -- ============================================================================
 -- 1. SEED SYSTEM ROLES

@@ -13,7 +13,7 @@
 -- 4. Audit trail for role changes
 -- 5. Backward compatibility with existing system
 
-BEGIN;
+-- NOTE: No transaction wrapper - each operation handles errors independently
 
 -- ============================================================================
 -- 1. ENHANCE PERMISSIONS TABLE
@@ -24,7 +24,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'permissions' AND column_name = 'product'
+        WHERE table_schema = 'public' AND table_name = 'permissions' AND column_name = 'product'
     ) THEN
         ALTER TABLE permissions ADD COLUMN product VARCHAR(50);
     END IF;
@@ -35,7 +35,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'permissions' AND column_name = 'is_system'
+        WHERE table_schema = 'public' AND table_name = 'permissions' AND column_name = 'is_system'
     ) THEN
         ALTER TABLE permissions ADD COLUMN is_system BOOLEAN NOT NULL DEFAULT true;
     END IF;
@@ -46,7 +46,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'permissions' AND column_name = 'display_order'
+        WHERE table_schema = 'public' AND table_name = 'permissions' AND column_name = 'display_order'
     ) THEN
         ALTER TABLE permissions ADD COLUMN display_order INTEGER DEFAULT 0;
     END IF;
@@ -57,7 +57,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'permissions' AND column_name = 'is_active'
+        WHERE table_schema = 'public' AND table_name = 'permissions' AND column_name = 'is_active'
     ) THEN
         ALTER TABLE permissions ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
     END IF;
@@ -68,7 +68,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'permissions' AND column_name = 'updated_at'
+        WHERE table_schema = 'public' AND table_name = 'permissions' AND column_name = 'updated_at'
     ) THEN
         ALTER TABLE permissions ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
     END IF;
@@ -95,9 +95,12 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'roles' AND column_name = 'organization_id'
+        WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'organization_id'
     ) THEN
         ALTER TABLE roles ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
+        RAISE NOTICE '[OK] Added organization_id column to roles table';
+    ELSE
+        RAISE NOTICE '[SKIP] organization_id column already exists in roles table';
     END IF;
 END $$;
 
@@ -106,9 +109,12 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'roles' AND column_name = 'product'
+        WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'product'
     ) THEN
         ALTER TABLE roles ADD COLUMN product VARCHAR(50);
+        RAISE NOTICE '[OK] Added product column to roles table';
+    ELSE
+        RAISE NOTICE '[SKIP] product column already exists in roles table';
     END IF;
 END $$;
 
@@ -117,7 +123,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'roles' AND column_name = 'is_system'
+        WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'is_system'
     ) THEN
         ALTER TABLE roles ADD COLUMN is_system BOOLEAN NOT NULL DEFAULT false;
     END IF;
@@ -128,7 +134,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'roles' AND column_name = 'is_active'
+        WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'is_active'
     ) THEN
         ALTER TABLE roles ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
     END IF;
@@ -139,7 +145,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'roles' AND column_name = 'deleted_at'
+        WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'deleted_at'
     ) THEN
         ALTER TABLE roles ADD COLUMN deleted_at TIMESTAMPTZ;
     END IF;
@@ -149,7 +155,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'roles' AND column_name = 'created_by'
+        WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'created_by'
     ) THEN
         ALTER TABLE roles ADD COLUMN created_by UUID REFERENCES hris.user_account(id);
     END IF;
@@ -159,7 +165,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'roles' AND column_name = 'updated_by'
+        WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'updated_by'
     ) THEN
         ALTER TABLE roles ADD COLUMN updated_by UUID REFERENCES hris.user_account(id);
     END IF;
@@ -169,7 +175,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'roles' AND column_name = 'deleted_by'
+        WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'deleted_by'
     ) THEN
         ALTER TABLE roles ADD COLUMN deleted_by UUID REFERENCES hris.user_account(id);
     END IF;
@@ -196,7 +202,7 @@ DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'role_permissions' AND column_name = 'created_by'
+        WHERE table_schema = 'public' AND table_name = 'role_permissions' AND column_name = 'created_by'
     ) THEN
         ALTER TABLE role_permissions ADD COLUMN created_by UUID REFERENCES hris.user_account(id);
     END IF;
@@ -220,13 +226,13 @@ CREATE TABLE IF NOT EXISTS user_roles (
     revoked_at TIMESTAMPTZ,
     revoked_by UUID REFERENCES hris.user_account(id),
     
-    -- Primary Key (user can have same role in different products)
-    PRIMARY KEY (user_id, role_id, COALESCE(product, '')),
-    
     -- Constraints
     CONSTRAINT check_user_roles_product CHECK (
         product IS NULL OR product IN ('paylinq', 'nexus', 'schedulehub', 'recruitiq')
-    )
+    ),
+    
+    -- Unique constraint (user can have same role in different products, but not twice in same product)
+    CONSTRAINT user_roles_unique UNIQUE (user_id, role_id, product)
 );
 
 -- Comments
@@ -274,34 +280,59 @@ COMMENT ON TABLE role_audit_log IS 'Audit trail for all RBAC changes';
 -- 6. CREATE INDEXES
 -- ============================================================================
 
--- Permissions indexes (if they don't exist)
-CREATE INDEX IF NOT EXISTS idx_permissions_product ON permissions(product) WHERE is_active = true;
-CREATE INDEX IF NOT EXISTS idx_permissions_product_category ON permissions(product, category) WHERE is_active = true;
+-- Permissions indexes (only if columns exist)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name='permissions' AND column_name='product') THEN
+        CREATE INDEX IF NOT EXISTS idx_permissions_product ON permissions(product) WHERE is_active = true;
+        CREATE INDEX IF NOT EXISTS idx_permissions_product_category ON permissions(product, category) WHERE is_active = true;
+    END IF;
+END $$;
 
--- Roles indexes
-CREATE INDEX IF NOT EXISTS idx_roles_organization ON roles(organization_id) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_roles_product ON roles(product) WHERE deleted_at IS NULL AND product IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_roles_active ON roles(organization_id, is_active) WHERE deleted_at IS NULL;
+-- Roles indexes (only if columns exist)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name='roles' AND column_name='organization_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_roles_organization ON roles(organization_id) WHERE deleted_at IS NULL;
+        CREATE INDEX IF NOT EXISTS idx_roles_active ON roles(organization_id, is_active) WHERE deleted_at IS NULL;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.columns 
+               WHERE table_name='roles' AND column_name='product') THEN
+        CREATE INDEX IF NOT EXISTS idx_roles_product ON roles(product) WHERE deleted_at IS NULL AND product IS NOT NULL;
+    END IF;
+END $$;
 
--- User roles indexes
-CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id) WHERE revoked_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id) WHERE revoked_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_user_roles_product ON user_roles(user_id, product) WHERE revoked_at IS NULL;
+-- User roles indexes (table should exist by now)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables 
+               WHERE table_name='user_roles') THEN
+        CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id) WHERE revoked_at IS NULL;
+        CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id) WHERE revoked_at IS NULL;
+        CREATE INDEX IF NOT EXISTS idx_user_roles_product ON user_roles(user_id, product) WHERE revoked_at IS NULL;
+    END IF;
+END $$;
 
--- Audit log indexes
-CREATE INDEX IF NOT EXISTS idx_role_audit_log_org_date ON role_audit_log(organization_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_role_audit_log_entity ON role_audit_log(entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_role_audit_log_user ON role_audit_log(performed_by, created_at DESC);
-
-COMMIT;
+-- Audit log indexes (table should exist by now)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables 
+               WHERE table_name='role_audit_log') THEN
+        CREATE INDEX IF NOT EXISTS idx_role_audit_log_org_date ON role_audit_log(organization_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_role_audit_log_entity ON role_audit_log(entity_type, entity_id);
+        CREATE INDEX IF NOT EXISTS idx_role_audit_log_user ON role_audit_log(performed_by, created_at DESC);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- DOWN MIGRATION (for rollback)
 -- ============================================================================
 -- To rollback this migration, run:
--- BEGIN;
 -- DROP TABLE IF EXISTS role_audit_log CASCADE;
--- DROP TABLE IF EXISTS user_roles CASCADE;
+-- DROP TABLE IF NOT EXISTS user_roles CASCADE;
 -- ALTER TABLE role_permissions DROP COLUMN IF EXISTS created_by;
 -- ALTER TABLE roles DROP COLUMN IF EXISTS organization_id;
 -- ALTER TABLE roles DROP COLUMN IF EXISTS product;
