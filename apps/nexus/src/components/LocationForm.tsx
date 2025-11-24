@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Save, X } from 'lucide-react';
 import { useCreateLocation, useUpdateLocation } from '@/services/LocationsService';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError, getValidationErrors } from '@/utils/errorHandler';
 import type { Location } from '@/types/location.types';
 
 const locationSchema = z.object({
@@ -131,8 +132,11 @@ export default function LocationForm({ location, mode }: LocationFormProps) {
         const errorMessages = errors.map((e: any) => `${fieldLabels[e.field] || e.field}: ${e.message}`).join(', ');
         toast.error(`Validation errors: ${errorMessages}`);
       } else {
-        console.error('Failed to save location:', error);
-        toast.error(apiError.response?.data?.message || 'Failed to save location. Please try again.');
+        // Use centralized error handler for other errors (including permission errors)
+        handleApiError(error, {
+          toast,
+          defaultMessage: 'Failed to save location',
+        });
       }
     }
   };

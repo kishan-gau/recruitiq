@@ -11,6 +11,7 @@ import type {
   TimeOffRequestFilters,
 } from '@/types/timeOff.types';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 // ============ Requests Hooks ============
 
@@ -54,18 +55,21 @@ export function useEmployeeTimeOffRequests(employeeId: string | undefined) {
  */
 export function useCreateTimeOffRequest() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (request: CreateTimeOffRequestDTO) => timeOffService.createRequest(request),
     onSuccess: (newRequest) => {
       queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests'] });
-      queryClient.invalidateQueries({ queryKey: ['timeoff', 'balances'] });
-      queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests', 'employee', newRequest.employeeId] });
-      success('Time-off request created successfully');
+      queryClient.invalidateQueries({ queryKey: ['time-off', 'requests'] });
+      queryClient.invalidateQueries({ queryKey: ['time-off', 'requests', 'employee', newRequest.employeeId] });
+      toast.success('Time-off request created successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to create time-off request: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to create time-off request',
+      });
     },
   });
 }
@@ -75,19 +79,22 @@ export function useCreateTimeOffRequest() {
  */
 export function useUpdateTimeOffRequest() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: UpdateTimeOffRequestDTO }) =>
       timeOffService.updateRequest(id, updates),
     onSuccess: (updatedRequest) => {
       queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests'] });
-      queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests', updatedRequest.id] });
-      queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests', 'employee', updatedRequest.employeeId] });
-      success('Time-off request updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['time-off', 'requests', updatedRequest.id] });
+      queryClient.invalidateQueries({ queryKey: ['time-off', 'requests', 'employee', updatedRequest.employeeId] });
+      toast.success('Time-off request updated successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to update time-off request: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update time-off request',
+      });
     },
   });
 }
@@ -97,7 +104,7 @@ export function useUpdateTimeOffRequest() {
  */
 export function useDeleteTimeOffRequest() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (id: string) => timeOffService.deleteRequest(id),
@@ -107,7 +114,10 @@ export function useDeleteTimeOffRequest() {
       success('Time-off request deleted successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to delete time-off request: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete time-off request',
+      });
     },
   });
 }
@@ -117,7 +127,7 @@ export function useDeleteTimeOffRequest() {
  */
 export function useReviewTimeOffRequest() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: ({ id, review }: { id: string; review: ReviewTimeOffRequestDTO }) =>
@@ -127,10 +137,13 @@ export function useReviewTimeOffRequest() {
       queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests', updatedRequest.id] });
       queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests', 'employee', updatedRequest.employeeId] });
       queryClient.invalidateQueries({ queryKey: ['timeoff', 'balances'] });
-      success(`Time-off request ${updatedRequest.status} successfully`);
+      toast.success(`Time-off request ${updatedRequest.status} successfully`);
     },
     onError: (err: Error) => {
-      error(`Failed to review time-off request: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to review time-off request',
+      });
     },
   });
 }
@@ -140,7 +153,7 @@ export function useReviewTimeOffRequest() {
  */
 export function useCancelTimeOffRequest() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (id: string) => timeOffService.cancelRequest(id),
@@ -149,10 +162,13 @@ export function useCancelTimeOffRequest() {
       queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests', updatedRequest.id] });
       queryClient.invalidateQueries({ queryKey: ['timeoff', 'requests', 'employee', updatedRequest.employeeId] });
       queryClient.invalidateQueries({ queryKey: ['timeoff', 'balances'] });
-      success('Time-off request cancelled successfully');
+      toast.success('Time-off request cancelled successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to cancel time-off request: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to cancel time-off request',
+      });
     },
   });
 }

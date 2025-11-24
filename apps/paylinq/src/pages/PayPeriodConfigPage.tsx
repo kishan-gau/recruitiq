@@ -25,6 +25,7 @@ import { DatePicker, FormSection, FormGrid, FormField, FormActions } from '@/com
 import { format, addDays, addMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 type PayFrequency = 'weekly' | 'bi-weekly' | 'semi-monthly' | 'monthly';
 
@@ -174,7 +175,10 @@ export default function PayPeriodConfigPage() {
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
     } catch (err: any) {
-      showError(err.message || 'Failed to save configuration');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to save configuration',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -204,7 +208,10 @@ export default function PayPeriodConfigPage() {
         showSuccess('Holiday added successfully');
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to add holiday');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to add holiday',
+      });
     }
   };
 
@@ -214,7 +221,10 @@ export default function PayPeriodConfigPage() {
       setHolidays(holidays.filter(h => h.id !== id));
       showSuccess('Holiday deleted successfully');
     } catch (err: any) {
-      showError(err.message || 'Failed to delete holiday');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete holiday',
+      });
     }
   };
 

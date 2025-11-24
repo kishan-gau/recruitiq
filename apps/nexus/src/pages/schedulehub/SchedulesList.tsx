@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Calendar, Eye, FileText, Archive } from 'lucide-react';
 import { useSchedules, usePublishSchedule } from '@/hooks/schedulehub/useScheduleStats';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Schedule } from '@/types/schedulehub';
 
@@ -32,8 +33,11 @@ export default function SchedulesList() {
       await publishSchedule.mutateAsync(publishDialogState.id);
       toast.success('Schedule published successfully!');
       setPublishDialogState({ isOpen: false, id: '' });
-    } catch (error) {
-      toast.error('Failed to publish schedule');
+    } catch (error: any) {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to publish schedule',
+      });
       setPublishDialogState({ isOpen: false, id: '' });
     }
   };

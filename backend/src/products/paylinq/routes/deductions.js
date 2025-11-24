@@ -5,6 +5,7 @@
 import express from 'express';
 import deductionController from '../controllers/deductionController.js';
 import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -70,11 +71,46 @@ const employeeIdParamSchema = Joi.object({
 });
 
 // Routes
-router.post('/', validate(createDeductionSchema, 'body'), deductionController.createDeduction);
-router.get('/', deductionController.getDeductions);
-router.get('/employees/:employeeId/deductions', validate(employeeIdParamSchema, 'params'), deductionController.getEmployeeDeductions);
-router.get('/:id', validate(idParamSchema, 'params'), deductionController.getDeductionById);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updateDeductionSchema, 'body'), deductionController.updateDeduction);
-router.delete('/:id', validate(idParamSchema, 'params'), deductionController.deleteDeduction);
+router.post(
+  '/',
+  requirePermission('deductions:create'),
+  validate(createDeductionSchema, 'body'),
+  deductionController.createDeduction
+);
+
+router.get(
+  '/',
+  requirePermission('deductions:read'),
+  deductionController.getDeductions
+);
+
+router.get(
+  '/employees/:employeeId/deductions',
+  requirePermission('deductions:read'),
+  validate(employeeIdParamSchema, 'params'),
+  deductionController.getEmployeeDeductions
+);
+
+router.get(
+  '/:id',
+  requirePermission('deductions:read'),
+  validate(idParamSchema, 'params'),
+  deductionController.getDeductionById
+);
+
+router.put(
+  '/:id',
+  requirePermission('deductions:update'),
+  validate(idParamSchema, 'params'),
+  validate(updateDeductionSchema, 'body'),
+  deductionController.updateDeduction
+);
+
+router.delete(
+  '/:id',
+  requirePermission('deductions:delete'),
+  validate(idParamSchema, 'params'),
+  deductionController.deleteDeduction
+);
 
 export default router;

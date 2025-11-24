@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Mail, Lock, Info } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface GrantAccessModalProps {

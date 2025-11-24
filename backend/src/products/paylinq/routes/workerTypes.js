@@ -7,6 +7,7 @@ import express from 'express';
 import workerTypeController from '../controllers/workerTypeController.js';
 import { validate  } from '../../../middleware/validation.js';
 import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -63,16 +64,22 @@ const uuidParamSchema = Joi.object({
 // POST /api/paylinq/worker-types - Create worker type
 router.post(
   '/',
+  requirePermission('worker-types:create'),
   validate(createWorkerTypeSchema, 'body'),
   workerTypeController.createWorkerType
 );
 
 // GET /api/paylinq/worker-types - Get all worker types
-router.get('/', workerTypeController.getWorkerTypes);
+router.get(
+  '/',
+  requirePermission('worker-types:read'),
+  workerTypeController.getWorkerTypes
+);
 
 // GET /api/paylinq/worker-types/:id - Get worker type by ID
 router.get(
   '/:id',
+  requirePermission('worker-types:read'),
   validate(uuidParamSchema, 'params'),
   workerTypeController.getWorkerTypeById
 );
@@ -80,6 +87,7 @@ router.get(
 // PUT /api/paylinq/worker-types/:id - Update worker type
 router.put(
   '/:id',
+  requirePermission('worker-types:update'),
   validate(uuidParamSchema, 'params'),
   validate(updateWorkerTypeSchema, 'body'),
   workerTypeController.updateWorkerType
@@ -88,6 +96,7 @@ router.put(
 // DELETE /api/paylinq/worker-types/:id - Delete worker type
 router.delete(
   '/:id',
+  requirePermission('worker-types:delete'),
   validate(uuidParamSchema, 'params'),
   workerTypeController.deleteWorkerType
 );
@@ -95,6 +104,7 @@ router.delete(
 // POST /api/paylinq/worker-types/:id/assign-employees - Assign employees
 router.post(
   '/:id/assign-employees',
+  requirePermission('worker-types:update'),
   validate(uuidParamSchema, 'params'),
   validate(assignEmployeesSchema, 'body'),
   workerTypeController.assignEmployees
@@ -103,6 +113,7 @@ router.post(
 // GET /api/paylinq/worker-types/:id/employees - Get worker type employees
 router.get(
   '/:id/employees',
+  requirePermission('worker-types:read'),
   validate(uuidParamSchema, 'params'),
   workerTypeController.getWorkerTypeEmployees
 );

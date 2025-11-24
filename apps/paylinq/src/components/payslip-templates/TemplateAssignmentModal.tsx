@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { handleApiError } from '@/utils/errorHandler';
 
 interface TemplateAssignmentModalProps {
   isOpen: boolean;
@@ -16,7 +18,7 @@ export default function TemplateAssignmentModal({
   templateId,
   templateName
 }: TemplateAssignmentModalProps) {
-  const { success, error: showError } = useToast();
+  const toast = useToast();
   const { paylinq } = usePaylinqAPI();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +60,10 @@ export default function TemplateAssignmentModal({
       }
       setAssignments(data);
     } catch (err: any) {
-      showError(err.message || 'Failed to load assignments');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to load assignments',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +77,10 @@ export default function TemplateAssignmentModal({
       setShowAddForm(false);
       resetForm();
     } catch (err: any) {
-      showError(err.message || 'Failed to create assignment');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to create assignment',
+      });
     }
   };
 
@@ -84,7 +92,10 @@ export default function TemplateAssignmentModal({
       success('Assignment removed successfully');
       loadAssignments();
     } catch (err: any) {
-      showError(err.message || 'Failed to remove assignment');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to remove assignment',
+      });
     }
   };
 

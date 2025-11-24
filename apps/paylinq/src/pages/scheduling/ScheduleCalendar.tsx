@@ -5,6 +5,7 @@ import Badge from '@/components/ui/Badge';
 import type { Schedule, Employee } from '@/components/ui/ScheduleGrid';
 import { formatDate } from '@/utils/helpers';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import ShiftModal from '@/components/modals/ShiftModal';
 
@@ -84,7 +85,10 @@ export default function ScheduleCalendar() {
         }
       } catch (err: any) {
         console.error('Failed to fetch scheduling data:', err);
-        showError(err.message || 'Failed to load scheduling data');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load scheduling data',
+        });
         setEmployees([]);
         setSchedules([]);
       } finally {
@@ -184,7 +188,10 @@ export default function ScheduleCalendar() {
       success('Schedule exported successfully');
     } catch (err: any) {
       console.error('Failed to export schedule:', err);
-      showError(err.message || 'Failed to export schedule');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to export schedule',
+      });
     }
   };
 

@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { schedulehubApi } from '@/lib/api/schedulehub';
 import { useLocations } from '@/services/LocationsService';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 interface Station {
   id: string;
@@ -35,6 +36,7 @@ export default function StationsList() {
     queryFn: () => schedulehubApi.stations.list(),
   });
 
+  const toast = useToast();
   const { data: locations = [], isLoading: isLoadingLocations } = useLocations({ isActive: true });
 
   const createMutation = useMutation({
@@ -45,7 +47,10 @@ export default function StationsList() {
       handleCloseModal();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to create station');
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to create station',
+      });
     },
   });
 
@@ -58,7 +63,10 @@ export default function StationsList() {
       handleCloseModal();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to update station');
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to update station',
+      });
     },
   });
 

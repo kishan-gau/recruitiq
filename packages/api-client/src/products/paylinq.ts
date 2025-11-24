@@ -45,15 +45,17 @@ import type {
   PayComponentResponse,
   PayComponentsListResponse,
   ComponentFormula,
-  CustomPayComponent,
   CreatePayComponentRequest,
   UpdatePayComponentRequest,
   CreateFormulaRequest,
   UpdateFormulaRequest,
-  CreateCustomPayComponentRequest,
-  UpdateCustomPayComponentRequest,
   FormulaValidationResult,
   PayComponentFilters,
+  // Employee Components
+  EmployeePayComponentAssignment,
+  CreateEmployeeComponentAssignmentRequest,
+  UpdateEmployeeComponentAssignmentRequest,
+  EmployeeComponentFilters,
   // Payments
   PayrollRun,
   PayrollRunResponse,
@@ -770,46 +772,6 @@ export class PaylinqClient {
 
   // ============================================================================
   // Custom Pay Components
-  // ============================================================================
-
-  /**
-   * Get custom pay components for employee
-   */
-  async getCustomPayComponents(employeeId: string) {
-    return this.client.get<ApiResponse<CustomPayComponent[]>>(
-      `${this.basePath}/custom-pay-components/employee/${employeeId}`
-    );
-  }
-
-  /**
-   * Create custom pay component
-   */
-  async createCustomPayComponent(data: CreateCustomPayComponentRequest) {
-    return this.client.post<ApiResponse<CustomPayComponent>>(
-      `${this.basePath}/custom-pay-components`,
-      data
-    );
-  }
-
-  /**
-   * Update custom pay component
-   */
-  async updateCustomPayComponent(id: string, data: UpdateCustomPayComponentRequest) {
-    return this.client.put<ApiResponse<CustomPayComponent>>(
-      `${this.basePath}/custom-pay-components/${id}`,
-      data
-    );
-  }
-
-  /**
-   * Delete custom pay component
-   */
-  async deleteCustomPayComponent(id: string) {
-    return this.client.delete<ApiResponse<void>>(
-      `${this.basePath}/custom-pay-components/${id}`
-    );
-  }
-
   // ============================================================================
   // Payroll Runs
   // ============================================================================
@@ -2435,4 +2397,142 @@ export class PaylinqClient {
     const query = new URLSearchParams(params as any).toString();
     return this.client.get(`${this.basePath}/approvals/statistics${query ? '?' + query : ''}`);
   }
+
+  // ============================================================================
+  // Loontijdvak (Dutch Tax Periods)
+  // ============================================================================
+
+  /**
+   * List loontijdvak periods with filters
+   */
+  async getLoontijdvakken(filters?: {
+    year?: number;
+    periodType?: 'week' | '4_weeks' | 'month' | 'quarter' | 'year';
+    isActive?: boolean;
+  }) {
+    const query = new URLSearchParams(filters as any).toString();
+    return this.client.get(`${this.basePath}/loontijdvak${query ? '?' + query : ''}`);
+  }
+
+  /**
+   * Get loontijdvak period by ID
+   */
+  async getLoontijdvak(id: string) {
+    return this.client.get(`${this.basePath}/loontijdvak/${id}`);
+  }
+
+  /**
+   * Get active loontijdvak for a specific date
+   */
+  async getActiveLoontijdvak(date: string, periodType?: string) {
+    const query = new URLSearchParams({ date, ...(periodType && { periodType }) }).toString();
+    return this.client.get(`${this.basePath}/loontijdvak/active?${query}`);
+  }
+
+  /**
+   * Create new loontijdvak period
+   */
+  async createLoontijdvak(data: {
+    periodType: 'week' | '4_weeks' | 'month' | 'quarter' | 'year';
+    periodNumber: number;
+    year: number;
+    startDate: string;
+    endDate: string;
+    taxTableVersion?: string;
+    isActive?: boolean;
+  }) {
+    return this.client.post(`${this.basePath}/loontijdvak`, data);
+  }
+
+  /**
+   * Update loontijdvak period
+   */
+  async updateLoontijdvak(id: string, data: Partial<{
+    taxTableVersion: string;
+    isActive: boolean;
+  }>) {
+    return this.client.put(`${this.basePath}/loontijdvak/${id}`, data);
+  }
+
+  /**
+   * Delete loontijdvak period
+   */
+  async deleteLoontijdvak(id: string) {
+    return this.client.delete(`${this.basePath}/loontijdvak/${id}`);
+  }
+
+  /**
+   * Bulk generate loontijdvak periods for a year
+   */
+  async bulkGenerateLoontijdvakken(
+    year: number,
+    periodTypes: Array<'week' | '4_weeks' | 'month' | 'quarter' | 'year'>
+  ) {
+    return this.client.post(`${this.basePath}/loontijdvak/bulk-generate`, { year, periodTypes });
+  }
+
+  /**
+   * Check for overlapping loontijdvak periods
+   */
+  async checkLoontijdvakOverlaps() {
+    return this.client.get(`${this.basePath}/loontijdvak/check-overlaps`);
+  }
+
+  // ============================================================================
+  // Employee Pay Components (Custom Overrides - System 1)
+  // ============================================================================
+
+  // ============================================================================
+  // Employee Component Assignments
+  // ============================================================================
+
+  /**
+   * Assign component to employee with configuration
+   */
+  async assignComponentToEmployee(
+    employeeId: string,
+    data: CreateEmployeeComponentAssignmentRequest
+  ) {
+    return this.client.post<ApiResponse<EmployeePayComponentAssignment>>(
+      `${this.basePath}/employees/${employeeId}/assignments`,
+      data
+    );
+  }
+
+  /**
+   * Get employee's component assignments
+   */
+  async getEmployeeComponentAssignments(
+    employeeId: string,
+    filters?: EmployeeComponentFilters
+  ) {
+    const query = new URLSearchParams(filters as any).toString();
+    return this.client.get<ApiResponse<EmployeePayComponentAssignment[]>>(
+      `${this.basePath}/employees/${employeeId}/assignments${query ? '?' + query : ''}`
+    );
+  }
+
+  /**
+   * Update employee component assignment
+   */
+  async updateEmployeeComponentAssignment(
+    employeeId: string,
+    assignmentId: string,
+    data: UpdateEmployeeComponentAssignmentRequest
+  ) {
+    return this.client.put<ApiResponse<EmployeePayComponentAssignment>>(
+      `${this.basePath}/employees/${employeeId}/assignments/${assignmentId}`,
+      data
+    );
+  }
+
+  /**
+   * Remove employee component assignment
+   */
+  async removeEmployeeComponentAssignment(employeeId: string, assignmentId: string) {
+    return this.client.delete<ApiResponse<void>>(
+      `${this.basePath}/employees/${employeeId}/assignments/${assignmentId}`
+    );
+  }
 }
+

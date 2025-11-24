@@ -13,7 +13,7 @@ class Permission {
    */
   static async findById(id) {
     const result = await query(
-      `SELECT * FROM permissions WHERE id = $1 AND is_active = true`,
+      `SELECT * FROM public.permissions WHERE id = $1 AND is_active = true`,
       [id]
     );
     return result.rows[0] || null;
@@ -26,7 +26,7 @@ class Permission {
    */
   static async findByCode(code) {
     const result = await query(
-      `SELECT * FROM permissions WHERE name = $1 AND is_active = true`,
+      `SELECT * FROM public.permissions WHERE name = $1 AND is_active = true`,
       [code]
     );
     return result.rows[0] || null;
@@ -40,7 +40,7 @@ class Permission {
    * @returns {Promise<Array>} Array of permission objects
    */
   static async findAll(filters = {}) {
-    let sql = `SELECT * FROM permissions WHERE is_active = true`;
+    let sql = `SELECT * FROM public.permissions WHERE 1=1`;
     const values = [];
     let paramCount = 0;
 
@@ -79,7 +79,7 @@ class Permission {
             'display_order', display_order
           ) ORDER BY display_order, name
         ) as permissions
-      FROM permissions
+      FROM public.permissions
       WHERE is_active = true
       GROUP BY product, category
       ORDER BY product, category
@@ -98,11 +98,10 @@ class Permission {
     const result = await query(
       `
       SELECT DISTINCT p.*
-      FROM permissions p
-      INNER JOIN role_permissions rp ON p.id = rp.permission_id
+      FROM public.permissions p
+      INNER JOIN public.role_permissions rp ON p.id = rp.permission_id
       WHERE rp.role_id = ANY($1)
-        AND p.is_active = true
-      ORDER BY p.product, p.category, p.display_order
+      ORDER BY p.product, p.category, p.name
       `,
       [roleIds]
     );
@@ -120,7 +119,7 @@ class Permission {
     const result = await query(
       `
       SELECT COUNT(*) as count
-      FROM permissions
+      FROM public.permissions
       WHERE id = ANY($1) AND is_active = true
       `,
       [permissionIds]

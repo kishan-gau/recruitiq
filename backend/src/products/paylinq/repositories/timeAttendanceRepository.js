@@ -595,18 +595,18 @@ class TimeAttendanceRepository {
   async findEmployeePayComponents(employeeId, organizationId) {
     const result = await this.query(
       `SELECT pc.*,
-              cpc.custom_rate,
-              cpc.custom_amount
+              ea.override_amount,
+              ea.configuration
        FROM payroll.pay_component pc
-       LEFT JOIN payroll.custom_pay_component cpc 
-         ON cpc.pay_component_id = pc.id 
-         AND cpc.employee_id = $1
-         AND cpc.is_active = true
-         AND cpc.deleted_at IS NULL
+       LEFT JOIN payroll.employee_pay_component_assignment ea 
+         ON ea.component_id = pc.id 
+         AND ea.employee_id = $1
+         AND ea.deleted_at IS NULL
+         AND (ea.effective_to IS NULL OR ea.effective_to >= CURRENT_DATE)
        WHERE pc.organization_id = $2
          AND pc.status = 'active'
          AND pc.component_type = 'earning'
-         AND pc.calculation_type IN ('hourly_rate', 'percentage')
+         AND pc.calculation_type IN ('hourly_rate', 'percentage', 'formula')
          AND pc.deleted_at IS NULL
        ORDER BY pc.component_name`,
       [employeeId, organizationId],

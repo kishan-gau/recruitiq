@@ -128,6 +128,100 @@ COMMENT ON COLUMN organizations.mfa_required IS 'Whether MFA is mandatory for al
 COMMENT ON COLUMN organizations.mfa_enforcement_date IS 'Date when MFA became mandatory. Users without MFA enabled after this date will be prompted to set it up.';
 
 -- ============================================================================
+-- RBAC SYSTEM - Centralized Role-Based Access Control
+-- ============================================================================
+
+-- ============================================================================
+-- PERMISSIONS TABLE - Product-specific permissions
+-- ============================================================================
+CREATE TABLE permissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product VARCHAR(50) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  display_name VARCHAR(200) NOT NULL,
+  description TEXT,
+  category VARCHAR(100),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_product_permission UNIQUE (product, name)
+);
+
+CREATE INDEX idx_permissions_product ON permissions(product);
+CREATE INDEX idx_permissions_name ON permissions(name);
+CREATE INDEX idx_permissions_category ON permissions(category);
+
+COMMENT ON TABLE permissions IS 'Product-specific permissions seeded by each product (paylinq, nexus, recruitiq, etc.)';
+COMMENT ON COLUMN permissions.category IS 'Permission category for grouping: paylinq, nexus, recruitiq, portal, tenant, license, security, etc.';
+
+-- ============================================================================
+-- ROLES TABLE - Organization-scoped roles (system + custom)
+-- ============================================================================
+CREATE TABLE roles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  name VARCHAR(100) NOT NULL,
+  display_name VARCHAR(200) NOT NULL,
+  role_type VARCHAR(20) NOT NULL DEFAULT 'tenant',
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by UUID,
+  updated_by UUID,
+  deleted_at TIMESTAMPTZ,
+  deleted_by UUID,
+  CONSTRAINT check_role_type CHECK (role_type IN ('platform', 'tenant', 'custom', 'system')),
+  CONSTRAINT unique_org_role UNIQUE (organization_id, name)
+);
+
+CREATE INDEX idx_roles_organization ON roles(organization_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_roles_type ON roles(role_type) WHERE deleted_at IS NULL;
+CREATE INDEX idx_roles_active ON roles(is_active) WHERE deleted_at IS NULL;
+CREATE INDEX idx_roles_name ON roles(name) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE roles IS 'Organization-specific roles. Each tenant organization gets seeded with system roles (owner, admin, etc.) and can create custom roles.';
+COMMENT ON COLUMN roles.organization_id IS 'Organization this role belongs to. All roles are organization-scoped for multi-tenancy.';
+COMMENT ON COLUMN roles.role_type IS 'platform = portal admins, tenant = organization system roles, custom = user-created roles';
+
+-- ============================================================================
+-- ROLE_PERMISSIONS TABLE - Maps permissions to roles
+-- ============================================================================
+CREATE TABLE role_permissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by UUID,
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT unique_role_permission UNIQUE (role_id, permission_id)
+);
+
+CREATE INDEX idx_role_permissions_role ON role_permissions(role_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE role_permissions IS 'Many-to-many mapping between roles and permissions';
+
+-- ============================================================================
+-- USER_ROLES TABLE - Assigns roles to users
+-- ============================================================================
+CREATE TABLE user_roles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL,
+  role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by UUID,
+  deleted_at TIMESTAMPTZ,
+  deleted_by UUID,
+  CONSTRAINT unique_user_role UNIQUE (user_id, role_id)
+);
+
+CREATE INDEX idx_user_roles_user ON user_roles(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_user_roles_role ON user_roles(role_id) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE user_roles IS 'Assigns roles to users. user_id references hris.user_account (tenant users) or platform_users (platform admins)';
+COMMENT ON COLUMN user_roles.user_id IS 'References either hris.user_account.id or platform_users.id (no FK constraint to support both)';
+
+-- ============================================================================
 -- EMAIL_SETTINGS TABLE - Organization-wide email configuration (used by all products)
 -- ============================================================================
 CREATE TABLE email_settings (
@@ -839,72 +933,12 @@ $$ LANGUAGE plpgsql;
 COMMENT ON FUNCTION reset_usage_counters IS 'Resets usage counters for features with monthly limits (run via scheduled job)';
 
 -- ============================================================================
--- PERMISSIONS TABLE - Define all available system permissions
+-- RBAC TABLES (permissions, roles, role_permissions, user_roles)
 -- ============================================================================
-CREATE TABLE permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  
-  -- Permission details
-  name VARCHAR(100) NOT NULL UNIQUE,
-  category VARCHAR(50) NOT NULL,
-  description TEXT,
-  
-  -- Metadata
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_permissions_category ON permissions(category);
-CREATE INDEX idx_permissions_name ON permissions(name);
-
-COMMENT ON TABLE permissions IS 'System-wide permissions for granular access control';
-COMMENT ON COLUMN permissions.name IS 'Unique permission identifier (e.g., "license.create", "vps.provision")';
-COMMENT ON COLUMN permissions.category IS 'Permission category (e.g., "license", "portal", "security", "vps")';
-
+-- MOVED TO: migrations/20250122000000_create_centralized_rbac_system.sql
+-- These tables are now created by the RBAC migration with proper structure
+-- including product-specific permissions and organization-scoped roles
 -- ============================================================================
--- ROLES TABLE - Define platform-level and tenant-level roles
--- ============================================================================
-CREATE TABLE roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  
-  -- Role details
-  name VARCHAR(100) NOT NULL UNIQUE,
-  display_name VARCHAR(255) NOT NULL,
-  description TEXT,
-  
-  -- Role type
-  role_type VARCHAR(20) NOT NULL CHECK (role_type IN ('platform', 'tenant')),
-  
-  -- Role level
-  level INTEGER NOT NULL DEFAULT 0,
-  
-  -- Metadata
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_roles_name ON roles(name);
-CREATE INDEX idx_roles_type ON roles(role_type);
-
-COMMENT ON TABLE roles IS 'System roles with hierarchical levels';
-COMMENT ON COLUMN roles.role_type IS 'Platform roles for admin panel/license manager, Tenant roles for RecruitIQ instances';
-COMMENT ON COLUMN roles.level IS 'Role hierarchy level - higher numbers have more privileges';
-
--- ============================================================================
--- ROLE_PERMISSIONS TABLE - Map permissions to roles
--- ============================================================================
-CREATE TABLE role_permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-  permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-  
-  -- Metadata
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  UNIQUE(role_id, permission_id)
-);
-
-CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
-CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
 
 -- ============================================================================
 -- USERS TABLE

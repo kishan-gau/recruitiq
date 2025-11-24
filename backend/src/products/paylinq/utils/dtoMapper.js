@@ -1127,6 +1127,102 @@ export function convertFieldName(fieldName, mapping) {
   return mapping[fieldName] || fieldName;
 }
 
+// ==================== TEMPLATE INCLUSION MAPPINGS ====================
+
+/**
+ * Template Inclusion DB to API field mapping
+ */
+export const TEMPLATE_INCLUSION_DB_TO_API = {
+  id: 'id',
+  organization_id: 'organizationId',
+  parent_template_id: 'parentTemplateId',
+  included_template_code: 'includedTemplateCode',
+  inclusion_priority: 'inclusionPriority',
+  inclusion_mode: 'inclusionMode',
+  version_constraint: 'versionConstraint',
+  pinned_version_id: 'pinnedVersionId',
+  component_filter: 'componentFilter',
+  effective_from: 'effectiveFrom',
+  effective_to: 'effectiveTo',
+  is_active: 'isActive',
+  inclusion_reason: 'inclusionReason',
+  tags: 'tags',
+  notes: 'notes',
+  created_at: 'createdAt',
+  updated_at: 'updatedAt',
+  deleted_at: 'deletedAt',
+  created_by: 'createdBy',
+  updated_by: 'updatedBy',
+  deleted_by: 'deletedBy',
+  // Joined fields from resolution query
+  included_template_name: 'includedTemplateName',
+  included_version: 'includedVersion',
+  included_status: 'includedStatus'
+};
+
+/**
+ * Map template inclusion from DB to API format
+ */
+export function mapTemplateInclusionDbToApi(dbInclusion) {
+  if (!dbInclusion) return null;
+
+  const mapped = {};
+  
+  Object.keys(TEMPLATE_INCLUSION_DB_TO_API).forEach(dbField => {
+    const apiField = TEMPLATE_INCLUSION_DB_TO_API[dbField];
+    if (dbInclusion[dbField] !== undefined && dbInclusion[dbField] !== null) {
+      mapped[apiField] = dbInclusion[dbField];
+    }
+  });
+
+  return mapped;
+}
+
+/**
+ * Map array of template inclusions from DB to API format
+ */
+export function mapTemplateInclusionDbArrayToApi(dbInclusions) {
+  if (!Array.isArray(dbInclusions)) return [];
+  return dbInclusions.map(inc => mapTemplateInclusionDbToApi(inc));
+}
+
+/**
+ * Template Inclusion API to DB field mapping
+ */
+export const TEMPLATE_INCLUSION_API_TO_DB = {
+  parentTemplateId: 'parent_template_id',
+  includedTemplateCode: 'included_template_code',
+  inclusionPriority: 'inclusion_priority',
+  inclusionMode: 'inclusion_mode',
+  versionConstraint: 'version_constraint',
+  pinnedVersionId: 'pinned_version_id',
+  componentFilter: 'component_filter',
+  effectiveFrom: 'effective_from',
+  effectiveTo: 'effective_to',
+  isActive: 'is_active',
+  inclusionReason: 'inclusion_reason',
+  tags: 'tags',
+  notes: 'notes'
+};
+
+/**
+ * Map template inclusion from API to DB format
+ */
+export function mapTemplateInclusionApiToDb(apiInclusion) {
+  if (!apiInclusion) return null;
+
+  const mapped = {};
+  
+  Object.keys(apiInclusion).forEach(apiField => {
+    const dbField = TEMPLATE_INCLUSION_API_TO_DB[apiField] || apiField;
+    if (apiInclusion[apiField] !== undefined && apiInclusion[apiField] !== null) {
+      mapped[dbField] = apiInclusion[apiField];
+    }
+  });
+
+  return mapped;
+}
+
 export default {
   mapApiToDb,
   mapDbToApi,
@@ -1156,6 +1252,12 @@ export default {
   mapWorkerPayStructureDbArrayToApi,
   mapWorkerOverrideDbToApi,
   mapWorkerOverrideDbArrayToApi,
+  // Template Inclusion mappings
+  mapTemplateInclusionDbToApi,
+  mapTemplateInclusionDbArrayToApi,
+  mapTemplateInclusionApiToDb,
+  TEMPLATE_INCLUSION_DB_TO_API,
+  TEMPLATE_INCLUSION_API_TO_DB,
   DEDUCTION_API_TO_DB,
   SCHEDULE_API_TO_DB,
   SCHEDULE_DB_TO_API,

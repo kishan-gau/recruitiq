@@ -76,11 +76,11 @@ describe('PayComponentService', () => {
       deletePayComponent: jest.fn(),
       createComponentFormula: jest.fn(),
       findFormulasByComponent: jest.fn(),
-      assignCustomComponent: jest.fn(),
-      findCustomComponentsByEmployee: jest.fn(),
-      updateCustomComponent: jest.fn(),
-      deactivateCustomComponent: jest.fn(),
       findActivePayComponentsForPayroll: jest.fn(),
+      assignComponentToEmployee: jest.fn(),
+      findEmployeeComponentAssignments: jest.fn(),
+      updateEmployeeComponentAssignment: jest.fn(),
+      deleteEmployeeComponentAssignment: jest.fn(),
     };
 
     service = new PayComponentService(mockRepository);
@@ -502,115 +502,6 @@ describe('PayComponentService', () => {
       expect(() => service.validateFormulaExpression('(5 + 10')).toThrow('Unbalanced');
       expect(() => service.validateFormulaExpression('5 + 10)')).toThrow('Unbalanced');
       expect(() => service.validateFormulaExpression(')5 + 10(')).toThrow('Unbalanced');
-    });
-  });
-
-  // ==================== CUSTOM COMPONENT OPERATIONS ====================
-
-  describe('assignCustomComponent', () => {
-    it('should assign custom component to employee', async () => {
-      const customData = {
-        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
-        employeeRecordId: '123e4567-e89b-12d3-a456-426614174007',
-        customRate: 25.50,
-        effectiveFrom: new Date('2024-01-01')
-      };
-
-      const dbComponent = createDbComponent();
-      const dbCustom = createDbCustomComponent();
-
-      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
-      mockRepository.assignCustomComponent.mockResolvedValue(dbCustom);
-
-      const result = await service.assignCustomComponent(customData, orgId, userId);
-
-      expect(result).toEqual(dbCustom);
-      expect(mockRepository.assignCustomComponent).toHaveBeenCalled();
-    });
-
-    it('should throw ValidationError if effectiveTo is before effectiveFrom', async () => {
-      const customData = {
-        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
-        employeeRecordId: '123e4567-e89b-12d3-a456-426614174007',
-        customRate: 25.50,
-        effectiveFrom: new Date('2024-02-01'),
-        effectiveTo: new Date('2024-01-01')
-      };
-
-      await expect(
-        service.assignCustomComponent(customData, orgId, userId)
-      ).rejects.toThrow('Effective to date must be after effective from date');
-    });
-
-    it('should throw ValidationError if neither customRate nor customAmount provided', async () => {
-      const customData = {
-        payComponentId: '123e4567-e89b-12d3-a456-426614174001',
-        employeeRecordId: '123e4567-e89b-12d3-a456-426614174007',
-        effectiveFrom: new Date('2024-01-01')
-      };
-
-      await expect(
-        service.assignCustomComponent(customData, orgId, userId)
-      ).rejects.toThrow('must have either custom rate or custom amount');
-    });
-  });
-
-  describe('getCustomComponentsByEmployee', () => {
-    it('should return custom components for employee', async () => {
-      const customComponents = [
-        createDbCustomComponent(),
-        createDbCustomComponent({ id: '123e4567-e89b-12d3-a456-426614174009' })
-      ];
-      mockRepository.findCustomComponentsByEmployee.mockResolvedValue(customComponents);
-
-      const result = await service.getCustomComponentsByEmployee('123e4567-e89b-12d3-a456-426614174007', orgId);
-
-      expect(result).toEqual(customComponents);
-      expect(result).toHaveLength(2);
-    });
-
-    it('should pass filters to repository', async () => {
-      const filters = { isActive: true };
-      mockRepository.findCustomComponentsByEmployee.mockResolvedValue([]);
-
-      await service.getCustomComponentsByEmployee('123e4567-e89b-12d3-a456-426614174007', orgId, filters);
-
-      expect(mockRepository.findCustomComponentsByEmployee).toHaveBeenCalledWith(
-        '123e4567-e89b-12d3-a456-426614174007',
-        orgId,
-        filters
-      );
-    });
-  });
-
-  describe('updateCustomComponent', () => {
-    it('should update custom component', async () => {
-      const updates = { customRate: 30.00 };
-      const updatedDb = createDbCustomComponent({ custom_rate: 30.00 });
-
-      mockRepository.updateCustomComponent.mockResolvedValue(updatedDb);
-
-      const result = await service.updateCustomComponent('123e4567-e89b-12d3-a456-426614174006', updates, orgId, userId);
-
-      expect(result).toEqual(updatedDb);
-      expect(mockRepository.updateCustomComponent).toHaveBeenCalledWith(
-        '123e4567-e89b-12d3-a456-426614174006',
-        updates,
-        orgId,
-        userId
-      );
-    });
-  });
-
-  describe('deactivateCustomComponent', () => {
-    it('should deactivate custom component', async () => {
-      const deactivatedDb = createDbCustomComponent({ is_active: false });
-      mockRepository.deactivateCustomComponent.mockResolvedValue(deactivatedDb);
-
-      const result = await service.deactivateCustomComponent('123e4567-e89b-12d3-a456-426614174006', orgId, userId);
-
-      expect(result).toEqual(deactivatedDb);
-      expect(result.is_active).toBe(false);
     });
   });
 

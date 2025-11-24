@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
 import { employeesService } from '@/services/employees.service';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 interface GrantAccessModalProps {
   isOpen: boolean;
@@ -90,9 +91,11 @@ export default function GrantAccessModal({
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || err.message || 'Failed to grant access';
+      const errorMessage = handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to grant access',
+      });
       setError(errorMessage);
-      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -10,6 +10,7 @@ import type {
   ContractFilters,
 } from '@/types/contract.types';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 /**
  * Hook to fetch all contracts with optional filters
@@ -63,17 +64,20 @@ export function useCurrentContract(employeeId: string | undefined) {
  */
 export function useCreateContract() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (contract: CreateContractDTO) => contractsService.create(contract),
     onSuccess: (newContract) => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contracts', 'employee', newContract.employeeId] });
-      success('Contract created successfully');
+      toast.success('Contract created successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to create contract: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to create contract',
+      });
     },
   });
 }
@@ -83,7 +87,7 @@ export function useCreateContract() {
  */
 export function useUpdateContract() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: UpdateContractDTO }) =>
@@ -92,10 +96,13 @@ export function useUpdateContract() {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contracts', updatedContract.id] });
       queryClient.invalidateQueries({ queryKey: ['contracts', 'employee', updatedContract.employeeId] });
-      success('Contract updated successfully');
+      toast.success('Contract updated successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to update contract: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update contract',
+      });
     },
   });
 }
@@ -105,16 +112,19 @@ export function useUpdateContract() {
  */
 export function useDeleteContract() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (id: string) => contractsService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
-      success('Contract deleted successfully');
+      toast.success('Contract deleted successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to delete contract: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete contract',
+      });
     },
   });
 }
@@ -124,7 +134,7 @@ export function useDeleteContract() {
  */
 export function useActivateContract() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (id: string) => contractsService.activate(id),
@@ -132,10 +142,13 @@ export function useActivateContract() {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contracts', updatedContract.id] });
       queryClient.invalidateQueries({ queryKey: ['contracts', 'employee', updatedContract.employeeId] });
-      success('Contract activated successfully');
+      toast.success('Contract activated successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to activate contract: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to activate contract',
+      });
     },
   });
 }
@@ -145,7 +158,7 @@ export function useActivateContract() {
  */
 export function useTerminateContract() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: ({ id, terminationDate }: { id: string; terminationDate: string }) =>
@@ -154,10 +167,13 @@ export function useTerminateContract() {
       queryClient.invalidateQueries({ queryKey: ['contracts'] });
       queryClient.invalidateQueries({ queryKey: ['contracts', updatedContract.id] });
       queryClient.invalidateQueries({ queryKey: ['contracts', 'employee', updatedContract.employeeId] });
-      success('Contract terminated successfully');
+      toast.success('Contract terminated successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to terminate contract: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to terminate contract',
+      });
     },
   });
 }
@@ -167,17 +183,21 @@ export function useTerminateContract() {
  */
 export function useUploadContractDocument() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: ({ id, file }: { id: string; file: File }) =>
       contractsService.uploadDocument(id, file),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['contracts', variables.id] });
-      success('Contract document uploaded successfully');
+      toast.success('Contract document uploaded successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to upload document: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to upload contract document',
+      });
+    },
     },
   });
 }

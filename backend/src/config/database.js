@@ -20,9 +20,17 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-// Test connection
-pool.on('connect', () => {
-  logger.info('✅ PostgreSQL connected');
+// Test connection and set search_path
+pool.on('connect', async (client) => {
+  try {
+    // Set search_path to include all product schemas
+    // Order matters: public (core + RBAC), hris (Nexus), payroll (PayLinQ), scheduling (ScheduleHub)
+    // RBAC tables (roles, permissions) are in public schema as platform infrastructure
+    await client.query('SET search_path TO public, hris, payroll, scheduling');
+    logger.info('✅ PostgreSQL connected with search_path configured');
+  } catch (error) {
+    logger.error('Failed to set search_path:', error);
+  }
 });
 
 pool.on('error', (err) => {

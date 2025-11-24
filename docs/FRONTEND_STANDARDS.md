@@ -1,8 +1,8 @@
 # Frontend Standards
 
 **Part of:** [RecruitIQ Coding Standards](../CODING_STANDARDS.md)  
-**Version:** 1.2  
-**Last Updated:** November 19, 2025
+**Version:** 1.3  
+**Last Updated:** November 24, 2025
 
 ---
 
@@ -10,14 +10,15 @@
 
 1. [Provider Wrapping Order](#provider-wrapping-order)
 2. [API Client Integration Standards](#api-client-integration-standards)
-3. [React Component Standards](#react-component-standards)
-4. [Component Structure](#component-structure)
-5. [Hooks Guidelines](#hooks-guidelines)
-6. [State Management](#state-management)
-7. [Styling Standards](#styling-standards)
-8. [Performance Optimization](#performance-optimization)
-9. [Accessibility](#accessibility)
-10. [Form Handling](#form-handling)
+3. [Error Handling Standards](#error-handling-standards)
+4. [React Component Standards](#react-component-standards)
+5. [Component Structure](#component-structure)
+6. [Hooks Guidelines](#hooks-guidelines)
+7. [State Management](#state-management)
+8. [Styling Standards](#styling-standards)
+9. [Performance Optimization](#performance-optimization)
+10. [Accessibility](#accessibility)
+11. [Form Handling](#form-handling)
 
 ---
 
@@ -829,7 +830,304 @@ JobCardComponent.jsx  // Redundant "Component" suffix
 
 ---
 
-## Component Structure
+## Error Handling Standards
+
+### Centralized Error Handler (MANDATORY)
+
+**ALL applications MUST implement a centralized error handler** for consistent user feedback and error message formatting.
+
+### Error Handler Utility
+
+Create `src/utils/errorHandler.ts` in each application:
+
+```typescript
+/**
+ * Centralized Error Handling Utility
+ * Provides user-friendly messages for API errors
+ */
+
+import type { AxiosError } from 'axios';
+
+export interface ApiErrorResponse {
+  success: false;
+  error: string;
+  errorCode?: string;
+  message?: string;
+  details?: any;
+}
+
+export interface ErrorHandlerOptions {
+  showToast?: boolean;
+  toast?: {
+    error: (message: string) => void;
+  };
+  defaultMessage?: string;
+  logToConsole?: boolean;
+}
+
+/**
+ * Extract user-friendly error message from API error
+ */
+export function getErrorMessage(error: unknown, defaultMessage = 'An error occurred'): string {
+  const axiosError = error as AxiosError<ApiErrorResponse>;
+
+  if (!axiosError.response) {
+    if (axiosError.message === 'Network Error') {
+      return 'Network error. Please check your internet connection.';
+    }
+    return axiosError.message || defaultMessage;
+  }
+
+  const { status, data } = axiosError.response;
+
+  switch (status) {
+    case 400:
+      return data?.error || data?.message || 'Invalid request. Please check your input.';
+    case 401:
+      return 'Your session has expired. Please log in again.';
+    case 403:
+      if (data?.errorCode === 'RBAC_MANAGEMENT_REQUIRED') {
+        return 'You need RBAC management permissions to perform this action.';
+      }
+      return data?.error || 'Access denied. You do not have the required permissions.';
+    case 404:
+      return data?.error || 'The requested resource was not found.';
+    case 409:
+      return data?.error || 'This resource already exists or conflicts with existing data.';
+    case 422:
+      return data?.error || 'Validation failed. Please check your input.';
+    case 429:
+      return 'Too many requests. Please wait a moment and try again.';
+    case 500:
+      return 'A server error occurred. Please try again later.';
+    case 503:
+      return 'Service temporarily unavailable. Please try again later.';
+    default:
+      return data?.error || data?.message || defaultMessage;
+  }
+}
+
+/**
+ * Handle API error with toast notification
+ */
+export function handleApiError(error: unknown, options: ErrorHandlerOptions = {}): string {
+  const {
+    showToast = true,
+    toast,
+    defaultMessage = 'An error occurred',
+    logToConsole = true,
+  } = options;
+
+  const message = getErrorMessage(error, defaultMessage);
+
+  if (logToConsole && import.meta.env.DEV) {
+    console.error('[API Error]:', {
+      message,
+      error,
+      status: (error as AxiosError)?.response?.status,
+      data: (error as AxiosError<ApiErrorResponse>)?.response?.data,
+    });
+  }
+
+  if (showToast && toast) {
+    toast.error(message);
+  }
+
+  return message;
+}
+
+/**
+ * Check if error is a permission denied error
+ */
+export function isPermissionError(error: unknown): boolean {
+  const axiosError = error as AxiosError<ApiErrorResponse>;
+  return axiosError.response?.status === 403;
+}
+
+/**
+ * Check if error is an authentication error
+ */
+export function isAuthError(error: unknown): boolean {
+  const axiosError = error as AxiosError<ApiErrorResponse>;
+  return axiosError.response?.status === 401;
+}
+
+/**
+ * Extract validation errors from API response
+ */
+export function getValidationErrors(error: unknown): Record<string, string> | null {
+  const axiosError = error as AxiosError<ApiErrorResponse>;
+  
+  if (axiosError.response?.status !== 400 && axiosError.response?.status !== 422) {
+    return null;
+  }
+
+  const data = axiosError.response?.data;
+  if (data?.details && typeof data.details === 'object') {
+    return data.details;
+  }
+
+  return null;
+}
+```
+
+### Component Integration
+
+**Use the centralized error handler in all mutation error handlers:**
+
+```tsx
+// ✅ CORRECT: Using centralized error handler
+import { handleApiError } from '@/utils/errorHandler';
+import { useToast } from '@/contexts/ToastContext';
+
+export default function LocationsList() {
+  const toast = useToast();
+  const { mutate: deleteLocation } = useDeleteLocation();
+
+  const handleDelete = (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete ${name}?`)) {
+      deleteLocation(id, {
+        onSuccess: () => {
+          toast.success('Location deleted successfully');
+        },
+        onError: (error) => {
+          // Centralized handler provides user-friendly messages
+          handleApiError(error, {
+            toast,
+            defaultMessage: 'Failed to delete location',
+          });
+        },
+      });
+    }
+  };
+
+  return (/* ... */);
+}
+
+// ❌ WRONG: Manual error message extraction
+deleteLocation(id, {
+  onError: (error) => {
+    // Inconsistent error handling across app
+    toast.error(error.message || 'Failed to delete location');
+  },
+});
+```
+
+### Form Error Handling
+
+**Combine validation errors with centralized handler:**
+
+```tsx
+// ✅ CORRECT: Handle validation and other errors separately
+import { handleApiError, getValidationErrors } from '@/utils/errorHandler';
+
+const onSubmit = async (data: FormData) => {
+  try {
+    await createLocation(data);
+    navigate('/locations');
+  } catch (error) {
+    const validationErrors = getValidationErrors(error);
+    
+    if (validationErrors) {
+      // Show field-specific validation errors
+      const errorMessages = Object.entries(validationErrors)
+        .map(([field, message]) => `${field}: ${message}`)
+        .join(', ');
+      toast.error(`Validation errors: ${errorMessages}`);
+    } else {
+      // Use centralized handler for permission/server errors
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to save location',
+      });
+    }
+  }
+};
+```
+
+### QueryClient Configuration
+
+**Configure React Query with smart retry logic:**
+
+```tsx
+// ✅ CORRECT: main.tsx with error-aware retry
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { handleApiError, isAuthError } from './utils/errorHandler';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: (failureCount, error) => {
+        // Don't retry on auth or permission errors
+        if (isAuthError(error)) {
+          return false;
+        }
+        return failureCount < 1;
+      },
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: false, // Never retry mutations
+    },
+  },
+});
+```
+
+### Error Message Standards
+
+**Use clear, user-friendly messages for all error types:**
+
+| HTTP Status | User Message |
+|------------|--------------|
+| **400** | "Invalid request. Please check your input." |
+| **401** | "Your session has expired. Please log in again." |
+| **403** | "Access denied. You do not have the required permissions." |
+| **403 (RBAC)** | "You need RBAC management permissions to perform this action." |
+| **404** | "The requested resource was not found." |
+| **409** | "This resource already exists or conflicts with existing data." |
+| **422** | "Validation failed. Please check your input." |
+| **429** | "Too many requests. Please wait a moment and try again." |
+| **500** | "A server error occurred. Please try again later." |
+| **503** | "Service temporarily unavailable. Please try again later." |
+| **Network Error** | "Network error. Please check your internet connection." |
+
+### Error Handling Checklist
+
+**EVERY component that makes API calls MUST:**
+
+- [ ] Import `handleApiError` from `@/utils/errorHandler`
+- [ ] Use `handleApiError()` in mutation `onError` handlers
+- [ ] Provide `toast` instance to error handler
+- [ ] Specify meaningful `defaultMessage` for context
+- [ ] Handle validation errors separately if needed
+- [ ] Log errors to console in development mode
+- [ ] Never show raw API errors to users
+- [ ] Never show stack traces in production
+
+### Anti-Patterns to Avoid
+
+```tsx
+// ❌ WRONG: Showing raw error messages
+toast.error(error.message); // May contain technical details
+
+// ❌ WRONG: Generic error messages
+toast.error('Error'); // Not helpful to users
+
+// ❌ WRONG: No error handling
+deleteLocation(id); // User sees nothing if it fails
+
+// ❌ WRONG: Inconsistent error handling
+toast.error(error?.response?.data?.error || error?.message || 'Failed');
+
+// ✅ CORRECT: Centralized, user-friendly error handling
+handleApiError(error, { toast, defaultMessage: 'Failed to delete' });
+```
+
+---
+
+## React Component Standards
 
 ### Component File Template
 

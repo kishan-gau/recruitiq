@@ -5,6 +5,7 @@ import { useCreateEmployee, useEmployees } from '@/hooks/useEmployees';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useLocations } from '@/hooks/useLocations';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { CreateEmployeeDTO } from '@/types/employee.types';
 
 export default function EmployeeCreate() {
@@ -23,8 +24,11 @@ export default function EmployeeCreate() {
         toast.success('Employee created successfully');
         navigate(`/employees/${newEmployee.id}`);
       },
-      onError: (error) => {
-        toast.error(error.message || 'Failed to create employee');
+      onError: (error: any) => {
+        handleApiError(error, {
+          toast,
+          defaultMessage: 'Failed to create employee',
+        });
       },
     });
   };

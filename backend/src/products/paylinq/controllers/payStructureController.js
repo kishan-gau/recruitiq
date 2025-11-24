@@ -1004,3 +1004,352 @@ export async function upgradeWorkersToVersion(req, res) {
     });
   }
 }
+
+// ==================== TEMPLATE COMPOSITION ENDPOINTS ====================
+
+/**
+ * Add template inclusion to parent template
+ * POST /api/paylinq/pay-structures/templates/:id/inclusions
+ */
+export async function addTemplateInclusion(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+    const { id: parentTemplateId } = req.params;
+
+    const inclusion = await payStructureService.addTemplateInclusion(
+      parentTemplateId,
+      req.body,
+      organizationId,
+      userId
+    );
+
+    res.status(201).json({
+      success: true,
+      inclusion: inclusion,
+      message: 'Template inclusion added successfully'
+    });
+  } catch (error) {
+    logger.error('Error adding template inclusion', {
+      error: error.message,
+      parentTemplateId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id
+    });
+
+    const statusCode = error.name === 'ValidationError' ? 400 
+      : error.name === 'NotFoundError' ? 404
+      : error.name === 'ConflictError' ? 409 
+      : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Get template inclusions for a template
+ * GET /api/paylinq/pay-structures/templates/:id/inclusions
+ */
+export async function getTemplateInclusions(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const { id: parentTemplateId } = req.params;
+
+    const inclusions = await payStructureService.getTemplateInclusions(
+      parentTemplateId,
+      organizationId
+    );
+
+    res.status(200).json({
+      success: true,
+      inclusions: inclusions,
+      count: inclusions.length
+    });
+  } catch (error) {
+    logger.error('Error fetching template inclusions', {
+      error: error.message,
+      parentTemplateId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Update template inclusion
+ * PATCH /api/paylinq/pay-structures/templates/:id/inclusions/:inclusionId
+ */
+export async function updateTemplateInclusion(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+    const { id: parentTemplateId, inclusionId } = req.params;
+
+    const inclusion = await payStructureService.updateTemplateInclusion(
+      inclusionId,
+      req.body,
+      organizationId,
+      userId
+    );
+
+    res.status(200).json({
+      success: true,
+      inclusion: inclusion,
+      message: 'Template inclusion updated successfully'
+    });
+  } catch (error) {
+    logger.error('Error updating template inclusion', {
+      error: error.message,
+      inclusionId: req.params.inclusionId,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id
+    });
+
+    const statusCode = error.name === 'ValidationError' ? 400 
+      : error.name === 'NotFoundError' ? 404
+      : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Remove template inclusion
+ * DELETE /api/paylinq/pay-structures/templates/:id/inclusions/:inclusionId
+ */
+export async function removeTemplateInclusion(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+    const { id: parentTemplateId, inclusionId } = req.params;
+
+    await payStructureService.removeTemplateInclusion(
+      inclusionId,
+      organizationId,
+      userId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Template inclusion removed successfully'
+    });
+  } catch (error) {
+    logger.error('Error removing template inclusion', {
+      error: error.message,
+      inclusionId: req.params.inclusionId,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Resolve composite template (get fully merged template with all inclusions)
+ * GET /api/paylinq/pay-structures/templates/:id/resolved
+ */
+export async function resolveCompositeTemplate(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const { id: templateId } = req.params;
+
+    const resolvedTemplate = await payStructureService.resolveCompositeTemplate(
+      templateId,
+      organizationId
+    );
+
+    res.status(200).json({
+      success: true,
+      resolved: resolvedTemplate
+    });
+  } catch (error) {
+    logger.error('Error resolving composite template', {
+      error: error.message,
+      templateId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+// ==================== TEMPLATE COMPOSITION ====================
+
+/**
+ * Create pay structure from template
+ * POST /api/paylinq/pay-structures/templates/:templateId/create-from
+ */
+export async function createFromTemplate(req, res) {
+  try {
+    const { templateId } = req.params;
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+
+    const structure = await payStructureService.createFromTemplate(
+      templateId,
+      req.body,
+      organizationId,
+      userId
+    );
+
+    res.status(201).json({
+      success: true,
+      structure,
+      message: 'Pay structure created from template successfully'
+    });
+  } catch (error) {
+    logger.error('Error creating from template', {
+      error: error.message,
+      templateId: req.params.templateId,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'ValidationError' ? 400
+      : error.name === 'NotFoundError' ? 404
+      : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Include template in another template
+ * POST /api/paylinq/pay-structures/:id/include
+ */
+export async function includeTemplate(req, res) {
+  try {
+    const { id } = req.params;
+    const { includedTemplateId, mergeStrategy, inclusionOrder, overrideRules } = req.body;
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+
+    const inclusion = await payStructureService.includeTemplate(
+      id,
+      includedTemplateId,
+      { mergeStrategy, inclusionOrder, overrideRules },
+      organizationId,
+      userId
+    );
+
+    res.status(201).json({
+      success: true,
+      inclusion,
+      message: 'Template included successfully'
+    });
+  } catch (error) {
+    logger.error('Error including template', {
+      error: error.message,
+      parentId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'ValidationError' ? 400
+      : error.name === 'NotFoundError' ? 404
+      : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Remove included template
+ * DELETE /api/paylinq/pay-structures/:id/include/:includedId
+ */
+export async function removeIncludedTemplate(req, res) {
+  try {
+    const { id, includedId } = req.params;
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+
+    await payStructureService.removeIncludedTemplate(id, includedId, organizationId, userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Included template removed successfully'
+    });
+  } catch (error) {
+    logger.error('Error removing included template', {
+      error: error.message,
+      parentId: req.params.id,
+      includedId: req.params.includedId,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Get resolved template with inheritance
+ * GET /api/paylinq/pay-structures/:id/resolved
+ */
+export async function getResolvedTemplate(req, res) {
+  try {
+    const { id } = req.params;
+    const organizationId = req.user.organization_id;
+
+    const resolved = await payStructureService.resolveTemplateInheritance(id, organizationId);
+
+    res.status(200).json({
+      success: true,
+      resolved
+    });
+  } catch (error) {
+    logger.error('Error resolving template', {
+      error: error.message,
+      templateId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+

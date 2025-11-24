@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, Users } from 'lucide-react';
 import { useEmployees, useDeleteEmployee } from '@/hooks/useEmployees';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { EmployeeFilters, EmploymentStatus, EmploymentType } from '@/types/employee.types';
 
@@ -47,7 +48,11 @@ export default function EmployeesList() {
         setDeleteDialogState({ isOpen: false, id: '', name: '' });
       },
       onError: (error) => {
-        toast.error(error.message || 'Failed to delete employee');
+        // Use centralized error handler for user-friendly messages
+        handleApiError(error, {
+          toast,
+          defaultMessage: 'Failed to delete employee',
+        });
         setDeleteDialogState({ isOpen: false, id: '', name: '' });
       },
     });

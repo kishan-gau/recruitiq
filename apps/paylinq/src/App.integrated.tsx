@@ -38,9 +38,11 @@ import CreateCompensationForm from './pages/CreateCompensationForm';
 import ReportsDashboard from './pages/ReportsDashboard';
 
 // Settings
+import SettingsHub from './pages/settings/SettingsHub';
 import PayPeriodConfigPage from './pages/PayPeriodConfigPage';
 import TaxSettingsPage from './pages/TaxSettingsPage';
 import SystemPreferencesPage from './pages/SystemPreferencesPage';
+import RolesPermissions from './pages/settings/RolesPermissions';
 
 /**
  * Configure TanStack Query Client
@@ -153,6 +155,14 @@ const router = createBrowserRouter([
       {
         path: 'settings',
         children: [
+          {
+            index: true,
+            element: <SettingsHub />,
+          },
+          {
+            path: 'roles',
+            element: <RolesPermissions />,
+          },
           {
             path: 'pay-periods',
             element: <PayPeriodConfigPage />,

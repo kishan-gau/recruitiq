@@ -6,6 +6,7 @@ import Pagination from '@/components/ui/Pagination';
 import type { TimeEntry } from '@/components/ui/TimeEntryCard';
 import type { Tab } from '@/components/ui/Tabs';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import ApprovalModal from '@/components/modals/ApprovalModal';
 
@@ -68,7 +69,10 @@ export default function TimeEntries() {
         }
       } catch (err: any) {
         console.error('Failed to fetch time entries:', err);
-        error(err.message || 'Failed to load time entries');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load time entries',
+        });
       } finally {
         setIsLoading(false);
       }

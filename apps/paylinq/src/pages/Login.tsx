@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { handleApiError } from '@/utils/errorHandler';
+import { useToast } from '@/contexts/ToastContext';
 import { DollarSign } from 'lucide-react';
 
 export default function Login() {
@@ -8,6 +10,7 @@ export default function Login() {
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const toast = useToast();
   const { login, error: authError, isLoading: authLoading, isAuthenticated } = useAuth();
   
   console.log('[Login] Auth state:', { authError, authLoading, isAuthenticated });
@@ -153,7 +156,11 @@ export default function Login() {
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Invalid credentials. Please try again.');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Invalid credentials. Please try again.',
+      });
+      setError('Invalid credentials. Please try again.');
     }
   };
 

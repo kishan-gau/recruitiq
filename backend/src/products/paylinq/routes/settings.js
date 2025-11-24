@@ -20,39 +20,40 @@ import {
   deleteTaxRule,
 } from '../controllers/taxRulesController.js';
 import payPeriodController from '../controllers/payPeriodController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all settings (company + payroll)
-router.get('/', getSettings);
+router.get('/', requirePermission('settings:read'), getSettings);
 
 // Update all settings
-router.put('/', updateSettings);
+router.put('/', requirePermission('settings:update'), updateSettings);
 
 // Company settings
-router.get('/company', getCompanySettings);
-router.put('/company', updateCompanySettings);
+router.get('/company', requirePermission('settings:read'), getCompanySettings);
+router.put('/company', requirePermission('settings:update'), updateCompanySettings);
 
 // Payroll settings
-router.get('/payroll', getPayrollSettings);
-router.put('/payroll', updatePayrollSettings);
+router.get('/payroll', requirePermission('settings:read'), getPayrollSettings);
+router.put('/payroll', requirePermission('settings:update'), updatePayrollSettings);
 
 // Pay Period Configuration
-router.get('/pay-period-config', payPeriodController.getPayPeriodConfig);
-router.put('/pay-period-config', payPeriodController.savePayPeriodConfig);
-router.get('/pay-period/current', payPeriodController.getCurrentPayPeriod);
-router.get('/pay-period/next', payPeriodController.getNextPayPeriod);
+router.get('/pay-period-config', requirePermission('settings:read'), payPeriodController.getPayPeriodConfig);
+router.put('/pay-period-config', requirePermission('settings:update'), payPeriodController.savePayPeriodConfig);
+router.get('/pay-period/current', requirePermission('settings:read'), payPeriodController.getCurrentPayPeriod);
+router.get('/pay-period/next', requirePermission('settings:read'), payPeriodController.getNextPayPeriod);
 
 // Company Holidays
-router.get('/holidays', payPeriodController.getHolidays);
-router.post('/holidays', payPeriodController.createHoliday);
-router.delete('/holidays/:id', payPeriodController.deleteHoliday);
+router.get('/holidays', requirePermission('settings:read'), payPeriodController.getHolidays);
+router.post('/holidays', requirePermission('settings:update'), payPeriodController.createHoliday);
+router.delete('/holidays/:id', requirePermission('payroll:settings:delete'), payPeriodController.deleteHoliday);
 
 // Tax rules
-router.get('/tax-rules', getTaxRules);
-router.get('/tax-rules/:id', getTaxRule);
-router.post('/tax-rules', createTaxRule);
-router.put('/tax-rules/:id', updateTaxRule);
-router.delete('/tax-rules/:id', deleteTaxRule);
+router.get('/tax-rules', requirePermission('settings:read'), getTaxRules);
+router.get('/tax-rules/:id', requirePermission('settings:read'), getTaxRule);
+router.post('/tax-rules', requirePermission('settings:update'), createTaxRule);
+router.put('/tax-rules/:id', requirePermission('settings:update'), updateTaxRule);
+router.delete('/tax-rules/:id', requirePermission('payroll:settings:delete'), deleteTaxRule);
 
 export default router;

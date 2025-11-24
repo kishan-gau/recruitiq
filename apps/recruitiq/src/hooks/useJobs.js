@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { jobsService } from '../services'
 import { useWorkspace } from '../context/WorkspaceContext'
 import { useToast } from '../context/ToastContext'
+import { handleApiError } from '../utils/errorHandler'
 
 /**
  * Custom hook for managing jobs data with React Query
@@ -37,7 +38,7 @@ export function useJobs(options = {}) {
   } = useQuery({
     queryKey: ['jobs', currentWorkspaceId, params],
     queryFn: async () => {
-      const response = await api.getJobs(currentWorkspaceId, params)
+      const response = await jobsService.getJobs({ ...params, workspaceId: currentWorkspaceId })
       // API should return { jobs: [], total: number, page: number, pageSize: number }
       return {
         jobs: response.jobs || [],
@@ -53,11 +54,11 @@ export function useJobs(options = {}) {
   // Create job mutation
   const createMutation = useMutation({
     mutationFn: async (newJob) => {
-      const response = await api.createJob({
+      const response = await jobsService.createJob({
         ...newJob,
         workspaceId: currentWorkspaceId
       })
-      return response.job
+      return response
     },
     onMutate: async (newJob) => {
       // Cancel outgoing refetches
@@ -77,7 +78,10 @@ export function useJobs(options = {}) {
     onError: (err, newJob, context) => {
       // Rollback on error
       queryClient.setQueryData(['jobs', currentWorkspaceId], context.previousJobs)
-      toast.show(`Failed to create job: ${err.message}`, { type: 'error' })
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to create job',
+      })
     },
     onSuccess: (job) => {
       toast.show('Job created successfully')
@@ -91,8 +95,8 @@ export function useJobs(options = {}) {
   // Update job mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }) => {
-      const response = await api.updateJob(id, updates)
-      return response.job
+      const response = await jobsService.updateJob(id, updates)
+      return response
     },
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: ['jobs', currentWorkspaceId] })
@@ -108,7 +112,10 @@ export function useJobs(options = {}) {
     },
     onError: (err, { id }, context) => {
       queryClient.setQueryData(['jobs', currentWorkspaceId], context.previousJobs)
-      toast.show(`Failed to update job: ${err.message}`, { type: 'error' })
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update job',
+      })
     },
     onSuccess: () => {
       toast.show('Job updated successfully')
@@ -121,7 +128,7 @@ export function useJobs(options = {}) {
   // Delete job mutation
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      await api.deleteJob(id)
+      await jobsService.deleteJob(id)
       return id
     },
     onMutate: async (id) => {
@@ -139,7 +146,10 @@ export function useJobs(options = {}) {
     },
     onError: (err, id, context) => {
       queryClient.setQueryData(['jobs', currentWorkspaceId], context.previousJobs)
-      toast.show(`Failed to delete job: ${err.message}`, { type: 'error' })
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete job',
+      })
     },
     onSuccess: (id, variables, context) => {
       // Show undo toast
@@ -208,8 +218,8 @@ export function useJob(jobId) {
       if (cachedJob) return cachedJob
       
       // Otherwise fetch from API
-      const response = await api.getJob(jobId)
-      return response.job
+      const response = await jobsService.getJob(jobId)
+      return response
     },
     enabled: !!jobId && !!currentWorkspaceId,
     staleTime: 5 * 60 * 1000, // 5 minutes

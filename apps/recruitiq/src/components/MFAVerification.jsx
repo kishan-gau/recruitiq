@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { handleApiError } from '../utils/errorHandler'
+import { useToast } from '../context/ToastContext'
 
 export default function MFAVerification({ mfaToken, onSuccess, onCancel }) {
+  const toast = useToast()
   const [code, setCode] = useState('')
   const [useBackupCode, setUseBackupCode] = useState(false)
   const [backupCode, setBackupCode] = useState('')
@@ -50,7 +53,11 @@ export default function MFAVerification({ mfaToken, onSuccess, onCancel }) {
       // Call parent's success handler with the code
       await onSuccess(useBackupCode ? backupCode : code, useBackupCode)
     } catch (err) {
-      setError(err.message || 'Invalid code. Please try again.')
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Invalid code. Please try again.',
+      })
+      setError('Invalid code. Please try again.')
       if (useBackupCode) {
         setBackupCode('')
       } else {

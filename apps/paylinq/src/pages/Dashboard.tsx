@@ -7,6 +7,7 @@ import type { TimelineRun } from '@/components/ui/PayrollTimeline';
 import { formatCurrency } from '@/utils/helpers';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -28,7 +29,10 @@ export default function Dashboard() {
         }
       } catch (err: any) {
         console.error('Failed to fetch dashboard data:', err);
-        showError(err.message || 'Failed to load dashboard data');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load dashboard data',
+        });
       } finally {
         // setIsLoading(false);
       }

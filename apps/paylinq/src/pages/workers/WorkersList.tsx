@@ -9,6 +9,7 @@ import FilterPanel from '@/components/ui/FilterPanel';
 import type { FilterConfig } from '@/components/ui/FilterPanel';
 import TableSkeleton from '@/components/ui/TableSkeleton';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
 import AddWorkerModal from '@/components/modals/AddWorkerModal';
@@ -81,7 +82,10 @@ export default function WorkersList() {
         }
       } catch (err: any) {
         console.error('Failed to fetch workers:', err);
-        error(err.message || 'Failed to load workers');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load workers',
+        });
       } finally {
         setIsLoading(false);
       }
@@ -194,7 +198,10 @@ export default function WorkersList() {
       setWorkers((prev) => prev.filter((w) => w.id !== deleteWorkerId));
       setTotalCount((prev) => prev - 1);
     } catch (err: any) {
-      error(err.message || 'Failed to delete worker. Please try again.');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete worker',
+      });
     } finally {
       setIsDeleting(false);
     }

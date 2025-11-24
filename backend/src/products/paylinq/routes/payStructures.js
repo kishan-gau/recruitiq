@@ -7,90 +7,99 @@
 
 import express from 'express';
 import * as payStructureController from '../controllers/payStructureController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
 // ==================== TEMPLATE ROUTES ====================
 
 // Create new pay structure template
-router.post('/templates', payStructureController.createTemplate);
+router.post('/templates', requirePermission('payroll:structures:create'), payStructureController.createTemplate);
+
+// Create pay structure FROM template
+router.post('/templates/:templateId/create-from', requirePermission('payroll:structures:create'), payStructureController.createFromTemplate);
 
 // Get all templates for organization
-router.get('/templates', payStructureController.getTemplates);
+router.get('/templates', requirePermission('payroll:structures:read'), payStructureController.getTemplates);
 
 // Compare two template versions (must be before :id route)
-router.get('/templates/compare', payStructureController.compareTemplateVersions);
+router.get('/templates/compare', requirePermission('payroll:structures:read'), payStructureController.compareTemplateVersions);
 
 // Get template by ID with components
-router.get('/templates/:id', payStructureController.getTemplateById);
+router.get('/templates/:id', requirePermission('payroll:structures:read'), payStructureController.getTemplateById);
 
 // Update template
-router.put('/templates/:id', payStructureController.updateTemplate);
+router.put('/templates/:id', requirePermission('payroll:structures:update'), payStructureController.updateTemplate);
 
 // Publish template
-router.post('/templates/:id/publish', payStructureController.publishTemplate);
+router.post('/templates/:id/publish', requirePermission('payroll:structures:update'), payStructureController.publishTemplate);
 
 // Deprecate template
-router.post('/templates/:id/deprecate', payStructureController.deprecateTemplate);
+router.post('/templates/:id/deprecate', requirePermission('payroll:structures:update'), payStructureController.deprecateTemplate);
 
 // Create new version of template
-router.post('/templates/:id/versions', payStructureController.createTemplateVersion);
+router.post('/templates/:id/versions', requirePermission('payroll:structures:create'), payStructureController.createTemplateVersion);
 
 // Delete template (draft versions only)
-router.delete('/templates/:id', payStructureController.deleteTemplate);
+router.delete('/templates/:id', requirePermission('payroll:structures:delete'), payStructureController.deleteTemplate);
 
 // Get template version history
-router.get('/templates/versions/:templateCode', payStructureController.getTemplateVersions);
+router.get('/templates/versions/:templateCode', requirePermission('payroll:structures:read'), payStructureController.getTemplateVersions);
 
 // Get template changelog
-router.get('/templates/:id/changelog', payStructureController.getTemplateChangelog);
+router.get('/templates/:id/changelog', requirePermission('payroll:structures:read'), payStructureController.getTemplateChangelog);
 
 // Upgrade workers to new template version
-router.post('/templates/:id/upgrade-workers', payStructureController.upgradeWorkersToVersion);
+router.post('/templates/:id/upgrade-workers', requirePermission('payroll:structures:update'), payStructureController.upgradeWorkersToVersion);
 
 // ==================== COMPONENT ROUTES ====================
 
 // Add component to template
-router.post('/templates/:id/components', payStructureController.addComponent);
+router.post('/templates/:id/components', requirePermission('payroll:structures:update'), payStructureController.addComponent);
 
 // Get template components
-router.get('/templates/:id/components', payStructureController.getTemplateComponents);
+router.get('/templates/:id/components', requirePermission('payroll:structures:read'), payStructureController.getTemplateComponents);
 
 // Update component
-router.put('/components/:componentId', payStructureController.updateComponent);
+router.put('/components/:componentId', requirePermission('payroll:structures:update'), payStructureController.updateComponent);
 
 // Delete component
-router.delete('/components/:componentId', payStructureController.deleteComponent);
+router.delete('/components/:componentId', requirePermission('payroll:structures:delete'), payStructureController.deleteComponent);
 
 // Reorder components
-router.post('/templates/:id/components/reorder', payStructureController.reorderComponents);
+router.post('/templates/:id/components/reorder', requirePermission('payroll:structures:update'), payStructureController.reorderComponents);
 
 // ==================== WORKER ASSIGNMENT ROUTES ====================
 
 // Assign template to worker
-router.post('/workers/:employeeId/assignments', payStructureController.assignTemplateToWorker);
+router.post('/workers/:employeeId/assignments', requirePermission('payroll:structures:update'), payStructureController.assignTemplateToWorker);
 
 // Get current worker pay structure
-router.get('/workers/:employeeId/current', payStructureController.getCurrentWorkerStructure);
+router.get('/workers/:employeeId/current', requirePermission('payroll:structures:read'), payStructureController.getCurrentWorkerStructure);
 
 // Get worker pay structure history
-router.get('/workers/:employeeId/history', payStructureController.getWorkerStructureHistory);
+router.get('/workers/:employeeId/history', requirePermission('payroll:structures:read'), payStructureController.getWorkerStructureHistory);
+
+// Template composition
+router.post('/:id/include', requirePermission('payroll:structures:update'), payStructureController.includeTemplate);
+router.delete('/:id/include/:includedId', requirePermission('payroll:structures:update'), payStructureController.removeIncludedTemplate);
+router.get('/:id/resolved', requirePermission('payroll:structures:read'), payStructureController.getResolvedTemplate);
 
 // Upgrade worker to new template version
-router.post('/workers/:employeeId/upgrade', payStructureController.upgradeWorkerToNewVersion);
+router.post('/workers/:employeeId/upgrade', requirePermission('payroll:structures:update'), payStructureController.upgradeWorkerToNewVersion);
 
 // ==================== COMPONENT OVERRIDE ROUTES ====================
 
 // Add component override for worker
-router.post('/workers/:employeeId/overrides', payStructureController.addComponentOverride);
+router.post('/workers/:employeeId/overrides', requirePermission('payroll:structures:update'), payStructureController.addComponentOverride);
 
 // Get worker component overrides
-router.get('/worker-structures/:workerStructureId/overrides', payStructureController.getWorkerOverrides);
+router.get('/worker-structures/:workerStructureId/overrides', requirePermission('payroll:structures:read'), payStructureController.getWorkerOverrides);
 
 // Update component override
-router.put('/overrides/:overrideId', payStructureController.updateComponentOverride);
+router.put('/overrides/:overrideId', requirePermission('payroll:structures:update'), payStructureController.updateComponentOverride);
 
 // Delete component override
-router.delete('/overrides/:overrideId', payStructureController.deleteComponentOverride);
+router.delete('/overrides/:overrideId', requirePermission('payroll:structures:delete'), payStructureController.deleteComponentOverride);
 
 export default router;

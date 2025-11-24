@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, MapPin } from 'lucide-react';
 import { useLocations, useDeleteLocation } from '../../services/LocationsService';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import type { LocationFilters, LocationType } from '@/types/location.types';
 
 export default function LocationsList() {
@@ -35,7 +36,11 @@ export default function LocationsList() {
           toast.success('Location deleted successfully');
         },
         onError: (error) => {
-          toast.error(error.message || 'Failed to delete location');
+          // Use centralized error handler for user-friendly messages
+          handleApiError(error, {
+            toast,
+            defaultMessage: 'Failed to delete location',
+          });
         },
       });
     }

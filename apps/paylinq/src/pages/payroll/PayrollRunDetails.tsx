@@ -8,6 +8,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { formatDate } from '@/utils/helpers';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { useCalculatePayroll } from '@/hooks/usePayrollRuns';
 
 export default function PayrollRunDetails() {
@@ -64,7 +65,10 @@ export default function PayrollRunDetails() {
         setEmployeeData(employees);
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to load payroll run details');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to load payroll run details',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +111,10 @@ export default function PayrollRunDetails() {
       showSuccess('Payroll run submitted for review');
       fetchPayrollRunDetails();
     } catch (err: any) {
-      showError(err.message || 'Failed to submit for review');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to submit for review',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +134,10 @@ export default function PayrollRunDetails() {
         showError(response.message || 'Failed to send payslips');
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to send payslips');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to send payslips',
+      });
     } finally {
       setIsSendingPayslips(false);
     }

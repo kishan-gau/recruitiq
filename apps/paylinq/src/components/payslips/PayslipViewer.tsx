@@ -5,6 +5,7 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import ComponentBreakdown from './ComponentBreakdown';
 
 // Configure PDF.js worker
@@ -18,7 +19,7 @@ interface PayslipViewerProps {
 
 export default function PayslipViewer({ paycheckId, isOpen, onClose }: PayslipViewerProps) {
   const { paylinq } = usePaylinqAPI();
-  const { success, error: showError } = useToast();
+  const toast = useToast();
   const [pdfData, setPdfData] = useState<Blob | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -69,7 +70,10 @@ export default function PayslipViewer({ paycheckId, isOpen, onClose }: PayslipVi
       setPdfData(blob);
     } catch (err: any) {
       console.error('Failed to load payslip PDF:', err);
-      showError(err.message || 'Failed to load payslip');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to load payslip',
+      });
       onClose();
     } finally {
       setIsLoading(false);
@@ -92,10 +96,13 @@ export default function PayslipViewer({ paycheckId, isOpen, onClose }: PayslipVi
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      success('Payslip downloaded successfully');
+      toast.success('Payslip downloaded successfully');
     } catch (err: any) {
       console.error('Failed to download payslip:', err);
-      showError(err.message || 'Failed to download payslip');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to download payslip',
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -105,10 +112,13 @@ export default function PayslipViewer({ paycheckId, isOpen, onClose }: PayslipVi
     try {
       setIsSending(true);
       await paylinq.sendPayslip(paycheckId);
-      success('Payslip sent to employee email');
+      toast.success('Payslip sent to employee email');
     } catch (err: any) {
       console.error('Failed to send payslip:', err);
-      showError(err.message || 'Failed to send payslip');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to send payslip',
+      });
     } finally {
       setIsSending(false);
     }

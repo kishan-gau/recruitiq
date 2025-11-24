@@ -2,6 +2,7 @@ import express from 'express';
 import Joi from 'joi';
 import ApprovalService from '../services/approvalService.js';
 import logger from '../../../utils/logger.js';
+import { requirePermission } from '../../../middleware/auth.js';
 
 const router = express.Router();
 const approvalService = new ApprovalService();
@@ -33,7 +34,7 @@ const rejectActionSchema = Joi.object({
  * @desc    Create a new approval request
  * @access  Private (Payroll Admin, Finance Manager)
  */
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('approvals:create'), async (req, res) => {
   try {
     // Validate request body
     const { error, value } = createApprovalSchema.validate(req.body);
@@ -72,7 +73,7 @@ router.post('/', async (req, res) => {
  * @desc    Get pending approval requests for organization
  * @access  Private (Approvers)
  */
-router.get('/pending', async (req, res) => {
+router.get('/pending', requirePermission('approvals:read'), async (req, res) => {
   try {
     const { requestType, priority } = req.query;
 
@@ -102,7 +103,7 @@ router.get('/pending', async (req, res) => {
  * @desc    Get approval request details
  * @access  Private
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', requirePermission('approvals:read'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -158,7 +159,7 @@ router.get('/:id', async (req, res) => {
  * @desc    Approve an approval request
  * @access  Private (Approvers)
  */
-router.post('/:id/approve', async (req, res) => {
+router.post('/:id/approve', requirePermission('approvals:approve'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -206,7 +207,7 @@ router.post('/:id/approve', async (req, res) => {
  * @desc    Reject an approval request
  * @access  Private (Approvers)
  */
-router.post('/:id/reject', async (req, res) => {
+router.post('/:id/reject', requirePermission('approvals:approve'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -254,7 +255,7 @@ router.post('/:id/reject', async (req, res) => {
  * @desc    Get approval history for a reference
  * @access  Private
  */
-router.get('/history/:referenceType/:referenceId', async (req, res) => {
+router.get('/history/:referenceType/:referenceId', requirePermission('approvals:read'), async (req, res) => {
   try {
     const { referenceType, referenceId } = req.params;
 
@@ -282,7 +283,7 @@ router.get('/history/:referenceType/:referenceId', async (req, res) => {
  * @desc    Expire old pending approval requests (admin/cron)
  * @access  Private (Admin only)
  */
-router.post('/expire', async (req, res) => {
+router.post('/expire', requirePermission('system:admin'), async (req, res) => {
   try {
     const expiredCount = await approvalService.expireOldRequests();
 
@@ -306,7 +307,7 @@ router.post('/expire', async (req, res) => {
  * @desc    Get approval statistics for organization
  * @access  Private (Admin, Finance Manager)
  */
-router.get('/statistics', async (req, res) => {
+router.get('/statistics', requirePermission('approvals:read'), async (req, res) => {
   try {
     const query = `
       SELECT * FROM payroll.approval_statistics

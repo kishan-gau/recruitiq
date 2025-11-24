@@ -1,5 +1,6 @@
 import express from 'express';
 import formulaController from '../controllers/formulaController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
@@ -10,27 +11,43 @@ const router = express.Router();
  * @desc    Validate a formula expression
  * @access  Private
  */
-router.post('/validate', formulaController.validateFormula);
+router.post(
+  '/validate',
+  requirePermission('formulas:read'),
+  formulaController.validateFormula
+);
 
 /**
  * @route   POST /api/paylinq/formulas/test
  * @desc    Test a formula with sample data
  * @access  Private
  */
-router.post('/test', formulaController.testFormula);
+router.post(
+  '/test',
+  requirePermission('formulas:read'),
+  formulaController.testFormula
+);
 
 /**
  * @route   POST /api/paylinq/formulas/execute
  * @desc    Execute a formula for a pay component
  * @access  Private
  */
-router.post('/execute', formulaController.executeFormula);
+router.post(
+  '/execute',
+  requirePermission('payroll:formulas:execute'),
+  formulaController.executeFormula
+);
 
 /**
  * @route   GET /api/paylinq/formulas/variables
  * @desc    Get available formula variables and metadata
  * @access  Private
  */
-router.get('/variables', formulaController.getFormulaVariables);
+router.get(
+  '/variables',
+  requirePermission('formulas:read'),
+  formulaController.getFormulaVariables
+);
 
 export default router;

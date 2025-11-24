@@ -4,6 +4,7 @@
 
 import express from 'express';
 import paymentController from '../controllers/paymentController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import { validate  } from '../../../middleware/validation.js';
 import Joi from 'joi';
 
@@ -47,15 +48,15 @@ const employeeIdParamSchema = Joi.object({
 });
 
 // Routes
-router.post('/', validate(createPaymentSchema, 'body'), paymentController.createPayment);
-router.get('/', paymentController.getPayments);
-router.get('/pending', paymentController.getPendingPayments);
-router.get('/:id', validate(idParamSchema, 'params'), paymentController.getPaymentById);
-router.get('/employees/:employeeId/payments', validate(employeeIdParamSchema, 'params'), paymentController.getEmployeePayments);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updatePaymentSchema, 'body'), paymentController.updatePayment);
-router.post('/:id/process', validate(idParamSchema, 'params'), paymentController.processPayment);
-router.post('/:id/retry', validate(idParamSchema, 'params'), paymentController.retryPayment);
-router.post('/:id/cancel', validate(idParamSchema, 'params'), validate(cancelPaymentSchema, 'body'), paymentController.cancelPayment);
-router.delete('/:id', validate(idParamSchema, 'params'), paymentController.deletePayment);
+router.post('/', requirePermission('payroll:payments:create'), validate(createPaymentSchema, 'body'), paymentController.createPayment);
+router.get('/', requirePermission('payments:read'), paymentController.getPayments);
+router.get('/pending', requirePermission('payments:read'), paymentController.getPendingPayments);
+router.get('/:id', requirePermission('payments:read'), validate(idParamSchema, 'params'), paymentController.getPaymentById);
+router.get('/employees/:employeeId/payments', requirePermission('payments:read'), validate(employeeIdParamSchema, 'params'), paymentController.getEmployeePayments);
+router.put('/:id', requirePermission('payments:update'), validate(idParamSchema, 'params'), validate(updatePaymentSchema, 'body'), paymentController.updatePayment);
+router.post('/:id/process', requirePermission('payroll:payments:process'), validate(idParamSchema, 'params'), paymentController.processPayment);
+router.post('/:id/retry', requirePermission('payroll:payments:process'), validate(idParamSchema, 'params'), paymentController.retryPayment);
+router.post('/:id/cancel', requirePermission('payments:update'), validate(idParamSchema, 'params'), validate(cancelPaymentSchema, 'body'), paymentController.cancelPayment);
+router.delete('/:id', requirePermission('payroll:payments:delete'), validate(idParamSchema, 'params'), paymentController.deletePayment);
 
 export default router;

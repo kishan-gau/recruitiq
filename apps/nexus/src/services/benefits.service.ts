@@ -30,9 +30,17 @@ export const benefitsService = {
   // ============ Benefit Plans ============
 
   async listPlans(filters?: BenefitPlanFilters): Promise<BenefitPlan[]> {
-    const response = await nexusClient.listBenefitPlans(filters);
-    // Backend returns { success: true, data: { plans: [...], total, limit, offset } }
-    return response.data.plans as BenefitPlan[];
+    try {
+      const response = await nexusClient.listBenefitPlans(filters);
+      // Backend returns { success: true, data: { plans: [...], total, limit, offset } }
+      if (response.data) {
+        return Array.isArray(response.data) ? response.data : (response.data.plans || []);
+      }
+      return [];
+    } catch (error) {
+      console.error('[BenefitsService] Failed to list plans:', error);
+      return [];
+    }
   },
 
   async getPlan(id: string): Promise<BenefitPlan> {
@@ -67,8 +75,16 @@ export const benefitsService = {
   // ============ Enrollments ============
 
   async listEnrollments(filters?: BenefitEnrollmentFilters): Promise<BenefitEnrollment[]> {
-    const response = await nexusClient.listBenefitEnrollments(filters);
-    return response.data as BenefitEnrollment[];
+    try {
+      const response = await nexusClient.listBenefitEnrollments(filters);
+      if (response.data) {
+        return Array.isArray(response.data) ? response.data : (response.data.enrollments || []);
+      }
+      return [];
+    } catch (error) {
+      console.error('[BenefitsService] Failed to list enrollments:', error);
+      return [];
+    }
   },
 
   async getEnrollment(id: string): Promise<BenefitEnrollment> {
@@ -77,8 +93,17 @@ export const benefitsService = {
   },
 
   async getEmployeeEnrollments(employeeId: string): Promise<BenefitEnrollment[]> {
-    const response = await nexusClient.getEmployeeBenefitEnrollments(employeeId);
-    return response.data as BenefitEnrollment[];
+    try {
+      const response = await nexusClient.getEmployeeBenefitEnrollments(employeeId);
+      // Handle both response.data.enrollments and response.data array formats
+      if (response.data) {
+        return Array.isArray(response.data) ? response.data : (response.data.enrollments || []);
+      }
+      return [];
+    } catch (error) {
+      console.error('[BenefitsService] Failed to fetch employee enrollments:', error);
+      return []; // Return empty array on error instead of undefined
+    }
   },
 
   async createEnrollment(data: CreateBenefitEnrollmentDTO): Promise<BenefitEnrollment> {
@@ -103,8 +128,16 @@ export const benefitsService = {
   // ============ Dependents ============
 
   async listDependents(filters?: DependentFilters): Promise<Dependent[]> {
-    const response = await nexusClient.listDependents(filters);
-    return response.data as Dependent[];
+    try {
+      const response = await nexusClient.listDependents(filters);
+      if (response.data) {
+        return Array.isArray(response.data) ? response.data : (response.data.dependents || []);
+      }
+      return [];
+    } catch (error) {
+      console.error('[BenefitsService] Failed to list dependents:', error);
+      return [];
+    }
   },
 
   async getDependent(id: string): Promise<Dependent> {
@@ -113,8 +146,16 @@ export const benefitsService = {
   },
 
   async getEmployeeDependents(employeeId: string): Promise<Dependent[]> {
-    const response = await nexusClient.getEmployeeDependents(employeeId);
-    return response.data as Dependent[];
+    try {
+      const response = await nexusClient.getEmployeeDependents(employeeId);
+      if (response.data) {
+        return Array.isArray(response.data) ? response.data : (response.data.dependents || []);
+      }
+      return [];
+    } catch (error) {
+      console.error('[BenefitsService] Failed to fetch employee dependents:', error);
+      return [];
+    }
   },
 
   async createDependent(data: CreateDependentDTO): Promise<Dependent> {

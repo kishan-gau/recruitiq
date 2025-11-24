@@ -93,3 +93,38 @@ export function createAuthenticatedRequest(user, additionalData = {}) {
     ...additionalData
   };
 }
+
+/**
+ * Generate test token with permissions (for RBAC tests)
+ * @param {Object} userData - User data including permissions
+ * @param {string} userData.id - User ID
+ * @param {string} userData.email - User email
+ * @param {string} userData.organizationId - Organization ID
+ * @param {string} userData.role - User role
+ * @param {Array<string>} userData.permissions - Array of permission codes
+ * @returns {string} JWT token
+ */
+export function generateTestToken(userData) {
+  const {
+    id,
+    email,
+    organizationId,
+    role = 'user',
+    permissions = []
+  } = userData;
+
+  const payload = {
+    id,
+    userId: id, // Include both for compatibility
+    email,
+    organizationId,
+    role,
+    permissions,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour
+  };
+
+  const secret = process.env.JWT_SECRET || 'test-secret-key';
+  
+  return jwt.sign(payload, secret);
+}

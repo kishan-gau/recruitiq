@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS payroll.worker_metadata (
   
   -- Payroll Configuration
   worker_type_code VARCHAR(50),  -- References worker_types (full-time, part-time, contractor)
-  pay_frequency VARCHAR(50) NOT NULL CHECK (pay_frequency IN ('weekly', 'bi-weekly', 'monthly', 'semi-monthly')),
+  pay_frequency VARCHAR(50) NOT NULL CHECK (pay_frequency IN ('daily', 'weekly', 'monthly', 'yearly')),  -- Surinamese loontijdvak periods
   payment_method VARCHAR(50) NOT NULL DEFAULT 'bank_transfer' CHECK (payment_method IN ('bank_transfer', 'check', 'cash')),
   
   -- Bank Details (encrypted in production)
@@ -203,6 +203,14 @@ CREATE TABLE IF NOT EXISTS payroll.worker_metadata (
   tax_id VARCHAR(50),  -- SSN, Tax ID, etc.
   tax_filing_status VARCHAR(50),  -- 'single', 'married', 'head_of_household'
   tax_exemptions INTEGER DEFAULT 0,
+  
+  -- Wet Loonbelasting Compliance (Surinamese Wage Tax Law)
+  is_suriname_resident BOOLEAN NOT NULL DEFAULT true,  -- Article 13.1a: Resident status affects tax-free allowance
+  residency_verification_date DATE,
+  residency_notes TEXT,
+  overtime_tax_article_17c_opt_in BOOLEAN DEFAULT false,  -- Article 17c: Employee voluntary opt-in for special overtime tax
+  overtime_opt_in_date DATE,
+  overtime_opt_in_notes TEXT,
   
   -- Payroll Status
   is_payroll_eligible BOOLEAN NOT NULL DEFAULT true,
@@ -231,9 +239,14 @@ CREATE INDEX IF NOT EXISTS idx_worker_metadata_org_id ON payroll.worker_metadata
 CREATE INDEX IF NOT EXISTS idx_worker_metadata_employee_id ON payroll.worker_metadata(employee_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_worker_metadata_worker_type ON payroll.worker_metadata(worker_type_code) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_worker_metadata_eligible ON payroll.worker_metadata(is_payroll_eligible) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_worker_metadata_resident ON payroll.worker_metadata(is_suriname_resident) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_worker_metadata_overtime_opt_in ON payroll.worker_metadata(overtime_tax_article_17c_opt_in) WHERE overtime_tax_article_17c_opt_in = true AND deleted_at IS NULL;
 
 COMMENT ON TABLE payroll.worker_metadata IS 'PayLinQ-specific worker data linked to HRIS employees. Bridges HRIS employee data with PayLinQ payroll processing.';
 COMMENT ON COLUMN payroll.worker_metadata.employee_id IS 'References hris.employee(id) - the single source of truth for employee data';
+COMMENT ON COLUMN payroll.worker_metadata.is_suriname_resident IS 'Per Wet Loonbelasting Article 13.1a: Indicates if employee is Suriname resident. Non-residents do NOT receive tax-free allowance (belastingvrije som). Critical for payroll tax calculations.';
+COMMENT ON COLUMN payroll.worker_metadata.overtime_tax_article_17c_opt_in IS 'Employee opted into Article 17c special overtime tax rates (5%/15%/25%). Must be voluntary employee request per Article 17c.1';
+COMMENT ON COLUMN payroll.worker_metadata.pay_frequency IS 'Pay frequency matching Surinamese loontijdvak (Article 13.3): daily (364 periods), weekly (52 periods), monthly (12 periods), yearly (1 period). 364-day year basis per Article 13.3a';
 
 -- Row Level Security for worker_metadata
 ALTER TABLE payroll.worker_metadata ENABLE ROW LEVEL SECURITY;
@@ -561,35 +574,73 @@ CREATE TABLE IF NOT EXISTS payroll.component_formula (
   -- Note: pay_component_id FK added later to avoid circular dependency
 );
 
--- Custom pay components (employee-specific overrides)
-CREATE TABLE IF NOT EXISTS payroll.custom_pay_component (
+-- Employee pay component assignments (employee-specific component assignments with optional overrides)
+-- This is the ONLY table to use for assigning components to employees
+-- Replaces the deprecated custom_pay_component table with better support for:
+--   - Formula-based calculations with configuration JSONB
+--   - Override amounts and formulas  
+--   - Forfaitaire components with automatic calculation
+CREATE TABLE IF NOT EXISTS payroll.employee_pay_component_assignment (
+  -- Primary Key
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Relationships
+  employee_id UUID NOT NULL REFERENCES hris.employee(id) ON DELETE CASCADE,
+  component_id UUID NOT NULL REFERENCES payroll.pay_component(id),
+  component_code VARCHAR(50) NOT NULL, -- Denormalized for performance
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  employee_id UUID NOT NULL REFERENCES hris.employee(id),
-  pay_component_id UUID NOT NULL REFERENCES payroll.pay_component(id),
   
-  -- Custom rates/amounts for this employee
-  custom_rate NUMERIC(12, 2),
-  custom_amount NUMERIC(12, 2),
-  
-  -- Effective dates
+  -- Effective Dates
   effective_from DATE NOT NULL,
-  effective_to DATE,
+  effective_to DATE NULL, -- NULL = ongoing
   
-  notes TEXT,
+  -- Employee-Specific Configuration
+  configuration JSONB DEFAULT '{}'::jsonb, -- Variables for formula calculation
   
-  -- Audit fields
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ,
-  deleted_at TIMESTAMPTZ,
+  -- Employee-Level Overrides (Tier 3 flexibility)
+  override_amount NUMERIC(15, 2) NULL, -- Override fixed amount
+  override_formula TEXT NULL, -- Override formula
+  
+  -- Additional Metadata
+  notes TEXT NULL,
+  
+  -- Audit Fields
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_by UUID REFERENCES hris.user_account(id),
+  updated_at TIMESTAMPTZ,
   updated_by UUID REFERENCES hris.user_account(id),
+  deleted_at TIMESTAMPTZ,
   deleted_by UUID REFERENCES hris.user_account(id),
+  
+  -- Constraints
+  CONSTRAINT check_effective_dates_emp_comp CHECK (effective_to IS NULL OR effective_to >= effective_from),
+  CONSTRAINT check_override_exclusive CHECK (
+    (override_amount IS NULL) OR (override_formula IS NULL)
+  ), -- Can't have both overrides
   
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
   FOREIGN KEY (employee_id) REFERENCES hris.employee(id) ON DELETE CASCADE,
-  FOREIGN KEY (pay_component_id) REFERENCES payroll.pay_component(id)
+  FOREIGN KEY (component_id) REFERENCES payroll.pay_component(id)
 );
+
+COMMENT ON TABLE payroll.employee_pay_component_assignment IS 
+  'Assigns pay components (benefits, deductions) to individual employees with optional overrides. Supports Tier 3 flexibility: employee-specific amounts or formulas.';
+COMMENT ON COLUMN payroll.employee_pay_component_assignment.employee_id IS 
+  'Reference to hris.employee table - single source of truth';
+COMMENT ON COLUMN payroll.employee_pay_component_assignment.component_id IS 
+  'Reference to pay_component (can be global or org-specific component)';
+COMMENT ON COLUMN payroll.employee_pay_component_assignment.component_code IS 
+  'Denormalized component code for performance';
+COMMENT ON COLUMN payroll.employee_pay_component_assignment.effective_from IS 
+  'Date from which this assignment is effective';
+COMMENT ON COLUMN payroll.employee_pay_component_assignment.effective_to IS 
+  'Date until which this assignment is effective (NULL = ongoing)';
+COMMENT ON COLUMN payroll.employee_pay_component_assignment.configuration IS 
+  'Employee-specific variables for formula calculation (e.g., car_value, housing_allowance_rate)';
+COMMENT ON COLUMN payroll.employee_pay_component_assignment.override_amount IS 
+  'Employee-specific fixed amount override (takes precedence over component default)';
+COMMENT ON COLUMN payroll.employee_pay_component_assignment.override_formula IS 
+  'Employee-specific formula override (takes precedence over component formula)';
 
 -- Formula execution audit log (for SOX compliance and debugging)
 CREATE TABLE IF NOT EXISTS payroll.formula_execution_log (
@@ -789,6 +840,64 @@ CREATE TABLE IF NOT EXISTS payroll.allowance (
   
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
 );
+
+-- Loontijdvak Periods (Surinamese Wage Tax Periods - Wet Loonbelasting Article 13.3)
+CREATE TABLE IF NOT EXISTS payroll.loontijdvak (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Period identification
+  period_type VARCHAR(20) NOT NULL CHECK (period_type IN ('daily', 'weekly', 'monthly', 'yearly')),
+  period_number INTEGER NOT NULL, -- Sequential number within year (1-364 for daily, 1-52 for weekly, etc.)
+  year INTEGER NOT NULL,
+  
+  -- Date range
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  
+  -- Tax configuration
+  tax_table_version VARCHAR(50), -- Version of tax tables for this period (e.g., '2025-v1')
+  
+  -- Status
+  is_active BOOLEAN DEFAULT true,
+  
+  -- Metadata
+  notes TEXT,
+  
+  -- Audit fields
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  created_by UUID REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  deleted_by UUID REFERENCES hris.user_account(id),
+  
+  CONSTRAINT unique_loontijdvak_period UNIQUE (organization_id, period_type, period_number, year, deleted_at),
+  CONSTRAINT check_dates CHECK (end_date >= start_date),
+  CONSTRAINT check_period_number CHECK (period_number > 0),
+  CONSTRAINT check_year CHECK (year >= 2000 AND year <= 2100)
+);
+
+-- Indexes for loontijdvak
+CREATE INDEX IF NOT EXISTS idx_loontijdvak_org ON payroll.loontijdvak(organization_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_loontijdvak_period ON payroll.loontijdvak(period_type, year) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_loontijdvak_dates ON payroll.loontijdvak(start_date, end_date) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_loontijdvak_active ON payroll.loontijdvak(is_active) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE payroll.loontijdvak IS 'Surinamese wage tax periods per Wet Loonbelasting Article 13.3. Defines loontijdvak periods (daily/weekly/monthly/yearly) for progressive tax calculations. Critical for determining tax-free allowance and bracket application.';
+COMMENT ON COLUMN payroll.loontijdvak.period_type IS 'Loontijdvak type per Article 13.3: daily (364 periods/year), weekly (52 periods), monthly (12 periods), yearly (1 period). Uses 364-day year basis per Article 13.3a.';
+COMMENT ON COLUMN payroll.loontijdvak.period_number IS 'Sequential period number within the year. Range varies by period_type: 1-364 (daily), 1-52 (weekly), 1-12 (monthly), 1 (yearly).';
+COMMENT ON COLUMN payroll.loontijdvak.tax_table_version IS 'Version identifier for tax tables used in this period. Allows year-over-year tax law changes per Article 18a.';
+
+-- Row Level Security for loontijdvak
+ALTER TABLE payroll.loontijdvak ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY loontijdvak_tenant_isolation ON payroll.loontijdvak
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY loontijdvak_tenant_isolation_insert ON payroll.loontijdvak
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
 
 -- ================================================================
 -- COMPONENT-BASED PAYROLL ARCHITECTURE ADDITIONS
@@ -1512,6 +1621,30 @@ CREATE INDEX IF NOT EXISTS idx_formula_log_employee ON payroll.formula_execution
 -- Custom pay component indexes
 CREATE INDEX IF NOT EXISTS idx_custom_component_employee ON payroll.custom_pay_component(employee_id);
 CREATE INDEX IF NOT EXISTS idx_custom_component_active ON payroll.custom_pay_component(employee_id) WHERE deleted_at IS NULL;
+
+-- Employee pay component assignment indexes
+CREATE INDEX IF NOT EXISTS idx_emp_pay_comp_employee_active 
+  ON payroll.employee_pay_component_assignment(employee_id, organization_id) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_emp_pay_comp_component 
+  ON payroll.employee_pay_component_assignment(component_id, organization_id) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_emp_pay_comp_code 
+  ON payroll.employee_pay_component_assignment(component_code, organization_id) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_emp_pay_comp_effective_dates 
+  ON payroll.employee_pay_component_assignment(effective_from, effective_to) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_emp_pay_comp_organization 
+  ON payroll.employee_pay_component_assignment(organization_id) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_emp_pay_comp_configuration 
+  ON payroll.employee_pay_component_assignment USING gin(configuration);
 
 -- Employee deduction indexes
 CREATE INDEX IF NOT EXISTS idx_employee_deduction_employee ON payroll.employee_deduction(employee_id);
@@ -2355,6 +2488,224 @@ COMMENT ON TABLE payroll.pay_structure_component IS 'Individual pay components w
 COMMENT ON TABLE payroll.worker_pay_structure IS 'Worker-specific pay structure assignments with frozen snapshots';
 COMMENT ON TABLE payroll.worker_pay_structure_component_override IS 'Worker-specific overrides to template components';
 COMMENT ON TABLE payroll.pay_structure_template_changelog IS 'Version history and change tracking for templates';
+
+-- ================================================================
+-- TEMPLATE COMPOSITION SYSTEM (Added November 24, 2025)
+-- Allows templates to include/inherit from other templates
+-- Industry standard pattern: Workday, SAP, Oracle
+-- ================================================================
+
+-- Add is_template column to pay_structure_template if it doesn't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'payroll'
+      AND table_name = 'pay_structure_template'
+      AND column_name = 'is_template'
+  ) THEN
+    ALTER TABLE payroll.pay_structure_template
+      ADD COLUMN is_template BOOLEAN DEFAULT false;
+    
+    COMMENT ON COLUMN payroll.pay_structure_template.is_template IS 
+      'Indicates whether this pay structure serves as a reusable template. Templates can be used to create new pay structures or can be included/inherited by other templates.';
+    
+    CREATE INDEX IF NOT EXISTS idx_pay_structure_template_is_template 
+      ON payroll.pay_structure_template(organization_id, is_template) 
+      WHERE deleted_at IS NULL AND is_template = true;
+  END IF;
+END $$;
+
+-- Pay Structure Template Inclusion (Template Composition)
+-- Allows templates to include/inherit from other templates
+CREATE TABLE IF NOT EXISTS payroll.pay_structure_template_inclusion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Parent-Child Relationship
+  parent_template_id UUID NOT NULL REFERENCES payroll.pay_structure_template(id) ON DELETE CASCADE,
+  included_template_code VARCHAR(50) NOT NULL, -- References template by CODE (not specific version)
+  
+  -- Inclusion Configuration
+  inclusion_priority INT NOT NULL DEFAULT 1, -- Lower = applied first, Higher = can override
+  inclusion_mode VARCHAR(20) NOT NULL DEFAULT 'merge' 
+    CHECK (inclusion_mode IN ('merge', 'override', 'additive')),
+  
+  -- Version Control (like package.json dependencies)
+  version_constraint VARCHAR(20), -- e.g., '^1.0.0', '~2.1.0', 'latest', '1.2.3' (exact)
+  pinned_version_id UUID REFERENCES payroll.pay_structure_template(id), -- Specific version if pinned
+  
+  -- Component Filtering (optional: only include specific components)
+  component_filter JSONB, -- { "include": ["COMP1", "COMP2"], "exclude": ["COMP3"] }
+  
+  -- Effective Period
+  effective_from DATE NOT NULL DEFAULT CURRENT_DATE,
+  effective_to DATE,
+  is_active BOOLEAN DEFAULT true,
+  
+  -- Inclusion Metadata
+  inclusion_reason TEXT, -- Why this template is included
+  tags VARCHAR(50)[], -- e.g., ['law_mandated', 'company_policy']
+  notes TEXT,
+  
+  -- Audit fields
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  created_by UUID NOT NULL REFERENCES hris.user_account(id),
+  updated_by UUID REFERENCES hris.user_account(id),
+  deleted_by UUID REFERENCES hris.user_account(id),
+  
+  -- Constraints
+  CONSTRAINT unique_parent_included_template 
+    UNIQUE (parent_template_id, included_template_code, deleted_at),
+  
+  CONSTRAINT unique_parent_priority
+    UNIQUE (parent_template_id, inclusion_priority, deleted_at),
+  
+  -- Prevent circular dependencies
+  CONSTRAINT no_self_inclusion 
+    CHECK (parent_template_id != pinned_version_id),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_template_id) REFERENCES payroll.pay_structure_template(id) ON DELETE CASCADE,
+  FOREIGN KEY (pinned_version_id) REFERENCES payroll.pay_structure_template(id) ON DELETE SET NULL
+);
+
+-- Indexes for template inclusion
+CREATE INDEX idx_template_inclusion_org 
+  ON payroll.pay_structure_template_inclusion(organization_id) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_template_inclusion_parent 
+  ON payroll.pay_structure_template_inclusion(parent_template_id) 
+  WHERE deleted_at IS NULL AND is_active = true;
+
+CREATE INDEX idx_template_inclusion_included_code 
+  ON payroll.pay_structure_template_inclusion(included_template_code) 
+  WHERE deleted_at IS NULL AND is_active = true;
+
+CREATE INDEX idx_template_inclusion_effective 
+  ON payroll.pay_structure_template_inclusion(parent_template_id, effective_from, effective_to) 
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_template_inclusion_priority 
+  ON payroll.pay_structure_template_inclusion(parent_template_id, inclusion_priority) 
+  WHERE deleted_at IS NULL AND is_active = true;
+
+COMMENT ON TABLE payroll.pay_structure_template_inclusion IS 
+  'Template composition system: allows templates to include/inherit from other templates. Industry standard pattern used by Workday, SAP, Oracle for modular pay structure configuration.';
+
+COMMENT ON COLUMN payroll.pay_structure_template_inclusion.included_template_code IS 
+  'References template by CODE (not specific version ID). Allows automatic version resolution based on version_constraint.';
+
+COMMENT ON COLUMN payroll.pay_structure_template_inclusion.inclusion_mode IS 
+  'How to handle component conflicts: merge (combine all), override (child replaces parent), additive (sum values)';
+
+COMMENT ON COLUMN payroll.pay_structure_template_inclusion.version_constraint IS 
+  'Semver-style constraint for included template version. Examples: "^1.0.0" (any 1.x), "~2.1.0" (2.1.x only), "latest" (newest active), "1.2.3" (exact version)';
+
+COMMENT ON COLUMN payroll.pay_structure_template_inclusion.inclusion_priority IS 
+  'Processing order for inclusions. Lower numbers applied first. Higher priority components can override lower priority ones.';
+
+-- Add pay_structure_template_code to worker_type_template
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'payroll'
+      AND table_name = 'worker_type_template'
+      AND column_name = 'pay_structure_template_code'
+  ) THEN
+    ALTER TABLE payroll.worker_type_template
+      ADD COLUMN pay_structure_template_code VARCHAR(50);
+    
+    CREATE INDEX IF NOT EXISTS idx_worker_type_pay_structure_code 
+      ON payroll.worker_type_template(pay_structure_template_code) 
+      WHERE deleted_at IS NULL;
+    
+    COMMENT ON COLUMN payroll.worker_type_template.pay_structure_template_code IS 
+      'References pay_structure_template by template_code (not specific version). System resolves to latest active version at assignment time.';
+  END IF;
+END $$;
+
+-- Template Resolution Cache (Performance Optimization)
+-- Cache resolved composite templates to avoid recursive lookups on every payroll run
+CREATE TABLE IF NOT EXISTS payroll.pay_structure_template_resolution_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- Template being resolved
+  template_id UUID NOT NULL REFERENCES payroll.pay_structure_template(id) ON DELETE CASCADE,
+  
+  -- Resolution Result
+  resolved_template_ids UUID[], -- All included template IDs (in priority order)
+  resolved_components JSONB, -- Merged component list
+  resolution_depth INT, -- How many levels of nesting
+  
+  -- Cache Metadata
+  cache_key VARCHAR(255) NOT NULL, -- Hash of template + inclusions for invalidation
+  resolved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ, -- Cache expiration
+  is_valid BOOLEAN DEFAULT true,
+  
+  -- Audit
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
+  CONSTRAINT unique_template_cache 
+    UNIQUE (template_id, cache_key),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (template_id) REFERENCES payroll.pay_structure_template(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_template_resolution_cache_template 
+  ON payroll.pay_structure_template_resolution_cache(template_id) 
+  WHERE is_valid = true;
+
+CREATE INDEX idx_template_resolution_cache_expires 
+  ON payroll.pay_structure_template_resolution_cache(expires_at) 
+  WHERE is_valid = true;
+
+COMMENT ON TABLE payroll.pay_structure_template_resolution_cache IS 
+  'Performance cache for resolved composite templates. Invalidated when parent or included templates change.';
+
+-- Audit Table for Template Composition Changes
+-- Track changes to template inclusions for compliance/audit
+CREATE TABLE IF NOT EXISTS payroll.pay_structure_template_inclusion_audit (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  
+  -- What Changed
+  inclusion_id UUID NOT NULL, -- References pay_structure_template_inclusion(id)
+  parent_template_id UUID NOT NULL,
+  included_template_code VARCHAR(50) NOT NULL,
+  
+  -- Change Details
+  change_type VARCHAR(20) NOT NULL 
+    CHECK (change_type IN ('created', 'updated', 'deleted', 'priority_changed')),
+  old_values JSONB,
+  new_values JSONB,
+  change_reason TEXT,
+  
+  -- Who and When
+  changed_by UUID NOT NULL REFERENCES hris.user_account(id),
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_template_inclusion_audit_org 
+  ON payroll.pay_structure_template_inclusion_audit(organization_id);
+
+CREATE INDEX idx_template_inclusion_audit_inclusion 
+  ON payroll.pay_structure_template_inclusion_audit(inclusion_id);
+
+CREATE INDEX idx_template_inclusion_audit_changed_at 
+  ON payroll.pay_structure_template_inclusion_audit(changed_at DESC);
+
+COMMENT ON TABLE payroll.pay_structure_template_inclusion_audit IS 
+  'Audit log for all changes to template composition. Required for compliance and troubleshooting.';
 
 -- ================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES

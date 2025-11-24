@@ -34,7 +34,7 @@ export default {
       // Employee & Compensation (3 tables)
       'employee_payroll_config',
       'compensation',
-      'custom_pay_component',
+      'employee_pay_component_assignment',
       
       // Pay Components (2 tables)
       'pay_component',
@@ -121,7 +121,7 @@ export default {
       
       // Pay Components
       'standard_pay_components',
-      'custom_pay_components',
+      'employee_component_assignments',
       'formula_engine',
       'advanced_formulas',
       

@@ -33,6 +33,8 @@ import payslipTemplateRoutes from './payslipTemplates.js';
 import temporalPatternRoutes from './temporalPatterns.js';
 import currencyRoutes from './currency.js';
 import approvalRoutes from './approvals.js';
+import loontijdvakRoutes from './loontijdvak.js';
+import rbacRoutes from './rbac.js';
 
 const router = express.Router();
 
@@ -84,5 +86,7 @@ router.use('/patterns', temporalPatternRoutes);
 router.use('/currency', currencyRoutes); // Config, conversion, cache
 router.use('/exchange-rates', currencyRoutes); // Exchange rates CRUD
 router.use('/approvals', approvalRoutes);
+router.use('/loontijdvak', loontijdvakRoutes); // Dutch tax period management
+router.use('/rbac', rbacRoutes); // Roles & permissions management
 
 export default router;

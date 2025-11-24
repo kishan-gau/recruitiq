@@ -2,6 +2,8 @@ import { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
+import { handleApiError } from '@/utils/errorHandler';
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
@@ -62,7 +64,10 @@ export default function ProcessPayrollModal({ isOpen, onClose, payrollRun, onSuc
           .join(', ');
         error(errors || 'Please fix the validation errors');
       } else {
-        error(err.response?.data?.message || err.message || 'Failed to process payroll. Please try again.');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to process payroll',
+        });
       }
     } finally {
       setIsLoading(false);

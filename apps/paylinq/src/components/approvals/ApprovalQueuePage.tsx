@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { handleApiError } from '@/utils/errorHandler';
+import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '../../hooks/usePaylinqAPI';
 
 interface ApprovalItem {
@@ -35,6 +37,7 @@ interface ApprovalDetailModalProps {
 
 const ApprovalQueuePage = () => {
   const { paylinq } = usePaylinqAPI();
+  const toast = useToast();
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -56,7 +59,11 @@ const ApprovalQueuePage = () => {
       setApprovals(response.data.data || []);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch approvals');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to fetch approvals',
+      });
+      setError('Failed to fetch approvals');
     } finally {
       setLoading(false);
     }

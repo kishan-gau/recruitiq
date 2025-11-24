@@ -1,6 +1,6 @@
-﻿import express from 'express';
+import express from 'express';
 import productManager from '../../core/ProductManager.js';
-import { authenticatePlatform } from '../../../middleware/auth.js';
+import { authenticatePlatform, requirePermission } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ const requireSuperAdmin = (req, res, next) => {
   next();
 };
 
-router.get('/status', authenticatePlatform, requireAdmin, (req, res) => {
+router.get('/status', authenticatePlatform, requirePermission('nexus:system:read'), (req, res) => {
   try {
     const status = productManager.getStatus();
     res.json(status);
@@ -31,7 +31,7 @@ router.get('/status', authenticatePlatform, requireAdmin, (req, res) => {
   }
 });
 
-router.get('/health', authenticatePlatform, requireAdmin, (req, res) => {
+router.get('/health', authenticatePlatform, requirePermission('nexus:system:read'), (req, res) => {
   try {
     const health = productManager.healthCheck();
     const statusCode = health.healthy ? 200 : 503;
@@ -41,7 +41,7 @@ router.get('/health', authenticatePlatform, requireAdmin, (req, res) => {
   }
 });
 
-router.get('/list', authenticatePlatform, requireAdmin, (req, res) => {
+router.get('/list', authenticatePlatform, requirePermission('nexus:system:read'), (req, res) => {
   try {
     const products = productManager.getAllProducts();
     res.json({ count: products.length, products: products.map(p => ({ slug: p.product.slug, name: p.product.name, version: p.product.version, status: p.product.status, isCore: p.product.isCore, hasRoutes: !!p.routes, middlewareCount: p.middleware ? p.middleware.length : 0, loadedAt: p.loadedAt })) });
@@ -50,7 +50,7 @@ router.get('/list', authenticatePlatform, requireAdmin, (req, res) => {
   }
 });
 
-router.get('/routes', authenticatePlatform, requireAdmin, (req, res) => {
+router.get('/routes', authenticatePlatform, requirePermission('nexus:system:read'), (req, res) => {
   try {
     const routes = productManager.getRoutes();
     res.json({ count: routes.length, routes });
@@ -59,7 +59,7 @@ router.get('/routes', authenticatePlatform, requireAdmin, (req, res) => {
   }
 });
 
-router.get('/:slug', authenticatePlatform, requireAdmin, (req, res) => {
+router.get('/:slug', authenticatePlatform, requirePermission('nexus:system:read'), (req, res) => {
   try {
     const { slug } = req.params;
     const product = productManager.getProduct(slug);
@@ -70,7 +70,7 @@ router.get('/:slug', authenticatePlatform, requireAdmin, (req, res) => {
   }
 });
 
-router.post('/:slug/reload', authenticatePlatform, requireSuperAdmin, async (req, res) => {
+router.post('/:slug/reload', authenticatePlatform, requirePermission('nexus:system:manage'), async (req, res) => {
   try {
     const { slug } = req.params;
     await productManager.reloadProduct(slug);
@@ -80,7 +80,7 @@ router.post('/:slug/reload', authenticatePlatform, requireSuperAdmin, async (req
   }
 });
 
-router.post('/:slug/unload', authenticatePlatform, requireSuperAdmin, (req, res) => {
+router.post('/:slug/unload', authenticatePlatform, requirePermission('nexus:system:manage'), (req, res) => {
   try {
     const { slug } = req.params;
     const success = productManager.unloadProduct(slug);

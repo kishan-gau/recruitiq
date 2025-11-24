@@ -122,6 +122,13 @@ const settingsCards: SettingCard[] = [
     href: '/settings/currency/configuration',
     category: 'payroll',
   },
+  {
+    title: 'Loontijdvak Periods',
+    description: 'Manage Dutch payroll tax periods for progressive tax calculations',
+    icon: <Calendar className="h-6 w-6" />,
+    href: '/settings/loontijdvak',
+    category: 'compliance',
+  },
   
   // Compliance & Tax
   {
@@ -157,8 +164,15 @@ const settingsCards: SettingCard[] = [
     badge: 'Soon',
   },
   {
+    title: 'Roles & Permissions',
+    description: 'Configure roles, assign permissions, and manage user access control',
+    icon: <Shield className="h-6 w-6" />,
+    href: '/settings/roles',
+    category: 'integration',
+  },
+  {
     title: 'User Management',
-    description: 'Manage users, roles, and access permissions',
+    description: 'Manage user accounts and profile information',
     icon: <Users className="h-6 w-6" />,
     href: '/settings/users',
     category: 'integration',

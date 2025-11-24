@@ -40,26 +40,26 @@ const documentController = new DocumentController();
 const reportsController = new ReportsController();
 
 // ========== EMPLOYEE ROUTES ==========
-// View operations - require 'employee:view'
-router.get('/employees/org-chart', requirePermission('employee:view'), employeeController.getOrgChart);
-router.get('/employees/search', requirePermission('employee:view'), employeeController.searchEmployees);
-router.get('/employees/:id', requirePermission('employee:view'), employeeController.getEmployee);
-router.get('/employees', requirePermission('employee:view'), employeeController.listEmployees);
-router.get('/employees/:id/employment-history', requirePermission('employee:view'), employeeController.getEmploymentHistory);
-router.get('/employees/:id/rehire-eligibility', requirePermission('employee:view'), employeeController.checkRehireEligibility);
+// View operations - require 'employees:read'
+router.get('/employees/org-chart', requirePermission('employees:read'), employeeController.getOrgChart);
+router.get('/employees/search', requirePermission('employees:read'), employeeController.searchEmployees);
+router.get('/employees/:id', requirePermission('employees:read'), employeeController.getEmployee);
+router.get('/employees', requirePermission('employees:read'), employeeController.listEmployees);
+router.get('/employees/:id/employment-history', requirePermission('employees:read'), employeeController.getEmploymentHistory);
+router.get('/employees/:id/rehire-eligibility', requirePermission('employees:read'), employeeController.checkRehireEligibility);
 
-// Create operations - require 'employee:create'
-router.post('/employees', requirePermission('employee:create'), employeeController.createEmployee);
+// Create operations - require 'employees:create'
+router.post('/employees', requirePermission('employees:create'), employeeController.createEmployee);
 
-// Edit operations - require 'employee:edit'
-router.patch('/employees/:id', requirePermission('employee:edit'), employeeController.updateEmployee);
-router.post('/employees/:id/rehire', requirePermission('employee:edit'), employeeController.rehireEmployee);
+// Edit operations - require 'employees:update'
+router.patch('/employees/:id', requirePermission('employees:update'), employeeController.updateEmployee);
+router.post('/employees/:id/rehire', requirePermission('employees:update'), employeeController.rehireEmployee);
 
-// Terminate operations - require 'employee:terminate'
-router.post('/employees/:id/terminate', requirePermission('employee:terminate'), employeeController.terminateEmployee);
+// Terminate operations - require 'employees:terminate'
+router.post('/employees/:id/terminate', requirePermission('employees:terminate'), employeeController.terminateEmployee);
 
-// Delete operations - require 'employee:delete'
-router.delete('/employees/:id', requirePermission('employee:delete'), employeeController.deleteEmployee);
+// Delete operations - require 'employees:delete'
+router.delete('/employees/:id', requirePermission('employees:delete'), employeeController.deleteEmployee);
 
 // ========== EMPLOYEE USER ACCESS ROUTES ==========
 // Validation schemas for user access management
@@ -115,8 +115,8 @@ router.post('/contracts/:id/progress-sequence', contractController.progressSeque
 
 // ========== TIME-OFF ROUTES ==========
 // Request/View operations - require 'timeoff:view'
-router.get('/time-off/requests', requirePermission('timeoff:view'), timeOffController.getRequests);
-router.get('/time-off/balances/:employeeId', requirePermission('timeoff:view'), timeOffController.getBalances);
+router.get('/time-off/requests', requirePermission('timeoff:read'), timeOffController.getRequests);
+router.get('/time-off/balances/:employeeId', requirePermission('timeoff:read'), timeOffController.getBalances);
 
 // Submit requests - require 'timeoff:request'
 router.post('/time-off/requests', requirePermission('timeoff:request'), timeOffController.createRequest);
@@ -144,58 +144,59 @@ router.get('/performance/feedback/employee/:employeeId', performanceController.g
 
 // ========== BENEFITS ROUTES ==========
 router.post('/benefits/plans', benefitsController.createPlan);
-router.get('/benefits/plans/:id/enrollment-summary', benefitsController.getEnrollmentSummary);
-router.get('/benefits/plans/:id', benefitsController.getPlan);
-router.get('/benefits/plans', benefitsController.listPlans);
-router.patch('/benefits/plans/:id', benefitsController.updatePlan);
+// ========== BENEFITS ROUTES ==========
+router.post('/benefits/plans', requirePermission('benefits:create'), benefitsController.createPlan);
+router.get('/benefits/plans/:id', requirePermission('benefits:read'), benefitsController.getPlan);
+router.get('/benefits/plans', requirePermission('benefits:read'), benefitsController.listPlans);
+router.patch('/benefits/plans/:id', requirePermission('benefits:update'), benefitsController.updatePlan);
 
-router.post('/benefits/enrollments', benefitsController.enrollEmployee);
-router.get('/benefits/enrollments/employee/:employeeId', benefitsController.getEmployeeEnrollments); // Specific route first
-router.get('/benefits/enrollments/:id', benefitsController.getEnrollment);
-router.get('/benefits/enrollments', benefitsController.listEnrollments); // General route last
-router.patch('/benefits/enrollments/:id', benefitsController.updateEnrollment);
-router.post('/benefits/enrollments/:id/terminate', benefitsController.terminateEnrollment);
+router.post('/benefits/enrollments', requirePermission('benefits:create'), benefitsController.enrollEmployee);
+router.get('/benefits/enrollments/employee/:employeeId', requirePermission('benefits:read'), benefitsController.getEmployeeEnrollments); // Specific route first
+router.get('/benefits/enrollments/:id', requirePermission('benefits:read'), benefitsController.getEnrollment);
+router.get('/benefits/enrollments', requirePermission('benefits:read'), benefitsController.listEnrollments); // General route last
+router.patch('/benefits/enrollments/:id', requirePermission('benefits:update'), benefitsController.updateEnrollment);
+router.post('/benefits/enrollments/:id/terminate', requirePermission('benefits:update'), benefitsController.terminateEnrollment);
 
 // ========== ATTENDANCE ROUTES ==========
 // View operations - require 'attendance:view'
-router.get('/attendance/records/today', requirePermission('attendance:view'), attendanceController.getTodayAttendance);
-router.get('/attendance/statistics', requirePermission('attendance:view'), attendanceController.getAttendanceStatistics);
-router.get('/attendance/:id', requirePermission('attendance:view'), attendanceController.getAttendance);
-router.get('/attendance/employee/:employeeId', requirePermission('attendance:view'), attendanceController.getEmployeeAttendance);
-router.get('/attendance/employee/:employeeId/summary', requirePermission('attendance:view'), attendanceController.getAttendanceSummary);
+router.get('/attendance/records/today', requirePermission('attendance:read'), attendanceController.getTodayAttendance);
+router.get('/attendance/statistics', requirePermission('attendance:read'), attendanceController.getAttendanceStatistics);
+router.get('/attendance/:id', requirePermission('attendance:read'), attendanceController.getAttendance);
+router.get('/attendance/employee/:employeeId', requirePermission('attendance:read'), attendanceController.getEmployeeAttendance);
+router.get('/attendance/employee/:employeeId/summary', requirePermission('attendance:read'), attendanceController.getAttendanceSummary);
 
 // Record attendance - require 'attendance:record'
-router.post('/attendance/clock-in', requirePermission('attendance:record'), attendanceController.clockIn);
-router.post('/attendance/clock-out', requirePermission('attendance:record'), attendanceController.clockOut);
+router.post('/attendance/clock-in', requirePermission('attendance:create'), attendanceController.clockIn);
+router.post('/attendance/clock-out', requirePermission('attendance:create'), attendanceController.clockOut);
 
 // Manual attendance - require 'attendance:approve'
 router.post('/attendance/manual', requirePermission('attendance:approve'), attendanceController.createManualAttendance);
 
 // ========== DEPARTMENT ROUTES ==========
-// View operations - require 'dept:view'
-router.get('/departments/structure/full', requirePermission('dept:view'), departmentController.getOrganizationStructure);
-router.get('/departments/:id/hierarchy', requirePermission('dept:view'), departmentController.getDepartmentHierarchy);
-router.get('/departments/:id/employees', requirePermission('dept:view'), departmentController.getDepartmentEmployees);
-router.get('/departments/:id', requirePermission('dept:view'), departmentController.getDepartment);
-router.get('/departments', requirePermission('dept:view'), departmentController.getDepartments);
+// View operations - require 'departments:read'
+router.get('/departments/structure/full', requirePermission('departments:read'), departmentController.getOrganizationStructure);
+router.get('/departments/:id/hierarchy', requirePermission('departments:read'), departmentController.getDepartmentHierarchy);
+router.get('/departments/:id/employees', requirePermission('departments:read'), departmentController.getDepartmentEmployees);
+router.get('/departments/:id', requirePermission('departments:read'), departmentController.getDepartment);
+router.get('/departments', requirePermission('departments:read'), departmentController.getDepartments);
 
-// Manage operations - require 'dept:manage'
-router.post('/departments', requirePermission('dept:manage'), departmentController.createDepartment);
-router.patch('/departments/:id', requirePermission('dept:manage'), departmentController.updateDepartment);
-router.delete('/departments/:id', requirePermission('dept:manage'), departmentController.deleteDepartment);
+// Manage operations - require 'departments:manage'
+router.post('/departments', requirePermission('departments:manage'), departmentController.createDepartment);
+router.patch('/departments/:id', requirePermission('departments:manage'), departmentController.updateDepartment);
+router.delete('/departments/:id', requirePermission('departments:manage'), departmentController.deleteDepartment);
 
 // ========== LOCATION ROUTES ==========
-// View operations - require 'location:view'
-router.get('/locations/stats/all', requirePermission('location:view'), locationController.getAllLocationStats);
-router.get('/locations/code/:code', requirePermission('location:view'), locationController.getLocationByCode);
-router.get('/locations/:id/stats', requirePermission('location:view'), locationController.getLocationStats);
-router.get('/locations/:id', requirePermission('location:view'), locationController.getLocation);
-router.get('/locations', requirePermission('location:view'), locationController.getLocations);
+// View operations - require 'locations:read'
+router.get('/locations/stats/all', requirePermission('locations:read'), locationController.getAllLocationStats);
+router.get('/locations/code/:code', requirePermission('locations:read'), locationController.getLocationByCode);
+router.get('/locations/:id/stats', requirePermission('locations:read'), locationController.getLocationStats);
+router.get('/locations/:id', requirePermission('locations:read'), locationController.getLocation);
+router.get('/locations', requirePermission('locations:read'), locationController.getLocations);
 
-// Manage operations - require 'location:manage'
-router.post('/locations', requirePermission('location:manage'), locationController.createLocation);
-router.patch('/locations/:id', requirePermission('location:manage'), locationController.updateLocation);
-router.delete('/locations/:id', requirePermission('location:manage'), locationController.deleteLocation);
+// Manage operations - require 'locations:manage'
+router.post('/locations', requirePermission('locations:manage'), locationController.createLocation);
+router.patch('/locations/:id', requirePermission('locations:manage'), locationController.updateLocation);
+router.delete('/locations/:id', requirePermission('locations:manage'), locationController.deleteLocation);
 
 // ========== DOCUMENT ROUTES ==========
 router.post('/documents', documentController.createDocument);
@@ -211,13 +212,13 @@ router.patch('/documents/:id', documentController.updateDocument);
 router.delete('/documents/:id', documentController.deleteDocument);
 
 // ========== REPORTS ROUTES ==========
-// All reports require 'hris:reports:view'
-router.get('/reports/dashboard', requirePermission('hris:reports:view'), reportsController.getDashboardReport);
-router.get('/reports/headcount', requirePermission('hris:reports:view'), reportsController.getHeadcountReport);
-router.get('/reports/turnover', requirePermission('hris:reports:view'), reportsController.getTurnoverReport);
-router.get('/reports/time-off', requirePermission('hris:reports:view'), reportsController.getTimeOffReport);
-router.get('/reports/attendance', requirePermission('hris:reports:view'), reportsController.getAttendanceReport);
-router.get('/reports/performance', requirePermission('hris:reports:view'), reportsController.getPerformanceReport);
-router.get('/reports/benefits', requirePermission('hris:reports:view'), reportsController.getBenefitsReport);
+// All reports require 'reports:view'
+router.get('/reports/dashboard', requirePermission('reports:view'), reportsController.getDashboardReport);
+router.get('/reports/headcount', requirePermission('reports:headcount'), reportsController.getHeadcountReport);
+router.get('/reports/turnover', requirePermission('reports:turnover'), reportsController.getTurnoverReport);
+router.get('/reports/time-off', requirePermission('reports:view'), reportsController.getTimeOffReport);
+router.get('/reports/attendance', requirePermission('reports:attendance'), reportsController.getAttendanceReport);
+router.get('/reports/performance', requirePermission('reports:view'), reportsController.getPerformanceReport);
+router.get('/reports/benefits', requirePermission('reports:view'), reportsController.getBenefitsReport);
 
 export default router;

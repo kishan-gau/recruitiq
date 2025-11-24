@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Building2, Users, ChevronRight, ChevronDown } from 'lucide-react';
 import { useDepartments } from '@/hooks/useDepartments';
+import { handleApiError } from '@/utils/errorHandler';
 import type { DepartmentHierarchy } from '@/types/department.types';
 
 export default function DepartmentsList() {

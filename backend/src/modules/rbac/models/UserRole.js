@@ -18,19 +18,18 @@ class UserRole {
   static async assign(userId, roleId, product, organizationId, assignedBy) {
     const result = await query(
       `
-      INSERT INTO user_roles (
-        user_id, role_id, product, assigned_by
+      INSERT INTO public.user_roles (
+        user_id, role_id, created_by
       )
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (user_id, role_id, COALESCE(product, ''))
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id, role_id)
       DO UPDATE SET
-        revoked_at = NULL,
-        revoked_by = NULL,
-        assigned_at = NOW(),
-        assigned_by = $4
+        deleted_at = NULL,
+        deleted_by = NULL,
+        created_by = $3
       RETURNING *
       `,
-      [userId, roleId, product || null, assignedBy],
+      [userId, roleId, assignedBy],
       organizationId,
       { operation: 'INSERT', table: 'user_roles' }
     );
@@ -50,15 +49,14 @@ class UserRole {
   static async revoke(userId, roleId, product, organizationId, revokedBy) {
     const result = await query(
       `
-      UPDATE user_roles
-      SET revoked_at = NOW(), revoked_by = $1
+      UPDATE public.user_roles
+      SET deleted_at = NOW(), deleted_by = $1
       WHERE user_id = $2
         AND role_id = $3
-        AND COALESCE(product, '') = COALESCE($4, '')
-        AND revoked_at IS NULL
+        AND deleted_at IS NULL
       RETURNING *
       `,
-      [revokedBy, userId, roleId, product || null],
+      [revokedBy, userId, roleId],
       organizationId,
       { operation: 'UPDATE', table: 'user_roles' }
     );
@@ -80,23 +78,16 @@ class UserRole {
         r.name as role_name,
         r.display_name as role_display_name,
         r.description as role_description,
-        r.product as role_product,
+        r.role_type as role_type,
         r.level as role_level
-      FROM user_roles ur
-      INNER JOIN roles r ON ur.role_id = r.id AND r.deleted_at IS NULL
+      FROM public.user_roles ur
+      INNER JOIN public.roles r ON ur.role_id = r.id AND r.deleted_at IS NULL
       WHERE ur.user_id = $1
         AND (r.organization_id = $2 OR r.organization_id IS NULL)
-        AND ur.revoked_at IS NULL
+        AND ur.deleted_at IS NULL
     `;
     
     const values = [userId, organizationId];
-    let paramCount = 2;
-
-    if (product) {
-      paramCount++;
-      sql += ` AND (ur.product = $${paramCount} OR ur.product IS NULL)`;
-      values.push(product);
-    }
 
     sql += ` ORDER BY r.level DESC, r.name`;
 
@@ -121,11 +112,11 @@ class UserRole {
         ur.*,
         u.email,
         u.employee_id
-      FROM user_roles ur
+      FROM public.user_roles ur
       INNER JOIN hris.user_account u ON ur.user_id = u.id
       WHERE ur.role_id = $1
         AND u.organization_id = $2
-        AND ur.revoked_at IS NULL
+        AND ur.deleted_at IS NULL
       ORDER BY u.email
       `,
       [roleId, organizationId],
@@ -146,27 +137,17 @@ class UserRole {
   static async getUserPermissions(userId, organizationId, product = null) {
     let sql = `
       SELECT DISTINCT p.name as code, p.name, p.product, p.category, p.description
-      FROM user_roles ur
-      INNER JOIN roles r ON ur.role_id = r.id AND r.deleted_at IS NULL
-      INNER JOIN role_permissions rp ON r.id = rp.role_id
-      INNER JOIN permissions p ON rp.permission_id = p.id AND p.is_active = true
+      FROM public.user_roles ur
+      INNER JOIN public.roles r ON ur.role_id = r.id AND r.deleted_at IS NULL
+      INNER JOIN public.role_permissions rp ON r.id = rp.role_id
+      INNER JOIN public.permissions p ON rp.permission_id = p.id
       WHERE ur.user_id = $1
         AND (r.organization_id = $2 OR r.organization_id IS NULL)
-        AND ur.revoked_at IS NULL
+        AND ur.deleted_at IS NULL
+     ORDER BY p.product, p.category, p.name
     `;
-    
-    const values = [userId, organizationId];
-    let paramCount = 2;
 
-    if (product) {
-      paramCount++;
-      sql += ` AND (ur.product = $${paramCount} OR ur.product IS NULL OR p.product = 'global')`;
-      values.push(product);
-    }
-
-    sql += ` ORDER BY p.product, p.category, p.name`;
-
-    const result = await query(sql, values, organizationId, {
+    const result = await query(sql, [userId, organizationId], organizationId, {
       operation: 'SELECT',
       table: 'user_roles'
     });
@@ -186,28 +167,18 @@ class UserRole {
     let sql = `
       SELECT EXISTS(
         SELECT 1
-        FROM user_roles ur
-        INNER JOIN roles r ON ur.role_id = r.id AND r.deleted_at IS NULL
-        INNER JOIN role_permissions rp ON r.id = rp.role_id
-        INNER JOIN permissions p ON rp.permission_id = p.id AND p.is_active = true
+        FROM public.user_roles ur
+        INNER JOIN public.roles r ON ur.role_id = r.id AND r.deleted_at IS NULL
+        INNER JOIN public.role_permissions rp ON r.id = rp.role_id
+        INNER JOIN public.permissions p ON rp.permission_id = p.id
         WHERE ur.user_id = $1
           AND (r.organization_id = $2 OR r.organization_id IS NULL)
           AND p.name = $3
-          AND ur.revoked_at IS NULL
+          AND ur.deleted_at IS NULL
+      ) as has_permission
     `;
-    
-    const values = [userId, organizationId, permissionCode];
-    let paramCount = 3;
 
-    if (product) {
-      paramCount++;
-      sql += ` AND (ur.product = $${paramCount} OR ur.product IS NULL OR p.product = 'global')`;
-      values.push(product);
-    }
-
-    sql += `) as has_permission`;
-
-    const result = await query(sql, values, organizationId, {
+    const result = await query(sql, [userId, organizationId, permissionCode], organizationId, {
       operation: 'SELECT',
       table: 'user_roles'
     });
@@ -241,9 +212,8 @@ class UserRole {
   }
 
   /**
-   * Remove all roles from user for a product
+   * Remove all roles from user
    * @param {string} userId - User UUID
-   * @param {string} product - Product slug
    * @param {string} organizationId - Organization UUID
    * @param {string} revokedBy - User UUID performing the action
    * @returns {Promise<number>} Number of roles revoked
@@ -251,14 +221,13 @@ class UserRole {
   static async revokeAllForProduct(userId, product, organizationId, revokedBy) {
     const result = await query(
       `
-      UPDATE user_roles
-      SET revoked_at = NOW(), revoked_by = $1
+      UPDATE public.user_roles
+      SET deleted_at = NOW(), deleted_by = $1
       WHERE user_id = $2
-        AND COALESCE(product, '') = COALESCE($3, '')
-        AND revoked_at IS NULL
+        AND deleted_at IS NULL
       RETURNING id
       `,
-      [revokedBy, userId, product || null],
+      [revokedBy, userId],
       organizationId,
       { operation: 'UPDATE', table: 'user_roles' }
     );

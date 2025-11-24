@@ -7,6 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePaylinqAPI } from './usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError, getValidationErrors } from '@/utils/errorHandler';
 import type {
   CreateWorkerTypeTemplateRequest,
   UpdateWorkerTypeTemplateRequest,
@@ -69,7 +70,7 @@ export function useWorkerTypeTemplate(id: string) {
 export function useCreateWorkerTypeTemplate() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (data: CreateWorkerTypeTemplateRequest) => {
@@ -81,21 +82,23 @@ export function useCreateWorkerTypeTemplate() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: WORKER_TYPE_TEMPLATES_KEY });
       if (data) {
-        success(`Worker type "${data.name}" created successfully`);
+        toast.success(`Worker type "${data.name}" created successfully`);
       }
     },
     onError: (err: any) => {
-      const errorData = err?.response?.data;
-      
-      // Handle validation errors with detailed field-level messages
-      if (errorData?.errorCode === 'VALIDATION_ERROR' && errorData?.details?.errors) {
-        const fieldErrors = errorData.details.errors
-          .map((e: any) => `${e.field}: ${e.message}`)
+      // Check for validation errors first
+      const validationErrors = getValidationErrors(err);
+      if (validationErrors) {
+        const fieldErrors = Object.entries(validationErrors)
+          .map(([field, message]) => `${field}: ${message}`)
           .join(', ');
-        error(`Validation failed: ${fieldErrors}`);
+        toast.error(`Validation failed: ${fieldErrors}`);
       } else {
-        // Use error message from response, fallback to generic
-        error(errorData?.error || errorData?.message || 'Failed to create worker type template');
+        // Use centralized error handler
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to create worker type template',
+        });
       }
     },
   });
@@ -107,7 +110,7 @@ export function useCreateWorkerTypeTemplate() {
 export function useUpdateWorkerTypeTemplate() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateWorkerTypeTemplateRequest }) => {
@@ -120,21 +123,23 @@ export function useUpdateWorkerTypeTemplate() {
       if (data) {
         queryClient.invalidateQueries({ queryKey: WORKER_TYPE_TEMPLATES_KEY });
         queryClient.invalidateQueries({ queryKey: [...WORKER_TYPE_TEMPLATES_KEY, data.id] });
-        success(`Worker type "${data.name}" updated successfully`);
+        toast.success(`Worker type "${data.name}" updated successfully`);
       }
     },
     onError: (err: any) => {
-      const errorData = err?.response?.data;
-      
-      // Handle validation errors with detailed field-level messages
-      if (errorData?.errorCode === 'VALIDATION_ERROR' && errorData?.details?.errors) {
-        const fieldErrors = errorData.details.errors
-          .map((e: any) => `${e.field}: ${e.message}`)
+      // Check for validation errors first
+      const validationErrors = getValidationErrors(err);
+      if (validationErrors) {
+        const fieldErrors = Object.entries(validationErrors)
+          .map(([field, message]) => `${field}: ${message}`)
           .join(', ');
-        error(`Validation failed: ${fieldErrors}`);
+        toast.error(`Validation failed: ${fieldErrors}`);
       } else {
-        // Use error message from response, fallback to generic
-        error(errorData?.error || errorData?.message || 'Failed to update worker type template');
+        // Use centralized error handler
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to update worker type template',
+        });
       }
     },
   });
@@ -146,7 +151,7 @@ export function useUpdateWorkerTypeTemplate() {
 export function useDeleteWorkerTypeTemplate() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -155,10 +160,13 @@ export function useDeleteWorkerTypeTemplate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WORKER_TYPE_TEMPLATES_KEY });
-      success('Worker type template deleted successfully');
+      toast.success('Worker type template deleted successfully');
     },
     onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to delete worker type template');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete worker type template',
+      });
     },
   });
 }
@@ -221,7 +229,7 @@ export function useWorkerTypeHistory(employeeId: string) {
 export function useAssignWorkerType() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (data: CreateWorkerTypeAssignmentRequest) => {
@@ -232,20 +240,22 @@ export function useAssignWorkerType() {
       queryClient.invalidateQueries({ 
         queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data?.employeeId] 
       });
-      success('Worker type assigned successfully');
+      toast.success('Worker type assigned successfully');
     },
     onError: (err: any) => {
-      const errorData = err?.response?.data;
-      
-      // Handle validation errors with detailed field-level messages
-      if (errorData?.errorCode === 'VALIDATION_ERROR' && errorData?.details?.errors) {
-        const fieldErrors = errorData.details.errors
-          .map((e: any) => `${e.field}: ${e.message}`)
+      // Check for validation errors first
+      const validationErrors = getValidationErrors(err);
+      if (validationErrors) {
+        const fieldErrors = Object.entries(validationErrors)
+          .map(([field, message]) => `${field}: ${message}`)
           .join(', ');
-        error(`Validation failed: ${fieldErrors}`);
+        toast.error(`Validation failed: ${fieldErrors}`);
       } else {
-        // Use error message from response, fallback to generic
-        error(errorData?.error || errorData?.message || 'Failed to assign worker type');
+        // Use centralized error handler
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to assign worker type',
+        });
       }
     },
   });
@@ -257,7 +267,7 @@ export function useAssignWorkerType() {
 export function useUpdateWorkerTypeAssignment() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateWorkerTypeAssignmentRequest }) => {
@@ -268,10 +278,13 @@ export function useUpdateWorkerTypeAssignment() {
       queryClient.invalidateQueries({ 
         queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data?.employeeId] 
       });
-      success('Worker type assignment updated successfully');
+      toast.success('Worker type assignment updated successfully');
     },
     onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to update worker type assignment');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update worker type assignment',
+      });
     },
   });
 }
@@ -282,7 +295,7 @@ export function useUpdateWorkerTypeAssignment() {
 export function useTerminateWorkerTypeAssignment() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async ({ id, effectiveTo }: { id: string; effectiveTo: string }) => {
@@ -293,10 +306,13 @@ export function useTerminateWorkerTypeAssignment() {
       queryClient.invalidateQueries({ 
         queryKey: [...WORKER_TYPE_ASSIGNMENTS_KEY, 'employee', data?.employeeId] 
       });
-      success('Worker type assignment terminated successfully');
+      toast.success('Worker type assignment terminated successfully');
     },
     onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to terminate worker type assignment');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to terminate worker type assignment',
+      });
     },
   });
 }

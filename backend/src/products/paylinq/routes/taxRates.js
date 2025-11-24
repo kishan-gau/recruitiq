@@ -4,6 +4,7 @@
 
 import express from 'express';
 import taxRateController from '../controllers/taxRateController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import { validate  } from '../../../middleware/validation.js';
 import Joi from 'joi';
 
@@ -77,20 +78,20 @@ const taxRuleIdParamSchema = Joi.object({
 });
 
 // Tax rule routes
-router.post('/', validate(createTaxRuleSchema, 'body'), taxRateController.createTaxRule);
-router.get('/', taxRateController.getTaxRules);
-router.get('/:id', validate(idParamSchema, 'params'), taxRateController.getTaxRuleById);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updateTaxRuleSchema, 'body'), taxRateController.updateTaxRule);
-router.delete('/:id', validate(idParamSchema, 'params'), taxRateController.deleteTaxRule);
+router.post('/', requirePermission('settings:update'), validate(createTaxRuleSchema, 'body'), taxRateController.createTaxRule);
+router.get('/', requirePermission('settings:read'), taxRateController.getTaxRules);
+router.get('/:id', requirePermission('settings:read'), validate(idParamSchema, 'params'), taxRateController.getTaxRuleById);
+router.put('/:id', requirePermission('settings:update'), validate(idParamSchema, 'params'), validate(updateTaxRuleSchema, 'body'), taxRateController.updateTaxRule);
+router.delete('/:id', requirePermission('payroll:settings:delete'), validate(idParamSchema, 'params'), taxRateController.deleteTaxRule);
 
 // Tax bracket routes
-router.post('/:taxRuleId/brackets', validate(taxRuleIdParamSchema, 'params'), validate(createTaxBracketSchema, 'body'), taxRateController.createTaxBracket);
-router.get('/:taxRuleId/brackets', validate(taxRuleIdParamSchema, 'params'), taxRateController.getTaxBrackets);
-router.put('/brackets/:id', validate(idParamSchema, 'params'), validate(updateTaxBracketSchema, 'body'), taxRateController.updateTaxBracket);
-router.delete('/brackets/:id', validate(idParamSchema, 'params'), taxRateController.deleteTaxBracket);
+router.post('/:taxRuleId/brackets', requirePermission('settings:update'), validate(taxRuleIdParamSchema, 'params'), validate(createTaxBracketSchema, 'body'), taxRateController.createTaxBracket);
+router.get('/:taxRuleId/brackets', requirePermission('settings:read'), validate(taxRuleIdParamSchema, 'params'), taxRateController.getTaxBrackets);
+router.put('/brackets/:id', requirePermission('settings:update'), validate(idParamSchema, 'params'), validate(updateTaxBracketSchema, 'body'), taxRateController.updateTaxBracket);
+router.delete('/brackets/:id', requirePermission('payroll:settings:delete'), validate(idParamSchema, 'params'), taxRateController.deleteTaxBracket);
 
 // Tax calculation routes
-router.post('/calculations/calculate', validate(calculateTaxesSchema, 'body'), taxRateController.calculateTaxes);
-router.post('/setup-suriname', taxRateController.setupSurinameTaxRules);
+router.post('/calculations/calculate', requirePermission('payroll:process'), validate(calculateTaxesSchema, 'body'), taxRateController.calculateTaxes);
+router.post('/setup-suriname', requirePermission('settings:update'), taxRateController.setupSurinameTaxRules);
 
 export default router;

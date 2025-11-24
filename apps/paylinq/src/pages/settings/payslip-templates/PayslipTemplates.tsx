@@ -4,6 +4,7 @@ import { Plus, Search, FileText, ArrowLeft } from 'lucide-react';
 import TemplateCard from '@/components/payslip-templates/TemplateCard';
 import TemplateAssignmentModal from '@/components/payslip-templates/TemplateAssignmentModal';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 export default function PayslipTemplates() {
@@ -34,7 +35,10 @@ export default function PayslipTemplates() {
       setTemplates(templates);
     } catch (err: any) {
       console.error('Failed to load templates:', err);
-      showError(err.message || 'Failed to load templates');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to load templates',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +58,10 @@ export default function PayslipTemplates() {
       success('Template duplicated successfully');
       loadTemplates();
     } catch (err: any) {
-      showError(err.message || 'Failed to duplicate template');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to duplicate template',
+      });
     }
   };
 
@@ -79,7 +86,10 @@ export default function PayslipTemplates() {
       success('Template archived successfully');
       loadTemplates();
     } catch (err: any) {
-      showError(err.message || 'Failed to archive template');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to archive template',
+      });
     }
   };
 
@@ -89,7 +99,10 @@ export default function PayslipTemplates() {
       success('Template activated successfully');
       loadTemplates();
     } catch (err: any) {
-      showError(err.message || 'Failed to activate template');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to activate template',
+      });
     }
   };
 

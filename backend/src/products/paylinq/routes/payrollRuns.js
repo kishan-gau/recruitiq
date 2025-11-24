@@ -64,19 +64,19 @@ const idParamSchema = Joi.object({
 
 // Routes
 // View operations - require 'payroll:run:view'
-router.get('/', requirePermission('payroll:run:view'), payrollRunController.getPayrollRuns);
-router.get('/:id', requirePermission('payroll:run:view'), validate(idParamSchema, 'params'), payrollRunController.getPayrollRunById);
-router.get('/:id/paychecks', requirePermission('payroll:run:view'), validate(idParamSchema, 'params'), payrollRunController.getPayrollRunPaychecks);
+router.get('/', requirePermission('payroll:read'), payrollRunController.getPayrollRuns);
+router.get('/:id', requirePermission('payroll:read'), validate(idParamSchema, 'params'), payrollRunController.getPayrollRunById);
+router.get('/:id/paychecks', requirePermission('payroll:read'), validate(idParamSchema, 'params'), payrollRunController.getPayrollRunPaychecks);
 
 // Create operations - require 'payroll:run:create'
 router.post('/', requirePermission('payroll:run:create'), validate(createPayrollRunSchema, 'body'), payrollRunController.createPayrollRun);
 
 // Edit operations - require 'payroll:run:edit'
-router.put('/:id', requirePermission('payroll:run:edit'), validate(idParamSchema, 'params'), validate(updatePayrollRunSchema, 'body'), payrollRunController.updatePayrollRun);
+router.put('/:id', requirePermission('payroll:update'), validate(idParamSchema, 'params'), validate(updatePayrollRunSchema, 'body'), payrollRunController.updatePayrollRun);
 
 // Calculate/Review operations - require 'payroll:run:edit'
-router.post('/:id/calculate', requirePermission('payroll:run:edit'), validate(idParamSchema, 'params'), validate(calculatePayrollSchema, 'body'), payrollRunController.calculatePayroll);
-router.post('/:id/mark-for-review', requirePermission('payroll:run:edit'), validate(idParamSchema, 'params'), payrollRunController.markPayrollRunForReview);
+router.post('/:id/calculate', requirePermission('payroll:update'), validate(idParamSchema, 'params'), validate(calculatePayrollSchema, 'body'), payrollRunController.calculatePayroll);
+router.post('/:id/mark-for-review', requirePermission('payroll:update'), validate(idParamSchema, 'params'), payrollRunController.markPayrollRunForReview);
 
 // Approve operations - require 'payroll:run:approve'
 router.post('/:id/approve', requirePermission('payroll:run:approve'), validate(idParamSchema, 'params'), payrollRunController.approvePayrollRun);

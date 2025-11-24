@@ -5,6 +5,7 @@ import {
   useRequestSwap,
 } from '@/hooks/schedulehub/useScheduleStats';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import type { ShiftSwapOffer } from '@/types/schedulehub';
 
 export default function ShiftSwapMarketplace() {
@@ -24,8 +25,11 @@ export default function ShiftSwapMarketplace() {
         // Additional data would come from a form modal
       });
       toast.success('Swap request submitted!');
-    } catch (error) {
-      toast.error('Failed to request swap');
+    } catch (error: any) {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to request swap',
+      });
     }
   };
 

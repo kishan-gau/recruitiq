@@ -1034,6 +1034,595 @@ class PayStructureRepository {
     
     return result.rows[0];
   }
+
+  // ==================== TEMPLATE COMPOSITION ====================
+
+  /**
+   * Create template inclusion (add included template to parent)
+   */
+  async createTemplateInclusion(inclusionData, organizationId, userId) {
+    const result = await this.query(
+      `INSERT INTO payroll.pay_structure_template_inclusion 
+      (organization_id, parent_template_id, included_template_code, 
+       inclusion_priority, inclusion_mode, version_constraint, pinned_version_id,
+       component_filter, effective_from, effective_to, inclusion_reason, tags, notes, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *`,
+      [
+        organizationId,
+        inclusionData.parentTemplateId,
+        inclusionData.includedTemplateCode,
+        inclusionData.inclusionPriority || 1,
+        inclusionData.inclusionMode || 'merge',
+        inclusionData.versionConstraint || 'latest',
+        inclusionData.pinnedVersionId || null,
+        inclusionData.componentFilter ? JSON.stringify(inclusionData.componentFilter) : null,
+        inclusionData.effectiveFrom || new Date(),
+        inclusionData.effectiveTo || null,
+        inclusionData.inclusionReason || null,
+        inclusionData.tags || null,
+        inclusionData.notes || null,
+        userId
+      ],
+      organizationId,
+      { operation: 'INSERT', table: 'payroll.pay_structure_template_inclusion', userId }
+    );
+    
+    // Invalidate resolution cache
+    await this.invalidateTemplateResolutionCache(inclusionData.parentTemplateId, organizationId);
+    
+    return result.rows[0];
+  }
+
+  /**
+   * Get template inclusions for a parent template
+   */
+  async findTemplateInclusions(parentTemplateId, organizationId, asOfDate = null) {
+    const effectiveDate = asOfDate || new Date();
+    
+    const result = await this.query(
+      `SELECT psti.*,
+              pst.template_name as included_template_name,
+              pst.version_string as included_version,
+              pst.status as included_status
+       FROM payroll.pay_structure_template_inclusion psti
+       LEFT JOIN payroll.pay_structure_template pst 
+         ON pst.template_code = psti.included_template_code
+         AND pst.organization_id = psti.organization_id
+         AND pst.status = 'active'
+         AND pst.deleted_at IS NULL
+       WHERE psti.parent_template_id = $1
+       AND psti.organization_id = $2
+       AND psti.deleted_at IS NULL
+       AND psti.is_active = true
+       AND psti.effective_from <= $3
+       AND (psti.effective_to IS NULL OR psti.effective_to >= $3)
+       ORDER BY psti.inclusion_priority ASC`,
+      [parentTemplateId, organizationId, effectiveDate],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template_inclusion' }
+    );
+    
+    return result.rows;
+  }
+
+  /**
+   * Update template inclusion
+   */
+  async updateTemplateInclusion(inclusionId, updates, organizationId, userId) {
+    const fields = [];
+    const values = [];
+    let paramCount = 0;
+
+    if (updates.inclusionPriority !== undefined) {
+      paramCount++;
+      fields.push(`inclusion_priority = $${paramCount}`);
+      values.push(updates.inclusionPriority);
+    }
+
+    if (updates.inclusionMode !== undefined) {
+      paramCount++;
+      fields.push(`inclusion_mode = $${paramCount}`);
+      values.push(updates.inclusionMode);
+    }
+
+    if (updates.versionConstraint !== undefined) {
+      paramCount++;
+      fields.push(`version_constraint = $${paramCount}`);
+      values.push(updates.versionConstraint);
+    }
+
+    if (updates.pinnedVersionId !== undefined) {
+      paramCount++;
+      fields.push(`pinned_version_id = $${paramCount}`);
+      values.push(updates.pinnedVersionId);
+    }
+
+    if (updates.componentFilter !== undefined) {
+      paramCount++;
+      fields.push(`component_filter = $${paramCount}`);
+      values.push(updates.componentFilter ? JSON.stringify(updates.componentFilter) : null);
+    }
+
+    if (updates.effectiveTo !== undefined) {
+      paramCount++;
+      fields.push(`effective_to = $${paramCount}`);
+      values.push(updates.effectiveTo);
+    }
+
+    if (updates.isActive !== undefined) {
+      paramCount++;
+      fields.push(`is_active = $${paramCount}`);
+      values.push(updates.isActive);
+    }
+
+    if (fields.length === 0) {
+      throw new Error('No fields to update');
+    }
+
+    paramCount++;
+    fields.push(`updated_at = NOW()`);
+    fields.push(`updated_by = $${paramCount}`);
+    values.push(userId);
+
+    paramCount++;
+    values.push(inclusionId);
+    const idParam = paramCount;
+
+    paramCount++;
+    values.push(organizationId);
+    const orgParam = paramCount;
+
+    const result = await this.query(
+      `UPDATE payroll.pay_structure_template_inclusion
+       SET ${fields.join(', ')}
+       WHERE id = $${idParam}
+       AND organization_id = $${orgParam}
+       AND deleted_at IS NULL
+       RETURNING *`,
+      values,
+      organizationId,
+      { operation: 'UPDATE', table: 'payroll.pay_structure_template_inclusion', userId }
+    );
+
+    if (result.rows[0]) {
+      // Invalidate resolution cache
+      await this.invalidateTemplateResolutionCache(result.rows[0].parent_template_id, organizationId);
+    }
+
+    return result.rows[0];
+  }
+
+  /**
+   * Delete template inclusion (soft delete)
+   */
+  async deleteTemplateInclusion(inclusionId, organizationId, userId) {
+    const result = await this.query(
+      `UPDATE payroll.pay_structure_template_inclusion
+       SET deleted_at = NOW(), deleted_by = $1
+       WHERE id = $2
+       AND organization_id = $3
+       AND deleted_at IS NULL
+       RETURNING parent_template_id`,
+      [userId, inclusionId, organizationId],
+      organizationId,
+      { operation: 'DELETE', table: 'payroll.pay_structure_template_inclusion', userId }
+    );
+    
+    if (result.rows[0]) {
+      // Invalidate resolution cache
+      await this.invalidateTemplateResolutionCache(result.rows[0].parent_template_id, organizationId);
+    }
+    
+    return result.rows[0];
+  }
+
+  /**
+   * Resolve template by code and version constraint
+   */
+  async resolveTemplateByConstraint(templateCode, versionConstraint, organizationId) {
+    let query = `
+      SELECT * FROM payroll.pay_structure_template
+      WHERE template_code = $1
+      AND organization_id = $2
+      AND status = 'active'
+      AND deleted_at IS NULL
+    `;
+
+    const values = [templateCode, organizationId];
+
+    // Handle version constraint
+    if (versionConstraint === 'latest' || !versionConstraint) {
+      query += ' ORDER BY version_major DESC, version_minor DESC, version_patch DESC LIMIT 1';
+    } else if (versionConstraint.startsWith('^')) {
+      // Caret: Compatible with version (^1.0.0 = any 1.x.x)
+      const majorVersion = parseInt(versionConstraint.substring(1).split('.')[0]);
+      query += ` AND version_major = $3 ORDER BY version_minor DESC, version_patch DESC LIMIT 1`;
+      values.push(majorVersion);
+    } else if (versionConstraint.startsWith('~')) {
+      // Tilde: Approximately equivalent (~ 1.2.0 = 1.2.x)
+      const parts = versionConstraint.substring(1).split('.');
+      const majorVersion = parseInt(parts[0]);
+      const minorVersion = parseInt(parts[1]);
+      query += ` AND version_major = $3 AND version_minor = $4 ORDER BY version_patch DESC LIMIT 1`;
+      values.push(majorVersion, minorVersion);
+    } else {
+      // Exact version match
+      const parts = versionConstraint.split('.');
+      const majorVersion = parseInt(parts[0]);
+      const minorVersion = parseInt(parts[1] || 0);
+      const patchVersion = parseInt(parts[2] || 0);
+      query += ` AND version_major = $3 AND version_minor = $4 AND version_patch = $5 LIMIT 1`;
+      values.push(majorVersion, minorVersion, patchVersion);
+    }
+
+    const result = await this.query(
+      query,
+      values,
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
+    );
+
+    return result.rows[0];
+  }
+
+  /**
+   * Check for circular dependencies in template inclusions
+   */
+  async detectCircularDependency(parentTemplateId, includedTemplateCode, organizationId, visitedCodes = new Set()) {
+    // Get parent template code
+    const parentResult = await this.query(
+      `SELECT template_code FROM payroll.pay_structure_template
+       WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
+      [parentTemplateId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
+    );
+
+    if (!parentResult.rows[0]) return false;
+
+    const parentCode = parentResult.rows[0].template_code;
+
+    // Check if we're trying to include the parent in itself
+    if (includedTemplateCode === parentCode) {
+      return true;
+    }
+
+    // Check if we've visited this code before (circular)
+    if (visitedCodes.has(includedTemplateCode)) {
+      return true;
+    }
+
+    // Add to visited set
+    visitedCodes.add(includedTemplateCode);
+
+    // Get all templates that the included template includes
+    const result = await this.query(
+      `SELECT psti.included_template_code
+       FROM payroll.pay_structure_template_inclusion psti
+       JOIN payroll.pay_structure_template pst 
+         ON pst.id = psti.parent_template_id
+       WHERE pst.template_code = $1
+       AND psti.organization_id = $2
+       AND psti.deleted_at IS NULL
+       AND psti.is_active = true`,
+      [includedTemplateCode, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template_inclusion' }
+    );
+
+    // Recursively check each inclusion
+    for (const row of result.rows) {
+      const hasCircular = await this.detectCircularDependency(
+        parentTemplateId,
+        row.included_template_code,
+        organizationId,
+        visitedCodes
+      );
+      
+      if (hasCircular) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Invalidate template resolution cache
+   */
+  async invalidateTemplateResolutionCache(templateId, organizationId) {
+    await this.query(
+      `UPDATE payroll.pay_structure_template_resolution_cache
+       SET is_valid = false
+       WHERE template_id = $1
+       AND organization_id = $2`,
+      [templateId, organizationId],
+      organizationId,
+      { operation: 'UPDATE', table: 'payroll.pay_structure_template_resolution_cache' }
+    );
+  }
+
+  /**
+   * Get template resolution from cache
+   */
+  async getTemplateResolutionCache(templateId, cacheKey, organizationId) {
+    const result = await this.query(
+      `SELECT * FROM payroll.pay_structure_template_resolution_cache
+       WHERE template_id = $1
+       AND cache_key = $2
+       AND organization_id = $3
+       AND is_valid = true
+       AND (expires_at IS NULL OR expires_at > NOW())`,
+      [templateId, cacheKey, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template_resolution_cache' }
+    );
+
+    return result.rows[0];
+  }
+
+  /**
+   * Get template components
+   */
+  async getTemplateComponents(templateId, organizationId) {
+    const result = await this.query(
+      `SELECT psc.*, pc.component_name, pc.component_category
+       FROM payroll.pay_structure_component psc
+       LEFT JOIN payroll.pay_component pc ON pc.component_code = psc.component_code
+       WHERE psc.template_id = $1 AND psc.organization_id = $2 AND psc.deleted_at IS NULL
+       ORDER BY psc.sequence_order`,
+      [templateId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_component' }
+    );
+    
+    return result.rows;
+  }
+
+  /**
+   * Find template inclusions
+   */
+  async findTemplateInclusions(templateId, organizationId) {
+    const result = await this.query(
+      `SELECT psti.*
+       FROM payroll.pay_structure_template_inclusion psti
+       WHERE psti.parent_template_id = $1 
+         AND psti.organization_id = $2 
+         AND psti.deleted_at IS NULL
+         AND psti.is_active = true
+       ORDER BY psti.inclusion_priority`,
+      [templateId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template_inclusion' }
+    );
+    
+    return result.rows;
+  }
+
+  /**
+   * Find template by code (latest active version)
+   */
+  async findTemplateByCode(templateCode, organizationId) {
+    const result = await this.query(
+      `SELECT pst.*
+       FROM payroll.pay_structure_template pst
+       WHERE pst.template_code = $1 
+         AND pst.organization_id = $2 
+         AND pst.status = 'active'
+         AND pst.deleted_at IS NULL
+       ORDER BY pst.version_major DESC, pst.version_minor DESC, pst.version_patch DESC
+       LIMIT 1`,
+      [templateCode, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
+    );
+    
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
+  }
+
+  /**
+   * Save template resolution to cache
+   */
+  async saveTemplateResolutionCache(cacheData, organizationId) {
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // Cache for 24 hours
+
+    const result = await this.query(
+      `INSERT INTO payroll.pay_structure_template_resolution_cache
+      (organization_id, template_id, resolved_template_ids, resolved_components,
+       resolution_depth, cache_key, expires_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (template_id, cache_key)
+      DO UPDATE SET 
+        resolved_template_ids = EXCLUDED.resolved_template_ids,
+        resolved_components = EXCLUDED.resolved_components,
+        resolution_depth = EXCLUDED.resolution_depth,
+        resolved_at = NOW(),
+        expires_at = EXCLUDED.expires_at,
+        is_valid = true
+      RETURNING *`,
+      [
+        organizationId,
+        cacheData.templateId,
+        cacheData.resolvedTemplateIds,
+        JSON.stringify(cacheData.resolvedComponents),
+        cacheData.resolutionDepth,
+        cacheData.cacheKey,
+        expiresAt
+      ],
+      organizationId,
+      { operation: 'INSERT', table: 'payroll.pay_structure_template_resolution_cache' }
+    );
+
+    return result.rows[0];
+  }
+
+  /**
+   * Get template components
+   */
+  async getTemplateComponents(templateId, organizationId) {
+    const result = await this.query(
+      `SELECT psc.*, pc.component_name, pc.component_category
+       FROM payroll.pay_structure_component psc
+       LEFT JOIN payroll.pay_component pc ON pc.component_code = psc.component_code
+       WHERE psc.template_id = $1 AND psc.organization_id = $2 AND psc.deleted_at IS NULL
+       ORDER BY psc.sequence_order`,
+      [templateId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_component' }
+    );
+    
+    return result.rows;
+  }
+
+  /**
+   * Find template inclusions
+   */
+  async findTemplateInclusions(templateId, organizationId) {
+    const result = await this.query(
+      `SELECT psti.*
+       FROM payroll.pay_structure_template_inclusion psti
+       WHERE psti.parent_template_id = $1 
+         AND psti.organization_id = $2 
+         AND psti.deleted_at IS NULL
+         AND psti.is_active = true
+       ORDER BY psti.inclusion_priority`,
+      [templateId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template_inclusion' }
+    );
+    
+    return result.rows;
+  }
+
+  /**
+   * Find template by code (latest active version)
+   */
+  async findTemplateByCode(templateCode, organizationId) {
+    const result = await this.query(
+      `SELECT pst.*
+       FROM payroll.pay_structure_template pst
+       WHERE pst.template_code = $1 
+         AND pst.organization_id = $2 
+         AND pst.status = 'active'
+         AND pst.deleted_at IS NULL
+       ORDER BY pst.version_major DESC, pst.version_minor DESC, pst.version_patch DESC
+       LIMIT 1`,
+      [templateCode, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
+    );
+    
+    return mapPayStructureTemplateDbToApi(result.rows[0]);
+  }
+
+  /**
+   * Audit template inclusion change
+   */
+  async auditTemplateInclusionChange(auditData, organizationId, userId) {
+    await this.query(
+      `INSERT INTO payroll.pay_structure_template_inclusion_audit
+      (organization_id, inclusion_id, parent_template_id, included_template_code,
+       change_type, old_values, new_values, change_reason, changed_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        organizationId,
+        auditData.inclusionId,
+        auditData.parentTemplateId,
+        auditData.includedTemplateCode,
+        auditData.changeType,
+        auditData.oldValues ? JSON.stringify(auditData.oldValues) : null,
+        auditData.newValues ? JSON.stringify(auditData.newValues) : null,
+        auditData.changeReason,
+        userId
+      ],
+      organizationId,
+      { operation: 'INSERT', table: 'payroll.pay_structure_template_inclusion_audit', userId }
+    );
+  }
+
+  // ==================== TEMPLATE COMPOSITION METHODS ====================
+
+  /**
+   * Find all pay structures (including templates)
+   * Used by service layer for listing all structures
+   */
+  async findAll(organizationId, filters = {}) {
+    const conditions = ['organization_id = $1', 'deleted_at IS NULL'];
+    const values = [organizationId];
+    let paramCount = 1;
+
+    if (filters.isTemplate !== undefined) {
+      paramCount++;
+      conditions.push(`is_template = $${paramCount}`);
+      values.push(filters.isTemplate);
+    }
+
+    if (filters.status) {
+      paramCount++;
+      conditions.push(`status = $${paramCount}`);
+      values.push(filters.status);
+    }
+
+    const result = await this.query(
+      `SELECT * FROM payroll.pay_structure_template
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY created_at DESC`,
+      values,
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
+    );
+
+    return result.rows;
+  }
+
+  /**
+   * Find all templates (convenience method for getAllTemplates)
+   */
+  async findTemplates(organizationId, filters = {}) {
+    return this.findAll(organizationId, { ...filters, isTemplate: true });
+  }
+
+  /**
+   * Get template inclusions (parent-child relationships)
+   */
+  async getTemplateInclusions(templateId, organizationId) {
+    const result = await this.query(
+      `SELECT psti.*, 
+              included.template_code as included_template_code,
+              included.template_name as included_template_name
+       FROM payroll.pay_structure_template_inclusion psti
+       JOIN payroll.pay_structure_template included 
+         ON psti.included_template_id = included.id
+       WHERE psti.parent_template_id = $1
+         AND psti.organization_id = $2
+         AND psti.deleted_at IS NULL
+       ORDER BY psti.inclusion_order ASC`,
+      [templateId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template_inclusion' }
+    );
+
+    return result.rows;
+  }
+
+  /**
+   * Find template by ID (used for inheritance resolution)
+   */
+  async findById(templateId, organizationId) {
+    const result = await this.query(
+      `SELECT * FROM payroll.pay_structure_template
+       WHERE id = $1
+         AND organization_id = $2
+         AND deleted_at IS NULL`,
+      [templateId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
+    );
+
+    return result.rows[0] || null;
+  }
 }
 
 export default PayStructureRepository;

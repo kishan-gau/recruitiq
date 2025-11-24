@@ -5,6 +5,7 @@
 import express from 'express';
 import compensationController from '../controllers/compensationController.js';
 import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -45,20 +46,77 @@ const idParamSchema = Joi.object({
 });
 
 // Routes
-router.post('/', validate(createCompensationSchema, 'body'), compensationController.createCompensation);
+router.post(
+  '/',
+  requirePermission('compensation:create'),
+  validate(createCompensationSchema, 'body'),
+  compensationController.createCompensation
+);
 
 // New API client compatible routes (employee singular)
-router.get('/employee/:employeeId/current', validate(employeeIdParamSchema, 'params'), compensationController.getEmployeeCompensation);
-router.get('/employee/:employeeId/history', validate(employeeIdParamSchema, 'params'), compensationController.getCompensationHistory);
-router.get('/employee/:employeeId/summary', validate(employeeIdParamSchema, 'params'), compensationController.getCompensationSummary);
-router.get('/employee/:employeeId', validate(employeeIdParamSchema, 'params'), compensationController.getEmployeeCompensation);
+router.get(
+  '/employee/:employeeId/current',
+  requirePermission('compensation:read'),
+  validate(employeeIdParamSchema, 'params'),
+  compensationController.getEmployeeCompensation
+);
+
+router.get(
+  '/employee/:employeeId/history',
+  requirePermission('compensation:read'),
+  validate(employeeIdParamSchema, 'params'),
+  compensationController.getCompensationHistory
+);
+
+router.get(
+  '/employee/:employeeId/summary',
+  requirePermission('compensation:read'),
+  validate(employeeIdParamSchema, 'params'),
+  compensationController.getCompensationSummary
+);
+
+router.get(
+  '/employee/:employeeId',
+  requirePermission('compensation:read'),
+  validate(employeeIdParamSchema, 'params'),
+  compensationController.getEmployeeCompensation
+);
 
 // Legacy routes (employees plural) - kept for backwards compatibility
-router.get('/employees/:employeeId/compensation', validate(employeeIdParamSchema, 'params'), compensationController.getEmployeeCompensation);
-router.get('/employees/:employeeId/compensation/history', validate(employeeIdParamSchema, 'params'), compensationController.getCompensationHistory);
+router.get(
+  '/employees/:employeeId/compensation',
+  requirePermission('compensation:read'),
+  validate(employeeIdParamSchema, 'params'),
+  compensationController.getEmployeeCompensation
+);
 
-router.get('/:id', validate(idParamSchema, 'params'), compensationController.getCompensationById);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updateCompensationSchema, 'body'), compensationController.updateCompensation);
-router.delete('/:id', validate(idParamSchema, 'params'), compensationController.deleteCompensation);
+router.get(
+  '/employees/:employeeId/compensation/history',
+  requirePermission('compensation:read'),
+  validate(employeeIdParamSchema, 'params'),
+  compensationController.getCompensationHistory
+);
+
+router.get(
+  '/:id',
+  requirePermission('compensation:read'),
+  validate(idParamSchema, 'params'),
+  compensationController.getCompensationById
+);
+
+router.put(
+  '/:id',
+  requirePermission('compensation:update'),
+  validate(idParamSchema, 'params'),
+  validate(updateCompensationSchema, 'body'),
+  compensationController.updateCompensation
+);
+
+router.delete(
+  '/:id',
+  requirePermission('compensation:delete'),
+  validate(idParamSchema, 'params'),
+  compensationController.deleteCompensation
+);
 
 export default router;

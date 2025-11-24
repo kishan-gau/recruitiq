@@ -189,54 +189,68 @@ if (Test-Path $deploymentSchemaPath) {
 
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "[*] Running RBAC migrations..." -ForegroundColor Cyan
+Write-Host "[*] RBAC system already included in schema.sql" -ForegroundColor Green
 Write-Host "================================================================" -ForegroundColor Cyan
-
-Write-Host "[*] Step 1/4: Enhancing RBAC system tables..." -ForegroundColor Yellow
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f migrations\20251122000001_enhance_rbac_system.sql
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error enhancing RBAC system" -ForegroundColor Red
-    exit 1
-}
-Write-Host "[OK] RBAC system enhanced" -ForegroundColor Green
-
-Write-Host "[*] Step 2/4: Seeding RBAC permissions..." -ForegroundColor Yellow
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f migrations\20251122000002_seed_rbac_permissions.sql
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error seeding RBAC permissions" -ForegroundColor Red
-    exit 1
-}
-Write-Host "[OK] RBAC permissions seeded" -ForegroundColor Green
-
-Write-Host "[*] Step 3/4: Seeding system roles and role-permission mappings..." -ForegroundColor Yellow
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f migrations\20251122000003_seed_roles_permissions.sql
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error seeding roles and permissions" -ForegroundColor Red
-    exit 1
-}
-Write-Host "[OK] System roles and permissions seeded" -ForegroundColor Green
-
-Write-Host "[*] Step 4/4: Migrating product_roles to user_roles..." -ForegroundColor Yellow
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f migrations\20251122000004_migrate_product_roles_to_user_roles.sql
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error migrating product roles" -ForegroundColor Red
-    exit 1
-}
-Write-Host "[OK] Product roles migrated to RBAC system" -ForegroundColor Green
+Write-Host "[OK] RBAC system created with tenant-level roles and permissions" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "[*] Seeding legacy permissions and roles (backward compatibility)..." -ForegroundColor Cyan
+Write-Host "[*] Seeding RBAC platform roles and permissions..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-permissions-roles.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-rbac-platform.sql
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error seeding legacy permissions" -ForegroundColor Red
+    Write-Host "[ERROR] Error seeding RBAC platform" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding product permissions..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+Write-Host "[*] Seeding Nexus HRIS permissions..." -ForegroundColor Yellow
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-rbac-nexus-permissions.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding Nexus permissions" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "[*] Seeding PayLinQ payroll permissions..." -ForegroundColor Yellow
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-rbac-paylinq-permissions.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding PayLinQ permissions" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "[*] Seeding ScheduleHub scheduling permissions..." -ForegroundColor Yellow
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-rbac-schedulehub-permissions.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding ScheduleHub permissions" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "[*] Seeding RecruitIQ ATS permissions..." -ForegroundColor Yellow
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-rbac-recruitiq-permissions.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding RecruitIQ permissions" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding platform admin users..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-admin-users.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding admin users" -ForegroundColor Red
     exit 1
 }
 
@@ -245,7 +259,7 @@ Write-Host "================================================================" -F
 Write-Host "[*] Seeding products and features..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-products.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-products.sql
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error seeding products" -ForegroundColor Red
@@ -282,7 +296,7 @@ Write-Host "================================================================" -F
 Write-Host "[*] Creating formula template library..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f formula-templates-seed.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-formula-templates.sql
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error creating formula templates" -ForegroundColor Red
@@ -294,10 +308,34 @@ Write-Host "================================================================" -F
 Write-Host "[*] Creating test organization and tenant users..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-test-tenant.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-test-tenant.sql
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error creating test tenant" -ForegroundColor Red
+    Write-Host "[ERROR] Error creating test organization" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding default tenant roles (requires test org)..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-rbac-tenant-roles.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding tenant roles" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Assigning roles to test users..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-test-user-roles.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error assigning user roles" -ForegroundColor Red
     exit 1
 }
 
@@ -306,7 +344,7 @@ Write-Host "================================================================" -F
 Write-Host "[*] Seeding Suriname tax rules..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-suriname-tax-rules.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-suriname-tax-rules.sql
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error seeding Suriname tax rules" -ForegroundColor Red
@@ -318,7 +356,7 @@ Write-Host "================================================================" -F
 Write-Host "[*] Seeding payroll run types..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-payroll-run-types.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-payroll-run-types.sql
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error seeding payroll run types" -ForegroundColor Red
@@ -330,7 +368,7 @@ Write-Host "================================================================" -F
 Write-Host "[*] Seeding worker type templates..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-worker-types.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-worker-types.sql
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error seeding worker types" -ForegroundColor Red
@@ -342,10 +380,22 @@ Write-Host "================================================================" -F
 Write-Host "[*] Seeding tax-free allowances..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seed-allowances.sql
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-allowances.sql
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error seeding allowances" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding forfaitair benefits component library..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-forfaitair-components.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding forfaitair components" -ForegroundColor Red
     exit 1
 }
 
@@ -404,13 +454,18 @@ Write-Host "   - Portal Platform: 11 features (branding, SSO, analytics)" -Foreg
 Write-Host "   - Tier-based access control (Starter/Professional/Enterprise)" -ForegroundColor Gray
 Write-Host "   - Usage tracking & limits for metered features" -ForegroundColor Gray
 Write-Host ""
-Write-Host "[INFO] Enhanced RBAC System: Organization-scoped dynamic roles" -ForegroundColor Cyan
-Write-Host "   - Global system roles: Super Admin, Org Owner, Org Admin, Manager, User, Viewer" -ForegroundColor Gray
-Write-Host "   - Product-specific roles: Payroll Admin/Processor, HR Admin/Manager, Recruiter, Scheduler" -ForegroundColor Gray
-Write-Host "   - 150+ granular permissions across all products" -ForegroundColor Gray
-Write-Host "   - Dynamic user_roles table with product context" -ForegroundColor Gray
-Write-Host "   - Full audit trail for role changes" -ForegroundColor Gray
-Write-Host "   - Backward compatible with legacy product_roles" -ForegroundColor Gray
+Write-Host "[INFO] Enhanced RBAC System: Tenant-level organization-scoped roles" -ForegroundColor Cyan
+Write-Host "   - Platform roles (6): super_admin, platform_admin, license_admin, etc." -ForegroundColor Gray
+Write-Host "   - Tenant roles (9): org_admin, hr_manager, payroll_admin, etc." -ForegroundColor Gray
+Write-Host "   - Product permissions seeded:" -ForegroundColor Gray
+Write-Host "     * Nexus HRIS: 60 permissions across 11 categories" -ForegroundColor Gray
+Write-Host "     * PayLinQ Payroll: 59 permissions across 11 categories" -ForegroundColor Gray
+Write-Host "     * ScheduleHub: 48 permissions across 10 categories" -ForegroundColor Gray
+Write-Host "     * RecruitIQ ATS: 47 permissions across 10 categories" -ForegroundColor Gray
+Write-Host "   - Custom roles: Organizations can create their own roles" -ForegroundColor Gray
+Write-Host "   - Role-permission mapping with audit trail" -ForegroundColor Gray
+Write-Host "   - User-role assignments per organization" -ForegroundColor Gray
+Write-Host "   - Each tenant app manages its own RBAC via Settings page" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[INFO] ScheduleHub: 16 scheduling tables created" -ForegroundColor Cyan
 Write-Host "   - Worker & role management" -ForegroundColor Gray
@@ -450,6 +505,17 @@ Write-Host "   - Holiday allowance: SRD 10,016/year (Article 10i)" -ForegroundCo
 Write-Host "   - Bonus/gratuity: SRD 10,016/year (Article 10j)" -ForegroundColor Gray
 Write-Host "   - Monthly tax-free sum: SRD 9,000/month (Article 13)" -ForegroundColor Gray
 Write-Host "   - Yearly usage tracked per employee" -ForegroundColor Gray
+Write-Host ""
+Write-Host "[INFO] Forfaitair Benefits Component Library: 21 global components seeded" -ForegroundColor Cyan
+Write-Host "   - Company Car Benefits: 2% standard, 3% luxury, usage-based" -ForegroundColor Gray
+Write-Host "   - Housing Benefits: 7.5% standard, progressive rates, fixed allowance" -ForegroundColor Gray
+Write-Host "   - Meal Benefits: Hot meals, cold meals, full board" -ForegroundColor Gray
+Write-Host "   - Medical Coverage: Health insurance, comprehensive plans" -ForegroundColor Gray
+Write-Host "   - Transport Benefits: Fuel allowance, public transport subsidy" -ForegroundColor Gray
+Write-Host "   - Communication: Phone/mobile and internet allowances" -ForegroundColor Gray
+Write-Host "   - Clothing: Uniform/professional attire allowance" -ForegroundColor Gray
+Write-Host "   - Tax Deductions: 25% forfaitair deductible costs" -ForegroundColor Gray
+Write-Host "   - Available to ALL organizations (global library)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "[WARNING] IMPORTANT:" -ForegroundColor Yellow
 Write-Host "   1. Change default passwords immediately" -ForegroundColor Yellow

@@ -3,7 +3,8 @@ import { Briefcase, Plus, Edit, Trash2, CheckCircle, XCircle, ArrowLeft } from '
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { schedulehubApi } from '@/lib/api/schedulehub';
-import { toast } from 'react-hot-toast';
+import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 interface Role {
   id: string;
@@ -34,6 +35,7 @@ export default function RolesList() {
   });
 
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const { data: rolesData, isLoading } = useQuery({
     queryKey: ['roles'],
@@ -48,7 +50,10 @@ export default function RolesList() {
       handleCloseModal();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to create shift role');
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to create shift role',
+      });
     },
   });
 
@@ -61,7 +66,10 @@ export default function RolesList() {
       handleCloseModal();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to update shift role');
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to update shift role',
+      });
     },
   });
 

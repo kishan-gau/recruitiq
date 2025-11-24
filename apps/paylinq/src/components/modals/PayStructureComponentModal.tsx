@@ -348,7 +348,7 @@ export default function PayStructureComponentModal({
   };
 
   const handleSelectExistingComponent = (componentCode: string) => {
-    const selectedComponent = availableComponents?.find((c: any) => c.code === componentCode) as any;
+    const selectedComponent = availableComponents?.find((c: any) => c.componentCode === componentCode) as any;
     if (selectedComponent) {
       // Map calculation type from PayComponent to PayStructureComponent format
       let mappedCalculationType: 'fixed' | 'percentage' | 'formula' | 'hourly_rate' | 'tiered' = 'fixed';
@@ -360,13 +360,13 @@ export default function PayStructureComponentModal({
       
       setFormData({
         ...formData,
-        componentCode: selectedComponent.code,
-        componentName: selectedComponent.name,
-        componentType: selectedComponent.type === 'earning' ? 'earnings' : 'deductions',
+        componentCode: selectedComponent.componentCode,
+        componentName: selectedComponent.componentName,
+        componentType: selectedComponent.componentType === 'earning' ? 'earnings' : 'deductions',
         calculationType: mappedCalculationType,
-        fixedAmount: selectedComponent.defaultValue?.toString() || '',
-        percentageValue: selectedComponent.defaultValue?.toString() || '',
-        formula: selectedComponent.formula || '',
+        fixedAmount: selectedComponent.defaultAmount?.toString() || selectedComponent.fixedAmount?.toString() || '',
+        percentageValue: selectedComponent.percentageRate ? (selectedComponent.percentageRate * 100).toString() : '',
+        formula: selectedComponent.formula || selectedComponent.formulaExpression || '',
         // Reset override fields when copying
         allowWorkerOverride: false,
         overrideAllowedFields: [],
@@ -472,8 +472,8 @@ export default function PayStructureComponentModal({
                             <option value="">Loading...</option>
                           ) : availableComponents && availableComponents.length > 0 ? (
                             availableComponents.map((comp: any) => (
-                              <option key={comp.id} value={comp.code}>
-                                {comp.name} ({comp.type})
+                              <option key={comp.id} value={comp.componentCode}>
+                                {comp.componentName} ({comp.componentType})
                               </option>
                             ))
                           ) : (

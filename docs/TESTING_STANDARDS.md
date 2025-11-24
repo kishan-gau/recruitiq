@@ -8,17 +8,429 @@
 
 ## Table of Contents
 
-1. [Testing Philosophy](#testing-philosophy)
-2. [Test Coverage Requirements](#test-coverage-requirements)
-3. [Test File Organization](#test-file-organization)
-4. [Import Path Standards](#import-path-standards)
-5. [Unit Testing Standards](#unit-testing-standards)
-6. [Integration Testing Standards](#integration-testing-standards)
-7. [E2E Testing Standards](#e2e-testing-standards)
-8. [Test Structure](#test-structure)
-9. [Mocking Standards](#mocking-standards)
-10. [Test Data Management](#test-data-management)
-11. [Refactoring Resilience](#refactoring-resilience)
+1. [AI-Assisted Testing Strategy](#ai-assisted-testing-strategy)
+2. [Testing Philosophy](#testing-philosophy)
+3. [Test Coverage Requirements](#test-coverage-requirements)
+4. [Test File Organization](#test-file-organization)
+5. [Import Path Standards](#import-path-standards)
+6. [Unit Testing Standards](#unit-testing-standards)
+7. [Integration Testing Standards](#integration-testing-standards)
+8. [E2E Testing Standards](#e2e-testing-standards)
+9. [Test Structure](#test-structure)
+10. [Mocking Standards](#mocking-standards)
+11. [Test Data Management](#test-data-management)
+12. [Refactoring Resilience](#refactoring-resilience)
+
+---
+
+## AI-Assisted Testing Strategy
+
+### The Challenge: Writing Accurate Tests Without Trial-and-Error
+
+When AI assistants write tests without proper verification, common failures include:
+- ❌ `TypeError: service.methodName is not a function` - Assumed method names don't exist
+- ❌ Incorrect parameter order or count
+- ❌ Wrong data format expectations (snake_case vs camelCase)
+- ❌ Testing singleton exports that can't be mocked
+- ❌ Missing DTO transformations in assertions
+
+**Root Cause:** Assuming implementation details instead of verifying actual source code.
+
+### The Solution: Systematic Pre-Implementation Verification
+
+**MANDATORY WORKFLOW** for AI-assisted test writing:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Step 1: Read Source File                            │
+│ ✓ Get complete understanding of service API         │
+└──────────────────┬──────────────────────────────────┘
+                   ↓
+┌─────────────────────────────────────────────────────┐
+│ Step 2: Extract Method Signatures                   │
+│ ✓ grep "async \w+\(" ServiceName.js                │
+│ ✓ Document ACTUAL method names                      │
+│ ✓ Document parameter order and types                │
+└──────────────────┬──────────────────────────────────┘
+                   ↓
+┌─────────────────────────────────────────────────────┐
+│ Step 3: Verify Export Pattern                       │
+│ ✓ Check if service exports class or singleton       │
+│ ✓ STOP if singleton - refactor first                │
+└──────────────────┬──────────────────────────────────┘
+                   ↓
+┌─────────────────────────────────────────────────────┐
+│ Step 4: Check DTO Usage                             │
+│ ✓ grep "from '../dto" ServiceName.js               │
+│ ✓ If found: Plan for DB→API transformation tests    │
+└──────────────────┬──────────────────────────────────┘
+                   ↓
+┌─────────────────────────────────────────────────────┐
+│ Step 5: Document Findings                           │
+│ ✓ List all verified method names                    │
+│ ✓ Document parameter signatures                     │
+│ ✓ Note DTO usage                                    │
+│ ✓ Confirm export pattern                            │
+└──────────────────┬──────────────────────────────────┘
+                   ↓
+┌─────────────────────────────────────────────────────┐
+│ Step 6: Write Tests (Only Now!)                     │
+│ ✓ Use EXACT method names from source                │
+│ ✓ Use EXACT parameter order                         │
+│ ✓ Mock with correct data format (DB if DTO used)    │
+│ ✓ Assert with correct format (API if DTO used)      │
+└─────────────────────────────────────────────────────┘
+```
+
+### Step-by-Step Verification Process
+
+#### Step 1: Read the Complete Source File
+
+```powershell
+# PowerShell command to read source
+Get-Content src/products/paylinq/services/AllowanceService.js
+```
+
+**Why:** Understanding the full context prevents assumptions about:
+- Method naming patterns
+- Parameter conventions
+- Return value structures
+- Dependencies and imports
+
+#### Step 2: Extract Method Signatures
+
+```powershell
+# Extract all async method signatures
+Select-String "async \w+\(" src/products/paylinq/services/AllowanceService.js
+
+# Example output reveals ACTUAL methods:
+# async calculateTaxFreeAllowance(grossPay, payDate, payPeriod, organizationId)
+# async getAvailableHolidayAllowance(employeeId, year, organizationId)
+# async getAllAllowances(organizationId)  ← NOT list()!
+```
+
+**Document findings:**
+```javascript
+/**
+ * VERIFIED METHODS (from source code inspection):
+ * 
+ * 1. calculateTaxFreeAllowance(grossPay, payDate, payPeriod, organizationId)
+ *    - Returns: number (calculated allowance)
+ *    - DTO: No (returns calculated value)
+ * 
+ * 2. getAvailableHolidayAllowance(employeeId, year, organizationId)
+ *    - Returns: object { available, used, total }
+ *    - DTO: No (returns plain object)
+ * 
+ * 3. getAllAllowances(organizationId)
+ *    - Returns: array of allowance objects
+ *    - DTO: YES (uses mapAllowancesDbToApi)
+ */
+```
+
+#### Step 3: Verify Export Pattern
+
+```javascript
+// Read bottom of source file to check export
+
+// ✅ CORRECT: Class export (testable)
+export default AllowanceService;
+
+// ❌ WRONG: Singleton export (STOP - refactor required!)
+export default new AllowanceService();
+```
+
+**If singleton found:**
+1. **STOP** - Do not proceed with test writing
+2. **REFACTOR** service to export class:
+   ```javascript
+   // Before: export default new AllowanceService();
+   // After:  export default AllowanceService;
+   ```
+3. **Update constructor** to accept dependencies:
+   ```javascript
+   constructor(repository = null) {
+     this.repository = repository || new AllowanceRepository();
+   }
+   ```
+4. **VERIFY** refactoring doesn't break existing code
+5. **THEN** proceed to Step 4
+
+#### Step 4: Check DTO Usage
+
+```powershell
+# Search for DTO imports in service
+Select-String "from '../dto" src/products/paylinq/services/AllowanceService.js
+```
+
+**If DTOs found:**
+```javascript
+// Service imports DTO mappers
+import { mapAllowanceDbToApi, mapAllowancesDbToApi } from '../dto/allowanceDto.js';
+
+// This means:
+// 1. Repository returns snake_case (DB format)
+// 2. Service transforms to camelCase (API format)
+// 3. Tests must mock DB format, expect API format
+```
+
+**Create helper for test data:**
+```javascript
+// Helper to generate DB format data (snake_case)
+const createDbAllowance = (overrides = {}) => ({
+  id: 'allow-123',
+  organization_id: 'org-456',        // snake_case
+  allowance_type: 'housing',         // snake_case
+  allowance_amount: 500.00,          // snake_case
+  is_taxable: false,                 // snake_case
+  created_at: new Date(),
+  ...overrides
+});
+```
+
+#### Step 5: Document Findings
+
+Before writing tests, create a summary:
+
+```javascript
+/**
+ * AllowanceService Test Plan
+ * 
+ * EXPORT PATTERN: ✅ Class export (testable)
+ * DTO USAGE: ✅ Uses allowanceDto.js
+ * 
+ * VERIFIED METHODS:
+ * 1. calculateTaxFreeAllowance(grossPay, payDate, payPeriod, organizationId)
+ *    - Parameters: number, Date, string, string
+ *    - Returns: number
+ *    - DTO: No
+ * 
+ * 2. getAllAllowances(organizationId)
+ *    - Parameters: string
+ *    - Returns: array of objects
+ *    - DTO: Yes (mapAllowancesDbToApi)
+ *    - Mock format: snake_case
+ *    - Expected format: camelCase
+ * 
+ * 3. getById(id, organizationId)
+ *    - Parameters: string, string
+ *    - Returns: object or null
+ *    - DTO: Yes (mapAllowanceDbToApi)
+ * 
+ * DEPENDENCIES:
+ * - AllowanceRepository (inject mock)
+ * - No other service dependencies
+ */
+```
+
+#### Step 6: Write Tests with Verified Information
+
+```javascript
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import AllowanceService from '../../../../src/products/paylinq/services/AllowanceService.js';
+import { mapAllowanceDbToApi, mapAllowancesDbToApi } from '../../../../src/products/paylinq/dto/allowanceDto.js';
+
+describe('AllowanceService', () => {
+  let service;
+  let mockRepository;
+
+  // Helper using VERIFIED DB format (snake_case)
+  const createDbAllowance = (overrides = {}) => ({
+    id: 'allow-123',
+    organization_id: 'org-456',
+    allowance_type: 'housing',
+    allowance_amount: 500.00,
+    is_taxable: false,
+    created_at: new Date(),
+    ...overrides
+  });
+
+  beforeEach(() => {
+    mockRepository = {
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      create: jest.fn()
+    };
+    service = new AllowanceService(mockRepository);
+  });
+
+  describe('getAllAllowances', () => {  // ✅ VERIFIED method name
+    it('should return DTO-transformed allowances', async () => {
+      const orgId = 'org-456';
+      
+      // Arrange: Mock returns DB format (snake_case)
+      const dbAllowances = [
+        createDbAllowance({ allowance_type: 'housing' }),
+        createDbAllowance({ allowance_type: 'transport' })
+      ];
+      mockRepository.findAll.mockResolvedValue(dbAllowances);
+
+      // Act: Call VERIFIED method name
+      const result = await service.getAllAllowances(orgId);  // ✅ Exact name
+
+      // Assert: Expect DTO-transformed result (camelCase)
+      expect(result).toEqual(mapAllowancesDbToApi(dbAllowances));
+      expect(result[0].allowanceType).toBe('housing');  // ✅ camelCase
+      expect(result[0].allowance_type).toBeUndefined(); // ✅ DB field gone
+    });
+  });
+
+  describe('calculateTaxFreeAllowance', () => {  // ✅ VERIFIED method name
+    it('should calculate allowance correctly', async () => {
+      const grossPay = 5000;
+      const payDate = new Date('2025-01-15');
+      const payPeriod = 'monthly';
+      const orgId = 'org-456';
+
+      // Act: Use VERIFIED parameter order
+      const result = await service.calculateTaxFreeAllowance(
+        grossPay,    // ✅ Correct order
+        payDate,     // ✅ Correct order
+        payPeriod,   // ✅ Correct order
+        orgId        // ✅ Correct order
+      );
+
+      // Assert: Expect number (no DTO transformation)
+      expect(typeof result).toBe('number');
+    });
+  });
+});
+```
+
+### Common Anti-Patterns to Avoid
+
+#### ❌ Anti-Pattern 1: Assuming Generic Method Names
+
+```javascript
+// ❌ WRONG: Assumes generic CRUD pattern
+describe('getAllowances', () => {
+  it('should list allowances', async () => {
+    const result = await service.list(orgId);  // Method doesn't exist!
+  });
+});
+
+// ✅ CORRECT: Uses verified method name
+describe('getAllAllowances', () => {  // From source verification
+  it('should return all allowances', async () => {
+    const result = await service.getAllAllowances(orgId);
+  });
+});
+```
+
+#### ❌ Anti-Pattern 2: Ignoring DTO Transformations
+
+```javascript
+// ❌ WRONG: Expects DB format from service
+it('should return allowance', async () => {
+  const dbAllowance = { allowance_type: 'housing' };  // snake_case
+  mockRepository.findById.mockResolvedValue(dbAllowance);
+  
+  const result = await service.getById(id, orgId);
+  expect(result.allowance_type).toBe('housing');  // ❌ Won't exist!
+});
+
+// ✅ CORRECT: Expects API format after DTO transformation
+it('should return DTO-transformed allowance', async () => {
+  const dbAllowance = { allowance_type: 'housing' };  // Mock DB format
+  mockRepository.findById.mockResolvedValue(dbAllowance);
+  
+  const result = await service.getById(id, orgId);
+  expect(result.allowanceType).toBe('housing');  // ✅ camelCase (API format)
+});
+```
+
+#### ❌ Anti-Pattern 3: Testing Singleton Exports
+
+```javascript
+// ❌ WRONG: Cannot inject mock into singleton
+import service from '../../../../src/services/AllowanceService.js';  // Singleton!
+
+describe('AllowanceService', () => {
+  it('should create allowance', async () => {
+    // How do we mock the repository? We can't!
+    const result = await service.create(data, orgId);
+  });
+});
+
+// ✅ CORRECT: Inject mock into class instance
+import AllowanceService from '../../../../src/services/AllowanceService.js';
+
+describe('AllowanceService', () => {
+  let service, mockRepository;
+  
+  beforeEach(() => {
+    mockRepository = { create: jest.fn() };
+    service = new AllowanceService(mockRepository);  // ✅ DI works!
+  });
+});
+```
+
+### Verification Checklist
+
+Before submitting tests, verify:
+
+- [ ] ✅ Read complete source file
+- [ ] ✅ Extracted all method signatures with grep
+- [ ] ✅ Documented verified method names
+- [ ] ✅ Checked export pattern (class vs singleton)
+- [ ] ✅ Verified DTO usage (searched for DTO imports)
+- [ ] ✅ Created test data helpers with correct format
+- [ ] ✅ All test method calls match source exactly
+- [ ] ✅ All parameter orders match source
+- [ ] ✅ Mock data uses DB format (snake_case) if DTOs used
+- [ ] ✅ Assertions expect API format (camelCase) if DTOs used
+- [ ] ✅ No assumed method names (all verified)
+- [ ] ✅ Tests pass on first run (no trial-and-error)
+
+### Success Metrics
+
+**Acceptance Criteria for AI-Written Tests:**
+- ✅ **ZERO** `TypeError: service.methodName is not a function` errors
+- ✅ **ZERO** incorrect parameter order errors
+- ✅ **ZERO** data format mismatches (snake_case vs camelCase)
+- ✅ All tests pass on **first execution**
+- ✅ No refactoring needed after initial test run
+
+### Why This Process Works
+
+1. **Evidence-Based Testing**: Tests based on actual implementation, not assumptions
+2. **Single Source of Truth**: Source code is the authority
+3. **Prevents Waste**: No trial-and-error cycles
+4. **Industry Standard**: Follows TDD/BDD best practices
+5. **AI-Friendly**: Systematic process that AI can follow reliably
+6. **Human-Verifiable**: Clear audit trail of verification steps
+
+### Example: Complete Verification Flow
+
+```powershell
+# Step 1: Read source
+Get-Content backend/src/products/paylinq/services/PayrollRunTypeService.js
+
+# Step 2: Extract methods
+Select-String "async \w+\(" backend/src/products/paylinq/services/PayrollRunTypeService.js
+
+# Output shows:
+# async create(data, organizationId, userId)
+# async getByCode(typeCode, organizationId)
+# async getById(id, organizationId)
+# async list(organizationId, filters)
+# async update(id, data, organizationId, userId)
+# async resolveAllowedComponents(typeCode, organizationId)
+
+# Step 3: Check export (end of file shows)
+# export default PayrollRunTypeService;  ✅ Class export
+
+# Step 4: Check DTOs
+Select-String "from '../dto" backend/src/products/paylinq/services/PayrollRunTypeService.js
+# Found: import { mapRunTypeDbToApi, ... } from '../dto/payrollRunTypeDto.js'
+
+# Step 5: Document findings (shown above in verification)
+
+# Step 6: Write tests with verified information
+# (See complete test example in previous section)
+```
+
+This systematic approach ensures **accurate, maintainable tests that pass on the first run**.
 
 ---
 

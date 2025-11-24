@@ -298,341 +298,385 @@ class PayComponentRepository {
     return result.rows[0] || null;
   }
 
-  // ==================== CUSTOM PAY COMPONENTS ====================
-  
+  // ==================== GLOBAL COMPONENT LIBRARY (TIER 1) ====================
+
   /**
-   * Assign custom pay component to employee
+   * Find global components (organization_id IS NULL)
+   * These are system-managed templates available to ALL organizations
+   * 
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Array>} Global components
+   */
+  async findGlobalComponents(filters = {}) {
+    let whereClauses = ['organization_id IS NULL', 'deleted_at IS NULL'];
+    const values = [];
+    let paramCount = 0;
+
+    if (filters.category) {
+      paramCount++;
+      whereClauses.push(`category = $${paramCount}`);
+      values.push(filters.category);
+    }
+
+    if (filters.componentType) {
+      paramCount++;
+      whereClauses.push(`component_type = $${paramCount}`);
+      values.push(filters.componentType);
+    }
+
+    if (filters.benefitType) {
+      paramCount++;
+      whereClauses.push(`metadata->>'benefit_type' LIKE $${paramCount}`);
+      values.push(`%${filters.benefitType}%`);
+    }
+
+    if (filters.status) {
+      paramCount++;
+      whereClauses.push(`status = $${paramCount}`);
+      values.push(filters.status);
+    }
+
+    const result = await this.query(
+      `SELECT * FROM payroll.pay_component
+       WHERE ${whereClauses.join(' AND ')}
+       ORDER BY component_code`,
+      values,
+      null, // No organization filter for global components
+      { operation: 'SELECT', table: 'pay_component' }
+    );
+
+    return result.rows;
+  }
+
+  /**
+   * Find global component by code
+   * 
+   * @param {string} componentCode - Component code
+   * @returns {Promise<Object|null>} Global component or null
+   */
+  async findGlobalComponentByCode(componentCode) {
+    const result = await this.query(
+      `SELECT * FROM payroll.pay_component
+       WHERE component_code = $1 
+         AND organization_id IS NULL
+         AND deleted_at IS NULL`,
+      [componentCode],
+      null,
+      { operation: 'SELECT', table: 'pay_component' }
+    );
+
+    return result.rows[0] || null;
+  }
+
+  // ==================== EMPLOYEE BENEFIT ASSIGNMENT (TIER 3) ====================
+
+  /**
+   * Assign component to employee with optional overrides
+   * 
    * @param {Object} assignmentData - Assignment data
    * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User creating the assignment
-   * @returns {Promise<Object>} Created custom pay component
+   * @returns {Promise<Object>} Created assignment
    */
-  async assignCustomComponent(assignmentData, organizationId, userId) {
+  async assignComponentToEmployee(assignmentData, organizationId) {
     const result = await this.query(
-      `INSERT INTO payroll.custom_pay_component 
-      (organization_id, employee_id, pay_component_id, 
-       custom_rate, custom_amount, effective_from, effective_to,
-       notes, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING *`,
+      `INSERT INTO payroll.employee_pay_component_assignment
+       (id, employee_id, component_id, component_code, organization_id,
+        effective_from, effective_to, configuration, override_amount,
+        override_formula, notes, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
+       RETURNING *`,
       [
-        organizationId,
+        assignmentData.id,
         assignmentData.employeeId,
-        assignmentData.payComponentId,
-        assignmentData.customRate,
-        assignmentData.customAmount,
+        assignmentData.componentId,
+        assignmentData.componentCode,
+        organizationId,
         assignmentData.effectiveFrom,
         assignmentData.effectiveTo,
+        JSON.stringify(assignmentData.configuration || {}),
+        assignmentData.overrideAmount,
+        assignmentData.overrideFormula,
         assignmentData.notes,
-        userId
+        assignmentData.createdBy
       ],
       organizationId,
-      { operation: 'INSERT', table: 'payroll.custom_pay_component', userId }
+      { operation: 'INSERT', table: 'employee_pay_component_assignment' }
     );
-    
+
     return result.rows[0];
   }
 
   /**
-   * Find custom pay components for employee
-   * @param {string} employeeId - Employee UUID (from HRIS)
+   * Find employee component assignment
+   * 
+   * @param {string} employeeId - Employee UUID
+   * @param {string} componentId - Component UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object|null>} Assignment or null
+   */
+  async findEmployeeComponentAssignment(employeeId, componentId, organizationId) {
+    const result = await this.query(
+      `SELECT * FROM payroll.employee_pay_component_assignment
+       WHERE employee_id = $1
+         AND component_id = $2
+         AND organization_id = $3
+         AND deleted_at IS NULL
+         AND (effective_to IS NULL OR effective_to >= CURRENT_DATE)
+       ORDER BY effective_from DESC
+       LIMIT 1`,
+      [employeeId, componentId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'employee_pay_component_assignment' }
+    );
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Find all components assigned to employee
+   * 
+   * @param {string} employeeId - Employee UUID
    * @param {string} organizationId - Organization UUID
    * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Custom pay components
+   * @returns {Promise<Array>} Employee's component assignments
    */
-  async findCustomComponentsByEmployee(employeeId, organizationId, filters = {}) {
-    let whereClause = `WHERE cpc.employee_id = $1 
-                       AND cpc.organization_id = $2 
-                       AND cpc.deleted_at IS NULL`;
-    const params = [employeeId, organizationId];
+  async findEmployeeComponents(employeeId, organizationId, filters = {}) {
+    let whereClauses = [
+      'ea.employee_id = $1',
+      'ea.organization_id = $2',
+      'ea.deleted_at IS NULL',
+      'pc.deleted_at IS NULL'
+    ];
+    const values = [employeeId, organizationId];
     let paramCount = 2;
-    
-    // Note: custom_pay_component table has no is_active column
-    // Status is tracked via deleted_at only
-    if (filters.isActive !== undefined) {
-      // Filter ignored - custom_pay_component uses deleted_at for active/inactive status
-      // Already filtered by deleted_at IS NULL above
-    }
-    
+
     if (filters.effectiveDate) {
       paramCount++;
-      whereClause += ` AND cpc.effective_from <= $${paramCount}`;
-      params.push(filters.effectiveDate);
+      whereClauses.push(`ea.effective_from <= $${paramCount}`);
+      values.push(filters.effectiveDate);
+      
       paramCount++;
-      whereClause += ` AND (cpc.effective_to IS NULL OR cpc.effective_to >= $${paramCount})`;
-      params.push(filters.effectiveDate);
+      whereClauses.push(`(ea.effective_to IS NULL OR ea.effective_to >= $${paramCount})`);
+      values.push(filters.effectiveDate);
     }
-    
+
+    if (filters.componentType) {
+      paramCount++;
+      whereClauses.push(`pc.component_type = $${paramCount}`);
+      values.push(filters.componentType);
+    }
+
+    if (filters.category) {
+      paramCount++;
+      whereClauses.push(`pc.category = $${paramCount}`);
+      values.push(filters.category);
+    }
+
     const result = await this.query(
-      `SELECT cpc.*, 
-              pc.component_code,
-              pc.component_name,
-              pc.component_type,
-              pc.calculation_type,
-              pc.is_taxable,
-              pc.is_recurring
-       FROM payroll.custom_pay_component cpc
-       INNER JOIN payroll.pay_component pc ON pc.id = cpc.pay_component_id
-       ${whereClause}
-       ORDER BY pc.component_type, pc.component_name`,
-      params,
+      `SELECT 
+         ea.*,
+         pc.component_name,
+         pc.component_type,
+         pc.category,
+         pc.calculation_type,
+         pc.formula,
+         pc.default_amount,
+         pc.default_rate,
+         pc.is_taxable,
+         pc.is_recurring
+       FROM payroll.employee_pay_component_assignment ea
+       INNER JOIN payroll.pay_component pc ON ea.component_id = pc.id
+       WHERE ${whereClauses.join(' AND ')}
+       ORDER BY ea.effective_from DESC`,
+      values,
       organizationId,
-      { operation: 'SELECT', table: 'payroll.custom_pay_component' }
+      { operation: 'SELECT', table: 'employee_pay_component_assignment' }
     );
-    
+
     return result.rows;
   }
 
   /**
-   * Update custom pay component
-   * @param {string} customComponentId - Custom pay component UUID
+   * Alias for backwards compatibility: findEmployeeComponentAssignments
+   */
+  async findEmployeeComponentAssignments(employeeId, organizationId, filters = {}) {
+    return this.findEmployeeComponents(employeeId, organizationId, filters);
+  }
+
+  /**
+   * Find employee component assignment by ID
+   * 
+   * @param {string} assignmentId - Assignment UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object|null>} Assignment or null
+   */
+  async findEmployeeComponentAssignmentById(assignmentId, organizationId) {
+    const result = await this.query(
+      `SELECT 
+         ea.*,
+         pc.component_name,
+         pc.component_type,
+         pc.category,
+         pc.calculation_type,
+         pc.formula,
+         pc.default_amount,
+         pc.default_rate,
+         pc.is_taxable,
+         pc.is_recurring
+       FROM payroll.employee_pay_component_assignment ea
+       INNER JOIN payroll.pay_component pc ON ea.component_id = pc.id
+       WHERE ea.id = $1
+         AND ea.organization_id = $2
+         AND ea.deleted_at IS NULL`,
+      [assignmentId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'employee_pay_component_assignment' }
+    );
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Update employee component assignment
+   * 
+   * @param {string} assignmentId - Assignment UUID
    * @param {Object} updates - Fields to update
    * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User making the update
-   * @returns {Promise<Object>} Updated custom pay component
+   * @returns {Promise<Object>} Updated assignment
    */
-  async updateCustomComponent(customComponentId, updates, organizationId, userId) {
-    // Map camelCase (service layer) to snake_case (database)
-    // Also support aliases for backwards compatibility with tests
-    const fieldMapping = {
-      'customRate': 'custom_rate',
-      'customAmount': 'custom_amount',
-      'defaultRate': 'custom_rate',      // Alias for customRate
-      'defaultAmount': 'custom_amount',  // Alias for customAmount
-      'effectiveFrom': 'effective_from',
-      'effectiveTo': 'effective_to',
-      // Note: isActive removed - custom_pay_component has no is_active or status column
-      // Active status is managed via deleted_at only
-      'notes': 'notes',
-      'description': 'notes'             // Alias for notes
-    };
-    
-    const setClause = [];
-    const params = [];
+  async updateEmployeeComponentAssignment(assignmentId, updates, organizationId) {
+    const setClauses = [];
+    const values = [];
     let paramCount = 0;
-    
+
+    // Build dynamic SET clause
+    const allowedFields = [
+      'effective_from',
+      'effective_to',
+      'configuration',
+      'override_amount',
+      'override_formula',
+      'notes',
+      'updated_by'
+    ];
+
     Object.keys(updates).forEach(key => {
-      const dbField = fieldMapping[key];
-      if (dbField) {
+      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+      if (allowedFields.includes(snakeKey) && updates[key] !== undefined) {
         paramCount++;
-        setClause.push(`${dbField} = $${paramCount}`);
-        params.push(updates[key]);
-      }
-    });
-    
-    if (setClause.length === 0) {
-      throw new ValidationError('No valid fields to update');
-    }
-    
-    paramCount++;
-    params.push(userId);
-    setClause.push(`updated_by = $${paramCount}`);
-    setClause.push(`updated_at = NOW()`);
-    
-    paramCount++;
-    params.push(customComponentId);
-    paramCount++;
-    params.push(organizationId);
-    
-    const result = await this.query(
-      `UPDATE payroll.custom_pay_component 
-       SET ${setClause.join(', ')}
-       WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
-       RETURNING *`,
-      params,
-      organizationId,
-      { operation: 'UPDATE', table: 'payroll.custom_pay_component', userId }
-    );
-    
-    if (!result.rows[0]) {
-      throw new Error('Custom pay component not found');
-    }
-    
-    return result.rows[0];
-  }
-
-  /**
-   * Deactivate custom pay component
-   * @param {string} customComponentId - Custom pay component UUID
-   * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User making the update
-   * @returns {Promise<Object>} Updated custom pay component
-   */
-  async deactivateCustomComponent(customComponentId, organizationId, userId) {
-    const result = await this.query(
-      `UPDATE payroll.custom_pay_component 
-       SET effective_to = NOW(),
-           updated_by = $1,
-           updated_at = NOW()
-       WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL
-       RETURNING *`,
-      [userId, customComponentId, organizationId],
-      organizationId,
-      { operation: 'UPDATE', table: 'payroll.custom_pay_component', userId }
-    );
-    
-    return result.rows[0];
-  }
-
-  /**
-   * Find all active pay components for payroll run
-   * Includes both standard components and custom employee-specific components
-   * @param {string} organizationId - Organization UUID
-   * @param {Date} effectiveDate - Date to check for active components
-   * @returns {Promise<Array>} All applicable pay components
-   */
-  async findActivePayComponentsForPayroll(organizationId, effectiveDate) {
-    const result = await this.query(
-      `SELECT DISTINCT
-        pc.id,
-        pc.component_code,
-        pc.component_name,
-        pc.component_type,
-        pc.category,
-        pc.calculation_type,
-        pc.default_rate,
-        pc.default_amount,
-        pc.is_taxable,
-        pc.is_recurring,
-        pc.is_pre_tax,
-        pc.applies_to_gross
-       FROM payroll.pay_component pc
-       WHERE pc.organization_id = $1
-         AND pc.status = 'active'
-         AND pc.deleted_at IS NULL
-       ORDER BY pc.component_type, pc.component_name`,
-      [organizationId],
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.pay_component' }
-    );
-    
-    return result.rows;
-  }
-
-  /**
-   * Bulk create standard pay components (for organization setup)
-   * @param {Array} components - Array of component objects
-   * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User creating the components
-   * @returns {Promise<Array>} Created pay components
-   */
-  async bulkCreatePayComponents(components, organizationId, userId) {
-    const results = [];
-    
-    for (const component of components) {
-      const result = await this.createPayComponent(component, organizationId, userId);
-      results.push(result);
-    }
-    
-    return results;
-  }
-
-  /**
-   * Delete pay component (soft delete)
-   * @param {string} componentId - Pay component UUID
-   * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User performing the deletion
-   * @returns {Promise<boolean>} Success status
-   */
-  async deletePayComponent(componentId, organizationId, userId) {
-    // Business rule: Check if component is assigned to active employees
-    const employeeUsageCheck = await this.query(
-      `SELECT COUNT(*) as usage_count
-       FROM payroll.custom_pay_component
-       WHERE pay_component_id = $1 
-         AND organization_id = $2 
-         AND deleted_at IS NULL`,
-      [componentId, organizationId],
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.custom_pay_component' }
-    );
-    
-    if (parseInt(employeeUsageCheck.rows[0].usage_count) > 0) {
-      throw new Error(
-        'Cannot delete pay component. It is currently assigned to employees. ' +
-        'Please remove employee assignments or deactivate the component instead.'
-      );
-    }
-
-    // Business rule: Check if component was used in any payroll runs
-    // This provides audit trail preservation - don't delete if used historically
-    // Note: These tables may not exist yet, so we wrap in a try-catch
-    try {
-      const payrollUsageCheck = await this.query(
-        `SELECT COUNT(*) as usage_count
-         FROM payroll.paycheck_earning
-         WHERE pay_component_id = $1 
-           AND organization_id = $2
-         UNION ALL
-         SELECT COUNT(*) as usage_count
-         FROM payroll.paycheck_deduction
-         WHERE pay_component_id = $1 
-           AND organization_id = $2`,
-        [componentId, organizationId],
-        organizationId,
-        { operation: 'SELECT', table: 'payroll.paycheck_earning' }
-      );
-      
-      const totalUsage = payrollUsageCheck.rows.reduce(
-        (sum, row) => sum + parseInt(row.usage_count), 
-        0
-      );
-      
-      if (totalUsage > 0) {
-        throw new Error(
-          'Cannot delete pay component. It has been used in payroll processing. ' +
-          'Deleting it would compromise payroll history and audit trails. ' +
-          'Consider deactivating it instead.'
+        setClauses.push(`${snakeKey} = $${paramCount}`);
+        values.push(
+          snakeKey === 'configuration' && typeof updates[key] === 'object'
+            ? JSON.stringify(updates[key])
+            : updates[key]
         );
       }
-    } catch (error) {
-      // If tables don't exist yet (early development), allow deletion
-      // In production, these tables should exist
-      if (!error.message.includes('does not exist')) {
-        throw error; // Re-throw if it's a different error
-      }
+    });
+
+    if (setClauses.length === 0) {
+      throw new Error('No valid fields to update');
     }
-    
-    // Soft delete the component
+
+    // Add updated_at
+    setClauses.push('updated_at = CURRENT_TIMESTAMP');
+
+    // Add WHERE parameters
+    paramCount++;
+    values.push(assignmentId);
+    const idParam = paramCount;
+
+    paramCount++;
+    values.push(organizationId);
+    const orgParam = paramCount;
+
     const result = await this.query(
-      `UPDATE payroll.pay_component 
-       SET deleted_at = NOW(), 
-           deleted_by = $1,
-           updated_at = NOW()
-       WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
-      [userId, componentId, organizationId],
+      `UPDATE payroll.employee_pay_component_assignment
+       SET ${setClauses.join(', ')}
+       WHERE id = $${idParam}
+         AND organization_id = $${orgParam}
+         AND deleted_at IS NULL
+       RETURNING *`,
+      values,
       organizationId,
-      { operation: 'DELETE', table: 'payroll.pay_component', userId }
+      { operation: 'UPDATE', table: 'employee_pay_component_assignment' }
     );
-    
-    return result.rowCount > 0;
+
+    return result.rows[0];
   }
 
   /**
-   * Deactivate pay component (safer alternative to deletion)
-   * Industry Standard: Deactivate instead of delete to preserve audit trail
-   * @param {string} componentId - Pay component UUID
+   * Remove employee component assignment (soft delete)
+   * 
+   * @param {string} assignmentId - Assignment UUID
    * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User performing the deactivation
-   * @returns {Promise<Object>} Updated pay component
+   * @param {string} userId - User performing the action
+   * @returns {Promise<void>}
    */
-  async deactivatePayComponent(componentId, organizationId, userId) {
-    const result = await this.query(
-      `UPDATE payroll.pay_component 
-       SET status = 'inactive',
-           updated_by = $1,
-           updated_at = NOW()
-       WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL
-       RETURNING *`,
-      [userId, componentId, organizationId],
+  async removeEmployeeComponentAssignment(assignmentId, organizationId, userId) {
+    await this.query(
+      `UPDATE payroll.employee_pay_component_assignment
+       SET deleted_at = CURRENT_TIMESTAMP, deleted_by = $1
+       WHERE id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
+      [userId, assignmentId, organizationId],
       organizationId,
-      { operation: 'UPDATE', table: 'payroll.pay_component', userId }
+      { operation: 'DELETE', table: 'employee_pay_component_assignment' }
     );
-    
-    if (!result.rows[0]) {
-      throw new Error('Pay component not found');
+  }
+
+  /**
+   * Alias for backwards compatibility: updateEmployeeAssignment
+   */
+  async updateEmployeeAssignment(assignmentId, updates, organizationId, userId) {
+    return this.updateEmployeeComponentAssignment(assignmentId, { ...updates, updatedBy: userId }, organizationId);
+  }
+
+  /**
+   * Alias for backwards compatibility: deleteEmployeeAssignment
+   */
+  async deleteEmployeeAssignment(assignmentId, organizationId, userId) {
+    await this.removeEmployeeComponentAssignment(assignmentId, organizationId, userId);
+    return true;
+  }
+
+  /**
+   * Get component statistics for organization
+   * 
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Object>} Component statistics
+   */
+  async getComponentStatistics(organizationId, filters = {}) {
+    let whereClauses = ['organization_id = $1', 'deleted_at IS NULL'];
+    const values = [organizationId];
+    let paramCount = 1;
+
+    if (filters.componentType) {
+      paramCount++;
+      whereClauses.push(`component_type = $${paramCount}`);
+      values.push(filters.componentType);
     }
-    
+
+    if (filters.category) {
+      paramCount++;
+      whereClauses.push(`category = $${paramCount}`);
+      values.push(filters.category);
+    }
+
+    const result = await this.query(
+      `SELECT 
+         COUNT(*) as total_components,
+         COUNT(*) FILTER (WHERE is_system_component = true) as system_components,
+         COUNT(*) FILTER (WHERE is_system_component = false) as custom_components,
+         COUNT(*) FILTER (WHERE component_type = 'earning') as earnings,
+         COUNT(*) FILTER (WHERE component_type = 'deduction') as deductions,
+         COUNT(*) FILTER (WHERE category = 'benefit') as benefits
+       FROM payroll.pay_component
+       WHERE ${whereClauses.join(' AND ')}`,
+      values,
+      organizationId,
+      { operation: 'SELECT', table: 'pay_component' }
+    );
+
     return result.rows[0];
   }
 }

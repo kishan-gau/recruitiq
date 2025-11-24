@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Shield, Mail, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { employeesService } from '@/services/employees.service';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { format } from 'date-fns';
 import GrantAccessModal from '@/components/modals/GrantAccessModal';
 
@@ -35,7 +36,11 @@ export default function SystemAccessPanel({
         setUserAccount(null);
         setError(null);
       } else {
-        const errorMessage = err.response?.data?.error || err.message || 'Failed to load user account';
+        const errorMessage = handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load user account',
+          showToast: false, // Don't show toast, just get the message
+        });
         setError(errorMessage);
       }
     } finally {
@@ -58,8 +63,10 @@ export default function SystemAccessPanel({
       toast.success('System access revoked successfully');
       await fetchUserAccount();
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || err.message || 'Failed to revoke access';
-      toast.error(errorMessage);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to revoke access',
+      });
     } finally {
       setIsRevoking(false);
     }

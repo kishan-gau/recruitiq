@@ -10,6 +10,7 @@ import ProcessPayrollModal from '@/components/modals/ProcessPayrollModal';
 import CreatePayrollRunModal from '@/components/modals/CreatePayrollRunModal';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 export default function PayrollRunsList() {
   const navigate = useNavigate();
@@ -57,7 +58,10 @@ export default function PayrollRunsList() {
           setAllPayrollRuns(runs);
         }
       } catch (err: any) {
-        showError(err.message || 'Failed to load payroll runs');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load payroll runs',
+        });
       } finally {
         setIsLoading(false);
       }
@@ -145,7 +149,10 @@ export default function PayrollRunsList() {
         success('Payroll run processed successfully');
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to refresh payroll runs');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to refresh payroll runs',
+      });
     }
   };
 
@@ -175,7 +182,10 @@ export default function PayrollRunsList() {
         success('Payroll run created successfully');
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to refresh payroll runs');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to refresh payroll runs',
+      });
     }
   };
 

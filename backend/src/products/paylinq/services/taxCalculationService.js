@@ -16,6 +16,7 @@ import DeductionRepository from '../repositories/deductionRepository.js';
 import AllowanceService from './AllowanceService.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import { query } from '../../../config/database.js';
 
 class TaxCalculationService {
   /**
@@ -620,6 +621,55 @@ class TaxCalculationService {
   // ==================== TAX CALCULATIONS (MVP) ====================
 
   /**
+   * Fetch employee residence status from HRIS
+   * Per Wet Loonbelasting Article 13.1a: Residence status affects tax-free allowance eligibility
+   * 
+   * @param {string} employeeRecordId - Worker metadata ID (payroll.worker_metadata.id)
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<boolean>} True if employee is Suriname resident, false otherwise
+   * @private
+   */
+  async _getEmployeeResidenceStatus(employeeRecordId, organizationId) {
+    try {
+      const result = await query(
+        `SELECT e.is_suriname_resident
+         FROM hris.employee e
+         INNER JOIN payroll.worker_metadata wm ON e.id = wm.employee_id
+         WHERE wm.id = $1
+           AND wm.organization_id = $2
+           AND wm.deleted_at IS NULL
+           AND e.deleted_at IS NULL`,
+        [employeeRecordId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'employee',
+          userId: null
+        }
+      );
+
+      if (result.rows.length === 0) {
+        logger.warn('Employee not found for residence status check', {
+          employeeRecordId,
+          organizationId
+        });
+        // Default to resident if employee not found (safer default for tax calculation)
+        return true;
+      }
+
+      return result.rows[0].is_suriname_resident;
+    } catch (error) {
+      logger.error('Error fetching employee residence status', {
+        error: error.message,
+        employeeRecordId,
+        organizationId
+      });
+      // Default to resident on error (safer default)
+      return true;
+    }
+  }
+
+  /**
    * Calculate employee taxes for pay period (MVP version)
    * @param {string} employeeRecordId - Employee record UUID
    * @param {number} grossPay - Gross pay amount
@@ -638,12 +688,23 @@ class TaxCalculationService {
         organizationId
       });
 
-      // PHASE 1: Calculate tax-free allowance using AllowanceService
+      // PHASE 1: Fetch employee residence status (Article 13.1a requirement)
+      const isResident = await this._getEmployeeResidenceStatus(employeeRecordId, organizationId);
+      
+      logger.info('Employee residence status determined', {
+        employeeRecordId,
+        isResident,
+        organizationId
+      });
+
+      // PHASE 2: Calculate tax-free allowance using AllowanceService
+      // Pass residence status - non-residents do NOT receive tax-free allowance
       const taxFreeAllowance = await this.allowanceService.calculateTaxFreeAllowance(
         grossPay,
         payDate,
         payPeriod,
-        organizationId
+        organizationId,
+        isResident  // Critical: Per Article 13.1a
       );
 
       // Calculate taxable income (gross pay minus tax-free allowance)

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, Percent, Info, Loader2, AlertCircle } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import type { 
   ComponentBreakdownResponse, 
   ComponentTaxBreakdown 
@@ -12,6 +14,7 @@ interface ComponentBreakdownProps {
 
 export default function ComponentBreakdown({ paycheckId }: ComponentBreakdownProps) {
   const { paylinq } = usePaylinqAPI();
+  const toast = useToast();
   const [breakdown, setBreakdown] = useState<ComponentBreakdownResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +33,11 @@ export default function ComponentBreakdown({ paycheckId }: ComponentBreakdownPro
       setBreakdown(response.data.components as ComponentBreakdownResponse);
     } catch (err: any) {
       console.error('Failed to load component breakdown:', err);
-      setError(err.message || 'Failed to load component breakdown');
+      const errorMessage = handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to load component breakdown',
+      });
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

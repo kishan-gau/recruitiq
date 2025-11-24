@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@recruitiq/auth';
 import { authService } from '../services';
+import { handleApiError } from '../utils/errorHandler';
+import { useToast } from './ToastContext';
 
 const OrganizationContext = createContext();
 
@@ -14,6 +16,7 @@ export const useOrganization = () => {
 
 export const OrganizationProvider = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
+  const toast = useToast();
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,7 +64,11 @@ export const OrganizationProvider = ({ children }) => {
         setIsInitialized(true);
       } catch (err) {
         console.error('Failed to load organization:', err);
-        setError(err.message || 'Failed to load organization data');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load organization data',
+        });
+        setError('Failed to load organization data');
         setLoading(false);
         setIsInitialized(true);
       }
@@ -90,7 +97,11 @@ export const OrganizationProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('Failed to refresh organization:', err);
-      setError(err.message || 'Failed to refresh organization data');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to refresh organization data',
+      });
+      setError('Failed to refresh organization data');
       throw err;
     }
   };
@@ -106,7 +117,11 @@ export const OrganizationProvider = ({ children }) => {
       return response.organization;
     } catch (err) {
       console.error('Failed to update organization:', err);
-      setError(err.message || 'Failed to update organization');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update organization',
+      });
+      setError('Failed to update organization');
       throw err;
     }
   };

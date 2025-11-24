@@ -479,6 +479,199 @@ async function deleteEmployeePayComponent(req, res) {
   }
 }
 
+// ==================== EMPLOYEE COMPONENT ASSIGNMENTS (NEW SYSTEM) ====================
+
+/**
+ * Assign component to employee with rich configuration
+ * POST /api/paylinq/pay-components/employees/:employeeId/assignments
+ */
+async function assignComponentToEmployee(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+    const { employeeId } = req.params;
+
+    const assignment = await payComponentService.assignComponentToEmployee(
+      { ...req.body, employeeId },
+      organizationId,
+      userId
+    );
+
+    logger.info('Component assigned to employee', {
+      organizationId,
+      employeeId,
+      assignmentId: assignment.id,
+      userId,
+    });
+
+    res.status(201).json({
+      success: true,
+      assignment: assignment,
+      message: 'Component assigned to employee successfully',
+    });
+  } catch (error) {
+    logger.error('Error assigning component to employee', {
+      error: error.message,
+      employeeId: req.params.employeeId,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message === 'Pay component not found') {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: error.message,
+      });
+    }
+
+    if (error.constructor.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        errorCode: 'VALIDATION_ERROR',
+        error: 'Validation Error',
+        message: error.message,
+        details: error.details || []
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to assign component to employee',
+    });
+  }
+}
+
+/**
+ * Get employee component assignments
+ * GET /api/paylinq/pay-components/employees/:employeeId/assignments
+ */
+async function getEmployeeComponentAssignments(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const { employeeId } = req.params;
+
+    const assignments = await payComponentService.getEmployeeComponentAssignments(
+      employeeId,
+      organizationId,
+      req.query
+    );
+
+    res.status(200).json({
+      success: true,
+      assignments: assignments,
+      count: assignments.length,
+    });
+  } catch (error) {
+    logger.error('Error fetching employee component assignments', {
+      error: error.message,
+      employeeId: req.params.employeeId,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch employee component assignments',
+    });
+  }
+}
+
+/**
+ * Update employee component assignment
+ * PATCH /api/paylinq/pay-components/employees/:employeeId/assignments/:assignmentId
+ */
+async function updateEmployeeComponentAssignment(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+    const { assignmentId } = req.params;
+
+    const updated = await payComponentService.updateEmployeeComponentAssignment(
+      assignmentId,
+      req.body,
+      organizationId,
+      userId
+    );
+
+    logger.info('Component assignment updated', {
+      organizationId,
+      assignmentId,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      assignment: updated,
+      message: 'Component assignment updated successfully',
+    });
+  } catch (error) {
+    logger.error('Error updating component assignment', {
+      error: error.message,
+      assignmentId: req.params.assignmentId,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message === 'Component assignment not found') {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: error.message,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to update component assignment',
+    });
+  }
+}
+
+/**
+ * Remove employee component assignment
+ * DELETE /api/paylinq/pay-components/employees/:employeeId/assignments/:assignmentId
+ */
+async function removeEmployeeComponentAssignment(req, res) {
+  try {
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+    const { assignmentId } = req.params;
+
+    await payComponentService.removeEmployeeComponentAssignment(
+      assignmentId,
+      organizationId,
+      userId
+    );
+
+    logger.info('Component assignment removed', {
+      organizationId,
+      assignmentId,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Component assignment removed successfully',
+    });
+  } catch (error) {
+    logger.error('Error removing component assignment', {
+      error: error.message,
+      assignmentId: req.params.assignmentId,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to remove component assignment',
+    });
+  }
+}
+
 export default {
   createPayComponent,
   getPayComponents,
@@ -489,4 +682,8 @@ export default {
   getEmployeePayComponents,
   updateEmployeePayComponent,
   deleteEmployeePayComponent,
+  assignComponentToEmployee,
+  getEmployeeComponentAssignments,
+  updateEmployeeComponentAssignment,
+  removeEmployeeComponentAssignment,
 };

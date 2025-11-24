@@ -16,7 +16,7 @@ class Role {
   static async create(data, organizationId, userId) {
     const result = await query(
       `
-      INSERT INTO roles (
+      INSERT INTO public.roles (
         organization_id, name, display_name, description, product,
         is_system, is_active, created_by
       )
@@ -49,7 +49,7 @@ class Role {
   static async findById(id, organizationId) {
     const result = await query(
       `
-      SELECT * FROM roles
+      SELECT * FROM public.roles
       WHERE id = $1 
         AND (organization_id = $2 OR organization_id IS NULL)
         AND deleted_at IS NULL
@@ -84,10 +84,10 @@ class Role {
           ) FILTER (WHERE p.id IS NOT NULL),
           '[]'
         ) as permissions
-      FROM roles r
-      LEFT JOIN role_permissions rp ON r.id = rp.role_id
-      LEFT JOIN permissions p ON rp.permission_id = p.id AND p.is_active = true
-      WHERE r.id = $1 
+      FROM public.roles r
+      INNER JOIN public.role_permissions rp ON r.id = rp.role_id
+      LEFT JOIN public.permissions p ON rp.permission_id = p.id
+      WHERE r.id = $1
         AND (r.organization_id = $2 OR r.organization_id IS NULL)
         AND r.deleted_at IS NULL
       GROUP BY r.id
@@ -109,11 +109,11 @@ class Role {
     let sql = `
       SELECT 
         r.*,
-        COUNT(DISTINCT ur.user_id) FILTER (WHERE ur.revoked_at IS NULL) as user_count,
+        COUNT(DISTINCT ur.user_id) FILTER (WHERE ur.deleted_at IS NULL) as user_count,
         COUNT(DISTINCT rp.permission_id) as permission_count
-      FROM roles r
-      LEFT JOIN user_roles ur ON r.id = ur.role_id AND ur.revoked_at IS NULL
-      LEFT JOIN role_permissions rp ON r.id = rp.role_id
+      FROM public.roles r
+      LEFT JOIN public.user_roles ur ON r.id = ur.role_id AND ur.deleted_at IS NULL
+      LEFT JOIN public.role_permissions rp ON r.id = rp.role_id
       WHERE (r.organization_id = $1 OR r.organization_id IS NULL)
         AND r.deleted_at IS NULL
     `;
@@ -269,7 +269,7 @@ class Role {
 
     // Clear existing permissions
     await query(
-      `DELETE FROM role_permissions WHERE role_id = $1`,
+      `DELETE FROM public.role_permissions WHERE role_id = $1`,
       [roleId]
     );
 
@@ -280,7 +280,7 @@ class Role {
         .join(', ');
 
       await query(
-        `INSERT INTO role_permissions (role_id, permission_id, created_at, created_by)
+        `INSERT INTO public.role_permissions (role_id, permission_id, created_at, created_by)
          VALUES ${values}`,
         [roleId, ...permissionIds, userId]
       );

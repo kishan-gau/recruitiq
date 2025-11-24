@@ -26,6 +26,7 @@ export interface Employee extends AuditFields {
   dateOfBirth?: string;
   gender?: Gender;
   nationality?: string;
+  residenceStatus?: 'resident' | 'non_resident' | 'partial_year_resident';
   
   // Contact Information
   email: string;
@@ -79,6 +80,7 @@ export interface CreateEmployeeDTO {
   dateOfBirth?: string;
   gender?: Gender;
   nationality?: string;
+  residenceStatus?: 'resident' | 'non_resident' | 'partial_year_resident';
   email: string;
   phone?: string;
   mobilePhone?: string;

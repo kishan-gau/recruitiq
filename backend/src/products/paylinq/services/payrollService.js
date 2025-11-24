@@ -17,6 +17,7 @@ import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from '../../../utils/timezone.js';
 import compensationService from '../../../shared/services/compensationService.js';
+import PayrollRunCalculationService from './PayrollRunCalculationService.js';
 
 class PayrollService {
   constructor(
@@ -24,13 +25,15 @@ class PayrollService {
     deductionRepository = null,
     taxCalcService = null,
     payStructureService = null,
-    payrollRunTypeService = null
+    payrollRunTypeService = null,
+    payrollRunCalcService = null
   ) {
     this.payrollRepository = payrollRepository || new PayrollRepository();
     this.deductionRepository = deductionRepository || new DeductionRepository();
     this.taxCalculationService = taxCalcService || taxCalculationService;
     this.payStructureService = payStructureService || new PayStructureService();
     this.payrollRunTypeService = payrollRunTypeService || new PayrollRunTypeService();
+    this.payrollRunCalculationService = payrollRunCalcService || new PayrollRunCalculationService();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -1279,13 +1282,45 @@ class PayrollService {
           // Calculate taxes using component-based approach (Phase 2)
           let taxCalculation;
           if (earningComponents.length > 0) {
-            taxCalculation = await this.taxCalculationService.calculateEmployeeTaxesWithComponents(
-              employeeId,
-              earningComponents,
-              payrollRun.pay_period_start,
-              payPeriod,
-              organizationId
-            );
+            // LOONTIJDVAK INTEGRATION: Use enhanced calculation with loontijdvak period detection
+            try {
+              const loontijdvakResult = await this.payrollRunCalculationService.calculateEmployeePayWithLoontijdvak(
+                employeeId,
+                earningComponents,
+                payrollRun.pay_period_start,
+                payrollRun.pay_period_end,
+                payPeriod,
+                organizationId
+              );
+              
+              // Use the enhanced tax calculation
+              taxCalculation = loontijdvakResult.taxCalculation;
+              
+              // Log loontijdvak period info
+              logger.info('Loontijdvak period detected for employee', {
+                employeeId,
+                loontijdvakType: loontijdvakResult.loontijdvakPeriod?.period_type,
+                loontijdvakNumber: loontijdvakResult.loontijdvakPeriod?.period_number,
+                isPartialPeriod: loontijdvakResult.isPartialPeriod,
+                proration: loontijdvakResult.proration,
+                payrollRunId
+              });
+            } catch (loontijdvakError) {
+              // Fallback to standard calculation if loontijdvak fails
+              logger.warn('Loontijdvak calculation failed, using standard tax calculation', {
+                error: loontijdvakError.message,
+                employeeId,
+                payrollRunId
+              });
+              
+              taxCalculation = await this.taxCalculationService.calculateEmployeeTaxesWithComponents(
+                employeeId,
+                earningComponents,
+                payrollRun.pay_period_start,
+                payPeriod,
+                organizationId
+              );
+            }
           } else {
             // Fallback to Phase 1 method if no components
             taxCalculation = await this.taxCalculationService.calculateEmployeeTaxes(

@@ -5,6 +5,7 @@ import { useEmployee, useUpdateEmployee, useEmployees } from '@/hooks/useEmploye
 import { useDepartments } from '@/hooks/useDepartments';
 import { useLocations } from '@/hooks/useLocations';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { UpdateEmployeeDTO } from '@/types/employee.types';
 
 export default function EmployeeEdit() {
@@ -61,8 +62,11 @@ export default function EmployeeEdit() {
           toast.success('Employee updated successfully');
           navigate(`/employees/${employee.id}`);
         },
-        onError: (error) => {
-          toast.error(error.message || 'Failed to update employee');
+        onError: (error: any) => {
+          handleApiError(error, {
+            toast,
+            defaultMessage: 'Failed to update employee',
+          });
         },
       }
     );

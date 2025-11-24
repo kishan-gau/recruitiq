@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { handleApiError } from '@/utils/errorHandler';
+import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '../../hooks/usePaylinqAPI';
 
 interface ApprovalAction {
@@ -27,6 +29,7 @@ interface ApprovalHistoryProps {
 
 const ApprovalHistory = ({ referenceType, referenceId }: ApprovalHistoryProps) => {
   const { paylinq } = usePaylinqAPI();
+  const toast = useToast();
   const [history, setHistory] = useState<ApprovalHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -45,7 +48,11 @@ const ApprovalHistory = ({ referenceType, referenceId }: ApprovalHistoryProps) =
       setError('');
     } catch (err: any) {
       console.error('Error fetching approval history:', err);
-      setError(err.response?.data?.message || 'Failed to fetch approval history');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to fetch approval history',
+      });
+      setError('Failed to fetch approval history');
     } finally {
       setLoading(false);
     }

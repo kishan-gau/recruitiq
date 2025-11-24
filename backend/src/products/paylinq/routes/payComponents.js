@@ -5,6 +5,7 @@
 import express from 'express';
 import payComponentController from '../controllers/payComponentController.js';
 import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -52,10 +53,11 @@ const updatePayComponentSchema = Joi.object({
 
 const createEmployeePayComponentSchema = Joi.object({
   payComponentId: Joi.string().uuid().required(),
-  amount: Joi.number().allow(null),
-  rate: Joi.number().allow(null),
-  startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
-  endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow(null, ''),
+  customAmount: Joi.number().allow(null),
+  customRate: Joi.number().allow(null),
+  effectiveFrom: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+  effectiveTo: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).allow(null, ''),
+  notes: Joi.string().max(500).allow(null, ''),
   isActive: Joi.boolean().default(true),
 });
 
@@ -72,17 +74,127 @@ const employeeComponentParamSchema = Joi.object({
   id: Joi.string().uuid().required(),
 });
 
+const createEmployeeComponentAssignmentSchema = Joi.object({
+  componentId: Joi.string().uuid().required(),
+  componentCode: Joi.string().max(50).optional(),
+  effectiveFrom: Joi.string().isoDate().required(),
+  effectiveTo: Joi.string().isoDate().allow(null, ''),
+  configuration: Joi.object().optional(),
+  overrideAmount: Joi.number().allow(null),
+  overrideFormula: Joi.string().allow(null, ''),
+  notes: Joi.string().max(500).allow(null, ''),
+});
+
+const updateEmployeeComponentAssignmentSchema = Joi.object({
+  effectiveFrom: Joi.string().isoDate().optional(),
+  effectiveTo: Joi.string().isoDate().allow(null, '').optional(),
+  configuration: Joi.object().optional(),
+  overrideAmount: Joi.number().allow(null).optional(),
+  overrideFormula: Joi.string().allow(null, '').optional(),
+  notes: Joi.string().max(500).allow(null, '').optional(),
+}).min(1);
+
+const assignmentIdParamSchema = Joi.object({
+  employeeId: Joi.string().uuid().required(),
+  assignmentId: Joi.string().uuid().required(),
+});
+
 // Global pay component routes
-router.post('/', validate(createPayComponentSchema, 'body'), payComponentController.createPayComponent);
-router.get('/', payComponentController.getPayComponents);
-router.get('/:id', validate(idParamSchema, 'params'), payComponentController.getPayComponentById);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updatePayComponentSchema, 'body'), payComponentController.updatePayComponent);
-router.delete('/:id', validate(idParamSchema, 'params'), payComponentController.deletePayComponent);
+router.post(
+  '/',
+  requirePermission('payroll:components:create'),
+  validate(createPayComponentSchema, 'body'),
+  payComponentController.createPayComponent
+);
+
+router.get(
+  '/',
+  requirePermission('components:read'),
+  payComponentController.getPayComponents
+);
+
+router.get(
+  '/:id',
+  requirePermission('components:read'),
+  validate(idParamSchema, 'params'),
+  payComponentController.getPayComponentById
+);
+
+router.put(
+  '/:id',
+  requirePermission('components:update'),
+  validate(idParamSchema, 'params'),
+  validate(updatePayComponentSchema, 'body'),
+  payComponentController.updatePayComponent
+);
+
+router.delete(
+  '/:id',
+  requirePermission('payroll:components:delete'),
+  validate(idParamSchema, 'params'),
+  payComponentController.deletePayComponent
+);
 
 // Employee-specific pay component routes
-router.post('/employees/:employeeId/pay-components', validate(employeeIdParamSchema, 'params'), validate(createEmployeePayComponentSchema, 'body'), payComponentController.createEmployeePayComponent);
-router.get('/employees/:employeeId/pay-components', validate(employeeIdParamSchema, 'params'), payComponentController.getEmployeePayComponents);
-router.put('/employees/:employeeId/pay-components/:id', validate(employeeComponentParamSchema, 'params'), validate(updatePayComponentSchema, 'body'), payComponentController.updateEmployeePayComponent);
-router.delete('/employees/:employeeId/pay-components/:id', validate(employeeComponentParamSchema, 'params'), payComponentController.deleteEmployeePayComponent);
+router.post(
+  '/employees/:employeeId/pay-components',
+  requirePermission('payroll:components:create'),
+  validate(employeeIdParamSchema, 'params'),
+  validate(createEmployeePayComponentSchema, 'body'),
+  payComponentController.createEmployeePayComponent
+);
+
+router.get(
+  '/employees/:employeeId/pay-components',
+  requirePermission('components:read'),
+  validate(employeeIdParamSchema, 'params'),
+  payComponentController.getEmployeePayComponents
+);
+
+router.put(
+  '/employees/:employeeId/pay-components/:id',
+  requirePermission('components:update'),
+  validate(employeeComponentParamSchema, 'params'),
+  validate(updatePayComponentSchema, 'body'),
+  payComponentController.updateEmployeePayComponent
+);
+
+router.delete(
+  '/employees/:employeeId/pay-components/:id',
+  requirePermission('payroll:components:delete'),
+  validate(employeeComponentParamSchema, 'params'),
+  payComponentController.deleteEmployeePayComponent
+);
+
+// Employee Component Assignments (new rich assignment system)
+router.post(
+  '/employees/:employeeId/assignments',
+  requirePermission('payroll:employee-components:create'),
+  validate(employeeIdParamSchema, 'params'),
+  validate(createEmployeeComponentAssignmentSchema, 'body'),
+  payComponentController.assignComponentToEmployee
+);
+
+router.get(
+  '/employees/:employeeId/assignments',
+  requirePermission('payroll:employee-components:read'),
+  validate(employeeIdParamSchema, 'params'),
+  payComponentController.getEmployeeComponentAssignments
+);
+
+router.patch(
+  '/employees/:employeeId/assignments/:assignmentId',
+  requirePermission('payroll:employee-components:update'),
+  validate(assignmentIdParamSchema, 'params'),
+  validate(updateEmployeeComponentAssignmentSchema, 'body'),
+  payComponentController.updateEmployeeComponentAssignment
+);
+
+router.delete(
+  '/employees/:employeeId/assignments/:assignmentId',
+  requirePermission('payroll:employee-components:delete'),
+  validate(assignmentIdParamSchema, 'params'),
+  payComponentController.removeEmployeeComponentAssignment
+);
 
 export default router;

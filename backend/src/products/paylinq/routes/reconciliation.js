@@ -4,6 +4,7 @@
 
 import express from 'express';
 import reconciliationController from '../controllers/reconciliationController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import { validate  } from '../../../middleware/validation.js';
 import Joi from 'joi';
 
@@ -58,15 +59,15 @@ const idParamSchema = Joi.object({
 });
 
 // Routes
-router.post('/', validate(createReconciliationSchema, 'body'), reconciliationController.createReconciliation);
-router.get('/', reconciliationController.getReconciliations);
-router.get('/:id', validate(idParamSchema, 'params'), reconciliationController.getReconciliationById);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updateReconciliationSchema, 'body'), reconciliationController.updateReconciliation);
-router.post('/:id/complete', validate(idParamSchema, 'params'), validate(completeReconciliationSchema, 'body'), reconciliationController.completeReconciliation);
-router.delete('/:id', validate(idParamSchema, 'params'), reconciliationController.deleteReconciliation);
-router.post('/:id/items', validate(idParamSchema, 'params'), validate(createReconciliationItemSchema, 'body'), reconciliationController.addReconciliationItem);
-router.get('/:id/items', validate(idParamSchema, 'params'), reconciliationController.getReconciliationItems);
-router.put('/items/:id', validate(idParamSchema, 'params'), validate(updateReconciliationItemSchema, 'body'), reconciliationController.updateReconciliationItem);
-router.post('/items/:id/resolve', validate(idParamSchema, 'params'), validate(resolveReconciliationItemSchema, 'body'), reconciliationController.resolveReconciliationItem);
+router.post('/', requirePermission('payroll:reconciliation:create'), validate(createReconciliationSchema, 'body'), reconciliationController.createReconciliation);
+router.get('/', requirePermission('payroll:reconciliation:read'), reconciliationController.getReconciliations);
+router.get('/:id', requirePermission('payroll:reconciliation:read'), validate(idParamSchema, 'params'), reconciliationController.getReconciliationById);
+router.put('/:id', requirePermission('payroll:reconciliation:update'), validate(idParamSchema, 'params'), validate(updateReconciliationSchema, 'body'), reconciliationController.updateReconciliation);
+router.post('/:id/complete', requirePermission('payroll:reconciliation:update'), validate(idParamSchema, 'params'), validate(completeReconciliationSchema, 'body'), reconciliationController.completeReconciliation);
+router.delete('/:id', requirePermission('payroll:reconciliation:delete'), validate(idParamSchema, 'params'), reconciliationController.deleteReconciliation);
+router.post('/:id/items', requirePermission('payroll:reconciliation:update'), validate(idParamSchema, 'params'), validate(createReconciliationItemSchema, 'body'), reconciliationController.addReconciliationItem);
+router.get('/:id/items', requirePermission('payroll:reconciliation:read'), validate(idParamSchema, 'params'), reconciliationController.getReconciliationItems);
+router.put('/items/:id', requirePermission('payroll:reconciliation:update'), validate(idParamSchema, 'params'), validate(updateReconciliationItemSchema, 'body'), reconciliationController.updateReconciliationItem);
+router.post('/items/:id/resolve', requirePermission('payroll:reconciliation:update'), validate(idParamSchema, 'params'), validate(resolveReconciliationItemSchema, 'body'), reconciliationController.resolveReconciliationItem);
 
 export default router;

@@ -7,6 +7,7 @@
 import express from 'express';
 import employeeRecordController from '../controllers/employeeRecordController.js';
 import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
 import Joi from 'joi';
 
@@ -68,16 +69,18 @@ const uuidParamSchema = Joi.object({
 // POST /api/paylinq/workers - Create worker record
 router.post(
   '/',
+  requirePermission('payroll:employees:create'),
   validate(createWorkerSchema, 'body'),
   employeeRecordController.createEmployeeRecord
 );
 
 // GET /api/paylinq/workers - Get all worker records
-router.get('/', employeeRecordController.getEmployeeRecords);
+router.get('/', requirePermission('payroll:employees:read'), employeeRecordController.getEmployeeRecords);
 
 // GET /api/paylinq/workers/:id - Get worker record by ID
 router.get(
   '/:id',
+  requirePermission('payroll:employees:read'),
   validate(uuidParamSchema, 'params'),
   employeeRecordController.getEmployeeRecordById
 );
@@ -85,6 +88,7 @@ router.get(
 // PUT /api/paylinq/workers/:id - Update worker record
 router.put(
   '/:id',
+  requirePermission('payroll:employees:update'),
   validate(uuidParamSchema, 'params'),
   validate(updateWorkerSchema, 'body'),
   employeeRecordController.updateEmployeeRecord
@@ -93,6 +97,7 @@ router.put(
 // DELETE /api/paylinq/workers/:id - Delete worker record
 router.delete(
   '/:id',
+  requirePermission('payroll:employees:delete'),
   validate(uuidParamSchema, 'params'),
   employeeRecordController.deleteEmployeeRecord
 );
@@ -100,6 +105,7 @@ router.delete(
 // GET /api/paylinq/workers/:id/history - Get payroll history
 router.get(
   '/:id/history',
+  requirePermission('payroll:employees:read'),
   validate(uuidParamSchema, 'params'),
   employeeRecordController.getEmployeePayrollHistory
 );

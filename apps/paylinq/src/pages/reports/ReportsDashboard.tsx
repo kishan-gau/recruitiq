@@ -17,6 +17,7 @@ import type { Tab } from '@/components/ui/Tabs';
 import ReportConfigModal from '@/components/modals/ReportConfigModal';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 interface ReportCard {
   id: string;
@@ -234,7 +235,10 @@ export default function ReportsDashboard() {
         }
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to generate report');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to generate report',
+      });
     } finally {
       setIsGenerating(false);
     }

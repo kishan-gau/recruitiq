@@ -39,6 +39,8 @@ const PayrollRunTypeSettings = lazy(() => import('@/pages/PayrollRunTypeSettings
 const PayslipTemplates = lazy(() => import('@/pages/settings/payslip-templates/PayslipTemplates'));
 const PayslipTemplateEditor = lazy(() => import('@/pages/settings/payslip-templates/PayslipTemplateEditor'));
 const WorkerTypes = lazy(() => import('@/pages/worker-types/WorkerTypesList'));
+const LoontijdvakSettings = lazy(() => import('@/pages/settings/LoontijdvakSettings'));
+const RolesPermissions = lazy(() => import('@/pages/settings/RolesPermissions'));
 
 // Currency & Approvals
 const ExchangeRatesPage = lazy(() => import('@/components/currency/ExchangeRatesPage'));
@@ -119,9 +121,11 @@ function App() {
             <Route path="settings/payroll-run-types" element={<PayrollRunTypeSettings />} />
             <Route path="settings/payslip-templates" element={<PayslipTemplates />} />
             <Route path="settings/payslip-templates/:id" element={<PayslipTemplateEditor />} />
+            <Route path="settings/loontijdvak" element={<LoontijdvakSettings />} />
+            <Route path="settings/roles" element={<RolesPermissions />} />
             
             {/* Currency Management (under Payroll Configuration) */}
-            <Route path="settings/currency/exchange-rates" element={<ExchangeRatesPage />} />
+            <Route path="settings/currency/exchange-rates" element={<ExchangeRatesPage organizationId={''} />} />
             <Route path="settings/currency/configuration" element={<CurrencyConfigPage />} />
             
             {/* Approval Workflows */}

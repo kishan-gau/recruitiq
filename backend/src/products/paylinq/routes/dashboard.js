@@ -4,6 +4,7 @@
 
 import express from 'express';
 import dashboardController from '../controllers/dashboardController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import { createEndpointLimiter } from '../../../middleware/rateLimit.js';
 
 const router = express.Router();
@@ -21,9 +22,9 @@ const dashboardLimiter = createEndpointLimiter({
 router.use(dashboardLimiter);
 
 // Dashboard routes
-router.get('/', dashboardController.getDashboardOverview);
-router.get('/payroll-stats', dashboardController.getPayrollStats);
-router.get('/employee-stats', dashboardController.getEmployeeStats);
-router.get('/recent-activity', dashboardController.getRecentActivity);
+router.get('/', requirePermission('dashboard:read'), dashboardController.getDashboardOverview);
+router.get('/payroll-stats', requirePermission('dashboard:read'), dashboardController.getPayrollStats);
+router.get('/employee-stats', requirePermission('dashboard:read'), dashboardController.getEmployeeStats);
+router.get('/recent-activity', requirePermission('dashboard:read'), dashboardController.getRecentActivity);
 
 export default router;

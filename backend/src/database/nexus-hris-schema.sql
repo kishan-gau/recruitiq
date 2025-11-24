@@ -239,6 +239,9 @@ CREATE TABLE hris.employee (
     work_schedule VARCHAR(50) DEFAULT 'standard',
     fte_percentage DECIMAL(5,2) DEFAULT 100.00,
     
+    -- Tax Information (Wet Loonbelasting Compliance)
+    is_suriname_resident BOOLEAN NOT NULL DEFAULT true,
+    
     -- Profile
     profile_photo_url VARCHAR(500),
     bio TEXT,
@@ -260,6 +263,9 @@ CREATE INDEX idx_employee_department ON hris.employee(department_id);
 CREATE INDEX idx_employee_manager ON hris.employee(manager_id);
 CREATE INDEX idx_employee_status ON hris.employee(employment_status) WHERE deleted_at IS NULL;
 CREATE INDEX idx_employee_email ON hris.employee(email);
+CREATE INDEX idx_employee_resident_status ON hris.employee(is_suriname_resident) WHERE deleted_at IS NULL;
+
+COMMENT ON COLUMN hris.employee.is_suriname_resident IS 'Per Wet Loonbelasting Article 13.1a: Indicates if employee is Suriname resident. Non-residents do NOT receive tax-free allowance (belastingvrije som). Critical for payroll tax calculations.';
 
 -- Add FK constraint from user_account to employee (circular reference resolved)
 ALTER TABLE hris.user_account

@@ -13,9 +13,11 @@ import WorkerPayStructure from '@/components/worker/WorkerPayStructure';
 import SystemAccessPanel from '@/components/worker/SystemAccessPanel';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
 import { lazy, Suspense } from 'react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import EmployeeComponentsList from '@/components/employees/EmployeeComponentsList';
 
 const CompensationManagementPage = lazy(() => import('@/pages/CompensationManagementPage'));
 
@@ -105,7 +107,10 @@ export default function WorkerDetails() {
       } catch (err: any) {
         console.error('Failed to load worker:', err);
         console.error('Worker ID:', workerId);
-        showError(err.message || 'Failed to load worker details');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load worker details',
+        });
       } finally {
         setIsLoading(false);
       }
@@ -149,6 +154,7 @@ export default function WorkerDetails() {
   const tabs: Tab[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'compensation', label: 'Compensation' },
+    { id: 'components', label: 'Components' },
     { id: 'pay-structure', label: 'Pay Structure' },
     { id: 'tax-info', label: 'Tax Info' },
     { id: 'bank-info', label: 'Bank Info' },
@@ -367,6 +373,14 @@ export default function WorkerDetails() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Components Tab */}
+      {activeTab === 'components' && worker && worker.employeeId && (
+        <EmployeeComponentsList
+          employeeId={worker.employeeId}
+          employeeName={worker.fullName}
+        />
       )}
 
       {/* Pay Structure Tab */}

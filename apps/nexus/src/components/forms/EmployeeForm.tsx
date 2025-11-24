@@ -22,6 +22,7 @@ const employeeSchema = z.object({
   dateOfBirth: z.string().optional().or(z.literal('')),
   gender: z.enum(['male', 'female', 'non_binary', 'prefer_not_to_say', 'other']).optional().or(z.literal('')),
   nationality: z.string().max(100).optional().or(z.literal('')),
+  residenceStatus: z.enum(['resident', 'non_resident', 'partial_year_resident']).optional().or(z.literal('')),
   
   // Contact
   phone: z.string().max(20).optional().or(z.literal('')),
@@ -92,6 +93,7 @@ export default function EmployeeForm({
           dateOfBirth: initialData.dateOfBirth || '',
           gender: initialData.gender || '',
           nationality: initialData.nationality || '',
+          residenceStatus: initialData.residenceStatus || '',
           phone: initialData.phone || '',
           mobilePhone: initialData.mobilePhone || '',
           addressLine1: initialData.addressLine1 || '',
@@ -234,6 +236,24 @@ export default function EmployeeForm({
               {...register('nationality')}
               className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Tax Residence Status
+            </label>
+            <select
+              {...register('residenceStatus')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            >
+              <option value="">Select residence status</option>
+              <option value="resident">Resident (Full tax obligations)</option>
+              <option value="non_resident">Non-Resident (Limited tax obligations)</option>
+              <option value="partial_year_resident">Partial Year Resident</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Determines Dutch payroll tax calculations. Default: Resident
+            </p>
           </div>
         </div>
       </div>

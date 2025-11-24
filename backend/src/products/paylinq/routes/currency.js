@@ -162,7 +162,7 @@ router.get('/historical/:from/:to',
  * Create a new exchange rate
  */
 router.post('/',
-  requirePermission('payroll:manage'),
+  requirePermission('settings:currency'),
   validate(createRateSchema),
   async (req, res, next) => {
     try {
@@ -192,7 +192,7 @@ router.post('/',
  * Update an exchange rate
  */
 router.put('/:id',
-  requirePermission('payroll:manage'),
+  requirePermission('settings:currency'),
   validate(updateRateSchema),
   async (req, res, next) => {
     try {
@@ -223,7 +223,7 @@ router.put('/:id',
  * Delete (expire) an exchange rate
  */
 router.delete('/:id',
-  requirePermission('payroll:manage'),
+  requirePermission('settings:currency'),
   async (req, res, next) => {
     try {
       const { userId } = req.user;
@@ -248,7 +248,7 @@ router.delete('/:id',
  * Bulk import exchange rates
  */
 router.post('/bulk-import',
-  requirePermission('payroll:manage'),
+  requirePermission('settings:currency'),
   validate(bulkImportSchema),
   async (req, res, next) => {
     try {
@@ -367,7 +367,7 @@ router.get('/config',
  * Update organization currency configuration
  */
 router.put('/config',
-  requirePermission('payroll:manage'),
+  requirePermission('settings:currency'),
   validate(updateConfigSchema),
   async (req, res, next) => {
     try {
@@ -417,7 +417,7 @@ router.get('/cache/stats',
  * Clear exchange rate cache (admin only)
  */
 router.post('/cache/clear',
-  requirePermission('admin'),
+  requirePermission('settings:manage'),
   async (req, res, next) => {
     try {
       currencyService.clearCache();

@@ -4,6 +4,7 @@
 
 import express from 'express';
 import timeAttendanceController from '../controllers/timeAttendanceController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import { validate  } from '../../../middleware/validation.js';
 import Joi from 'joi';
 
@@ -88,24 +89,24 @@ const updateShiftTypeSchema = Joi.object({
 });
 
 // Routes
-router.post('/clock-in', validate(clockInSchema, 'body'), timeAttendanceController.clockIn);
-router.post('/clock-out', validate(clockOutSchema, 'body'), timeAttendanceController.clockOut);
-router.get('/active-clocks', timeAttendanceController.getActiveClockEntries);
-router.get('/employees/:employeeId/clock-history', validate(employeeIdParamSchema, 'params'), timeAttendanceController.getEmployeeClockHistory);
+router.post('/clock-in', requirePermission('timesheets:update'), validate(clockInSchema, 'body'), timeAttendanceController.clockIn);
+router.post('/clock-out', requirePermission('timesheets:update'), validate(clockOutSchema, 'body'), timeAttendanceController.clockOut);
+router.get('/active-clocks', requirePermission('timesheets:read'), timeAttendanceController.getActiveClockEntries);
+router.get('/employees/:employeeId/clock-history', requirePermission('timesheets:read'), validate(employeeIdParamSchema, 'params'), timeAttendanceController.getEmployeeClockHistory);
 
 // Shift type routes
-router.post('/shift-types', validate(createShiftTypeSchema, 'body'), timeAttendanceController.createShiftType);
-router.get('/shift-types', timeAttendanceController.getShiftTypes);
-router.get('/shift-types/:id', validate(idParamSchema, 'params'), timeAttendanceController.getShiftTypeById);
-router.put('/shift-types/:id', validate(idParamSchema, 'params'), validate(updateShiftTypeSchema, 'body'), timeAttendanceController.updateShiftType);
-router.delete('/shift-types/:id', validate(idParamSchema, 'params'), timeAttendanceController.deleteShiftType);
+router.post('/shift-types', requirePermission('timesheets:create'), validate(createShiftTypeSchema, 'body'), timeAttendanceController.createShiftType);
+router.get('/shift-types', requirePermission('timesheets:read'), timeAttendanceController.getShiftTypes);
+router.get('/shift-types/:id', requirePermission('timesheets:read'), validate(idParamSchema, 'params'), timeAttendanceController.getShiftTypeById);
+router.put('/shift-types/:id', requirePermission('timesheets:update'), validate(idParamSchema, 'params'), validate(updateShiftTypeSchema, 'body'), timeAttendanceController.updateShiftType);
+router.delete('/shift-types/:id', requirePermission('timesheets:delete'), validate(idParamSchema, 'params'), timeAttendanceController.deleteShiftType);
 
 // Time entry routes
-router.post('/time-entries', validate(createTimeEntrySchema, 'body'), timeAttendanceController.createTimeEntry);
-router.get('/time-entries', timeAttendanceController.getTimeEntries);
-router.get('/time-entries/:id', validate(idParamSchema, 'params'), timeAttendanceController.getTimeEntryById);
-router.put('/time-entries/:id', validate(idParamSchema, 'params'), validate(updateTimeEntrySchema, 'body'), timeAttendanceController.updateTimeEntry);
-router.post('/time-entries/bulk-approve', validate(bulkApproveSchema, 'body'), timeAttendanceController.bulkApproveTimeEntries);
-router.delete('/time-entries/:id', validate(idParamSchema, 'params'), timeAttendanceController.deleteTimeEntry);
+router.post('/time-entries', requirePermission('timesheets:create'), validate(createTimeEntrySchema, 'body'), timeAttendanceController.createTimeEntry);
+router.get('/time-entries', requirePermission('timesheets:read'), timeAttendanceController.getTimeEntries);
+router.get('/time-entries/:id', requirePermission('timesheets:read'), validate(idParamSchema, 'params'), timeAttendanceController.getTimeEntryById);
+router.put('/time-entries/:id', requirePermission('timesheets:update'), validate(idParamSchema, 'params'), validate(updateTimeEntrySchema, 'body'), timeAttendanceController.updateTimeEntry);
+router.post('/time-entries/bulk-approve', requirePermission('timesheets:approve'), validate(bulkApproveSchema, 'body'), timeAttendanceController.bulkApproveTimeEntries);
+router.delete('/time-entries/:id', requirePermission('timesheets:delete'), validate(idParamSchema, 'params'), timeAttendanceController.deleteTimeEntry);
 
 export default router;

@@ -22,8 +22,9 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEmployee, useTerminateEmployee, useRehireEmployee, useEmploymentHistory, useRehireEligibility } from '@/hooks/useEmployees';
-import { useBenefitEnrollments, useCancelBenefitEnrollment } from '@/hooks/useBenefits';
+import { useEmployeeBenefitEnrollments, useCancelBenefitEnrollment } from '@/hooks/useBenefits';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { format } from 'date-fns';
 import SystemAccessPanel from '@/components/employee/SystemAccessPanel';
 
@@ -53,7 +54,7 @@ export default function EmployeeDetails() {
   const { mutate: rehireEmployee, isPending: isRehiring } = useRehireEmployee();
   const { data: employmentHistory = [], isLoading: isLoadingHistory } = useEmploymentHistory(id!);
   const { data: rehireEligibility } = useRehireEligibility(id!);
-  const { data: enrollments = [], isLoading: isLoadingEnrollments } = useBenefitEnrollments({ employeeId: id });
+  const { data: enrollments = [], isLoading: isLoadingEnrollments } = useEmployeeBenefitEnrollments(id!);
   const cancelEnrollment = useCancelBenefitEnrollment();
 
   if (isLoading) {
@@ -107,8 +108,11 @@ export default function EmployeeDetails() {
             isRehireEligible: true,
           });
         },
-        onError: (error) => {
-          toast.error(error.message || 'Failed to terminate employee');
+        onError: (error: any) => {
+          handleApiError(error, {
+            toast,
+            defaultMessage: 'Failed to terminate employee',
+          });
         },
       }
     );
@@ -130,8 +134,11 @@ export default function EmployeeDetails() {
             rehireNotes: '',
           });
         },
-        onError: (error) => {
-          toast.error(error.message || 'Failed to rehire employee');
+        onError: (error: any) => {
+          handleApiError(error, {
+            toast,
+            defaultMessage: 'Failed to rehire employee',
+          });
         },
       }
     );
@@ -714,7 +721,10 @@ export default function EmployeeDetails() {
                                     toast.success('Enrollment cancelled successfully');
                                   },
                                   onError: (error: any) => {
-                                    toast.error(error.message || 'Failed to cancel enrollment');
+                                    handleApiError(error, {
+                                      toast,
+                                      defaultMessage: 'Failed to cancel enrollment',
+                                    });
                                   },
                                 });
                               }

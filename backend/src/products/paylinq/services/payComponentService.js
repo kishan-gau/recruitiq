@@ -10,6 +10,7 @@
  * @module products/paylinq/services/payComponentService
  */
 
+import crypto from 'crypto';
 import Joi from 'joi';
 import PayComponentRepository from '../repositories/payComponentRepository.js';
 import { mapComponentDbToApi, mapComponentsDbToApi, mapComponentApiToDb } from '../dto/payComponentDto.js';
@@ -66,6 +67,19 @@ class PayComponentService {
     effectiveTo: Joi.date().allow(null),
     isActive: Joi.boolean().default(true),
     notes: Joi.string().max(500).allow(null, '')
+  });
+
+  // New schema for employee_pay_component_assignment
+  employeeAssignmentSchema = Joi.object({
+    employeeId: Joi.string().uuid().required(),
+    componentId: Joi.string().uuid().required(),
+    componentCode: Joi.string().required(),
+    effectiveFrom: Joi.date().required(),
+    effectiveTo: Joi.date().optional().allow(null),
+    configuration: Joi.object().optional().default({}),
+    overrideAmount: Joi.number().optional().allow(null),
+    overrideFormula: Joi.string().optional().allow(null, ''),
+    notes: Joi.string().optional().allow(null, ''),
   });
 
   // ==================== BUSINESS RULE VALIDATORS ====================
@@ -498,17 +512,91 @@ class PayComponentService {
     }
   }
 
-  // ==================== CUSTOM COMPONENTS ====================
+  /**
+   * Get employee component assignments
+   * @param {string} employeeId - Employee UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Array>} Component assignments
+   */
+  async getEmployeeComponentAssignments(employeeId, organizationId, filters = {}) {
+    try {
+      return await this.payComponentRepository.findEmployeeComponentAssignments(
+        employeeId,
+        organizationId,
+        filters
+      );
+    } catch (err) {
+      logger.error('Error fetching employee component assignments', { error: err.message, employeeId });
+      throw err;
+    }
+  }
 
   /**
-   * Assign custom component to employee
-   * @param {Object} customComponentData - Custom component data
+   * Update employee component assignment
+   * @param {string} assignmentId - Assignment UUID
+   * @param {Object} updates - Fields to update
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User making the update
+   * @returns {Promise<Object>} Updated assignment
+   */
+  async updateEmployeeAssignment(assignmentId, updates, organizationId, userId) {
+    try {
+      const assignment = await this.payComponentRepository.updateEmployeeAssignment(
+        assignmentId,
+        updates,
+        organizationId,
+        userId
+      );
+
+      logger.info('Employee assignment updated', {
+        assignmentId,
+        updatedFields: Object.keys(updates),
+        organizationId
+      });
+
+      return assignment;
+    } catch (err) {
+      logger.error('Error updating employee assignment', { error: err.message, assignmentId });
+      throw err;
+    }
+  }
+
+  /**
+   * Delete employee component assignment
+   * @param {string} assignmentId - Assignment UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User deleting the assignment
+   * @returns {Promise<boolean>} Success status
+   */
+  async deleteEmployeeAssignment(assignmentId, organizationId, userId) {
+    try {
+      const result = await this.payComponentRepository.deleteEmployeeAssignment(
+        assignmentId,
+        organizationId,
+        userId
+      );
+
+      logger.info('Employee assignment deleted', { assignmentId, organizationId });
+
+      return result;
+    } catch (err) {
+      logger.error('Error deleting employee assignment', { error: err.message, assignmentId });
+      throw err;
+    }
+  }
+
+  // ==================== NEW: EMPLOYEE COMPONENT ASSIGNMENTS ====================
+
+  /**
+   * Assign pay component to employee using new employee_pay_component_assignment table
+   * @param {Object} assignmentData - Assignment data
    * @param {string} organizationId - Organization UUID
    * @param {string} userId - User creating the assignment
-   * @returns {Promise<Object>} Created custom component
+   * @returns {Promise<Object>} Created assignment
    */
-  async assignCustomComponent(customComponentData, organizationId, userId) {
-    const { error, value } = this.customComponentSchema.validate(customComponentData, {
+  async assignComponentToEmployee(assignmentData, organizationId, userId) {
+    const { error, value } = this.employeeAssignmentSchema.validate(assignmentData, {
       abortEarly: false,
       stripUnknown: true,
       convert: true,
@@ -522,105 +610,100 @@ class PayComponentService {
       throw new Error('Effective to date must be after effective from date');
     }
 
-    // Business rule: Must have either custom rate or custom amount
-    if (!value.customRate && !value.customAmount) {
-      throw new Error('Custom component must have either custom rate or custom amount');
-    }
-
     try {
       // Verify component exists
-      await this.getPayComponentById(value.payComponentId, organizationId);
+      await this.getPayComponentById(value.componentId, organizationId);
 
-      const customComponent = await this.payComponentRepository.assignCustomComponent(
-        value,
-        organizationId,
-        userId
+      const { v4: uuidv4 } = await import('uuid');
+      const assignment = await this.payComponentRepository.assignComponentToEmployee(
+        { ...value, id: uuidv4(), createdBy: userId },
+        organizationId
       );
 
-      logger.info('Custom component assigned to employee', {
-        customComponentId: customComponent.id,
-        employeeId: customComponent.employee_id,
-        componentId: customComponent.pay_component_id,
+      logger.info('Component assigned to employee', {
+        assignmentId: assignment.id,
+        employeeId: assignment.employee_id,
+        componentId: assignment.component_id,
         organizationId
       });
 
-      return customComponent;
+      return assignment;
     } catch (err) {
-      logger.error('Error assigning custom component', { error: err.message, organizationId });
+      logger.error('Error assigning component to employee', { error: err.message, organizationId });
       throw err;
     }
   }
 
   /**
-   * Get custom components for employee
-   * @param {string} employeeRecordId - Employee record UUID
+   * Get employee component assignments using new table
+   * @param {string} employeeId - Employee UUID
    * @param {string} organizationId - Organization UUID
    * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Custom components
+   * @returns {Promise<Array>} Component assignments
    */
-  async getCustomComponentsByEmployee(employeeRecordId, organizationId, filters = {}) {
+  async getEmployeeComponentAssignments(employeeId, organizationId, filters = {}) {
     try {
-      return await this.payComponentRepository.findCustomComponentsByEmployee(
-        employeeRecordId,
+      return await this.payComponentRepository.findEmployeeComponentAssignments(
+        employeeId,
         organizationId,
         filters
       );
     } catch (err) {
-      logger.error('Error fetching custom components', { error: err.message, employeeRecordId });
+      logger.error('Error fetching employee component assignments', { error: err.message, employeeId });
       throw err;
     }
   }
 
   /**
-   * Update custom component
-   * @param {string} customComponentId - Custom component UUID
+   * Update employee component assignment using new table
+   * @param {string} assignmentId - Assignment UUID
    * @param {Object} updates - Fields to update
    * @param {string} organizationId - Organization UUID
    * @param {string} userId - User making the update
-   * @returns {Promise<Object>} Updated custom component
+   * @returns {Promise<Object>} Updated assignment
    */
-  async updateCustomComponent(customComponentId, updates, organizationId, userId) {
+  async updateEmployeeAssignment(assignmentId, updates, organizationId, userId) {
     try {
-      const customComponent = await this.payComponentRepository.updateCustomComponent(
-        customComponentId,
+      const assignment = await this.payComponentRepository.updateEmployeeAssignment(
+        assignmentId,
         updates,
         organizationId,
         userId
       );
 
-      logger.info('Custom component updated', {
-        customComponentId,
+      logger.info('Employee assignment updated', {
+        assignmentId,
         updatedFields: Object.keys(updates),
         organizationId
       });
 
-      return customComponent;
+      return assignment;
     } catch (err) {
-      logger.error('Error updating custom component', { error: err.message, customComponentId });
+      logger.error('Error updating employee assignment', { error: err.message, assignmentId });
       throw err;
     }
   }
 
   /**
-   * Deactivate custom component
-   * @param {string} customComponentId - Custom component UUID
+   * Delete employee component assignment using new table
+   * @param {string} assignmentId - Assignment UUID
    * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User deactivating the component
-   * @returns {Promise<Object>} Updated custom component
+   * @param {string} userId - User deleting the assignment
+   * @returns {Promise<boolean>} Success status
    */
-  async deactivateCustomComponent(customComponentId, organizationId, userId) {
+  async deleteEmployeeAssignment(assignmentId, organizationId, userId) {
     try {
-      const customComponent = await this.payComponentRepository.deactivateCustomComponent(
-        customComponentId,
+      const result = await this.payComponentRepository.deleteEmployeeAssignment(
+        assignmentId,
         organizationId,
         userId
       );
 
-      logger.info('Custom component deactivated', { customComponentId, organizationId });
+      logger.info('Employee assignment deleted', { assignmentId, organizationId });
 
-      return customComponent;
+      return result;
     } catch (err) {
-      logger.error('Error deactivating custom component', { error: err.message, customComponentId });
+      logger.error('Error deleting employee assignment', { error: err.message, assignmentId });
       throw err;
     }
   }
@@ -747,51 +830,209 @@ class PayComponentService {
   }
 
   /**
-   * Alias: Create employee pay component
-   * @param {Object} componentData - Custom component data
-   * @returns {Promise<Object>} Created custom component
+   * Alias: Create employee pay component (backwards compatibility)
+   * @param {Object} componentData - Component data
+   * @returns {Promise<Object>} Created assignment
    */
   async createEmployeePayComponent(componentData) {
-    const { organizationId, createdBy, employeeId, ...data } = componentData;
-    // Map employeeId to employeeRecordId for the underlying method
-    if (employeeId) {
-      data.employeeRecordId = employeeId;
-    }
-    return this.assignCustomComponent(data, organizationId, createdBy);
+    const { organizationId, createdBy, employeeId, payComponentId, componentCode, ...data } = componentData;
+    return this.assignComponentToEmployee({
+      employeeId,
+      componentId: payComponentId,
+      componentCode,
+      ...data
+    }, organizationId, createdBy);
   }
 
   /**
-   * Alias: Get pay components by employee
-   * @param {string} employeeRecordId - Employee record UUID
+   * Alias: Get pay components by employee (backwards compatibility)
+   * @param {string} employeeId - Employee UUID
    * @param {string} organizationId - Organization UUID
    * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Employee pay components
+   * @returns {Promise<Array>} Employee component assignments
    */
-  async getPayComponentsByEmployee(employeeRecordId, organizationId, filters = {}) {
-    return this.getCustomComponentsByEmployee(employeeRecordId, organizationId, filters);
+  async getPayComponentsByEmployee(employeeId, organizationId, filters = {}) {
+    return this.getEmployeeComponentAssignments(employeeId, organizationId, filters);
   }
 
   /**
-   * Alias: Update employee pay component
-   * @param {string} customComponentId - Custom component UUID
+   * Alias: Update employee pay component (backwards compatibility)
+   * @param {string} assignmentId - Assignment UUID
    * @param {string} organizationId - Organization UUID
    * @param {Object} updates - Fields to update
    * @param {string} userId - User making the update
-   * @returns {Promise<Object>} Updated custom component
+   * @returns {Promise<Object>} Updated assignment
    */
-  async updateEmployeePayComponent(customComponentId, organizationId, updates, userId) {
-    return this.updateCustomComponent(customComponentId, updates, organizationId, userId);
+  async updateEmployeePayComponent(assignmentId, organizationId, updates, userId) {
+    return this.updateEmployeeAssignment(assignmentId, updates, organizationId, userId);
   }
 
   /**
-   * Alias: Delete employee pay component
-   * @param {string} customComponentId - Custom component UUID
+   * Alias: Delete employee pay component (backwards compatibility)
+   * @param {string} assignmentId - Assignment UUID
    * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User deleting the component
+   * @param {string} userId - User deleting the assignment
    * @returns {Promise<boolean>} Success status
    */
-  async deleteEmployeePayComponent(customComponentId, organizationId, userId) {
-    return this.deactivateCustomComponent(customComponentId, organizationId, userId);
+  async deleteEmployeePayComponent(assignmentId, organizationId, userId) {
+    return this.deleteEmployeeAssignment(assignmentId, organizationId, userId);
+  }
+
+  // ==================== EMPLOYEE COMPONENT ASSIGNMENTS (NEW SYSTEM) ====================
+
+  /**
+   * Assign component to employee with rich configuration
+   * @param {Object} assignmentData - Assignment data with configuration
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User creating assignment
+   * @returns {Promise<Object>} Created assignment
+   */
+  async assignComponentToEmployee(assignmentData, organizationId, userId) {
+    try {
+      const { employeeId, componentId, componentCode, effectiveFrom, effectiveTo, 
+              configuration, overrideAmount, overrideFormula, notes } = assignmentData;
+
+      // Validate required fields
+      if (!employeeId) {
+        throw new ValidationError('Employee ID is required');
+      }
+      if (!componentId) {
+        throw new ValidationError('Component ID is required');
+      }
+
+      // Validate component exists (BUG FIX: use service method instead of repository)
+      const component = await this.getPayComponentById(componentId, organizationId);
+      if (!component) {
+        throw new NotFoundError('Pay component not found');
+      }
+
+      // Business rule: Cannot assign inactive components
+      if (!component.isActive) {
+        throw new ValidationError('Cannot assign inactive component to employee');
+      }
+
+      // Validate effective dates
+      if (effectiveFrom && effectiveTo) {
+        const from = new Date(effectiveFrom);
+        const to = new Date(effectiveTo);
+        if (to <= from) {
+          throw new ValidationError('Effective to date must be after effective from date');
+        }
+      }
+
+      // Create assignment with generated UUID
+      const assignment = {
+        id: crypto.randomUUID(),
+        employeeId,
+        componentId,
+        componentCode: componentCode || component.componentCode,
+        effectiveFrom,
+        effectiveTo,
+        configuration: configuration || {},
+        overrideAmount,
+        overrideFormula,
+        notes,
+        createdBy: userId
+      };
+
+      const created = await this.payComponentRepository.assignComponentToEmployee(assignment, organizationId);
+
+      logger.info('Component assigned to employee', {
+        organizationId,
+        employeeId,
+        componentId,
+        assignmentId: created.id,
+        userId
+      });
+
+      return created;
+    } catch (err) {
+      logger.error('Error assigning component to employee', { 
+        error: err.message, 
+        employeeId: assignmentData.employeeId,
+        componentId: assignmentData.componentId 
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Get employee component assignments
+   * @param {string} employeeId - Employee UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {Object} filters - Optional filters
+   * @returns {Promise<Array>} Component assignments
+   */
+  async getEmployeeComponentAssignments(employeeId, organizationId, filters = {}) {
+    return this.payComponentRepository.findEmployeeComponents(employeeId, organizationId, filters);
+  }
+
+  /**
+   * Get single employee component assignment
+   * @param {string} assignmentId - Assignment UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Component assignment
+   */
+  async getEmployeeComponentAssignment(assignmentId, organizationId) {
+    const assignment = await this.payComponentRepository.findEmployeeComponentAssignmentById(assignmentId, organizationId);
+    if (!assignment) {
+      throw new NotFoundError('Component assignment not found');
+    }
+    return assignment;
+  }
+
+  /**
+   * Update employee component assignment
+   * @param {string} assignmentId - Assignment UUID
+   * @param {Object} updates - Fields to update
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User making update
+   * @returns {Promise<Object>} Updated assignment
+   */
+  async updateEmployeeComponentAssignment(assignmentId, updates, organizationId, userId) {
+    // Validate assignment exists
+    const existing = await this.getEmployeeComponentAssignment(assignmentId, organizationId);
+    if (!existing) {
+      throw new NotFoundError('Component assignment not found');
+    }
+
+    // Update assignment
+    const updated = await this.payComponentRepository.updateEmployeeComponentAssignment(
+      assignmentId,
+      { ...updates, updatedBy: userId },
+      organizationId
+    );
+
+    logger.info('Component assignment updated', {
+      organizationId,
+      assignmentId,
+      updatedFields: Object.keys(updates),
+      userId
+    });
+
+    return updated;
+  }
+
+  /**
+   * Remove employee component assignment
+   * @param {string} assignmentId - Assignment UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User removing assignment
+   * @returns {Promise<boolean>} Success status
+   */
+  async removeEmployeeComponentAssignment(assignmentId, organizationId, userId) {
+    // Validate assignment exists
+    await this.getEmployeeComponentAssignment(assignmentId, organizationId);
+    
+    await this.payComponentRepository.removeEmployeeComponentAssignment(assignmentId, organizationId, userId);
+    
+    logger.info('Component assignment removed', {
+      organizationId,
+      assignmentId,
+      userId
+    });
+
+    return true;
   }
 }
 

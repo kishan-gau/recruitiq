@@ -5,6 +5,7 @@ import {
   useReviewTimeOff,
 } from '@/hooks/schedulehub/useScheduleStats';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import type { TimeOffRequest } from '@/types/schedulehub';
 
 export default function TimeOffRequests() {
@@ -21,8 +22,11 @@ export default function TimeOffRequests() {
     try {
       await reviewTimeOff.mutateAsync({ id, decision });
       toast.success(`Request ${decision} successfully!`);
-    } catch (error) {
-      toast.error('Failed to review request');
+    } catch (error: any) {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to review request',
+      });
     }
   };
 

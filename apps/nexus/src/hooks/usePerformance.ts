@@ -14,6 +14,7 @@ import type {
   GoalFilters,
 } from '@/types/performance.types';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 
 // ============ Performance Review Hooks ============
 
@@ -69,7 +70,7 @@ export function useReviewerReviews(reviewerId: string | undefined) {
  */
 export function useCreatePerformanceReview() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (review: CreatePerformanceReviewDTO) => performanceService.createReview(review),
@@ -77,10 +78,13 @@ export function useCreatePerformanceReview() {
       queryClient.invalidateQueries({ queryKey: ['performance', 'reviews'] });
       queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', 'employee', newReview.employeeId] });
       queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', 'reviewer', newReview.reviewerId] });
-      success('Performance review created successfully');
+      toast.success('Performance review created successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to create performance review: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to create performance review',
+      });
     },
   });
 }
@@ -90,7 +94,7 @@ export function useCreatePerformanceReview() {
  */
 export function useUpdatePerformanceReview() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: UpdatePerformanceReviewDTO }) =>
@@ -98,12 +102,15 @@ export function useUpdatePerformanceReview() {
     onSuccess: (updatedReview) => {
       queryClient.invalidateQueries({ queryKey: ['performance', 'reviews'] });
       queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', updatedReview.id] });
+      queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', updatedReview.id] });
       queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', 'employee', updatedReview.employeeId] });
-      queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', 'reviewer', updatedReview.reviewerId] });
-      success('Performance review updated successfully');
+      toast.success('Performance review updated successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to update performance review: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update performance review',
+      });
     },
   });
 }
@@ -113,16 +120,19 @@ export function useUpdatePerformanceReview() {
  */
 export function useDeletePerformanceReview() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (id: string) => performanceService.deleteReview(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['performance', 'reviews'] });
-      success('Performance review deleted successfully');
+      toast.success('Performance review deleted successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to delete performance review: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete performance review',
+      });
     },
   });
 }
@@ -132,17 +142,20 @@ export function useDeletePerformanceReview() {
  */
 export function useSubmitPerformanceReview() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (id: string) => performanceService.submitReview(id),
     onSuccess: (updatedReview) => {
-      queryClient.invalidateQueries({ queryKey: ['performance', 'reviews'] });
-      queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', updatedReview.id] });
-      success('Performance review submitted successfully');
+      queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', id] });
+      queryClient.invalidateQueries({ queryKey: ['performance', 'reviews', 'employee'] });
+      toast.success('Performance review submitted successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to submit performance review: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to submit performance review',
+      });
     },
   });
 }
@@ -200,17 +213,20 @@ export function useEmployeeGoals(employeeId: string | undefined) {
  */
 export function useCreateGoal() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (goal: CreateGoalDTO) => performanceService.createGoal(goal),
     onSuccess: (newGoal) => {
       queryClient.invalidateQueries({ queryKey: ['performance', 'goals'] });
       queryClient.invalidateQueries({ queryKey: ['performance', 'goals', 'employee', newGoal.employeeId] });
-      success('Goal created successfully');
+      toast.success('Goal created successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to create goal: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to create goal',
+      });
     },
   });
 }
@@ -220,7 +236,7 @@ export function useCreateGoal() {
  */
 export function useUpdateGoal() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: UpdateGoalDTO }) =>
@@ -229,10 +245,13 @@ export function useUpdateGoal() {
       queryClient.invalidateQueries({ queryKey: ['performance', 'goals'] });
       queryClient.invalidateQueries({ queryKey: ['performance', 'goals', updatedGoal.id] });
       queryClient.invalidateQueries({ queryKey: ['performance', 'goals', 'employee', updatedGoal.employeeId] });
-      success('Goal updated successfully');
+      toast.success('Goal updated successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to update goal: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update goal',
+      });
     },
   });
 }
@@ -242,16 +261,19 @@ export function useUpdateGoal() {
  */
 export function useDeleteGoal() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (id: string) => performanceService.deleteGoal(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['performance', 'goals'] });
-      success('Goal deleted successfully');
+      toast.success('Goal deleted successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to delete goal: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete goal',
+      });
     },
   });
 }
@@ -261,18 +283,21 @@ export function useDeleteGoal() {
  */
 export function useUpdateGoalProgress() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: ({ id, progress }: { id: string; progress: number }) =>
       performanceService.updateGoalProgress(id, progress),
     onSuccess: (updatedGoal) => {
-      queryClient.invalidateQueries({ queryKey: ['performance', 'goals'] });
-      queryClient.invalidateQueries({ queryKey: ['performance', 'goals', updatedGoal.id] });
-      success('Goal progress updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['performance', 'goals', id] });
+      queryClient.invalidateQueries({ queryKey: ['performance', 'goals', 'employee'] });
+      toast.success('Goal progress updated successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to update goal progress: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update goal progress',
+      });
     },
   });
 }
@@ -282,17 +307,20 @@ export function useUpdateGoalProgress() {
  */
 export function useCompleteGoal() {
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: (id: string) => performanceService.completeGoal(id),
     onSuccess: (updatedGoal) => {
       queryClient.invalidateQueries({ queryKey: ['performance', 'goals'] });
       queryClient.invalidateQueries({ queryKey: ['performance', 'goals', updatedGoal.id] });
-      success('Goal completed successfully');
+      toast.success('Goal completed successfully');
     },
     onError: (err: Error) => {
-      error(`Failed to complete goal: ${err.message}`);
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to complete goal',
+      });
     },
   });
 }

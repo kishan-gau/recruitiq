@@ -4,37 +4,38 @@
 
 import express from 'express';
 import formulaTemplateController from '../controllers/formulaTemplateController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all templates (with filtering)
-router.get('/', formulaTemplateController.getTemplates);
+router.get('/', requirePermission('formulas:read'), formulaTemplateController.getTemplates);
 
 // Get popular templates (must be before /:id to avoid route conflicts)
-router.get('/popular', formulaTemplateController.getPopularTemplates);
+router.get('/popular', requirePermission('formulas:read'), formulaTemplateController.getPopularTemplates);
 
 // Search by tags
-router.post('/search/tags', formulaTemplateController.searchByTags);
+router.post('/search/tags', requirePermission('formulas:read'), formulaTemplateController.searchByTags);
 
 // Get recommended templates by category
-router.get('/recommended/:category', formulaTemplateController.getRecommendedTemplates);
+router.get('/recommended/:category', requirePermission('formulas:read'), formulaTemplateController.getRecommendedTemplates);
 
 // Get template by code
-router.get('/code/:code', formulaTemplateController.getTemplateByCode);
+router.get('/code/:code', requirePermission('formulas:read'), formulaTemplateController.getTemplateByCode);
 
 // Get template by ID
-router.get('/:id', formulaTemplateController.getTemplateById);
+router.get('/:id', requirePermission('formulas:read'), formulaTemplateController.getTemplateById);
 
 // Create custom template
-router.post('/', formulaTemplateController.createTemplate);
+router.post('/', requirePermission('formulas:create'), formulaTemplateController.createTemplate);
 
 // Update custom template
-router.put('/:id', formulaTemplateController.updateTemplate);
+router.put('/:id', requirePermission('formulas:update'), formulaTemplateController.updateTemplate);
 
 // Delete custom template
-router.delete('/:id', formulaTemplateController.deleteTemplate);
+router.delete('/:id', requirePermission('formulas:delete'), formulaTemplateController.deleteTemplate);
 
 // Apply template with parameters
-router.post('/:id/apply', formulaTemplateController.applyTemplate);
+router.post('/:id/apply', requirePermission('formulas:test'), formulaTemplateController.applyTemplate);
 
 export default router;

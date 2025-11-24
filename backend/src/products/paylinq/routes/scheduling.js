@@ -4,6 +4,7 @@
 
 import express from 'express';
 import schedulingController from '../controllers/schedulingController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import { validate  } from '../../../middleware/validation.js';
 import Joi from 'joi';
 
@@ -86,13 +87,13 @@ const idParamSchema = Joi.object({
 });
 
 // Routes
-router.post('/', validate(createScheduleSchema, 'body'), schedulingController.createSchedule);
-router.get('/', schedulingController.getSchedules); // Supports ?employeeId=xxx query parameter
-router.get('/:id', validate(idParamSchema, 'params'), schedulingController.getScheduleById);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updateScheduleSchema, 'body'), schedulingController.updateSchedule);
-router.delete('/:id', validate(idParamSchema, 'params'), schedulingController.deleteSchedule);
-router.post('/change-requests', validate(createChangeRequestSchema, 'body'), schedulingController.createChangeRequest);
-router.get('/change-requests', schedulingController.getChangeRequests);
-router.post('/change-requests/:id/review', validate(idParamSchema, 'params'), validate(reviewChangeRequestSchema, 'body'), schedulingController.reviewChangeRequest);
+router.post('/', requirePermission('scheduling:create'), validate(createScheduleSchema, 'body'), schedulingController.createSchedule);
+router.get('/', requirePermission('scheduling:read'), schedulingController.getSchedules); // Supports ?employeeId=xxx query parameter
+router.get('/:id', requirePermission('scheduling:read'), validate(idParamSchema, 'params'), schedulingController.getScheduleById);
+router.put('/:id', requirePermission('scheduling:update'), validate(idParamSchema, 'params'), validate(updateScheduleSchema, 'body'), schedulingController.updateSchedule);
+router.delete('/:id', requirePermission('scheduling:delete'), validate(idParamSchema, 'params'), schedulingController.deleteSchedule);
+router.post('/change-requests', requirePermission('scheduling:update'), validate(createChangeRequestSchema, 'body'), schedulingController.createChangeRequest);
+router.get('/change-requests', requirePermission('scheduling:read'), schedulingController.getChangeRequests);
+router.post('/change-requests/:id/review', requirePermission('scheduling:approve'), validate(idParamSchema, 'params'), validate(reviewChangeRequestSchema, 'body'), schedulingController.reviewChangeRequest);
 
 export default router;

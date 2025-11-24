@@ -10,6 +10,7 @@
 import Joi from 'joi';
 import { ValidationError, NotFoundError, ConflictError } from '../../utils/errors.js';
 import logger from '../../utils/logger.js';
+import VPSRepository from '../../repositories/VPSRepository.js';
 
 class VPSService {
   /**
@@ -17,7 +18,7 @@ class VPSService {
    * @param {VPSRepository} repository - Optional repository instance for testing
    */
   constructor(repository = null) {
-    this.repository = repository || new (await import('../../repositories/VPSRepository.js')).default();
+    this.repository = repository || new VPSRepository();
   }
 
   /**

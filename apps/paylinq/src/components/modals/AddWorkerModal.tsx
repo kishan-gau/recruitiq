@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
 
@@ -195,10 +196,13 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
             return `${label}: ${e.message}`;
           })
           .join(', ');
-        error(errorMessages || 'Please fix the validation errors');
+        toast.error(errorMessages || 'Please fix the validation errors');
       } else {
         // Handle other errors
-        error(err.response?.data?.message || err.message || 'Failed to add worker. Please try again.');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to add worker. Please try again.',
+        });
       }
     } finally {
       setIsLoading(false);

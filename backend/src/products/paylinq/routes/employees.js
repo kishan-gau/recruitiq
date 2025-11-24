@@ -7,6 +7,7 @@ import express from 'express';
 import employeeRecordController from '../controllers/employeeRecordController.js';
 import userAccessController from '../controllers/userAccessController.js';
 import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
 import Joi from 'joi';
 
@@ -79,16 +80,18 @@ const updateAccessSchema = Joi.object({
 // POST /api/paylinq/employees - Create employee record
 router.post(
   '/',
+  requirePermission('payroll:employees:create'),
   validate(createEmployeeSchema, 'body'),
   employeeRecordController.createEmployeeRecord
 );
 
 // GET /api/paylinq/employees - Get all employee records
-router.get('/', employeeRecordController.getEmployeeRecords);
+router.get('/', requirePermission('payroll:employees:read'), employeeRecordController.getEmployeeRecords);
 
 // GET /api/paylinq/employees/:id - Get employee record by ID
 router.get(
   '/:id',
+  requirePermission('payroll:employees:read'),
   validate(uuidParamSchema, 'params'),
   employeeRecordController.getEmployeeRecordById
 );
@@ -96,6 +99,7 @@ router.get(
 // PUT /api/paylinq/employees/:id - Update employee record
 router.put(
   '/:id',
+  requirePermission('payroll:employees:update'),
   validate(uuidParamSchema, 'params'),
   validate(updateEmployeeSchema, 'body'),
   employeeRecordController.updateEmployeeRecord
@@ -104,6 +108,7 @@ router.put(
 // DELETE /api/paylinq/employees/:id - Delete employee record
 router.delete(
   '/:id',
+  requirePermission('payroll:employees:delete'),
   validate(uuidParamSchema, 'params'),
   employeeRecordController.deleteEmployeeRecord
 );
@@ -111,6 +116,7 @@ router.delete(
 // GET /api/paylinq/employees/:id/history - Get payroll history
 router.get(
   '/:id/history',
+  requirePermission('payroll:employees:read'),
   validate(uuidParamSchema, 'params'),
   employeeRecordController.getEmployeePayrollHistory
 );
@@ -120,6 +126,7 @@ router.get(
 // POST /api/paylinq/employees/:employeeId/grant-access - Grant system access to employee
 router.post(
   '/:employeeId/grant-access',
+  requirePermission('payroll:employees:manage_access'),
   validate({ employeeId: Joi.string().uuid().required() }, 'params'),
   validate(grantAccessSchema, 'body'),
   userAccessController.grantAccess
@@ -128,6 +135,7 @@ router.post(
 // GET /api/paylinq/employees/:employeeId/user-account - Get user account status
 router.get(
   '/:employeeId/user-account',
+  requirePermission('payroll:employees:read'),
   validate({ employeeId: Joi.string().uuid().required() }, 'params'),
   userAccessController.getUserAccount
 );
@@ -135,6 +143,7 @@ router.get(
 // DELETE /api/paylinq/employees/:employeeId/revoke-access - Revoke system access
 router.delete(
   '/:employeeId/revoke-access',
+  requirePermission('payroll:employees:manage_access'),
   validate({ employeeId: Joi.string().uuid().required() }, 'params'),
   userAccessController.revokeAccess
 );
@@ -142,6 +151,7 @@ router.delete(
 // PATCH /api/paylinq/employees/:employeeId/user-access - Update user access settings
 router.patch(
   '/:employeeId/user-access',
+  requirePermission('payroll:employees:manage_access'),
   validate({ employeeId: Joi.string().uuid().required() }, 'params'),
   validate(updateAccessSchema, 'body'),
   userAccessController.updateAccess

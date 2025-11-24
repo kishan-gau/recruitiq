@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { Calendar } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { RunTypeSelector } from '@/components/common/RunTypeSelector';
@@ -14,7 +15,7 @@ interface CreatePayrollRunModalProps {
 
 export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: CreatePayrollRunModalProps) {
   const { paylinq } = usePaylinqAPI();
-  const { success, error } = useToast();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedRunType, setSelectedRunType] = useState<any>(null);
@@ -47,7 +48,7 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
 
   const handleSubmit = async () => {
     if (!validate()) {
-      error('Please fix the validation errors');
+      toast.error('Please fix the validation errors');
       return;
     }
 
@@ -64,7 +65,7 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
       });
 
       if (response.success) {
-        success('Payroll run created successfully');
+        toast.success('Payroll run created successfully');
         onSuccess();
         onClose();
       }
@@ -88,10 +89,13 @@ export default function CreatePayrollRunModal({ isOpen, onClose, onSuccess }: Cr
         });
         
         setErrors(fieldErrors);
-        error('Please fix the validation errors');
+        toast.error('Please fix the validation errors');
       } else {
         // Handle other errors
-        error(err.response?.data?.message || err.message || 'Failed to create payroll run. Please try again.');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to create payroll run. Please try again.',
+        });
       }
     } finally {
       setIsLoading(false);

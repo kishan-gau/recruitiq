@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@recruitiq/auth';
 import { useOrganization } from './OrganizationContext';
 import { authService } from '../services';
+import { handleApiError } from '../utils/errorHandler';
+import { useToast } from './ToastContext';
 
 const WorkspaceContext = createContext();
 
@@ -35,6 +37,7 @@ const DEFAULT_WORKSPACE = {
 export const WorkspaceProvider = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
   const { canCreateWorkspace, refresh: refreshOrg } = useOrganization();
+  const toast = useToast();
   
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
@@ -126,7 +129,11 @@ export const WorkspaceProvider = ({ children }) => {
         setLoading(false);
       } catch (err) {
         console.error('WorkspaceContext: Failed to load workspaces:', err);
-        setError(err.message || 'Failed to load workspaces');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to load workspaces',
+        });
+        setError('Failed to load workspaces');
         setIsInitialized(true);
         setLoading(false);
       }
@@ -202,7 +209,11 @@ export const WorkspaceProvider = ({ children }) => {
       return newWorkspace;
     } catch (err) {
       console.error('WorkspaceContext: Failed to create workspace:', err);
-      setError(err.message || 'Failed to create workspace');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to create workspace',
+      });
+      setError('Failed to create workspace');
       throw err;
     }
   };
@@ -224,7 +235,11 @@ export const WorkspaceProvider = ({ children }) => {
       console.log('WorkspaceContext: Workspace renamed successfully');
     } catch (err) {
       console.error('WorkspaceContext: Failed to rename workspace:', err);
-      setError(err.message || 'Failed to rename workspace');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to rename workspace',
+      });
+      setError('Failed to rename workspace');
       throw err;
     }
   };
@@ -245,7 +260,11 @@ export const WorkspaceProvider = ({ children }) => {
       console.log('WorkspaceContext: Workspace color updated successfully');
     } catch (err) {
       console.error('WorkspaceContext: Failed to update workspace color:', err);
-      setError(err.message || 'Failed to update workspace color');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update workspace color',
+      });
+      setError('Failed to update workspace color');
       throw err;
     }
   };
@@ -282,7 +301,11 @@ export const WorkspaceProvider = ({ children }) => {
       console.log('WorkspaceContext: Workspace deleted successfully');
     } catch (err) {
       console.error('WorkspaceContext: Failed to delete workspace:', err);
-      setError(err.message || 'Failed to delete workspace');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to delete workspace',
+      });
+      setError('Failed to delete workspace');
       throw err;
     }
   };
@@ -318,7 +341,11 @@ export const WorkspaceProvider = ({ children }) => {
       return response.member;
     } catch (err) {
       console.error('WorkspaceContext: Failed to add user:', err);
-      setError(err.message || 'Failed to add user to workspace');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to add user to workspace',
+      });
+      setError('Failed to add user to workspace');
       throw err;
     }
   };
@@ -345,7 +372,11 @@ export const WorkspaceProvider = ({ children }) => {
       console.log('WorkspaceContext: User updated successfully');
     } catch (err) {
       console.error('WorkspaceContext: Failed to update user:', err);
-      setError(err.message || 'Failed to update user');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to update user',
+      });
+      setError('Failed to update user');
       throw err;
     }
   };
@@ -375,7 +406,11 @@ export const WorkspaceProvider = ({ children }) => {
       console.log('WorkspaceContext: User removed successfully');
     } catch (err) {
       console.error('WorkspaceContext: Failed to remove user:', err);
-      setError(err.message || 'Failed to remove user');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to remove user',
+      });
+      setError('Failed to remove user');
       throw err;
     }
   };

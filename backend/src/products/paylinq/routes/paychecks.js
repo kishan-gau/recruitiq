@@ -5,6 +5,7 @@
 import express from 'express';
 import paycheckController from '../controllers/paycheckController.js';
 import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -36,15 +37,76 @@ const employeeIdParamSchema = Joi.object({
 });
 
 // Routes
-router.get('/', paycheckController.getPaychecks);
-router.get('/:id', validate(idParamSchema, 'params'), paycheckController.getPaycheckById);
-router.get('/:id/components', validate(idParamSchema, 'params'), paycheckController.getPaycheckComponents); // PHASE 2: Component breakdown
-router.get('/:id/pdf', validate(idParamSchema, 'params'), paycheckController.downloadPayslipPdf);
-router.post('/:id/send', validate(idParamSchema, 'params'), paycheckController.sendPayslip);
-router.get('/employees/:employeeId/paychecks', validate(employeeIdParamSchema, 'params'), paycheckController.getEmployeePaychecks);
-router.put('/:id', validate(idParamSchema, 'params'), validate(updatePaycheckSchema, 'body'), paycheckController.updatePaycheck);
-router.post('/:id/void', validate(idParamSchema, 'params'), validate(voidPaycheckSchema, 'body'), paycheckController.voidPaycheck);
-router.post('/:id/reissue', validate(idParamSchema, 'params'), validate(reissuePaycheckSchema, 'body'), paycheckController.reissuePaycheck);
-router.delete('/:id', validate(idParamSchema, 'params'), paycheckController.deletePaycheck);
+router.get(
+  '/',
+  requirePermission('payroll:paychecks:read'),
+  paycheckController.getPaychecks
+);
+
+router.get(
+  '/:id',
+  requirePermission('payroll:paychecks:read'),
+  validate(idParamSchema, 'params'),
+  paycheckController.getPaycheckById
+);
+
+router.get(
+  '/:id/components',
+  requirePermission('payroll:paychecks:read'),
+  validate(idParamSchema, 'params'),
+  paycheckController.getPaycheckComponents
+);
+
+router.get(
+  '/:id/pdf',
+  requirePermission('payroll:paychecks:read'),
+  validate(idParamSchema, 'params'),
+  paycheckController.downloadPayslipPdf
+);
+
+router.post(
+  '/:id/send',
+  requirePermission('payroll:paychecks:process'),
+  validate(idParamSchema, 'params'),
+  paycheckController.sendPayslip
+);
+
+router.get(
+  '/employees/:employeeId/paychecks',
+  requirePermission('payroll:paychecks:read'),
+  validate(employeeIdParamSchema, 'params'),
+  paycheckController.getEmployeePaychecks
+);
+
+router.put(
+  '/:id',
+  requirePermission('payroll:paychecks:update'),
+  validate(idParamSchema, 'params'),
+  validate(updatePaycheckSchema, 'body'),
+  paycheckController.updatePaycheck
+);
+
+router.post(
+  '/:id/void',
+  requirePermission('payroll:paychecks:void'),
+  validate(idParamSchema, 'params'),
+  validate(voidPaycheckSchema, 'body'),
+  paycheckController.voidPaycheck
+);
+
+router.post(
+  '/:id/reissue',
+  requirePermission('payroll:paychecks:update'),
+  validate(idParamSchema, 'params'),
+  validate(reissuePaycheckSchema, 'body'),
+  paycheckController.reissuePaycheck
+);
+
+router.delete(
+  '/:id',
+  requirePermission('payroll:paychecks:delete'),
+  validate(idParamSchema, 'params'),
+  paycheckController.deletePaycheck
+);
 
 export default router;

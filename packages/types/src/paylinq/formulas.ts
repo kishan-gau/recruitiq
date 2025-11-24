@@ -4,6 +4,7 @@
  */
 
 import { BaseEntity, Status } from './common';
+import type { EmployeePayComponentAssignment } from './employee-components';
 
 /**
  * Component Type
@@ -97,29 +98,6 @@ export interface ComponentFormula extends BaseEntity {
 }
 
 /**
- * Custom Pay Component
- * Backend table: payroll.custom_pay_component
- */
-export interface CustomPayComponent extends BaseEntity {
-  employeeId: string;
-  payComponentId: string;
-  
-  // Custom rates/amounts for this employee
-  customRate?: number;
-  customAmount?: number;
-  
-  // Effective dates
-  effectiveFrom: string; // ISO date
-  effectiveTo?: string; // ISO date
-  
-  notes?: string;
-  
-  // Populated fields
-  employeeName?: string;
-  componentName?: string;
-}
-
-/**
  * Create Pay Component Request
  */
 export interface CreatePayComponentRequest {
@@ -192,29 +170,6 @@ export interface UpdateFormulaRequest {
 }
 
 /**
- * Create Custom Pay Component Request
- */
-export interface CreateCustomPayComponentRequest {
-  employeeId: string;
-  payComponentId: string;
-  customRate?: number;
-  customAmount?: number;
-  effectiveFrom: string; // ISO date
-  effectiveTo?: string; // ISO date
-  notes?: string;
-}
-
-/**
- * Update Custom Pay Component Request
- */
-export interface UpdateCustomPayComponentRequest {
-  customRate?: number;
-  customAmount?: number;
-  effectiveTo?: string; // ISO date
-  notes?: string;
-}
-
-/**
  * Formula Validation Result
  */
 export interface FormulaValidationResult {
@@ -274,10 +229,10 @@ export interface FormulasListResponse {
   count: number;
 }
 
-/** Custom pay component response: { success, customComponent: {...} } */
-export interface CustomPayComponentResponse {
+/** Employee component assignment response: { success, assignment: {...} } */
+export interface EmployeeComponentAssignmentResponse {
   success: boolean;
-  customComponent: CustomPayComponent;
+  assignment: EmployeePayComponentAssignment;
   message?: string;
 }
 

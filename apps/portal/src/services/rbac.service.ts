@@ -1,21 +1,29 @@
 /**
  * RBAC Service - Platform Admin Only
  * 
- * Service for Platform/System RBAC management in Portal
+ * Service for Platform-level RBAC management in Portal
  * 
  * CRITICAL: Portal manages ONLY platform-level RBAC:
- * - System roles (platform admins, system operators)
- * - Platform permissions (not tenant permissions)
- * - Role templates that tenants can use
+ * - Platform admin accounts (portal users)
+ * - Platform admin roles (who can access portal features)
+ * - Platform-level permissions
  * 
  * Portal does NOT manage:
  * - Tenant users (managed in tenant apps)
- * - Tenant role assignments (managed in tenant apps)
- * - Tenant-specific permissions
+ * - Tenant roles (managed in tenant apps)
+ * - Product permissions (defined in each product)
+ * - "Role templates" (each product has its own system roles)
  * 
  * Architecture:
- * - Portal = Platform admin tool (manages the platform itself)
- * - Tenant Apps (Nexus, PayLinQ, etc.) = Manage their own users/roles
+ * - Portal = Platform admin tool (manages access to portal itself)
+ * - Tenant Apps = Each product manages its own RBAC completely
+ * - System Roles = Pre-seeded in each product during migration (not managed by portal)
+ * 
+ * Example:
+ * - Portal permissions: "customers:view", "metrics:view", "licenses:manage"
+ * - Portal roles: "Platform Admin", "Support Staff", "Billing Manager"
+ * - Nexus permissions: "employee:view", "department:edit" (defined in Nexus, not portal)
+ * - Nexus system roles: "HR Manager", "Employee Viewer" (seeded with Nexus, not from portal)
  */
 
 import { APIClient } from '@recruitiq/api-client';
@@ -24,115 +32,165 @@ const apiClient = new APIClient();
 
 /**
  * Platform RBAC Service (Portal Admin Only)
+ * 
+ * Manages RBAC for the Portal application itself:
+ * - Who can access the portal
+ * - What they can do in the portal (manage customers, view metrics, etc.)
  */
 export const platformRbacService = {
   /**
-   * Get system permissions (platform-level only)
+   * Get platform admin permissions
+   * These control access to portal features only (not tenant features)
+   * 
+   * Example permissions:
+   * - customers:view - View customer list
+   * - customers:manage - Create/edit/delete customers
+   * - licenses:manage - Manage license assignments
+   * - metrics:view - View platform metrics
+   * - billing:manage - Manage billing settings
    */
-  async getSystemPermissions() {
+  async getPlatformPermissions() {
     try {
-      const response = await apiClient.get('/api/rbac/permissions', { 
-        params: { scope: 'platform' } 
-      });
+      const response = await apiClient.get('/api/platform/rbac/permissions');
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch system permissions:', error);
+      console.error('Failed to fetch platform permissions:', error);
       throw error;
     }
   },
 
   /**
-   * Get all permission templates (for tenant role creation)
+   * Get platform admin roles
+   * These control who can access the portal (not tenant apps)
+   * 
+   * Example roles:
+   * - Platform Admin - Full portal access
+   * - Support Staff - View customers, access support features
+   * - Billing Manager - Manage licenses and billing
+   * - Metrics Viewer - View platform analytics
    */
-  async getPermissionTemplates() {
+  async getPlatformRoles() {
     try {
-      const response = await apiClient.get('/api/rbac/permissions/templates');
+      const response = await apiClient.get('/api/platform/rbac/roles');
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch permission templates:', error);
+      console.error('Failed to fetch platform roles:', error);
       throw error;
     }
   },
 
   /**
-   * Get system roles (platform admin roles only)
+   * Get single platform role
    */
-  async getSystemRoles() {
+  async getPlatformRole(roleId: string) {
     try {
-      const response = await apiClient.get('/api/rbac/roles', { 
-        params: { scope: 'platform' } 
-      });
+      const response = await apiClient.get(`/api/platform/rbac/roles/${roleId}`);
       return response.data;
     } catch (error: any) {
-      console.error('Failed to fetch system roles:', error);
+      console.error('Failed to fetch platform role:', error);
       throw error;
     }
   },
 
   /**
-   * Get system roles (platform admin roles only)
+   * Create platform admin role
+   * For managing access to portal features only
    */
-  async getSystemRoles() {
-    try {
-      const response = await apiClient.get('/api/rbac/roles', { 
-        params: { scope: 'platform' } 
-      });
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch system roles:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get role templates (for tenants to use)
-   */
-  async getRoleTemplates() {
-    try {
-      const response = await apiClient.get('/api/rbac/roles/templates');
-      return response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch role templates:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Create system role (platform admin only)
-   */
-  async createSystemRole(data: {
+  async createPlatformRole(data: {
     name: string;
     display_name?: string;
     description?: string;
     permissionIds?: string[];
   }) {
     try {
-      const response = await apiClient.post('/api/rbac/roles', {
-        ...data,
-        scope: 'platform',
-      });
+      const response = await apiClient.post('/api/platform/rbac/roles', data);
       return response.data;
     } catch (error: any) {
-      console.error('Failed to create system role:', error);
+      console.error('Failed to create platform role:', error);
       throw error;
     }
   },
 
   /**
-   * Create role template (for tenants to use)
+   * Update platform role
    */
-  async createRoleTemplate(data: {
-    name: string;
+  async updatePlatformRole(roleId: string, data: {
     display_name?: string;
     description?: string;
-    product?: string;
     permissionIds?: string[];
   }) {
     try {
-      const response = await apiClient.post('/api/rbac/roles/templates', data);
+      const response = await apiClient.patch(`/api/platform/rbac/roles/${roleId}`, data);
       return response.data;
     } catch (error: any) {
-      console.error('Failed to create role template:', error);
+      console.error('Failed to update platform role:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete platform role
+   */
+  async deletePlatformRole(roleId: string) {
+    try {
+      const response = await apiClient.delete(`/api/platform/rbac/roles/${roleId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to delete platform role:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get platform admin users (portal users)
+   */
+  async getPlatformUsers() {
+    try {
+      const response = await apiClient.get('/api/platform/rbac/users');
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch platform users:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get roles assigned to a platform user
+   */
+  async getPlatformUserRoles(userId: string) {
+    try {
+      const response = await apiClient.get(`/api/platform/rbac/users/${userId}/roles`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch platform user roles:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Assign platform role to portal admin user
+   */
+  async assignPlatformRole(userId: string, roleId: string) {
+    try {
+      const response = await apiClient.post(`/api/platform/rbac/users/${userId}/roles`, {
+        roleId,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to assign platform role:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Revoke platform role from user
+   */
+  async revokePlatformRole(userId: string, roleId: string) {
+    try {
+      const response = await apiClient.delete(`/api/platform/rbac/users/${userId}/roles/${roleId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to revoke platform role:', error);
       throw error;
     }
   },

@@ -27,15 +27,33 @@ class AllowanceService {
 
   /**
    * Calculate applicable tax-free allowance for payroll period
+   * 
+   * PER WET LOONBELASTING ARTICLE 13.1a:
+   * Tax-free allowance (belastingvrije som) is ONLY available to Suriname residents.
+   * Non-residents do NOT receive tax-free allowance.
+   * 
    * @param {number} grossPay - Gross pay amount
    * @param {Date} payDate - Payment date
    * @param {string} payPeriod - 'monthly', 'annual', etc.
    * @param {string} organizationId - Organization UUID (REQUIRED)
-   * @returns {Promise<number>} Tax-free allowance amount
+   * @param {boolean} isResident - Whether employee is Suriname resident (REQUIRED per Article 13.1a)
+   * @returns {Promise<number>} Tax-free allowance amount (0 for non-residents)
    */
-  async calculateTaxFreeAllowance(grossPay, payDate, payPeriod, organizationId) {
+  async calculateTaxFreeAllowance(grossPay, payDate, payPeriod, organizationId, isResident = true) {
     if (!organizationId) {
       throw new ValidationError('organizationId is required for tenant isolation');
+    }
+
+    // Article 13.1a: Non-residents do NOT receive tax-free allowance
+    if (isResident === false) {
+      logger.debug('Tax-free allowance not applicable - non-resident', {
+        grossPay,
+        payDate,
+        payPeriod,
+        organizationId,
+        isResident
+      });
+      return 0;
     }
 
     const allowanceType = payPeriod === 'monthly' 
@@ -64,6 +82,7 @@ class AllowanceService {
       grossPay,
       allowanceAmount: allowance.amount,
       taxFreeAmount,
+      isResident,
       organizationId
     });
 

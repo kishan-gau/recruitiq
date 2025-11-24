@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Save, CheckCircle } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 export default function PayslipTemplateEditor() {
@@ -74,7 +75,10 @@ export default function PayslipTemplateEditor() {
         status: template.status || 'draft'
       });
     } catch (err: any) {
-      showError(err.message || 'Failed to load template');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to load template',
+      });
       navigate('/settings/payslip-templates');
     } finally {
       setIsLoading(false);
@@ -100,7 +104,10 @@ export default function PayslipTemplateEditor() {
         navigate(`/settings/payslip-templates/${newId}`);
       }
     } catch (err: any) {
-      showError(err.message || 'Failed to save template');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to save template',
+      });
     } finally {
       setIsSaving(false);
     }

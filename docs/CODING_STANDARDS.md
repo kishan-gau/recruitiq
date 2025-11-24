@@ -1,7 +1,7 @@
 # RecruitIQ Coding Standards & Best Practices
 
-**Version:** 1.1  
-**Date:** November 19, 2025  
+**Version:** 1.2  
+**Date:** November 24, 2025  
 **Status:** Mandatory for all engineers  
 
 ## Purpose
@@ -242,6 +242,30 @@ const locations = await nexusClient.listLocations();
 // ❌ WRONG: Direct API calls
 import { apiClient } from './api';  // Deprecated!
 const response = await apiClient.get('/api/products/nexus/locations');
+```
+
+**Error Handling (MANDATORY):**
+- **ALWAYS** use centralized error handler utility
+- **NEVER** show raw error messages to users
+- Use `handleApiError()` for all API errors
+- Provide user-friendly messages for 403 (permission denied) errors
+- Configure QueryClient with smart retry logic
+
+```typescript
+// ✅ CORRECT: Centralized error handling
+import { handleApiError } from '@/utils/errorHandler';
+
+deleteLocation(id, {
+  onError: (error) => {
+    handleApiError(error, {
+      toast,
+      defaultMessage: 'Failed to delete location',
+    });
+  },
+});
+
+// ❌ WRONG: Manual error messages
+toast.error(error.message || 'Failed');
 ```
 
 **Component Structure:**

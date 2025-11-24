@@ -11,6 +11,7 @@ import type { FilterConfig } from '@/components/ui/FilterPanel';
 import { formatDate } from '@/utils/helpers';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { handleApiError } from '@/utils/errorHandler';
 
 interface Payslip {
   id: string;
@@ -29,9 +30,8 @@ interface Payslip {
 }
 
 export default function PayslipsList() {
-  const { success } = useToast();
+  const toast = useToast();
   const { paylinq } = usePaylinqAPI();
-  const { error: showError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<keyof Payslip | 'worker.fullName'>('worker.fullName');
@@ -79,7 +79,10 @@ export default function PayslipsList() {
       }
     } catch (err: any) {
       console.error('Failed to fetch payslips:', err);
-      showError(err.message || 'Failed to load payslips');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to load payslips',
+      });
       setPayslips([]);
     } finally {
       setIsLoading(false);
@@ -179,23 +182,29 @@ export default function PayslipsList() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      success('Payslip downloaded successfully');
+      toast.success('Payslip downloaded successfully');
     } catch (err: any) {
       console.error('Failed to download payslip:', err);
-      showError(err.message || 'Failed to download payslip');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to download payslip',
+      });
     }
   };
 
   const handleSend = async (payslipId: string) => {
     try {
       await paylinq.sendPayslip(payslipId);
-      success('Payslip sent to employee email');
+      toast.success('Payslip sent to employee email');
       
       // Refresh the list to update status
       fetchPayslips();
     } catch (err: any) {
       console.error('Failed to send payslip:', err);
-      showError(err.message || 'Failed to send payslip');
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to send payslip',
+      });
     }
   };
 

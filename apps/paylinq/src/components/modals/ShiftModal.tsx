@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
+import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useShiftTypes } from '@/hooks';
 
@@ -140,7 +142,10 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
         error(errorMessages || 'Please fix the validation errors');
       } else {
         console.error('Failed to save shift:', err);
-        error(err.response?.data?.message || err.message || `Failed to ${existingShift ? 'update' : 'add'} shift. Please try again.`);
+        handleApiError(err, {
+          toast,
+          defaultMessage: `Failed to ${existingShift ? 'update' : 'add'} shift`,
+        });
       }
     } finally {
       setIsLoading(false);

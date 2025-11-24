@@ -2,6 +2,8 @@ import { useState } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Select, Input } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
+import { handleApiError } from '@/utils/errorHandler';
 import { FileDown } from 'lucide-react';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
@@ -75,7 +77,10 @@ export default function ReportConfigModal({ isOpen, onClose, reportType }: Repor
         error(errors || 'Please fix the validation errors');
       } else {
         console.error('Failed to generate report:', err);
-        error(err.response?.data?.message || err.message || 'Failed to generate report. Please try again.');
+        handleApiError(err, {
+          toast,
+          defaultMessage: 'Failed to generate report',
+        });
       }
     } finally {
       setIsLoading(false);

@@ -7,6 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePaylinqAPI } from './usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError, getValidationErrors } from '@/utils/errorHandler';
 import type {
   CreatePayrollRunRequest,
   UpdatePayrollRunRequest,
@@ -92,7 +93,7 @@ export function usePayrollRunSummary(id: string) {
 export function useCreatePayrollRun() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (data: CreatePayrollRunRequest) => {
@@ -102,10 +103,10 @@ export function useCreatePayrollRun() {
     onSuccess: async (data) => {
       // Use refetchQueries to immediately refetch instead of just invalidating
       await queryClient.refetchQueries({ queryKey: PAYROLL_RUNS_KEY });
-      success(`Payroll run "${data?.runName}" created successfully`);
+      toast.success(`Payroll run "${data?.runName}" created successfully`);
     },
-    onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to create payroll run');
+    onError: (err) => {
+      handleApiError(err, { toast, defaultMessage: 'Failed to create payroll run' });
     },
   });
 }
@@ -116,7 +117,7 @@ export function useCreatePayrollRun() {
 export function useUpdatePayrollRun() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdatePayrollRunRequest }) => {
@@ -126,10 +127,10 @@ export function useUpdatePayrollRun() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
-      success(`Payroll run "${data?.runName}" updated successfully`);
+      toast.success(`Payroll run "${data?.runName}" updated successfully`);
     },
-    onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to update payroll run');
+    onError: (err) => {
+      handleApiError(err, { toast, defaultMessage: 'Failed to update payroll run' });
     },
   });
 }
@@ -140,7 +141,7 @@ export function useUpdatePayrollRun() {
 export function useCalculatePayroll() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (data: CalculatePayrollRequest) => {
@@ -152,13 +153,13 @@ export function useCalculatePayroll() {
       queryClient.invalidateQueries({ queryKey: PAYCHECKS_KEY });
       
       if (result.status === 'success') {
-        success(`Payroll calculated successfully. ${result.paychecksCreated} paychecks created.`);
+        toast.success(`Payroll calculated successfully. ${result.paychecksCreated} paychecks created.`);
       } else if (result.status === 'partial') {
-        error(`Payroll partially calculated. ${result.paychecksFailed} paychecks failed.`);
+        toast.error(`Payroll partially calculated. ${result.paychecksFailed} paychecks failed.`);
       }
     },
-    onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to calculate payroll');
+    onError: (err) => {
+      handleApiError(err, { toast, defaultMessage: 'Failed to calculate payroll' });
     },
   });
 }
@@ -169,7 +170,7 @@ export function useCalculatePayroll() {
 export function useMarkPayrollRunForReview() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (payrollRunId: string) => {
@@ -181,10 +182,10 @@ export function useMarkPayrollRunForReview() {
         queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, payrollRun.id] });
       }
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
-      success(`Payroll run "${payrollRun?.runName || 'untitled'}" marked for review`);
+      toast.success(`Payroll run "${payrollRun?.runName || 'untitled'}" marked for review`);
     },
-    onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to mark payroll run for review');
+    onError: (err) => {
+      handleApiError(err, { toast, defaultMessage: 'Failed to mark payroll run for review' });
     },
   });
 }
@@ -195,7 +196,7 @@ export function useMarkPayrollRunForReview() {
 export function useApprovePayrollRun() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (data: ApprovePayrollRequest) => {
@@ -205,10 +206,10 @@ export function useApprovePayrollRun() {
     onSuccess: (payrollRun) => {
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, payrollRun?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
-      success(`Payroll run "${payrollRun?.runName}" approved successfully`);
+      toast.success(`Payroll run "${payrollRun?.runName}" approved successfully`);
     },
-    onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to approve payroll run');
+    onError: (err) => {
+      handleApiError(err, { toast, defaultMessage: 'Failed to approve payroll run' });
     },
   });
 }
@@ -219,7 +220,7 @@ export function useApprovePayrollRun() {
 export function useProcessPayrollRun() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (data: ProcessPayrollRequest) => {
@@ -230,10 +231,10 @@ export function useProcessPayrollRun() {
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, payrollRun?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
       queryClient.invalidateQueries({ queryKey: PAYCHECKS_KEY });
-      success(`Payroll run "${payrollRun?.runName}" processed successfully`);
+      toast.success(`Payroll run "${payrollRun?.runName}" processed successfully`);
     },
-    onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to process payroll run');
+    onError: (err) => {
+      handleApiError(err, { toast, defaultMessage: 'Failed to process payroll run' });
     },
   });
 }
@@ -244,7 +245,7 @@ export function useProcessPayrollRun() {
 export function useCancelPayrollRun() {
   const { paylinq } = usePaylinqAPI();
   const queryClient = useQueryClient();
-  const { success, error } = useToast();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -254,10 +255,10 @@ export function useCancelPayrollRun() {
     onSuccess: (payrollRun) => {
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, payrollRun?.id] });
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, 'list'] });
-      success('Payroll run cancelled successfully');
+      toast.success('Payroll run cancelled successfully');
     },
-    onError: (err: any) => {
-      error(err?.response?.data?.message || 'Failed to cancel payroll run');
+    onError: (err) => {
+      handleApiError(err, { toast, defaultMessage: 'Failed to cancel payroll run' });
     },
   });
 }
