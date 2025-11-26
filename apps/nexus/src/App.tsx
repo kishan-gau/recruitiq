@@ -22,6 +22,7 @@ const ContractsList = lazy(() => import('@/pages/contracts/ContractsList'));
 const ContractDetails = lazy(() => import('@/pages/contracts/ContractDetails'));
 const ContractCreate = lazy(() => import('@/pages/contracts/ContractCreate'));
 const ContractEdit = lazy(() => import('@/pages/contracts/ContractEdit'));
+const ContractsExpiringList = lazy(() => import('@/pages/contracts/ContractsExpiringList'));
 
 // Performance
 const ReviewsList = lazy(() => import('@/pages/performance/ReviewsList'));
@@ -40,6 +41,7 @@ const TimeOffRequestCreate = lazy(() => import('@/pages/time-off/TimeOffRequestC
 const TimeOffRequestEdit = lazy(() => import('@/pages/time-off/TimeOffRequestEdit'));
 const TimeOffBalance = lazy(() => import('@/pages/time-off/TimeOffBalance'));
 const TimeOffCalendar = lazy(() => import('@/pages/time-off/TimeOffCalendar'));
+const TimeOffTypesManagement = lazy(() => import('@/pages/time-off/TimeOffTypesManagement'));
 
 // Attendance
 const AttendanceDashboard = lazy(() => import('@/pages/attendance/AttendanceDashboard'));
@@ -70,7 +72,14 @@ const LocationEdit = lazy(() => import('@/pages/locations/LocationEdit'));
 
 // Reports & Settings
 const ReportsDashboard = lazy(() => import('@/pages/reports/ReportsDashboard'));
+const HeadcountReport = lazy(() => import('@/pages/reports/HeadcountReport'));
+const TurnoverReport = lazy(() => import('@/pages/reports/TurnoverReport'));
+const AttendanceReport = lazy(() => import('@/pages/reports/AttendanceReport'));
+const TimeOffReport = lazy(() => import('@/pages/reports/TimeOffReport'));
+const BenefitsReport = lazy(() => import('@/pages/reports/BenefitsReport'));
+const PerformanceReport = lazy(() => import('@/pages/reports/PerformanceReport'));
 const Settings = lazy(() => import('@/pages/settings/Settings'));
+const RolesPermissions = lazy(() => import('@/pages/settings/RolesPermissions'));
 
 // ScheduleHub
 const ScheduleHubDashboard = lazy(() => import('@/pages/schedulehub/ScheduleHubDashboard'));
@@ -118,6 +127,7 @@ function App() {
                   <Route path="contracts">
                     <Route index element={<ContractsList />} />
                     <Route path="new" element={<ContractCreate />} />
+                    <Route path="expiring" element={<ContractsExpiringList />} />
                     <Route path=":id" element={<ContractDetails />} />
                     <Route path=":id/edit" element={<ContractEdit />} />
                   </Route>
@@ -148,6 +158,7 @@ function App() {
                     </Route>
                     <Route path="balance" element={<TimeOffBalance />} />
                     <Route path="calendar" element={<TimeOffCalendar />} />
+                    <Route path="types" element={<TimeOffTypesManagement />} />
                   </Route>
 
                   {/* Attendance */}
@@ -208,8 +219,19 @@ function App() {
                   </Route>
 
                   {/* Reports & Settings */}
-                  <Route path="reports" element={<ReportsDashboard />} />
-                  <Route path="settings" element={<Settings />} />
+                  <Route path="reports">
+                    <Route index element={<ReportsDashboard />} />
+                    <Route path="headcount" element={<HeadcountReport />} />
+                    <Route path="turnover" element={<TurnoverReport />} />
+                    <Route path="attendance" element={<AttendanceReport />} />
+                    <Route path="time-off" element={<TimeOffReport />} />
+                    <Route path="benefits" element={<BenefitsReport />} />
+                    <Route path="performance" element={<PerformanceReport />} />
+                  </Route>
+                  <Route path="settings">
+                    <Route index element={<Settings />} />
+                    <Route path="roles-permissions" element={<RolesPermissions />} />
+                  </Route>
 
                   {/* 404 */}
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />

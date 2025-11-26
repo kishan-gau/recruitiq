@@ -1380,4 +1380,16 @@ export class NexusClient {
   async getGoalStatistics() {
     return this.client.get<ApiResponse<any>>(`${this.basePath}/performance/goals/statistics`);
   }
+
+  // ============================================================================
+  // Performance - Feedback
+  // ============================================================================
+
+  async createFeedback(data: any) {
+    return this.client.post<ApiResponse<any>>(`${this.basePath}/performance/feedback`, data);
+  }
+
+  async getEmployeeFeedback(employeeId: string) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/performance/feedback/employee/${employeeId}`);
+  }
 }

@@ -19,12 +19,16 @@ import {
   AlertCircle,
   XCircle,
   Send,
+  MessageSquare,
 } from 'lucide-react';
 import {
   usePerformanceReview,
   useDeletePerformanceReview,
   useSubmitPerformanceReview,
 } from '@/hooks/usePerformance';
+import FeedbackForm from '@/components/performance/FeedbackForm';
+import FeedbackList from '@/components/performance/FeedbackList';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import type { ReviewStatus, ReviewType, ReviewRating } from '@/types/performance.types';
 
 const REVIEW_TYPE_LABELS: Record<ReviewType, string> = {
@@ -89,12 +93,17 @@ const RatingStars = ({ rating }: { rating: ReviewRating }) => {
 export default function ReviewDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
 
   const { data: review, isLoading } = usePerformanceReview(id);
   const deleteMutation = useDeletePerformanceReview();
   const submitMutation = useSubmitPerformanceReview();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details');
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+
+  const canProvideFeedback = hasPermission('performance:feedback');
 
   const handleDelete = async () => {
     if (id) {
@@ -188,11 +197,41 @@ export default function ReviewDetails() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex gap-8">
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'details'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            <FileText className="inline-block mr-2" size={18} />
+            Review Details
+          </button>
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'feedback'
+                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            <MessageSquare className="inline-block mr-2" size={18} />
+            Feedback
+          </button>
+        </nav>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Status & Period */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+          {activeTab === 'details' && (
+            <>
+              {/* Status & Period */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Review Information</h2>
               <span
@@ -371,6 +410,48 @@ export default function ReviewDetails() {
               </div>
             )}
           </div>
+            </>
+          )}
+
+          {activeTab === 'feedback' && (
+            <div className="space-y-6">
+              {/* Add Feedback Button */}
+              {canProvideFeedback && !showFeedbackForm && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                  <button
+                    onClick={() => setShowFeedbackForm(true)}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  >
+                    <MessageSquare size={20} />
+                    Provide Feedback
+                  </button>
+                </div>
+              )}
+
+              {/* Feedback Form */}
+              {showFeedbackForm && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Provide Feedback
+                  </h2>
+                  <FeedbackForm
+                    employeeId={review.employeeId}
+                    reviewId={review.id}
+                    onSuccess={() => setShowFeedbackForm(false)}
+                    onCancel={() => setShowFeedbackForm(false)}
+                  />
+                </div>
+              )}
+
+              {/* Feedback List */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  All Feedback
+                </h2>
+                <FeedbackList employeeId={review.employeeId} reviewId={review.id} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}

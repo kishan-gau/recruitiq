@@ -198,6 +198,5 @@ export function useUploadContractDocument() {
         defaultMessage: 'Failed to upload contract document',
       });
     },
-    },
   });
 }
