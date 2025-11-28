@@ -110,24 +110,26 @@ router.get('/:id', requirePermission('approvals:read'), async (req, res) => {
     const query = `
       SELECT 
         ar.*,
-        creator.first_name || ' ' || creator.last_name as requested_by_name,
-        creator.email as requested_by_email,
+        creator_emp.first_name || ' ' || creator_emp.last_name as requested_by_name,
+        creator_ua.email as requested_by_email,
         json_agg(
           json_build_object(
             'id', aa.id,
             'action', aa.action,
             'comments', aa.comments,
             'created_at', aa.created_at,
-            'created_by', approver.first_name || ' ' || approver.last_name,
-            'created_by_email', approver.email
+            'created_by', approver_emp.first_name || ' ' || approver_emp.last_name,
+            'created_by_email', approver_ua.email
           ) ORDER BY aa.created_at
         ) FILTER (WHERE aa.id IS NOT NULL) as actions
       FROM payroll.currency_approval_request ar
       LEFT JOIN payroll.currency_approval_action aa ON ar.id = aa.approval_request_id
-      LEFT JOIN hris.user_account creator ON ar.created_by = creator.id
-      LEFT JOIN hris.user_account approver ON aa.created_by = approver.id
+      LEFT JOIN hris.user_account creator_ua ON ar.created_by = creator_ua.id
+      LEFT JOIN hris.employee creator_emp ON creator_ua.employee_id = creator_emp.id AND creator_emp.deleted_at IS NULL
+      LEFT JOIN hris.user_account approver_ua ON aa.created_by = approver_ua.id
+      LEFT JOIN hris.employee approver_emp ON approver_ua.employee_id = approver_emp.id AND approver_emp.deleted_at IS NULL
       WHERE ar.id = $1 AND ar.organization_id = $2
-      GROUP BY ar.id, creator.first_name, creator.last_name, creator.email
+      GROUP BY ar.id, creator_emp.first_name, creator_emp.last_name, creator_ua.email
     `;
 
     const { pool } = await import('../../../config/database.js');

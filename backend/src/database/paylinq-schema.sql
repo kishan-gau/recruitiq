@@ -259,32 +259,28 @@ CREATE POLICY worker_metadata_tenant_isolation_insert ON payroll.worker_metadata
   WITH CHECK (organization_id = payroll.get_current_organization_id());
 
 -- ================================================================
--- WORKER TYPE MANAGEMENT
+-- WORKER TYPE PAY CONFIGURATION
+-- Payroll-specific settings for HRIS worker types
 -- ================================================================
 
--- Worker type templates (employee classification: FTE, contractor, etc.)
-CREATE TABLE IF NOT EXISTS payroll.worker_type_template (
+-- Pay configuration for worker types (references HRIS worker_type)
+CREATE TABLE IF NOT EXISTS payroll.worker_type_pay_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   
-  -- Template details
-  name VARCHAR(100) NOT NULL,
-  code VARCHAR(20) NOT NULL,
-  description TEXT,
+  -- Reference to HRIS worker type
+  worker_type_id UUID NOT NULL REFERENCES hris.worker_type(id) ON DELETE CASCADE,
   
-  -- Default settings for this worker type
+  -- Pay Structure Template Reference
+  pay_structure_template_code VARCHAR(50), -- References payroll.pay_structure_template(template_code)
+  
+  -- Payroll-specific settings
   default_pay_frequency VARCHAR(20),
   default_payment_method VARCHAR(20),
-  
-  -- Eligibility flags
-  benefits_eligible BOOLEAN DEFAULT true,
   overtime_eligible BOOLEAN DEFAULT true,
-  pto_eligible BOOLEAN DEFAULT true,
-  sick_leave_eligible BOOLEAN DEFAULT true,
-  vacation_accrual_rate NUMERIC(5, 2) DEFAULT 0, -- Hours per pay period
   
   -- Status
-  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  is_active BOOLEAN DEFAULT true,
   
   -- Audit fields
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -294,24 +290,31 @@ CREATE TABLE IF NOT EXISTS payroll.worker_type_template (
   updated_by UUID REFERENCES hris.user_account(id),
   deleted_by UUID REFERENCES hris.user_account(id),
   
-  UNIQUE(organization_id, code),
-  UNIQUE(organization_id, name),
-  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE
+  UNIQUE(organization_id, worker_type_id),
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  FOREIGN KEY (worker_type_id) REFERENCES hris.worker_type(id) ON DELETE CASCADE
 );
 
--- Worker type assignments (historical tracking of employee worker types)
-CREATE TABLE IF NOT EXISTS payroll.worker_type (
+CREATE INDEX idx_worker_type_pay_config_org ON payroll.worker_type_pay_config(organization_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_worker_type_pay_config_worker_type ON payroll.worker_type_pay_config(worker_type_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_worker_type_pay_config_template ON payroll.worker_type_pay_config(pay_structure_template_code) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE payroll.worker_type_pay_config IS 'Payroll-specific configuration for HRIS worker types';
+COMMENT ON COLUMN payroll.worker_type_pay_config.worker_type_id IS 'References hris.worker_type - Payroll configuration for that worker type';
+
+-- Historical tracking of employee worker type assignments
+CREATE TABLE IF NOT EXISTS payroll.worker_type_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  employee_id UUID NOT NULL REFERENCES hris.user_account(id), -- References platform user
-  worker_type_template_id UUID NOT NULL REFERENCES payroll.worker_type_template(id),
+  employee_id UUID NOT NULL REFERENCES hris.employee(id) ON DELETE CASCADE,
+  worker_type_id UUID NOT NULL REFERENCES hris.worker_type(id) ON DELETE CASCADE,
   
   -- Assignment details
   effective_from DATE NOT NULL,
   effective_to DATE,
   is_current BOOLEAN DEFAULT true,
   
-  -- Overrides (optional, defaults come from template)
+  -- Payroll Overrides (optional, defaults come from pay config)
   pay_frequency VARCHAR(20),
   payment_method VARCHAR(20),
   
@@ -323,10 +326,18 @@ CREATE TABLE IF NOT EXISTS payroll.worker_type (
   updated_by UUID REFERENCES hris.user_account(id),
   deleted_by UUID REFERENCES hris.user_account(id),
   
-  UNIQUE(organization_id, employee_id, worker_type_template_id, effective_from),
+  UNIQUE(organization_id, employee_id, worker_type_id, effective_from),
   FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
-  FOREIGN KEY (worker_type_template_id) REFERENCES payroll.worker_type_template(id)
+  FOREIGN KEY (employee_id) REFERENCES hris.employee(id) ON DELETE CASCADE,
+  FOREIGN KEY (worker_type_id) REFERENCES hris.worker_type(id) ON DELETE CASCADE
 );
+
+CREATE INDEX idx_worker_type_history_org ON payroll.worker_type_history(organization_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_worker_type_history_employee ON payroll.worker_type_history(employee_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_worker_type_history_worker_type ON payroll.worker_type_history(worker_type_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_worker_type_history_current ON payroll.worker_type_history(is_current) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE payroll.worker_type_history IS 'Historical tracking of employee worker type assignments for payroll purposes';
 
 -- ================================================================
 -- TIME & ATTENDANCE
@@ -965,6 +976,58 @@ COMMENT ON COLUMN payroll.payroll_run_type.component_override_mode IS
 COMMENT ON COLUMN payroll.payroll_run_type.organization_id IS 
   'REQUIRED: Every run type belongs to a specific organization (tenant isolation). No NULL values allowed for multi-tenant security.';
 
+-- Pay structure template resolution cache (caches resolved template compositions)
+CREATE TABLE IF NOT EXISTS payroll.pay_structure_template_resolution_cache (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL,
+  template_id UUID NOT NULL,
+  cache_key VARCHAR(500) NOT NULL,
+  resolved_components JSONB NOT NULL,
+  resolution_metadata JSONB,
+  is_valid BOOLEAN NOT NULL DEFAULT true,
+  expires_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  
+  FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE,
+  CONSTRAINT unique_template_cache_key UNIQUE(template_id, cache_key, organization_id)
+);
+
+CREATE INDEX idx_template_resolution_cache_org 
+  ON payroll.pay_structure_template_resolution_cache(organization_id) 
+  WHERE is_valid = true;
+
+CREATE INDEX idx_template_resolution_cache_template 
+  ON payroll.pay_structure_template_resolution_cache(template_id) 
+  WHERE is_valid = true;
+
+CREATE INDEX idx_template_resolution_cache_expires 
+  ON payroll.pay_structure_template_resolution_cache(expires_at) 
+  WHERE is_valid = true AND expires_at IS NOT NULL;
+
+COMMENT ON TABLE payroll.pay_structure_template_resolution_cache IS 
+  'Caches resolved template compositions to avoid repeated recursive resolution. Improves performance for complex template hierarchies with inclusions.';
+COMMENT ON COLUMN payroll.pay_structure_template_resolution_cache.cache_key IS 
+  'Unique key combining template ID, version, and parameters for cache lookup';
+COMMENT ON COLUMN payroll.pay_structure_template_resolution_cache.resolved_components IS 
+  'Final flattened list of components after resolving all template inclusions';
+COMMENT ON COLUMN payroll.pay_structure_template_resolution_cache.resolution_metadata IS 
+  'Metadata about resolution process: depth, included templates, resolution time';
+COMMENT ON COLUMN payroll.pay_structure_template_resolution_cache.is_valid IS 
+  'Flag to invalidate cache when source templates change';
+COMMENT ON COLUMN payroll.pay_structure_template_resolution_cache.expires_at IS 
+  'Optional expiration timestamp for time-based cache invalidation';
+
+-- Row Level Security for template resolution cache
+ALTER TABLE payroll.pay_structure_template_resolution_cache ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY template_resolution_cache_tenant_isolation ON payroll.pay_structure_template_resolution_cache
+  USING (organization_id = payroll.get_current_organization_id());
+
+CREATE POLICY template_resolution_cache_tenant_isolation_insert ON payroll.pay_structure_template_resolution_cache
+  FOR INSERT
+  WITH CHECK (organization_id = payroll.get_current_organization_id());
+
 -- Employee allowance usage tracking (yearly caps enforcement)
 CREATE TABLE IF NOT EXISTS payroll.employee_allowance_usage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1299,7 +1362,7 @@ CREATE TABLE IF NOT EXISTS payroll.payslip_template_assignment (
   assignment_type VARCHAR(50) NOT NULL CHECK (assignment_type IN ('organization', 'worker_type', 'department', 'employee', 'pay_structure')),
   
   -- Target references (only one should be set based on assignment_type)
-  worker_type_id UUID REFERENCES payroll.worker_type(id),
+  worker_type_id UUID REFERENCES hris.worker_type(id),  -- References HRIS worker type
   department_id UUID, -- Reference to hris.department if needed
   employee_id UUID REFERENCES hris.employee(id),
   pay_structure_template_id UUID, -- FK added later to avoid circular dependency
@@ -1713,14 +1776,11 @@ CREATE INDEX IF NOT EXISTS idx_reconciliation_date ON payroll.reconciliation(rec
 CREATE INDEX IF NOT EXISTS idx_reconciliation_item_recon ON payroll.reconciliation_item(reconciliation_id);
 CREATE INDEX IF NOT EXISTS idx_reconciliation_item_type ON payroll.reconciliation_item(item_type);
 
--- Worker type indexes
-CREATE INDEX IF NOT EXISTS idx_worker_type_employee ON payroll.worker_type(employee_id);
-CREATE INDEX IF NOT EXISTS idx_worker_type_organization ON payroll.worker_type(organization_id);
-CREATE INDEX IF NOT EXISTS idx_worker_type_current ON payroll.worker_type(employee_id, is_current) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_worker_type_template ON payroll.worker_type(worker_type_template_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_worker_type_employee_current 
-  ON payroll.worker_type(employee_id, organization_id) 
-  WHERE is_current = true AND deleted_at IS NULL;
+-- Worker type indexes (REMOVED - payroll.worker_type table no longer exists)
+-- Worker type configurations are now in:
+-- - payroll.worker_type_pay_config (PayLinQ-specific config for HRIS worker types)
+-- - payroll.worker_type_history (Historical assignment tracking)
+-- Indexes for these tables are defined near their table definitions above
 
 -- Work schedule indexes
 CREATE INDEX IF NOT EXISTS idx_work_schedule_employee ON payroll.work_schedule(employee_id);
@@ -1912,8 +1972,8 @@ COMMENT ON SCHEMA payroll IS 'Paylinq payroll processing schema - References hri
 
 COMMENT ON TABLE payroll.employee_payroll_config IS 'Payroll-specific configuration for employees - Core employee data in hris.employee';
 COMMENT ON TABLE payroll.compensation IS 'Employee compensation history - references hris.employee as source of truth';
-COMMENT ON TABLE payroll.worker_type_template IS 'Worker classification templates (FTE, contractor, etc.)';
-COMMENT ON TABLE payroll.worker_type IS 'Historical worker type assignments for employees';
+COMMENT ON TABLE payroll.worker_type_pay_config IS 'PayLinQ-specific payroll configuration for HRIS worker types';
+COMMENT ON TABLE payroll.worker_type_history IS 'Historical tracking of employee worker type assignments for payroll purposes';
 COMMENT ON TABLE payroll.shift_type IS 'Shift definitions with differential rates';
 COMMENT ON TABLE payroll.time_attendance_event IS 'Clock in/out events with location tracking';
 COMMENT ON TABLE payroll.time_entry IS 'Approved time worked with hours breakdown';
@@ -2768,12 +2828,13 @@ CREATE POLICY worker_type_template_tenant_isolation_insert ON payroll.worker_typ
   FOR INSERT
   WITH CHECK (organization_id = payroll.get_current_organization_id());
 
-ALTER TABLE payroll.worker_type ENABLE ROW LEVEL SECURITY;
+-- Worker type history RLS (tracks historical employee assignments)
+ALTER TABLE payroll.worker_type_history ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY worker_type_tenant_isolation ON payroll.worker_type
+CREATE POLICY worker_type_history_tenant_isolation ON payroll.worker_type_history
   USING (organization_id = payroll.get_current_organization_id());
 
-CREATE POLICY worker_type_tenant_isolation_insert ON payroll.worker_type
+CREATE POLICY worker_type_history_tenant_isolation_insert ON payroll.worker_type_history
   FOR INSERT
   WITH CHECK (organization_id = payroll.get_current_organization_id());
 

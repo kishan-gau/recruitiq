@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Edit2, Trash2, CheckCircle, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, CheckCircle, XCircle, ChevronDown, ChevronRight, FileText, Box, Link2, Eye } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CardSkeleton from '@/components/ui/CardSkeleton';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -11,10 +11,13 @@ import {
   useUpdatePayStructureComponent,
   useDeletePayStructureComponent,
   usePublishPayStructureTemplate,
+  useResolvedPayStructureTemplate,
   type PayStructureComponent,
 } from '@/hooks/usePayStructures';
 import PayStructureComponentModal from '@/components/modals/PayStructureComponentModal';
 import TemplateVersionHistory from '@/components/pay-structures/TemplateVersionHistory';
+import TemplateInclusionManager from '@/components/pay-structures/TemplateInclusionManager';
+import TemplateHierarchyTree from '@/components/pay-structures/TemplateHierarchyTree';
 
 export default function PayStructureTemplateDetail() {
   const { templateId } = useParams<{ templateId: string }>();
@@ -22,12 +25,14 @@ export default function PayStructureTemplateDetail() {
   
   const { data: template, isLoading: templateLoading } = usePayStructureTemplate(templateId!);
   const { data: components, isLoading: componentsLoading } = usePayStructureComponents(templateId!);
+  const { data: resolvedTemplate, isLoading: resolvedLoading } = useResolvedPayStructureTemplate(templateId!);
   
   const addComponentMutation = useAddPayStructureComponent();
   const updateComponentMutation = useUpdatePayStructureComponent();
   const deleteComponentMutation = useDeletePayStructureComponent();
   const publishMutation = usePublishPayStructureTemplate();
 
+  const [activeTab, setActiveTab] = useState<'details' | 'components' | 'inclusions' | 'preview'>('components');
   const [selectedComponent, setSelectedComponent] = useState<PayStructureComponent | null>(null);
   const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
@@ -122,6 +127,14 @@ export default function PayStructureTemplateDetail() {
 
   const sortedComponents = components?.sort((a: PayStructureComponent, b: PayStructureComponent) => a.sequenceOrder - b.sequenceOrder) || [];
 
+  // Tab definitions
+  const tabs = [
+    { id: 'details' as const, label: 'Details', icon: FileText },
+    { id: 'components' as const, label: 'Components', icon: Box, badge: sortedComponents.length },
+    { id: 'inclusions' as const, label: 'Inclusions', icon: Link2 },
+    { id: 'preview' as const, label: 'Preview Resolved', icon: Eye },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -208,51 +221,82 @@ export default function PayStructureTemplateDetail() {
         </div>
       </div>
 
-      {/* Components List */}
+      {/* Tab Navigation */}
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Pay Components ({sortedComponents.length})
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Components are calculated in the order shown below
-          </p>
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <nav className="flex space-x-4 px-4" aria-label="Tabs">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors
+                    ${activeTab === tab.id
+                      ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+                      : 'border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                    }
+                  `}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                  {tab.badge !== undefined && (
+                    <span className={`
+                      px-2 py-0.5 rounded-full text-xs font-semibold
+                      ${activeTab === tab.id
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                      }
+                    `}>
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {sortedComponents.length === 0 ? (
-          <div className="p-12 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
-              <Plus className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No components yet
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Add your first pay component to start building this template
-            </p>
-            <button
-              onClick={handleAddComponent}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg inline-flex items-center gap-2 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Component
-            </button>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedComponents.map((component: PayStructureComponent, index: number) => (
-              <ComponentRow
-                key={component.id}
-                component={component}
-                index={index}
-                onEdit={() => handleEditComponent(component)}
-                onDelete={() => handleDeleteComponent(component.id)}
-                isDraft={template.status === 'draft'}
-              />
-            ))}
-          </div>
-        )}
+        {/* Tab Content */}
+        <div className="p-6">
+          {/* Details Tab */}
+          {activeTab === 'details' && (
+            <DetailsTab template={template} />
+          )}
+
+          {/* Components Tab */}
+          {activeTab === 'components' && (
+            <ComponentsTab
+              sortedComponents={sortedComponents}
+              template={template}
+              onAddComponent={handleAddComponent}
+              onEditComponent={handleEditComponent}
+              onDeleteComponent={handleDeleteComponent}
+            />
+          )}
+
+          {/* Inclusions Tab */}
+          {activeTab === 'inclusions' && (
+            <InclusionsTab
+              template={template}
+              onPreviewResolved={() => setActiveTab('preview')}
+            />
+          )}
+
+          {/* Preview Tab */}
+          {activeTab === 'preview' && (
+            <PreviewTab
+              template={template}
+              resolvedTemplate={resolvedTemplate}
+              isLoading={resolvedLoading}
+            />
+          )}
+        </div>
       </div>
+
+      {/* Components List - OLD SECTION TO BE REMOVED */}
+      {/* This section is now replaced by the tabs above */}
 
       {/* Version History */}
       {template.templateCode && (
@@ -301,6 +345,375 @@ export default function PayStructureTemplateDetail() {
         variant="danger"
         isLoading={deleteComponentMutation.isPending}
       />
+    </div>
+  );
+}
+
+// ============================================================================
+// Tab Components
+// ============================================================================
+
+interface DetailsTabProps {
+  template: any;
+}
+
+function DetailsTab({ template }: DetailsTabProps) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Template Information</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Template Name</label>
+            <p className="text-gray-900 dark:text-white mt-1">{template.templateName}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Template Code</label>
+            <p className="text-gray-900 dark:text-white mt-1">{template.templateCode}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Version</label>
+            <p className="text-gray-900 dark:text-white mt-1">{template.version}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</label>
+            <div className="mt-1">
+              <StatusBadge status={template.status} />
+            </div>
+          </div>
+          {template.description && (
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Description</label>
+              <p className="text-gray-900 dark:text-white mt-1">{template.description}</p>
+            </div>
+          )}
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Effective From</label>
+            <p className="text-gray-900 dark:text-white mt-1">
+              {template.effectiveFrom ? new Date(template.effectiveFrom).toLocaleDateString() : 'Not set'}
+            </p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Effective Until</label>
+            <p className="text-gray-900 dark:text-white mt-1">
+              {template.effectiveUntil ? new Date(template.effectiveUntil).toLocaleDateString() : 'No end date'}
+            </p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Created</label>
+            <p className="text-gray-900 dark:text-white mt-1">{new Date(template.createdAt).toLocaleDateString()}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">Last Updated</label>
+            <p className="text-gray-900 dark:text-white mt-1">{new Date(template.updatedAt).toLocaleDateString()}</p>
+          </div>
+        </div>
+      </div>
+
+      {template.isOrganizationDefault && (
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-semibold text-purple-900 dark:text-purple-100 mb-1">
+                Organization Default Template
+              </h4>
+              <p className="text-sm text-purple-800 dark:text-purple-200">
+                This template is set as the default for your organization and will be automatically assigned to new workers.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ComponentsTabProps {
+  sortedComponents: PayStructureComponent[];
+  template: any;
+  onAddComponent: () => void;
+  onEditComponent: (component: PayStructureComponent) => void;
+  onDeleteComponent: (componentId: string) => void;
+}
+
+function ComponentsTab({ 
+  sortedComponents, 
+  template, 
+  onAddComponent, 
+  onEditComponent, 
+  onDeleteComponent 
+}: ComponentsTabProps) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Pay Components ({sortedComponents.length})
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Components are calculated in the order shown below
+          </p>
+        </div>
+        <button
+          onClick={onAddComponent}
+          disabled={template.status !== 'draft'}
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title={template.status !== 'draft' ? 'Create a new version to add components' : 'Add a new component'}
+        >
+          <Plus className="w-4 h-4" />
+          Add Component
+        </button>
+      </div>
+
+      {sortedComponents.length === 0 ? (
+        <div className="py-12 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
+            <Plus className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            No components yet
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Add your first pay component to start building this template
+          </p>
+          <button
+            onClick={onAddComponent}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg inline-flex items-center gap-2 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Component
+          </button>
+        </div>
+      ) : (
+        <div className="border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
+          {sortedComponents.map((component: PayStructureComponent, index: number) => (
+            <ComponentRow
+              key={component.id}
+              component={component}
+              index={index}
+              onEdit={() => onEditComponent(component)}
+              onDelete={() => onDeleteComponent(component.id)}
+              isDraft={template.status === 'draft'}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface InclusionsTabProps {
+  template: any;
+  onPreviewResolved: () => void;
+}
+
+function InclusionsTab({ template, onPreviewResolved }: InclusionsTabProps) {
+  return (
+    <div className="space-y-4">
+      <TemplateInclusionManager
+        template={template}
+        onPreviewResolved={onPreviewResolved}
+      />
+    </div>
+  );
+}
+
+interface PreviewTabProps {
+  template: any;
+  resolvedTemplate: any;
+  isLoading: boolean;
+}
+
+function PreviewTab({ template, resolvedTemplate, isLoading }: PreviewTabProps) {
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <CardSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (!resolvedTemplate) {
+    return (
+      <div className="text-center py-12">
+        <Eye className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          No resolved template available
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400">
+          Unable to load the resolved template preview.
+        </p>
+      </div>
+    );
+  }
+
+  const resolvedComponents = resolvedTemplate.resolvedComponents || [];
+  const inclusionHierarchy = resolvedTemplate.inclusionHierarchy || [];
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Info */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <Eye className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+              Resolved Template Preview
+            </h4>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              This shows the final merged components from this template and all included templates.
+              Components from included templates are merged based on their inclusion priority and mode.
+            </p>
+            <div className="flex gap-4 mt-2 text-xs text-blue-700 dark:text-blue-300">
+              <span>Total Components: {resolvedComponents.length}</span>
+              <span>•</span>
+              <span>Included Templates: {inclusionHierarchy.length}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Inclusion Hierarchy Tree */}
+      {inclusionHierarchy.length > 0 && (
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Inclusion Hierarchy</h3>
+          <TemplateHierarchyTree templateId={template.id} />
+        </div>
+      )}
+
+      {/* Resolved Components List */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+          Resolved Components ({resolvedComponents.length})
+        </h3>
+        
+        {resolvedComponents.length === 0 ? (
+          <div className="text-center py-8 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <p className="text-gray-600 dark:text-gray-400">No components in resolved template</p>
+          </div>
+        ) : (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
+            {resolvedComponents.map((component: any, index: number) => (
+              <ResolvedComponentRow
+                key={component.id}
+                component={component}
+                index={index}
+                isOwnComponent={component.templateId === template.id}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Resolution Metadata */}
+      {resolvedTemplate.resolutionMetadata && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Resolution Metadata</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Resolved At:</span>
+              <p className="text-gray-900 dark:text-white font-medium">
+                {new Date(resolvedTemplate.resolutionMetadata.resolvedAt).toLocaleString()}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Total Inclusions:</span>
+              <p className="text-gray-900 dark:text-white font-medium">
+                {resolvedTemplate.resolutionMetadata.totalInclusions}
+              </p>
+            </div>
+            <div>
+              <span className="text-gray-600 dark:text-gray-400">Merge Strategy:</span>
+              <p className="text-gray-900 dark:text-white font-medium">
+                {resolvedTemplate.resolutionMetadata.mergeStrategy || 'Default'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ResolvedComponentRowProps {
+  component: any;
+  index: number;
+  isOwnComponent: boolean;
+}
+
+function ResolvedComponentRow({ component, index, isOwnComponent }: ResolvedComponentRowProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const getComponentTypeColor = (type: string) => {
+    switch (type) {
+      case 'earnings':
+        return 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30';
+      case 'deductions':
+        return 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30';
+      case 'taxes':
+        return 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30';
+      case 'benefits':
+        return 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30';
+      default:
+        return 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800';
+    }
+  };
+
+  return (
+    <div className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+      <div 
+        className="p-4 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-4">
+          {/* Order Number */}
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-gray-700 dark:text-gray-300">
+            {index + 1}
+          </div>
+
+          {/* Expand/Collapse Icon */}
+          <div className="flex-shrink-0 text-gray-400 transition-colors">
+            {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+          </div>
+
+          {/* Component Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                {component.componentName}
+              </h3>
+              <span className={`px-2 py-0.5 text-xs font-medium rounded ${getComponentTypeColor(component.componentType || '')}`}>
+                {component.componentType}
+              </span>
+              {isOwnComponent ? (
+                <span className="px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 rounded">
+                  Own Component
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 rounded">
+                  Inherited
+                </span>
+              )}
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Code: {component.componentCode}
+              {component.sourceTemplateCode && !isOwnComponent && (
+                <span className="ml-2">• From: {component.sourceTemplateCode}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="px-4 pb-4 pt-0 ml-12 border-t border-gray-100 dark:border-gray-700/50 mt-2">
+          <ComponentDetails component={component} />
+        </div>
+      )}
     </div>
   );
 }

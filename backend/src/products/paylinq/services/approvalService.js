@@ -433,22 +433,24 @@ class ApprovalService {
         ar.current_approvals,
         ar.created_at as requested_at,
         ar.updated_at,
-        creator.first_name || ' ' || creator.last_name as requested_by,
+        creator_emp.first_name || ' ' || creator_emp.last_name as requested_by,
         json_agg(
           json_build_object(
             'action', aa.action,
             'comments', aa.comments,
             'created_at', aa.created_at,
-            'created_by', approver.first_name || ' ' || approver.last_name
+            'created_by', approver_emp.first_name || ' ' || approver_emp.last_name
           ) ORDER BY aa.created_at
         ) FILTER (WHERE aa.id IS NOT NULL) as actions
       FROM payroll.currency_approval_request ar
       LEFT JOIN payroll.currency_approval_action aa ON ar.id = aa.approval_request_id
       LEFT JOIN hris.user_account creator ON ar.created_by = creator.id
+      LEFT JOIN hris.employee creator_emp ON creator.employee_id = creator_emp.id AND creator_emp.deleted_at IS NULL
       LEFT JOIN hris.user_account approver ON aa.created_by = approver.id
+      LEFT JOIN hris.employee approver_emp ON approver.employee_id = approver_emp.id AND approver_emp.deleted_at IS NULL
       WHERE ar.reference_type = $1
         AND ar.reference_id = $2
-      GROUP BY ar.id, creator.first_name, creator.last_name
+      GROUP BY ar.id, creator_emp.first_name, creator_emp.last_name
       ORDER BY ar.created_at DESC
     `;
 

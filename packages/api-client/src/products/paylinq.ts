@@ -12,6 +12,11 @@ import type {
   UpdateWorkerTypeTemplateRequest,
   CreateWorkerTypeAssignmentRequest,
   UpdateWorkerTypeAssignmentRequest,
+  WorkerTypeUpgradeStatusResponse,
+  WorkerTypeUpgradePreviewResponse,
+  TemplateComparisonResponse,
+  UpgradeWorkersRequest,
+  UpgradeWorkersResponse,
   // Compensation
   Compensation,
   CreateCompensationRequest,
@@ -224,6 +229,52 @@ export class PaylinqClient {
     return this.client.post<ApiResponse<WorkerTypeAssignment>>(
       `${this.basePath}/worker-types/${id}/terminate`,
       { effectiveTo }
+    );
+  }
+
+  // ============================================================================
+  // Worker Type Template Upgrades
+  // ============================================================================
+
+  /**
+   * Get upgrade status for a worker type template
+   * Shows which workers need to be upgraded to the latest template version
+   */
+  async getWorkerTypeUpgradeStatus(workerTypeId: string) {
+    return this.client.get<WorkerTypeUpgradeStatusResponse>(
+      `${this.basePath}/worker-types/${workerTypeId}/upgrade-status`
+    );
+  }
+
+  /**
+   * Preview template upgrade
+   * Shows what will change when upgrading workers to the latest template
+   */
+  async previewWorkerTypeUpgrade(workerTypeId: string) {
+    return this.client.get<WorkerTypeUpgradePreviewResponse>(
+      `${this.basePath}/worker-types/${workerTypeId}/preview-upgrade`
+    );
+  }
+
+  /**
+   * Upgrade workers to latest template version
+   * @param workerTypeId - Worker type template ID
+   * @param data - Upgrade options (workerIds, effectiveDate)
+   */
+  async upgradeWorkersToTemplate(workerTypeId: string, data: UpgradeWorkersRequest) {
+    return this.client.post<UpgradeWorkersResponse>(
+      `${this.basePath}/worker-types/${workerTypeId}/upgrade-workers`,
+      data
+    );
+  }
+
+  /**
+   * Compare two pay structure templates
+   * Shows differences between template versions
+   */
+  async compareTemplates(fromTemplateCode: string, toTemplateCode: string) {
+    return this.client.get<TemplateComparisonResponse>(
+      `${this.basePath}/templates/compare?from=${fromTemplateCode}&to=${toTemplateCode}`
     );
   }
 
@@ -1857,6 +1908,57 @@ export class PaylinqClient {
    */
   async reorderPayStructureComponents(templateId: string, data: { componentOrders: Array<{ componentId: string; sequenceOrder: number }> }) {
     return this.client.post(`${this.basePath}/pay-structures/templates/${templateId}/components/reorder`, data);
+  }
+
+  // ============================================================================
+  // Template Inclusions (Nested Templates)
+  // ============================================================================
+
+  /**
+   * Add template inclusion to parent template
+   */
+  async addTemplateInclusion(parentTemplateId: string, data: {
+    includedTemplateCode: string;
+    versionConstraint?: string;
+    inclusionPriority: number;
+    inclusionMode?: 'merge' | 'override' | 'append';
+    isActive?: boolean;
+  }) {
+    return this.client.post(`${this.basePath}/pay-structures/templates/${parentTemplateId}/inclusions`, data);
+  }
+
+  /**
+   * Get template inclusions for a template
+   */
+  async getTemplateInclusions(templateId: string) {
+    return this.client.get(`${this.basePath}/pay-structures/templates/${templateId}/inclusions`);
+  }
+
+  /**
+   * Update template inclusion
+   */
+  async updateTemplateInclusion(parentTemplateId: string, inclusionId: string, data: {
+    versionConstraint?: string;
+    inclusionPriority?: number;
+    inclusionMode?: 'merge' | 'override' | 'append';
+    isActive?: boolean;
+  }) {
+    return this.client.patch(`${this.basePath}/pay-structures/templates/${parentTemplateId}/inclusions/${inclusionId}`, data);
+  }
+
+  /**
+   * Remove template inclusion
+   */
+  async deleteTemplateInclusion(parentTemplateId: string, inclusionId: string) {
+    return this.client.delete(`${this.basePath}/pay-structures/templates/${parentTemplateId}/inclusions/${inclusionId}`);
+  }
+
+  /**
+   * Get resolved template with all inclusions merged
+   */
+  async getResolvedPayStructureTemplate(templateId: string, asOfDate?: string) {
+    const query = asOfDate ? `?asOfDate=${encodeURIComponent(asOfDate)}` : '';
+    return this.client.get(`${this.basePath}/pay-structures/templates/${templateId}/resolved${query}`);
   }
 
   // ============================================================================

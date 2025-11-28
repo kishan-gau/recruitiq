@@ -80,10 +80,22 @@ router.get('/workers/:employeeId/current', requirePermission('payroll:structures
 // Get worker pay structure history
 router.get('/workers/:employeeId/history', requirePermission('payroll:structures:read'), payStructureController.getWorkerStructureHistory);
 
-// Template composition
-router.post('/:id/include', requirePermission('payroll:structures:update'), payStructureController.includeTemplate);
-router.delete('/:id/include/:includedId', requirePermission('payroll:structures:update'), payStructureController.removeIncludedTemplate);
-router.get('/:id/resolved', requirePermission('payroll:structures:read'), payStructureController.getResolvedTemplate);
+// ==================== TEMPLATE INCLUSION ROUTES (Nested Templates) ====================
+
+// Add template inclusion (nested template)
+router.post('/templates/:id/inclusions', requirePermission('payroll:structures:update'), payStructureController.addTemplateInclusion);
+
+// Get template inclusions
+router.get('/templates/:id/inclusions', requirePermission('payroll:structures:read'), payStructureController.getTemplateInclusions);
+
+// Update template inclusion
+router.patch('/templates/:id/inclusions/:inclusionId', requirePermission('payroll:structures:update'), payStructureController.updateTemplateInclusion);
+
+// Remove template inclusion
+router.delete('/templates/:id/inclusions/:inclusionId', requirePermission('payroll:structures:delete'), payStructureController.removeTemplateInclusion);
+
+// Get resolved template (with all inclusions merged)
+router.get('/templates/:id/resolved', requirePermission('payroll:structures:read'), payStructureController.getResolvedTemplate);
 
 // Upgrade worker to new template version
 router.post('/workers/:employeeId/upgrade', requirePermission('payroll:structures:update'), payStructureController.upgradeWorkerToNewVersion);

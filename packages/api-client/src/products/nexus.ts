@@ -816,6 +816,72 @@ export class NexusClient {
   }
 
   // ============================================================================
+  // Time Off - Type Management
+  // ============================================================================
+
+  /**
+   * Create time-off type
+   */
+  async createTimeOffType(data: any) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/time-off/types`,
+      data
+    );
+  }
+
+  /**
+   * List all time-off types
+   */
+  async listTimeOffTypes() {
+    return this.client.get<ApiResponse<any>>(
+      `${this.basePath}/time-off/types`
+    );
+  }
+
+  /**
+   * Get time-off type by ID
+   */
+  async getTimeOffType(id: string) {
+    return this.client.get<ApiResponse<any>>(
+      `${this.basePath}/time-off/types/${id}`
+    );
+  }
+
+  /**
+   * Update time-off type
+   */
+  async updateTimeOffType(id: string, updates: any) {
+    return this.client.put<ApiResponse<any>>(
+      `${this.basePath}/time-off/types/${id}`,
+      updates
+    );
+  }
+
+  /**
+   * Delete time-off type
+   */
+  async deleteTimeOffType(id: string) {
+    return this.client.delete<ApiResponse<any>>(
+      `${this.basePath}/time-off/types/${id}`
+    );
+  }
+
+  /**
+   * Accrue time-off balance for employee
+   */
+  async accrueTimeOff(data: {
+    employeeId: string;
+    timeOffTypeId: string;
+    daysAccrued: number;
+    accrualPeriod?: string;
+  }) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/time-off/accrue`,
+      data
+    );
+  }
+
+  // ============================================================================
   // Time Off - Calendar
   // ============================================================================
 
@@ -1135,6 +1201,35 @@ export class NexusClient {
           'Content-Type': 'multipart/form-data',
         },
       }
+    );
+  }
+
+  /**
+   * Get expiring contracts within specified days
+   */
+  async getExpiringContracts(days: number = 30) {
+    return this.client.get<ApiResponse<any>>(
+      `${this.basePath}/contracts/expiring`,
+      { params: { days } }
+    );
+  }
+
+  /**
+   * Progress contract to next sequence
+   */
+  async progressContractSequence(id: string) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/contracts/${id}/progress-sequence`
+    );
+  }
+
+  /**
+   * Renew a contract
+   */
+  async renewContract(id: string, data: any) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/contracts/${id}/renew`,
+      data
     );
   }
 

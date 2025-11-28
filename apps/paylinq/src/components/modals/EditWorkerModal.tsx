@@ -5,6 +5,9 @@ import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
+import { useDepartments } from '@/hooks/useDepartments';
+import { useLocations } from '@/hooks/useLocations';
+import { useWorkersForManager } from '@/hooks/useWorkersForManager';
 
 interface EditWorkerModalProps {
   isOpen: boolean;
@@ -19,7 +22,10 @@ interface EditWorkerModalProps {
     dateOfBirth: string;
     startDate: string;
     workerType: string;
-    department: string;
+    departmentId?: string | null; // Phase 2: FK to hris.department
+    locationId?: string | null;   // Phase 2: FK to hris.location
+    managerId?: string | null;    // Phase 2: Self-referencing FK
+    department: string;  // Fallback for legacy data
     position: string;
     compensation: number;
     status: string;
@@ -32,8 +38,17 @@ interface EditWorkerModalProps {
 
 export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: EditWorkerModalProps) {
   const { paylinq } = usePaylinqAPI();
-  const { success, error } = useToast();
+  const toast = useToast();
+  const { success, error } = toast;
   const { data: workerTypes = [], isLoading: loadingTypes } = useWorkerTypeTemplates({ status: 'active' });
+  
+  // Phase 2: Load organizational structure data
+  const { data: departments = [], isLoading: loadingDepartments } = useDepartments({ isActive: true });
+  const { data: locations = [], isLoading: loadingLocations } = useLocations({ isActive: true });
+  const { data: managers = [], isLoading: loadingManagers } = useWorkersForManager({ 
+    excludeId: worker?.id, 
+    status: 'active' 
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
@@ -44,7 +59,10 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
     dateOfBirth: '',
     startDate: '',
     workerType: '',
-    department: '',
+    departmentId: '',   // Phase 2: Department FK
+    locationId: '',     // Phase 2: Location FK
+    managerId: '',      // Phase 2: Manager FK
+    department: '',     // Fallback for legacy
     position: '',
     compensation: '',
     status: '',
@@ -89,7 +107,10 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
         dateOfBirth: worker.dateOfBirth,
         startDate: worker.startDate,
         workerType: matchedType?.id || '',
-        department: worker.department,
+        departmentId: worker.departmentId || '',     // Phase 2
+        locationId: worker.locationId || '',         // Phase 2
+        managerId: worker.managerId || '',           // Phase 2
+        department: worker.department || '',         // Fallback
         position: worker.position,
         compensation: worker.compensation.toString(),
         status: worker.status,
@@ -108,7 +129,7 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Invalid email format';
     if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (!formData.department.trim()) newErrors.department = 'Department is required';
+    // Phase 2: Department is now optional (can be set via departmentId or legacy text)
     if (!formData.position.trim()) newErrors.position = 'Position is required';
     if (!formData.compensation.trim()) newErrors.compensation = 'Compensation is required';
     else if (isNaN(Number(formData.compensation)) || Number(formData.compensation) <= 0)
@@ -134,20 +155,26 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || nameParts[0] || '';
 
+      // Phase 1 Migration: Send PII fields at root level, not in metadata
+      // Phase 2 Migration: Send organizational structure fields at root level
       const updateData = {
         firstName: firstName,
         lastName: lastName,
         email: formData.email,
+        phone: formData.phone, // Phase 1: Root level
+        nationalId: formData.nationalId, // Phase 1: Root level (maps to taxIdNumber)
+        dateOfBirth: formData.dateOfBirth, // Phase 1: Root level
         status: formData.status,
         bankName: formData.bankName,
         bankAccountNumber: formData.bankAccount,
-        // Store additional fields in metadata
+        // Phase 2: Organizational structure at root level
+        departmentId: formData.departmentId || null,
+        locationId: formData.locationId || null,
+        managerId: formData.managerId || null,
+        // Store remaining fields in metadata
         metadata: {
-          phone: formData.phone,
-          nationalId: formData.nationalId,
-          dateOfBirth: formData.dateOfBirth,
           workerType: formData.workerType,
-          department: formData.department,
+          department: formData.department || null, // Fallback for legacy
           position: formData.position,
           compensation: Number(formData.compensation),
           address: formData.address,
@@ -346,11 +373,19 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
               />
             </FormField>
 
-            <FormField label="Department" required error={errors.department}>
-              <Input
-                value={formData.department}
-                onChange={(e) => handleChange('department', e.target.value)}
-                error={!!errors.department}
+            {/* Phase 2: Department dropdown from Nexus HRIS */}
+            <FormField label="Department" error={errors.departmentId}>
+              <Select
+                value={formData.departmentId}
+                onChange={(e) => handleChange('departmentId', e.target.value)}
+                options={[
+                  { value: '', label: loadingDepartments ? 'Loading...' : 'Select Department (Optional)' },
+                  ...departments.map((dept: any) => ({
+                    value: dept.id,
+                    label: dept.departmentName || dept.name || dept.departmentCode
+                  }))
+                ]}
+                disabled={loadingDepartments}
               />
             </FormField>
 
@@ -359,6 +394,38 @@ export default function EditWorkerModal({ isOpen, onClose, worker, onSuccess }: 
                 value={formData.position}
                 onChange={(e) => handleChange('position', e.target.value)}
                 error={!!errors.position}
+              />
+            </FormField>
+
+            {/* Phase 2: Location dropdown from Nexus HRIS */}
+            <FormField label="Location">
+              <Select
+                value={formData.locationId}
+                onChange={(e) => handleChange('locationId', e.target.value)}
+                options={[
+                  { value: '', label: loadingLocations ? 'Loading...' : 'Select Location (Optional)' },
+                  ...locations.map((loc: any) => ({
+                    value: loc.id,
+                    label: `${loc.name || loc.locationName} ${loc.city ? `- ${loc.city}` : ''}`
+                  }))
+                ]}
+                disabled={loadingLocations}
+              />
+            </FormField>
+
+            {/* Phase 2: Manager dropdown (self-referencing) */}
+            <FormField label="Manager / Supervisor">
+              <Select
+                value={formData.managerId}
+                onChange={(e) => handleChange('managerId', e.target.value)}
+                options={[
+                  { value: '', label: loadingManagers ? 'Loading...' : 'No Manager (Optional)' },
+                  ...managers.map((mgr: any) => ({
+                    value: mgr.id,
+                    label: mgr.fullName || `${mgr.firstName || ''} ${mgr.lastName || ''}`.trim()
+                  }))
+                ]}
+                disabled={loadingManagers}
               />
             </FormField>
           </div>

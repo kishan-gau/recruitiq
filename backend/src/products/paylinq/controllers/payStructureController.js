@@ -22,6 +22,10 @@ export async function createTemplate(req, res) {
     const organizationId = req.user.organization_id;
     const userId = req.user.id;
 
+    console.log('=== CREATE TEMPLATE CONTROLLER ===');
+    console.log('User:', { id: userId, email: req.user.email, organizationId });
+    console.log('Template data:', req.body);
+
     const template = await payStructureService.createTemplate(req.body, organizationId, userId);
 
     res.status(201).json({
@@ -60,13 +64,25 @@ export async function getTemplates(req, res) {
     const filters = {
       status,
       templateCode,
-      isOrganizationDefault: isOrganizationDefault === 'true',
+      // Only include isOrganizationDefault filter if explicitly provided
+      ...(isOrganizationDefault !== undefined && { isOrganizationDefault: isOrganizationDefault === 'true' }),
       search,
       sortField,
       sortOrder
     };
 
+    logger.info('getTemplates controller called', { 
+      organizationId, 
+      queryParams: req.query,
+      filters 
+    });
+
     const templates = await payStructureService.getTemplates(organizationId, filters);
+
+    logger.info('getTemplates controller response', {
+      count: templates.length,
+      templates: templates.map(t => ({ id: t.id, status: t.status, name: t.templateName }))
+    });
 
     res.status(200).json({
       success: true,
@@ -1245,6 +1261,208 @@ export async function createFromTemplate(req, res) {
 }
 
 /**
+ * Add template inclusion (nested template)
+ * POST /api/products/paylinq/pay-structures/templates/:id/inclusions
+ * @deprecated This is a duplicate - use the first addTemplateInclusion function instead
+ */
+export async function addIncludedTemplateController(req, res) {
+  try {
+    const { id } = req.params;
+    const inclusionData = req.body;
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+
+    const inclusion = await payStructureService.addIncludedTemplate(
+      id,
+      inclusionData,
+      organizationId,
+      userId
+    );
+
+    res.status(201).json({
+      success: true,
+      inclusion,
+      message: 'Template inclusion added successfully'
+    });
+  } catch (error) {
+    logger.error('Error adding template inclusion', {
+      error: error.message,
+      parentTemplateId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'ValidationError' ? 400
+      : error.name === 'NotFoundError' ? 404
+      : error.name === 'ConflictError' ? 409
+      : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Get template inclusions
+ * GET /api/products/paylinq/pay-structures/templates/:id/inclusions
+ * @deprecated This is a duplicate - use the first getTemplateInclusions function instead
+ */
+export async function getIncludedTemplatesController(req, res) {
+  try {
+    const { id } = req.params;
+    const organizationId = req.user.organization_id;
+
+    const inclusions = await payStructureService.getIncludedTemplates(
+      id,
+      organizationId
+    );
+
+    res.status(200).json({
+      success: true,
+      inclusions
+    });
+  } catch (error) {
+    logger.error('Error getting template inclusions', {
+      error: error.message,
+      templateId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Update template inclusion
+ * PATCH /api/products/paylinq/pay-structures/templates/:id/inclusions/:inclusionId
+ * @deprecated This is a duplicate - use the first updateTemplateInclusion function instead
+ */
+export async function updateIncludedTemplateController(req, res) {
+  try {
+    const { id, inclusionId } = req.params;
+    const updates = req.body;
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+
+    const updatedInclusion = await payStructureService.updateIncludedTemplate(
+      inclusionId,
+      updates,
+      organizationId,
+      userId
+    );
+
+    res.status(200).json({
+      success: true,
+      inclusion: updatedInclusion,
+      message: 'Template inclusion updated successfully'
+    });
+  } catch (error) {
+    logger.error('Error updating template inclusion', {
+      error: error.message,
+      inclusionId: req.params.inclusionId,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'ValidationError' ? 400
+      : error.name === 'NotFoundError' ? 404
+      : error.name === 'ConflictError' ? 409
+      : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Remove template inclusion
+ * DELETE /api/products/paylinq/pay-structures/templates/:id/inclusions/:inclusionId
+ * @deprecated This is a duplicate - use the first removeTemplateInclusion function instead
+ */
+export async function removeIncludedTemplateController(req, res) {
+  try {
+    const { id, inclusionId } = req.params;
+    const organizationId = req.user.organization_id;
+    const userId = req.user.id;
+
+    await payStructureService.removeIncludedTemplate(
+      inclusionId,
+      organizationId,
+      userId
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Template inclusion removed successfully'
+    });
+  } catch (error) {
+    logger.error('Error removing template inclusion', {
+      error: error.message,
+      inclusionId: req.params.inclusionId,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Get resolved template with all inclusions merged
+ * GET /api/products/paylinq/pay-structures/templates/:id/resolved
+ */
+export async function getResolvedTemplate(req, res) {
+  try {
+    const { id } = req.params;
+    const { asOfDate } = req.query;
+    const organizationId = req.user.organization_id;
+
+    const resolvedTemplate = await payStructureService.resolveTemplateHierarchy(
+      id,
+      organizationId,
+      asOfDate ? new Date(asOfDate) : undefined
+    );
+
+    res.status(200).json({
+      success: true,
+      resolvedTemplate
+    });
+  } catch (error) {
+    logger.error('Error getting resolved template', {
+      error: error.message,
+      templateId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
+
+    res.status(statusCode).json({
+      success: false,
+      error: error.name || 'Error',
+      message: error.message
+    });
+  }
+}
+
+// ==================== DEPRECATED METHODS (for backward compatibility) ====================
+
+/**
+ * @deprecated Use addTemplateInclusion instead
  * Include template in another template
  * POST /api/paylinq/pay-structures/:id/include
  */
@@ -1288,6 +1506,7 @@ export async function includeTemplate(req, res) {
 }
 
 /**
+ * @deprecated Use removeTemplateInclusion instead
  * Remove included template
  * DELETE /api/paylinq/pay-structures/:id/include/:includedId
  */
@@ -1308,38 +1527,6 @@ export async function removeIncludedTemplate(req, res) {
       error: error.message,
       parentId: req.params.id,
       includedId: req.params.includedId,
-      organizationId: req.user?.organization_id
-    });
-
-    const statusCode = error.name === 'NotFoundError' ? 404 : 500;
-
-    res.status(statusCode).json({
-      success: false,
-      error: error.name || 'Error',
-      message: error.message
-    });
-  }
-}
-
-/**
- * Get resolved template with inheritance
- * GET /api/paylinq/pay-structures/:id/resolved
- */
-export async function getResolvedTemplate(req, res) {
-  try {
-    const { id } = req.params;
-    const organizationId = req.user.organization_id;
-
-    const resolved = await payStructureService.resolveTemplateInheritance(id, organizationId);
-
-    res.status(200).json({
-      success: true,
-      resolved
-    });
-  } catch (error) {
-    logger.error('Error resolving template', {
-      error: error.message,
-      templateId: req.params.id,
       organizationId: req.user?.organization_id
     });
 

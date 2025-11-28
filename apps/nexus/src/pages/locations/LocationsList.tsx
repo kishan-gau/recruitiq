@@ -5,6 +5,8 @@ import { useLocations, useDeleteLocation } from '../../services/LocationsService
 import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
 import type { LocationFilters, LocationType } from '@/types/location.types';
+import BulkActions from '@/components/ui/BulkActions';
+import ExportButton from '@/components/ui/ExportButton';
 
 export default function LocationsList() {
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ export default function LocationsList() {
   const [filters, setFilters] = useState<LocationFilters>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
 
   // Fetch locations with filters
   const { data: locations, isLoading, error } = useLocations(filters);
@@ -88,13 +91,51 @@ export default function LocationsList() {
             Manage your organization's locations
           </p>
         </div>
-        <Link to="/locations/new">
-          <button className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-700 transition-colors">
-            <Plus className="w-5 h-5 mr-2" />
-            Add Location
-          </button>
-        </Link>
+        <div className="flex items-center gap-3">
+          {/* Data Export */}
+          {filteredLocations && filteredLocations.length > 0 && (
+            <ExportButton
+              data={filteredLocations}
+              filename="locations"
+            />
+          )}
+          
+          <Link to="/locations/new">
+            <button className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-700 transition-colors">
+              <Plus className="w-5 h-5 mr-2" />
+              Add Location
+            </button>
+          </Link>
+        </div>
       </div>
+
+      {/* Bulk Actions */}
+      {filteredLocations && filteredLocations.length > 0 && (
+        <BulkActions
+          selectedItems={selectedLocations}
+          allItems={filteredLocations}
+          onSelectionChange={setSelectedLocations}
+          actions={[
+            {
+              label: 'Delete Selected',
+              variant: 'danger',
+              action: async (ids: string[]) => {
+                if (window.confirm(`Delete ${ids.length} location(s)?`)) {
+                  for (const id of ids) {
+                    await new Promise((resolve) => {
+                      deleteLocation(id, {
+                        onSuccess: resolve,
+                        onError: resolve,
+                      });
+                    });
+                  }
+                  setSelectedLocations([]);
+                }
+              },
+            },
+          ]}
+        />
+      )}
 
       {/* Search and Filters */}
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-4 space-y-4">
@@ -223,6 +264,20 @@ export default function LocationsList() {
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedLocations.length === filteredLocations.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedLocations(filteredLocations.map((l) => l.id));
+                        } else {
+                          setSelectedLocations([]);
+                        }
+                      }}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Location
                   </th>
@@ -247,10 +302,26 @@ export default function LocationsList() {
                 {filteredLocations.map((location) => (
                   <tr
                     key={location.id}
-                    onClick={() => navigate(`/locations/${location.id}`)}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedLocations.includes(location.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedLocations([...selectedLocations, location.id]);
+                          } else {
+                            setSelectedLocations(selectedLocations.filter((id) => id !== location.id));
+                          }
+                        }}
+                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                    </td>
+                    <td
+                      className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                      onClick={() => navigate(`/locations/${location.id}`)}
+                    >
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center text-white font-semibold">
@@ -267,10 +338,16 @@ export default function LocationsList() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                      onClick={() => navigate(`/locations/${location.id}`)}
+                    >
                       {getTypeBadge(location.locationType)}
                     </td>
-                    <td className="px-6 py-4">
+                    <td
+                      className="px-6 py-4 cursor-pointer"
+                      onClick={() => navigate(`/locations/${location.id}`)}
+                    >
                       <div className="text-sm text-slate-900 dark:text-white">
                         {location.addressLine1 && (
                           <>
@@ -290,7 +367,10 @@ export default function LocationsList() {
                         {location.country}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                      onClick={() => navigate(`/locations/${location.id}`)}
+                    >
                       <div className="text-sm text-slate-900 dark:text-white">
                         {location.phone && <div>{location.phone}</div>}
                         {location.email && (
@@ -301,7 +381,10 @@ export default function LocationsList() {
                         {!location.phone && !location.email && '-'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td
+                      className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                      onClick={() => navigate(`/locations/${location.id}`)}
+                    >
                       {getStatusBadge(location.isActive)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

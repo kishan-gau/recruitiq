@@ -491,7 +491,7 @@ export const EMPLOYEE_RECORD_DB_TO_API = {
   organization_id: 'organizationId',
   employee_id: 'employeeId',
   employee_number: 'employeeNumber',
-  worker_type_template_id: 'workerTypeId',
+  worker_type_id: 'workerTypeId',
   worker_type_name: 'workerTypeName',
   pay_frequency: 'payFrequency',
   payment_method: 'paymentMethod',

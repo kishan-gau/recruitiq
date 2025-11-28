@@ -27,11 +27,10 @@ class PayslipPdfService {
           e.last_name,
           e.email,
           wps.template_id as pay_structure_template_id,
-          wt.worker_type_template_id
+          e.worker_type_id
          FROM payroll.paycheck pc
          INNER JOIN hris.employee e ON e.id = pc.employee_id
          LEFT JOIN payroll.worker_pay_structure wps ON wps.employee_id = e.id AND wps.is_current = true
-         LEFT JOIN payroll.worker_type wt ON wt.employee_id = e.id AND wt.is_current = true
          WHERE pc.id = $1 AND pc.organization_id = $2`,
         [paycheckId, organizationId]
       );
@@ -67,13 +66,8 @@ class PayslipPdfService {
              (pta.assignment_type = 'employee' AND pta.employee_id = $2)
              -- Pay structure
              OR (pta.assignment_type = 'pay_structure' AND pta.pay_structure_template_id = $3)
-             -- Worker type (note: pta.worker_type_id references payroll.worker_type.id, not the template)
-             OR (pta.assignment_type = 'worker_type' AND EXISTS (
-               SELECT 1 FROM payroll.worker_type wt2 
-               WHERE wt2.id = pta.worker_type_id 
-               AND wt2.worker_type_template_id = $4
-               AND wt2.employee_id = $2
-             ))
+             -- Worker type (references hris.worker_type directly)
+             OR (pta.assignment_type = 'worker_type' AND pta.worker_type_id = $4)
              -- Organization default
              OR (pta.assignment_type = 'organization')
              -- Template marked as default
@@ -96,7 +90,7 @@ class PayslipPdfService {
           organizationId,
           paycheck.employee_id,
           paycheck.pay_structure_template_id,
-          paycheck.worker_type_template_id
+          paycheck.worker_type_id
         ]
       );
 

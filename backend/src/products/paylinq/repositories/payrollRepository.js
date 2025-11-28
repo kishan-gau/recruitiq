@@ -123,6 +123,7 @@ class PayrollRepository {
     const total = parseInt(countResult.rows[0].total, 10);
     
     // Get paginated data with employee details from hris.employee
+    // Phase 1 Migration: Include date_of_birth in SELECT
     const result = await this.query(
       `SELECT 
         epc.*,
@@ -131,6 +132,7 @@ class PayrollRepository {
         e.last_name,
         e.email,
         e.phone,
+        e.date_of_birth,
         e.hire_date,
         e.employment_status,
         e.employment_type,
@@ -138,16 +140,22 @@ class PayrollRepository {
         e.location_id,
         e.manager_id,
         e.job_title,
+        -- Phase 2: Include organizational structure names
+        d.department_name,
+        l.location_name,
+        CONCAT(m.first_name, ' ', m.last_name) as manager_name,
         c.compensation_type,
         c.amount as current_compensation,
         c.effective_from as compensation_effective_from,
-        wtt.id as worker_type_template_id,
-        wtt.name as worker_type_name
+        wt.id as worker_type_id,
+        wt.name as worker_type_name
       FROM payroll.employee_payroll_config epc
       JOIN hris.employee e ON e.id = epc.employee_id
+      LEFT JOIN hris.department d ON d.id = e.department_id
+      LEFT JOIN hris.location l ON l.id = e.location_id
+      LEFT JOIN hris.employee m ON m.id = e.manager_id
       LEFT JOIN payroll.compensation c ON c.employee_id = epc.employee_id AND c.is_current = true
-      LEFT JOIN payroll.worker_type wt ON wt.employee_id = epc.employee_id AND wt.is_current = true
-      LEFT JOIN payroll.worker_type_template wtt ON wtt.id = wt.worker_type_template_id
+      LEFT JOIN hris.worker_type wt ON wt.id = e.worker_type_id
       ${whereClause}
       ORDER BY ${sortField} ${sortDirection}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`,
@@ -194,16 +202,22 @@ class PayrollRepository {
               e.location_id,
               e.manager_id,
               e.job_title,
+              -- Phase 2: Include organizational structure names
+              d.department_name,
+              l.location_name,
+              CONCAT(m.first_name, ' ', m.last_name) as manager_name,
               c.compensation_type,
               c.amount as current_compensation,
               c.effective_from as compensation_effective_from,
-              wtt.id as worker_type_template_id,
-              wtt.name as worker_type_name
+              wt.id as worker_type_id,
+              wt.name as worker_type_name
        FROM payroll.employee_payroll_config epc
        JOIN hris.employee e ON e.id = epc.employee_id
+       LEFT JOIN hris.department d ON d.id = e.department_id
+       LEFT JOIN hris.location l ON l.id = e.location_id
+       LEFT JOIN hris.employee m ON m.id = e.manager_id
        LEFT JOIN payroll.compensation c ON c.employee_id = epc.employee_id AND c.is_current = true
-       LEFT JOIN payroll.worker_type wt ON wt.employee_id = epc.employee_id AND wt.is_current = true
-       LEFT JOIN payroll.worker_type_template wtt ON wtt.id = wt.worker_type_template_id
+       LEFT JOIN hris.worker_type wt ON wt.id = e.worker_type_id
        WHERE (epc.id = $1 OR epc.employee_id = $1) AND epc.organization_id = $2 AND epc.deleted_at IS NULL`,
       [employeeRecordId, organizationId],
       organizationId,
@@ -545,66 +559,70 @@ class PayrollRepository {
   /**
    * Create or update worker type assignment for employee
    * @param {string} employeeId - Employee UUID
-   * @param {string} workerTypeName - Worker type template name (e.g., 'Full-Time', 'Part-Time')
+   * @param {string} workerTypeName - Worker type name (e.g., 'Full-Time', 'Part-Time')
    * @param {string} organizationId - Organization UUID
    * @param {string} userId - User creating/updating the assignment
    * @returns {Promise<Object>} Worker type assignment
    */
   async createOrUpdateWorkerType(employeeId, workerTypeName, organizationId, userId) {
-    // First, find the worker type template by name
-    const templateResult = await this.query(
-      `SELECT id FROM payroll.worker_type_template 
-       WHERE name = $1 AND is_active = true`,
-      [workerTypeName],
+    // First, find the worker type from HRIS by name
+    const workerTypeResult = await this.query(
+      `SELECT id FROM hris.worker_type 
+       WHERE name = $1 AND is_active = true AND organization_id = $2`,
+      [workerTypeName, organizationId],
       organizationId,
-      { operation: 'SELECT', table: 'payroll.worker_type_template' }
+      { operation: 'SELECT', table: 'hris.worker_type' }
     );
 
-    if (templateResult.rows.length === 0) {
-      throw new Error(`Worker type template '${workerTypeName}' not found`);
+    if (workerTypeResult.rows.length === 0) {
+      throw new Error(`Worker type '${workerTypeName}' not found`);
     }
 
-    const templateId = templateResult.rows[0].id;
+    const workerTypeId = workerTypeResult.rows[0].id;
 
-    // Check if assignment already exists
-    const existingResult = await this.query(
-      `SELECT * FROM payroll.worker_type 
-       WHERE organization_id = $1 
-         AND employee_id = $2 
-         AND worker_type_template_id = $3`,
-      [organizationId, employeeId, templateId],
+    // Update the employee's worker_type_id in HRIS
+    const updateResult = await this.query(
+      `UPDATE hris.employee 
+       SET worker_type_id = $1, updated_at = NOW(), updated_by = $2
+       WHERE id = $3 AND organization_id = $4
+       RETURNING *`,
+      [workerTypeId, userId, employeeId, organizationId],
       organizationId,
-      { operation: 'SELECT', table: 'payroll.worker_type' }
+      { operation: 'UPDATE', table: 'hris.employee', userId }
     );
 
-    if (existingResult.rows.length > 0) {
-      // Update existing assignment to be current
-      const result = await this.query(
-        `UPDATE payroll.worker_type 
-         SET is_current = true, updated_by = $4, updated_at = NOW()
-         WHERE organization_id = $1 
-           AND employee_id = $2 
-           AND worker_type_template_id = $3
-         RETURNING *`,
-        [organizationId, employeeId, templateId, userId],
+    if (updateResult.rows.length > 0) {
+      // Mark all previous worker type history records as not current
+      await this.query(
+        `UPDATE payroll.worker_type_history 
+         SET is_current = false, 
+             effective_to = CURRENT_DATE,
+             updated_by = $1,
+             updated_at = NOW()
+         WHERE organization_id = $2 
+           AND employee_id = $3 
+           AND is_current = true`,
+        [userId, organizationId, employeeId],
         organizationId,
-        { operation: 'UPDATE', table: 'payroll.worker_type', userId }
+        { operation: 'UPDATE', table: 'payroll.worker_type_history', userId }
       );
-      return result.rows[0];
-    } else {
-      // Create new assignment
-      const result = await this.query(
-        `INSERT INTO payroll.worker_type (
-           organization_id, employee_id, worker_type_template_id,
-           is_current, effective_from, created_by, created_at
+
+      // Create new history record
+      const historyResult = await this.query(
+        `INSERT INTO payroll.worker_type_history (
+           organization_id, employee_id, worker_type_id,
+           effective_from, is_current, created_by, created_at
          )
-         VALUES ($1, $2, $3, true, CURRENT_DATE, $4, NOW())
+         VALUES ($1, $2, $3, CURRENT_DATE, true, $4, NOW())
          RETURNING *`,
-        [organizationId, employeeId, templateId, userId],
+        [organizationId, employeeId, workerTypeId, userId],
         organizationId,
-        { operation: 'INSERT', table: 'payroll.worker_type', userId }
+        { operation: 'INSERT', table: 'payroll.worker_type_history', userId }
       );
-      return result.rows[0];
+      
+      return historyResult.rows[0];
+    } else {
+      throw new Error('Employee not found or update failed');
     }
   }
 

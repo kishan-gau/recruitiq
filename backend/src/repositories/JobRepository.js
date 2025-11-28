@@ -29,15 +29,16 @@ export class JobRepository extends BaseRepository {
           COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'applied') as new_applications,
           COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'screening') as screening_count,
           COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'interviewing') as interviewing_count,
-          u.email as hiring_manager_email,
-          u.name as hiring_manager_name
+          ua.email as hiring_manager_email,
+          e.first_name || ' ' || e.last_name as hiring_manager_name
         FROM jobs j
         LEFT JOIN applications a ON j.id = a.job_id AND a.deleted_at IS NULL
-        LEFT JOIN users u ON j.hiring_manager_id = u.id
+        LEFT JOIN hris.user_account ua ON j.hiring_manager_id = ua.id AND ua.deleted_at IS NULL
+        LEFT JOIN hris.employee e ON ua.employee_id = e.id AND e.deleted_at IS NULL
         WHERE j.id = $1 
         AND j.organization_id = $2
         AND j.deleted_at IS NULL
-        GROUP BY j.id, u.id, u.email, u.name
+        GROUP BY j.id, ua.id, ua.email, e.first_name, e.last_name
       `;
 
       const result = await db.query(query, [id, organizationId], organizationId, {
@@ -203,12 +204,13 @@ export class JobRepository extends BaseRepository {
           j.*,
           COUNT(DISTINCT a.id) as application_count,
           COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'applied') as new_applications,
-          u.name as hiring_manager_name
+          e.first_name || ' ' || e.last_name as hiring_manager_name
         FROM jobs j
         LEFT JOIN applications a ON j.id = a.job_id AND a.deleted_at IS NULL
-        LEFT JOIN users u ON j.hiring_manager_id = u.id
+        LEFT JOIN hris.user_account ua ON j.hiring_manager_id = ua.id AND ua.deleted_at IS NULL
+        LEFT JOIN hris.employee e ON ua.employee_id = e.id AND e.deleted_at IS NULL
         WHERE ${whereClause}
-        GROUP BY j.id, u.name
+        GROUP BY j.id, e.first_name, e.last_name
         ORDER BY j.${sortBy} ${sortOrder}
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;

@@ -30,6 +30,13 @@ BEGIN
   RAISE NOTICE '[INFO] Starting Suriname tax rules seed...';
   RAISE NOTICE 'Using organization ID: %', v_org_id;
   
+  -- Skip if organization doesn't exist yet
+  IF v_org_id IS NULL THEN
+    RAISE NOTICE '[WARN] Test Company Ltd organization not found. Skipping tax rules seed.';
+    RAISE NOTICE '[INFO] Tax rules will be created when organization is seeded.';
+    RETURN;
+  END IF;
+  
   -- ========================================================================
   -- 2025 TAX RULES
   -- ========================================================================

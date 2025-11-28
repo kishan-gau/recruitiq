@@ -154,6 +154,50 @@ export interface ComponentOverride {
   createdBy: string;
 }
 
+export interface TemplateInclusion {
+  id: string;
+  parentTemplateId: string;
+  includedTemplateCode: string;
+  includedTemplateId?: string;
+  includedTemplateName?: string;
+  includedTemplateVersion?: string;
+  versionConstraint?: string;
+  inclusionPriority: number;
+  inclusionMode: 'merge' | 'override' | 'append';
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy?: string;
+}
+
+export interface ResolvedPayStructureTemplate extends PayStructureTemplate {
+  resolvedComponents: PayStructureComponent[];
+  inclusionHierarchy: Array<{
+    templateCode: string;
+    templateName: string;
+    version: string;
+    depth: number;
+  }>;
+  resolutionMetadata: {
+    resolvedAt: string;
+    totalInclusions: number;
+    mergeStrategy: string;
+  };
+}
+
+export type InclusionMode = 'merge' | 'override' | 'append';
+
+export type CreateTemplateInclusionInput = {
+  includedTemplateCode: string;
+  versionConstraint?: string;
+  inclusionPriority: number;
+  inclusionMode?: InclusionMode;
+  isActive?: boolean;
+};
+
+export type UpdateTemplateInclusionInput = Partial<CreateTemplateInclusionInput>;
+
 export type CreateTemplateInput = Pick<PayStructureTemplate, 'templateCode' | 'templateName' | 'description' | 'isOrganizationDefault' | 'effectiveFrom' | 'effectiveTo'>;
 export type UpdateTemplateInput = Partial<CreateTemplateInput>;
 export type CreateComponentInput = Omit<PayStructureComponent, 'id' | 'templateId' | 'createdAt' | 'updatedAt'>;
@@ -697,6 +741,138 @@ export function useWorkers() {
     queryFn: async () => {
       const response = await paylinq.getWorkers();
       return response.employees || [];
+    },
+  });
+}
+
+// ============================================================================
+// Template Inclusion Hooks (Nested Templates)
+// ============================================================================
+
+const TEMPLATE_INCLUSIONS_QUERY_KEY = ['templateInclusions'];
+
+/**
+ * Hook to fetch template inclusions for a template
+ */
+export function useTemplateInclusions(templateId: string) {
+  const { paylinq } = usePaylinqAPI();
+
+  return useQuery({
+    queryKey: [...TEMPLATE_INCLUSIONS_QUERY_KEY, templateId],
+    queryFn: async () => {
+      const response = await paylinq.getTemplateInclusions(templateId);
+      return response.inclusions || [];
+    },
+    enabled: !!templateId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+/**
+ * Hook to fetch resolved template with all inclusions merged
+ */
+export function useResolvedPayStructureTemplate(templateId: string, asOfDate?: string) {
+  const { paylinq } = usePaylinqAPI();
+
+  return useQuery({
+    queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, 'resolved', templateId, asOfDate],
+    queryFn: async () => {
+      const response = await paylinq.getResolvedPayStructureTemplate(templateId, asOfDate);
+      return response.resolvedTemplate as ResolvedPayStructureTemplate;
+    },
+    enabled: !!templateId,
+    staleTime: 2 * 60 * 1000, // 2 minutes (shorter because it's computed)
+  });
+}
+
+/**
+ * Hook to add template inclusion
+ */
+export function useAddTemplateInclusion() {
+  const { paylinq } = usePaylinqAPI();
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      parentTemplateId, 
+      data 
+    }: { 
+      parentTemplateId: string; 
+      data: CreateTemplateInclusionInput 
+    }) => {
+      const response = await paylinq.addTemplateInclusion(parentTemplateId, data);
+      return response.inclusion;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...TEMPLATE_INCLUSIONS_QUERY_KEY, variables.parentTemplateId] });
+      queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, 'resolved', variables.parentTemplateId] });
+      success(`Template inclusion for "${data.includedTemplateCode}" added successfully`);
+    },
+    onError: (err: any) => {
+      error(err?.message || 'Failed to add template inclusion');
+    },
+  });
+}
+
+/**
+ * Hook to update template inclusion
+ */
+export function useUpdateTemplateInclusion() {
+  const { paylinq } = usePaylinqAPI();
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      parentTemplateId, 
+      inclusionId, 
+      data 
+    }: { 
+      parentTemplateId: string; 
+      inclusionId: string; 
+      data: UpdateTemplateInclusionInput 
+    }) => {
+      const response = await paylinq.updateTemplateInclusion(parentTemplateId, inclusionId, data);
+      return response.inclusion;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...TEMPLATE_INCLUSIONS_QUERY_KEY, variables.parentTemplateId] });
+      queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, 'resolved', variables.parentTemplateId] });
+      success('Template inclusion updated successfully');
+    },
+    onError: (err: any) => {
+      error(err?.message || 'Failed to update template inclusion');
+    },
+  });
+}
+
+/**
+ * Hook to delete template inclusion
+ */
+export function useDeleteTemplateInclusion() {
+  const { paylinq } = usePaylinqAPI();
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      parentTemplateId, 
+      inclusionId 
+    }: { 
+      parentTemplateId: string; 
+      inclusionId: string 
+    }) => {
+      await paylinq.deleteTemplateInclusion(parentTemplateId, inclusionId);
+      return { parentTemplateId, inclusionId };
+    },
+    onSuccess: ({ parentTemplateId }) => {
+      queryClient.invalidateQueries({ queryKey: [...TEMPLATE_INCLUSIONS_QUERY_KEY, parentTemplateId] });
+      queryClient.invalidateQueries({ queryKey: [...PAY_STRUCTURE_TEMPLATES_QUERY_KEY, 'resolved', parentTemplateId] });
+      success('Template inclusion deleted successfully');
+    },
+    onError: (err: any) => {
+      error(err?.message || 'Failed to delete template inclusion');
     },
   });
 }

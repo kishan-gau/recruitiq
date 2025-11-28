@@ -9,7 +9,7 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import logger from '../utils/logger.js';
-import transipService from './transip.js';
+import transipService from './transip/TransIPService.js';
 import pool from '../config/database.js';
 
 const execAsync = promisify(exec);

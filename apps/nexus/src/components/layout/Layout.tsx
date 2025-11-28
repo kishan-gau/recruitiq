@@ -24,6 +24,7 @@ import {
   Briefcase,
   HeartPulse,
   LogOut,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -127,12 +128,26 @@ const reportsItem: NavigationItem = {
   description: 'Analytics and reporting',
 };
 
-const settingsItem: NavigationItem = {
-  name: 'Settings',
-  href: '/settings',
-  icon: Settings,
-  description: 'System configuration',
-};
+const settingsItems: NavigationItem[] = [
+  {
+    name: 'General',
+    href: '/settings',
+    icon: Settings,
+    description: 'General settings',
+  },
+  {
+    name: 'Roles & Permissions',
+    href: '/settings/roles-permissions',
+    icon: Shield,
+    description: 'Manage user roles and permissions',
+  },
+  {
+    name: 'Bulk User Access',
+    href: '/settings/bulk-user-access',
+    icon: Users,
+    description: 'Manage user access in bulk',
+  },
+];
 
 export default function Layout() {
   const { theme, toggleTheme } = useTheme();
@@ -261,9 +276,14 @@ export default function Layout() {
             onItemClick={() => setSidebarOpen(false)}
           />
 
-          {/* Settings - Top level */}
+          {/* Settings - Collapsible Group */}
           <NavigationGroup
-            items={[settingsItem]}
+            title="Settings"
+            icon={Settings}
+            items={settingsItems}
+            collapsible
+            isOpen={expandedGroup === 'settings'}
+            onToggle={() => setExpandedGroup(expandedGroup === 'settings' ? null : 'settings')}
             onItemClick={() => setSidebarOpen(false)}
           />
         </nav>

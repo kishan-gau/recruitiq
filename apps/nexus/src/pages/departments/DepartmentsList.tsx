@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Building2, Users, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Search, Building2, Users, ChevronRight, ChevronDown, Network } from 'lucide-react';
 import { useDepartments } from '@/hooks/useDepartments';
 import { handleApiError } from '@/utils/errorHandler';
 import type { DepartmentHierarchy } from '@/types/department.types';
@@ -78,13 +78,22 @@ export default function DepartmentsList() {
             Manage organizational departments and hierarchy
           </p>
         </div>
-        <Link
-          to="/departments/create"
-          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-700 transition-colors"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Department
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            to="/departments/hierarchy"
+            className="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-lg font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            <Network className="w-5 h-5 mr-2" />
+            View Hierarchy
+          </Link>
+          <Link
+            to="/departments/create"
+            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-700 transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Department
+          </Link>
+        </div>
       </div>
 
       {/* Search and Filters */}

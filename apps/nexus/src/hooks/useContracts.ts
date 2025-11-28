@@ -200,3 +200,63 @@ export function useUploadContractDocument() {
     },
   });
 }
+
+/**
+ * Hook to fetch expiring contracts
+ */
+export function useExpiringContracts(days: number = 30) {
+  return useQuery({
+    queryKey: ['contracts', 'expiring', days],
+    queryFn: () => contractsService.getExpiring(days),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to progress contract sequence
+ */
+export function useProgressSequence() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => contractsService.progressSequence(id),
+    onSuccess: (updatedContract) => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contracts', updatedContract.id] });
+      queryClient.invalidateQueries({ queryKey: ['contracts', 'employee', updatedContract.employeeId] });
+      toast.success('Contract progressed to next sequence successfully');
+    },
+    onError: (err: Error) => {
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to progress contract sequence',
+      });
+    },
+  });
+}
+
+/**
+ * Hook to renew a contract
+ */
+export function useRenewContract() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { startDate: string; endDate: string; terms?: string } }) =>
+      contractsService.renew(id, data),
+    onSuccess: (renewedContract) => {
+      queryClient.invalidateQueries({ queryKey: ['contracts'] });
+      queryClient.invalidateQueries({ queryKey: ['contracts', renewedContract.id] });
+      queryClient.invalidateQueries({ queryKey: ['contracts', 'employee', renewedContract.employeeId] });
+      toast.success('Contract renewed successfully');
+    },
+    onError: (err: Error) => {
+      handleApiError(err, {
+        toast,
+        defaultMessage: 'Failed to renew contract',
+      });
+    },
+  });
+}

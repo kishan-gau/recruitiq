@@ -9,6 +9,8 @@ export const locationKeys = {
   list: (filters?: any) => [...locationKeys.lists(), filters] as const,
   details: () => [...locationKeys.all, 'detail'] as const,
   detail: (id: string) => [...locationKeys.details(), id] as const,
+  stats: () => [...locationKeys.all, 'stats'] as const,
+  stat: (id: string) => [...locationKeys.stats(), id] as const,
 };
 
 // Hooks
@@ -84,5 +86,22 @@ export function useDeleteLocation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: locationKeys.lists() });
     },
+  });
+}
+
+export function useLocationStats(id: string) {
+  return useQuery({
+    queryKey: locationKeys.stat(id),
+    queryFn: () => locationsService.getStatistics(id),
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+}
+
+export function useAllLocationStats() {
+  return useQuery({
+    queryKey: locationKeys.stats(),
+    queryFn: () => locationsService.getAllStatistics(),
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }

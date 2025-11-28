@@ -42,6 +42,7 @@ const updateWorkerTypeSchema = Joi.object({
   name: Joi.string().min(2).max(100).optional(),
   code: Joi.string().min(2).max(50).optional(),
   description: Joi.string().max(500).optional().allow(null, ''),
+  payStructureTemplateCode: Joi.string().max(50).optional().allow(null, ''),
   defaultPayFrequency: Joi.string().valid('weekly', 'bi-weekly', 'semi-monthly', 'monthly').optional(),
   defaultPaymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash').optional(),
   benefitsEligible: Joi.boolean().optional(),
@@ -58,6 +59,29 @@ const assignEmployeesSchema = Joi.object({
 const uuidParamSchema = Joi.object({
   id: Joi.string().uuid().required(),
 });
+
+// Template inclusion validation schemas
+const createInclusionSchema = Joi.object({
+  componentType: Joi.string().valid('allowance', 'deduction', 'earning').required(),
+  componentId: Joi.string().uuid().required(),
+  isRequired: Joi.boolean().optional().default(false),
+  isEditable: Joi.boolean().optional().default(true),
+  defaultValue: Joi.alternatives().try(
+    Joi.number(),
+    Joi.object()
+  ).optional().allow(null),
+  displayOrder: Joi.number().integer().min(0).optional().allow(null)
+});
+
+const updateInclusionSchema = Joi.object({
+  isRequired: Joi.boolean().optional(),
+  isEditable: Joi.boolean().optional(),
+  defaultValue: Joi.alternatives().try(
+    Joi.number(),
+    Joi.object()
+  ).optional().allow(null),
+  displayOrder: Joi.number().integer().min(0).optional().allow(null)
+}).min(1);
 
 // Routes
 
@@ -116,6 +140,78 @@ router.get(
   requirePermission('worker-types:read'),
   validate(uuidParamSchema, 'params'),
   workerTypeController.getWorkerTypeEmployees
+);
+
+// Template Inclusion Routes
+
+// GET /api/paylinq/worker-types/:id/inclusions - Get all inclusions for template
+router.get(
+  '/:id/inclusions',
+  requirePermission('worker-types:read'),
+  validate(uuidParamSchema, 'params'),
+  workerTypeController.getTemplateInclusions
+);
+
+// POST /api/paylinq/worker-types/:id/inclusions - Add inclusion to template
+router.post(
+  '/:id/inclusions',
+  requirePermission('worker-types:update'),
+  validate(uuidParamSchema, 'params'),
+  validate(createInclusionSchema, 'body'),
+  workerTypeController.addTemplateInclusion
+);
+
+// PUT /api/paylinq/worker-types/:id/inclusions/:inclusionId - Update inclusion
+router.put(
+  '/:id/inclusions/:inclusionId',
+  requirePermission('worker-types:update'),
+  validate(Joi.object({
+    id: Joi.string().uuid().required(),
+    inclusionId: Joi.string().uuid().required()
+  }), 'params'),
+  validate(updateInclusionSchema, 'body'),
+  workerTypeController.updateTemplateInclusion
+);
+
+// DELETE /api/paylinq/worker-types/:id/inclusions/:inclusionId - Remove inclusion
+router.delete(
+  '/:id/inclusions/:inclusionId',
+  requirePermission('worker-types:update'),
+  validate(Joi.object({
+    id: Joi.string().uuid().required(),
+    inclusionId: Joi.string().uuid().required()
+  }), 'params'),
+  workerTypeController.removeTemplateInclusion
+);
+
+// Pay Structure Template Upgrade Routes
+
+// GET /api/products/paylinq/worker-types/:id/upgrade-status - Get upgrade status
+router.get(
+  '/:id/upgrade-status',
+  requirePermission('worker-types:read'),
+  validate(uuidParamSchema, 'params'),
+  workerTypeController.getUpgradeStatus
+);
+
+// GET /api/products/paylinq/worker-types/:id/preview-upgrade - Preview template upgrade
+router.get(
+  '/:id/preview-upgrade',
+  requirePermission('worker-types:read'),
+  validate(uuidParamSchema, 'params'),
+  workerTypeController.previewUpgrade
+);
+
+// POST /api/products/paylinq/worker-types/:id/upgrade-workers - Upgrade workers to template
+router.post(
+  '/:id/upgrade-workers',
+  requirePermission('worker-types:update'),
+  validate(uuidParamSchema, 'params'),
+  validate(Joi.object({
+    workerIds: Joi.array().items(Joi.string().uuid()).optional().allow(null),
+    effectiveDate: Joi.date().optional().allow(null)
+  }), 'body'),
+  workerTypeController.upgradeWorkers
 );
 
 export default router;

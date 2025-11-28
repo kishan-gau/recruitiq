@@ -305,10 +305,46 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding Suriname tax rules..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-suriname-tax-rules.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding Suriname tax rules" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding payroll run types..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-payroll-run-types.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding payroll run types" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "[*] Creating test organization and tenant users..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
 & $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-test-tenant.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error creating test organization" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding worker type templates..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-worker-types.sql
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error creating test organization" -ForegroundColor Red
@@ -336,42 +372,6 @@ Write-Host "================================================================" -F
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error assigning user roles" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ""
-Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "[*] Seeding Suriname tax rules..." -ForegroundColor Cyan
-Write-Host "================================================================" -ForegroundColor Cyan
-
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-suriname-tax-rules.sql
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error seeding Suriname tax rules" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ""
-Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "[*] Seeding payroll run types..." -ForegroundColor Cyan
-Write-Host "================================================================" -ForegroundColor Cyan
-
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-payroll-run-types.sql
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error seeding payroll run types" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ""
-Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "[*] Seeding worker type templates..." -ForegroundColor Cyan
-Write-Host "================================================================" -ForegroundColor Cyan
-
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-worker-types.sql
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error seeding worker types" -ForegroundColor Red
     exit 1
 }
 

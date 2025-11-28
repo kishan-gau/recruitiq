@@ -240,8 +240,8 @@ export default function PayPeriodConfigPage() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Pay Period Configuration</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pay Period Configuration</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Configure pay frequency, pay dates, and holiday calendar
         </p>
       </div>
@@ -269,8 +269,8 @@ export default function PayPeriodConfigPage() {
                   key={freq.value}
                   className={`relative flex flex-col p-4 border-2 rounded-lg cursor-pointer transition-all ${
                     selectedFrequency === freq.value
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   <input
@@ -281,14 +281,14 @@ export default function PayPeriodConfigPage() {
                     className="sr-only"
                   />
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-900">{freq.label}</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{freq.label}</span>
                     {selectedFrequency === freq.value && (
                       <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                         <div className="w-2 h-2 bg-white rounded-full"></div>
                       </div>
                     )}
                   </div>
-                  <span className="text-xs text-gray-500">{freq.description}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{freq.description}</span>
                 </label>
               ))}
             </div>
@@ -321,7 +321,7 @@ export default function PayPeriodConfigPage() {
                 <select
                   value={payDayOffset}
                   onChange={(e) => setPayDayOffset(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 >
                   <option value={0}>Same day as period end</option>
                   <option value={1}>1 day after period end</option>
@@ -347,11 +347,11 @@ export default function PayPeriodConfigPage() {
                   {holidays.map((holiday) => (
                     <div
                       key={holiday.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                     >
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">{holiday.holidayName}</div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{holiday.holidayName}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
                           {format(new Date(holiday.holidayDate), 'MMMM dd, yyyy')}
                           {holiday.isRecurring && ' • Recurring annually'}
                         </div>
@@ -367,17 +367,17 @@ export default function PayPeriodConfigPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-400 dark:text-gray-500" />
                   <p className="text-sm">No holidays configured</p>
                 </div>
               )}
 
               {/* Add Holiday Form */}
               {showAddHoliday ? (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Holiday Name
                     </label>
                     <input
@@ -385,12 +385,12 @@ export default function PayPeriodConfigPage() {
                       value={newHolidayName}
                       onChange={(e) => setNewHolidayName(e.target.value)}
                       placeholder="e.g., Christmas Day"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Date
                     </label>
                     <DatePicker
@@ -407,7 +407,7 @@ export default function PayPeriodConfigPage() {
                       onChange={(e) => setNewHolidayRecurring(e.target.checked)}
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-emerald-500"
                     />
-                    <label htmlFor="recurring" className="ml-2 text-sm text-gray-700">
+                    <label htmlFor="recurring" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                       Recurring annually
                     </label>
                   </div>
@@ -429,7 +429,7 @@ export default function PayPeriodConfigPage() {
                         setNewHolidayDate(null);
                         setNewHolidayRecurring(true);
                       }}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Cancel
                     </button>
@@ -439,7 +439,7 @@ export default function PayPeriodConfigPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddHoliday(true)}
-                  className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-gray-400 hover:text-gray-700"
+                  className="w-full px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 >
                   <Plus className="w-4 h-4 inline mr-2" />
                   Add Holiday
@@ -457,8 +457,8 @@ export default function PayPeriodConfigPage() {
 
         {/* Preview Panel */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-200 rounded-lg p-6 sticky top-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 sticky top-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Upcoming Pay Periods
             </h3>
 
@@ -467,15 +467,15 @@ export default function PayPeriodConfigPage() {
                 {upcomingPeriods.map((period, index) => (
                   <div
                     key={index}
-                    className="p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700"
                   >
-                    <div className="text-xs font-medium text-gray-500 mb-1">
+                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                       Period {index + 1}
                     </div>
-                    <div className="text-sm text-gray-900 mb-2">
+                    <div className="text-sm text-gray-900 dark:text-white mb-2">
                       {format(period.periodStart, 'MMM dd')} - {format(period.periodEnd, 'MMM dd, yyyy')}
                     </div>
-                    <div className="flex items-center text-xs text-blue-600">
+                    <div className="flex items-center text-xs text-blue-600 dark:text-blue-400">
                       <Calendar className="w-3 h-3 mr-1" />
                       Pay Date: {format(period.payDate, 'MMM dd, yyyy')}
                     </div>
@@ -483,7 +483,7 @@ export default function PayPeriodConfigPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-400">
+              <div className="text-center py-8 text-gray-400 dark:text-gray-500">
                 <AlertCircle className="w-12 h-12 mx-auto mb-2" />
                 <p className="text-sm">Select a start date to preview pay periods</p>
               </div>

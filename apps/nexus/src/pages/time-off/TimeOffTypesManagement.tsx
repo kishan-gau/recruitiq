@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { Plus, Edit, Trash2, Calendar, Clock, FileText, CheckCircle, XCircle } from 'lucide-react';
-import { useTimeOffTypes, useCreateTimeOffType, useUpdateTimeOffType, useDeleteTimeOffType } from '@/hooks/useTimeOff';
+import { useTimeOffTypes, useCreateTimeOffType, useUpdateTimeOffType, useDeleteTimeOffType } from '@/hooks/useTimeOffTypes';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Modal from '@/components/ui/Modal';

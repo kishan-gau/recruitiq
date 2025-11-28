@@ -32,7 +32,7 @@ async function createWorkerType(req, res) {
 
     res.status(201).json({
       success: true,
-      workerTypeTemplate: workerType,
+      workerType: workerType,
       message: 'Worker type created successfully',
     });
   } catch (error) {
@@ -100,7 +100,7 @@ async function getWorkerTypes(req, res) {
 
     res.status(200).json({
       success: true,
-      workerTypeTemplates: result.workerTypes,
+      workerTypes: result.workerTypes,
       pagination: result.pagination,
     });
   } catch (error) {
@@ -130,7 +130,7 @@ async function getWorkerTypeById(req, res) {
 
     res.status(200).json({
       success: true,
-      workerTypeTemplate: workerType,
+      workerType: workerType,
     });
   } catch (error) {
     logger.error('Error fetching worker type', {
@@ -173,6 +173,11 @@ async function updateWorkerType(req, res) {
     const { organization_id: organizationId, id: userId } = req.user;
     const { id } = req.params;
 
+    logger.info('updateWorkerType - Request body:', {
+      body: req.body,
+      payStructureTemplateCode: req.body.payStructureTemplateCode
+    });
+
     const workerType = await workerTypeService.updateWorkerTypeTemplate(
       id,
       req.body,
@@ -188,7 +193,7 @@ async function updateWorkerType(req, res) {
 
     res.status(200).json({
       success: true,
-      workerTypeTemplate: workerType,
+      workerType: workerType,
       message: 'Worker type updated successfully',
     });
   } catch (error) {
@@ -378,6 +383,363 @@ async function getWorkerTypeEmployees(req, res) {
   }
 }
 
+// ============================================================================
+// Template Inclusion Management
+// ============================================================================
+
+/**
+ * Get all inclusions for a worker type template
+ * GET /api/paylinq/worker-types/:id/inclusions
+ */
+async function getTemplateInclusions(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { id } = req.params;
+
+    const inclusions = await workerTypeService.getTemplateInclusions(id, organizationId);
+
+    res.status(200).json({
+      success: true,
+      inclusions,
+    });
+  } catch (error) {
+    logger.error('Error fetching template inclusions', {
+      error: error.message,
+      workerTypeId: req.params.id,
+      organizationId: req.user?.organization_id,
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch template inclusions',
+      errorCode: 'INTERNAL_SERVER_ERROR',
+    });
+  }
+}
+
+/**
+ * Add an inclusion to a worker type template
+ * POST /api/paylinq/worker-types/:id/inclusions
+ */
+async function addTemplateInclusion(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+
+    const inclusion = await workerTypeService.addTemplateInclusion(
+      id,
+      req.body,
+      organizationId,
+      userId
+    );
+
+    logger.info('Template inclusion added', {
+      organizationId,
+      workerTypeId: id,
+      inclusionId: inclusion.id,
+      componentType: req.body.componentType,
+      userId,
+    });
+
+    res.status(201).json({
+      success: true,
+      inclusion,
+      message: 'Inclusion added successfully',
+    });
+  } catch (error) {
+    logger.error('Error adding template inclusion', {
+      error: error.message,
+      workerTypeId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
+    if (error.message.includes('already included')) {
+      return res.status(409).json({
+        success: false,
+        error: error.message,
+        errorCode: 'CONFLICT',
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+      errorCode: 'VALIDATION_ERROR',
+    });
+  }
+}
+
+/**
+ * Update a template inclusion
+ * PUT /api/paylinq/worker-types/:id/inclusions/:inclusionId
+ */
+async function updateTemplateInclusion(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id, inclusionId } = req.params;
+
+    const inclusion = await workerTypeService.updateTemplateInclusion(
+      id,
+      inclusionId,
+      req.body,
+      organizationId,
+      userId
+    );
+
+    logger.info('Template inclusion updated', {
+      organizationId,
+      workerTypeId: id,
+      inclusionId,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      inclusion,
+      message: 'Inclusion updated successfully',
+    });
+  } catch (error) {
+    logger.error('Error updating template inclusion', {
+      error: error.message,
+      workerTypeId: req.params.id,
+      inclusionId: req.params.inclusionId,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+      errorCode: 'VALIDATION_ERROR',
+    });
+  }
+}
+
+/**
+ * Remove an inclusion from a worker type template
+ * DELETE /api/paylinq/worker-types/:id/inclusions/:inclusionId
+ */
+async function removeTemplateInclusion(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id, inclusionId } = req.params;
+
+    await workerTypeService.removeTemplateInclusion(
+      id,
+      inclusionId,
+      organizationId,
+      userId
+    );
+
+    logger.info('Template inclusion removed', {
+      organizationId,
+      workerTypeId: id,
+      inclusionId,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Inclusion removed successfully',
+    });
+  } catch (error) {
+    logger.error('Error removing template inclusion', {
+      error: error.message,
+      workerTypeId: req.params.id,
+      inclusionId: req.params.inclusionId,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove inclusion',
+      errorCode: 'INTERNAL_SERVER_ERROR',
+    });
+  }
+}
+
+// ============================================================================
+// Pay Structure Template Upgrade Management
+// ============================================================================
+
+/**
+ * Get upgrade status for workers assigned to this worker type
+ * Shows which workers need template updates
+ * GET /api/products/paylinq/worker-types/:id/upgrade-status
+ */
+async function getUpgradeStatus(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { id } = req.params;
+
+    const status = await workerTypeService.getUpgradeStatus(id, organizationId);
+
+    res.status(200).json({
+      success: true,
+      upgradeStatus: status,
+    });
+  } catch (error) {
+    logger.error('Error fetching upgrade status', {
+      error: error.message,
+      workerTypeId: req.params.id,
+      organizationId: req.user?.organization_id,
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch upgrade status',
+      errorCode: 'INTERNAL_SERVER_ERROR',
+    });
+  }
+}
+
+/**
+ * Preview template upgrade
+ * Shows what will change when upgrading workers to new template
+ * GET /api/products/paylinq/worker-types/:id/preview-upgrade
+ */
+async function previewUpgrade(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { id } = req.params;
+
+    const preview = await workerTypeService.previewTemplateUpgrade(id, organizationId);
+
+    res.status(200).json({
+      success: true,
+      preview,
+    });
+  } catch (error) {
+    logger.error('Error previewing template upgrade', {
+      error: error.message,
+      workerTypeId: req.params.id,
+      organizationId: req.user?.organization_id,
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to preview template upgrade',
+      errorCode: 'INTERNAL_SERVER_ERROR',
+    });
+  }
+}
+
+/**
+ * Upgrade workers to the pay structure template
+ * Updates all or selected workers to the template specified in worker type
+ * POST /api/products/paylinq/worker-types/:id/upgrade-workers
+ * 
+ * Body:
+ * {
+ *   workerIds: ['uuid1', 'uuid2'], // Optional - all if not provided
+ *   effectiveDate: '2025-01-01' // Optional - now if not provided
+ * }
+ */
+async function upgradeWorkers(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+
+    const result = await workerTypeService.upgradeWorkersToTemplate(
+      id,
+      req.body,
+      organizationId,
+      userId
+    );
+
+    logger.info('Workers upgraded to template', {
+      organizationId,
+      workerTypeId: id,
+      upgradedCount: result.upgradedCount,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      result,
+    });
+  } catch (error) {
+    logger.error('Error upgrading workers', {
+      error: error.message,
+      workerTypeId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
+    if (error.message.includes('does not have a pay structure template')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NO_TEMPLATE_ASSIGNED',
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+      errorCode: 'VALIDATION_ERROR',
+    });
+  }
+}
+
 export default {
   createWorkerType,
   getWorkerTypes,
@@ -386,4 +748,11 @@ export default {
   deleteWorkerType,
   assignEmployees,
   getWorkerTypeEmployees,
+  getTemplateInclusions,
+  addTemplateInclusion,
+  updateTemplateInclusion,
+  removeTemplateInclusion,
+  getUpgradeStatus,
+  previewUpgrade,
+  upgradeWorkers,
 };

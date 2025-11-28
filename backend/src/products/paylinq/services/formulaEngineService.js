@@ -120,31 +120,62 @@ class FormulaEngineService {
       throw new Error('Unbalanced parentheses in formula');
     }
 
-    // Check for return statement (required for formulas)
+    // Auto-wrap simple expressions with return statement
+    // If formula doesn't have 'return' and is a simple expression (no semicolons, no braces)
+    let finalFormula = trimmedFormula;
     if (!/\breturn\b/.test(trimmedFormula)) {
-      throw new Error('Formula must contain a return statement');
+      // Simple expression: no semicolons (except maybe trailing), no function definitions, no control structures
+      const isSimpleExpression = !trimmedFormula.includes('{') && 
+                                 !/\bif\b/i.test(trimmedFormula) &&
+                                 !/\bfor\b/i.test(trimmedFormula) &&
+                                 !/\bwhile\b/i.test(trimmedFormula) &&
+                                 !trimmedFormula.replace(/;\s*$/, '').includes(';');
+      
+      if (isSimpleExpression) {
+        // Auto-wrap with return
+        finalFormula = `return ${trimmedFormula.replace(/;\s*$/, '')};`;
+        logger.debug('Auto-wrapped simple expression with return', { 
+          original: trimmedFormula, 
+          wrapped: finalFormula 
+        });
+      } else {
+        throw new Error('Complex formulas must contain a return statement. Tip: For simple calculations, just write the expression (e.g., "amount * 0.05")');
+      }
     }
 
-    // Extract variables used in formula (simple heuristic)
-    const variablePattern = /\b(?:gross_pay|net_pay|base_salary|hours|rate|pre_tax_deductions|post_tax_deductions|taxable_income|overtime_hours|bonus|commission|sales)\b/g;
-    const variables = [...new Set(trimmedFormula.match(variablePattern) || [])];
+    // Extract ALL variable names (identifiers that aren't keywords or numbers)
+    const identifierPattern = /\b[a-zA-Z_][a-zA-Z0-9_]*\b/g;
+    const allIdentifiers = finalFormula.match(identifierPattern) || [];
+    
+    // Filter out JavaScript keywords and common operators
+    const jsKeywords = ['return', 'if', 'else', 'for', 'while', 'function', 'const', 'let', 'var', 'true', 'false', 'null', 'undefined', 'Math', 'Number', 'String'];
+    const variables = [...new Set(allIdentifiers.filter(id => !jsKeywords.includes(id)))];
 
-    // Validate formula doesn't have syntax errors (basic check)
-    try {
-      // Try to create a function to validate syntax (without executing)
-      new Function('gross_pay', 'pre_tax_deductions', trimmedFormula);
-    } catch (err) {
-      throw new Error(`Formula syntax error: ${err.message}`);
+    // Validate formula doesn't have syntax errors
+    // Skip validation for simple expressions (trust them)
+    if (!/\bif\b|\bfor\b|\bwhile\b|\bfunction\b/.test(finalFormula)) {
+      // Simple expression - skip complex validation
+      logger.debug('Skipping complex validation for simple expression');
+    } else {
+      // Complex formula - validate syntax
+      try {
+        // Declare all detected variables
+        const varDeclarations = variables.map(v => `let ${v};`).join('\n');
+        const testCode = `${varDeclarations}\n${finalFormula}`;
+        new Function(testCode);
+      } catch (err) {
+        throw new Error(`Syntax error: ${err.message}. Check your formula for typos or missing operators.`);
+      }
     }
 
     return {
       isValid: true,
-      formula: trimmedFormula,
+      formula: finalFormula,
       variables,
       type: 'javascript',
-      hasConditionals: /\bif\b/.test(trimmedFormula),
-      hasLoops: /\b(for|while)\b/.test(trimmedFormula),
-      lineCount: trimmedFormula.split('\n').length
+      hasConditionals: /\bif\b/i.test(finalFormula),
+      hasLoops: /\b(for|while)\b/i.test(finalFormula),
+      lineCount: finalFormula.split('\n').length
     };
   }
 

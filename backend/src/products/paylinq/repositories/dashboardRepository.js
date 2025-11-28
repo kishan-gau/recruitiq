@@ -98,15 +98,15 @@ class DashboardRepository {
     // Get worker type breakdown
     const workerTypeQuery = `
       SELECT 
-        wtt.name as type_name,
-        COUNT(wt.id) as count
-      FROM payroll.worker_type_template wtt
-      LEFT JOIN payroll.worker_type wt ON wtt.id = wt.worker_type_template_id 
-        AND wt.organization_id = $1 
+        wt.name as type_name,
+        COUNT(e.id) as count
+      FROM hris.worker_type wt
+      LEFT JOIN hris.employee e ON e.worker_type_id = wt.id 
+        AND e.organization_id = $1 
+        AND e.deleted_at IS NULL
+      WHERE wt.organization_id = $1
         AND wt.deleted_at IS NULL
-      WHERE wtt.organization_id = $1
-        AND wtt.deleted_at IS NULL
-      GROUP BY wtt.name
+      GROUP BY wt.name
       ORDER BY count DESC
     `;
 

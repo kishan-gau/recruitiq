@@ -9,22 +9,24 @@
 
 import Joi from 'joi';
 import WorkerTypeRepository from '../repositories/workerTypeRepository.js';
+import PayStructureRepository from '../repositories/payStructureRepository.js';
 import productConfig from '../config/product.config.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError, ForbiddenError  } from '../../../middleware/errorHandler.js';
 import { query  } from '../../../config/database.js';
 import { 
-  mapTemplateDbToApi, 
-  mapTemplatesDbToApi, 
-  mapTemplateApiToDb,
+  mapWorkerTypeDbToApi, 
+  mapWorkerTypesDbToApi, 
+  mapWorkerTypeApiToDb,
   mapAssignmentDbToApi,
   mapAssignmentsDbToApi,
   mapAssignmentApiToDb
 } from '../dto/workerTypeDto.js';
 
 class WorkerTypeService {
-  constructor(repository = null) {
+  constructor(repository = null, payStructureRepository = null) {
     this.workerTypeRepository = repository || new WorkerTypeRepository();
+    this.payStructureRepository = payStructureRepository || new PayStructureRepository();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -35,6 +37,7 @@ class WorkerTypeService {
     description: Joi.string().max(500).optional().allow(null, ''),
     defaultPayFrequency: Joi.string().valid('weekly', 'bi-weekly', 'semi-monthly', 'monthly').required(),
     defaultPaymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash').required(),
+    payStructureTemplateCode: Joi.string().min(2).max(50).optional().allow(null, ''),
     benefitsEligible: Joi.boolean().optional().default(false),
     overtimeEligible: Joi.boolean().optional().default(true),
     ptoEligible: Joi.boolean().optional().default(false),
@@ -72,6 +75,11 @@ class WorkerTypeService {
     }
 
     try {
+      // Validate pay structure template code if provided
+      if (value.payStructureTemplateCode) {
+        await this.validateTemplateCode(value.payStructureTemplateCode, organizationId);
+      }
+
       // Check tier limits
       await this.checkWorkerTypeLimit(organizationId);
 
@@ -94,10 +102,11 @@ class WorkerTypeService {
       logger.info('Worker type template created', {
         templateId: dbTemplate.id,
         templateCode: dbTemplate.code,
+        payStructureTemplateCode: value.payStructureTemplateCode,
         organizationId
       });
 
-      return mapTemplateDbToApi(dbTemplate);
+      return mapWorkerTypeDbToApi(dbTemplate);
     } catch (err) {
       logger.error('Error creating worker type template', { error: err.message, organizationId });
       throw err;
@@ -114,94 +123,22 @@ class WorkerTypeService {
    */
   async getWorkerTypes(organizationId, pagination = {}, filters = {}, sort = {}) {
     try {
-      const page = pagination.page || 1;
-      const limit = pagination.limit || 20;
-      const offset = (page - 1) * limit;
-      const sortBy = sort.sortBy || 'name';
-      const sortOrder = sort.sortOrder || 'asc';
-
-      // Build WHERE clause
-      const conditions = ['organization_id = $1', 'deleted_at IS NULL'];
-      const params = [organizationId];
-      let paramIndex = 2;
-
-      // Apply filters
-      if (filters.status === 'active') {
-        conditions.push('status = \'active\'');
-      } else if (filters.status === 'inactive') {
-        conditions.push('status = \'inactive\'');
-      }
-
-      if (filters.benefitsEligible !== undefined) {
-        params.push(filters.benefitsEligible);
-        conditions.push(`benefits_eligible = $${paramIndex++}`);
-      }
-
-      if (filters.overtimeEligible !== undefined) {
-        params.push(filters.overtimeEligible);
-        conditions.push(`overtime_eligible = $${paramIndex++}`);
-      }
-
-      if (filters.search) {
-        params.push(`%${filters.search}%`);
-        conditions.push(`(LOWER(name) LIKE LOWER($${paramIndex}) OR LOWER(code) LIKE LOWER($${paramIndex}))`);
-        paramIndex++;
-      }
-
-      const whereClause = conditions.join(' AND ');
-
-      // Validate and map sort field
-      const sortFieldMap = {
-        name: 'name',
-        code: 'code',
-        createdAt: 'created_at',
-        updatedAt: 'updated_at',
-        payType: 'pay_type',
-      };
-      const sortField = sortFieldMap[sortBy] || 'name';
-      const sortDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-
-      // Get total count
-      const countResult = await query(
-        `SELECT COUNT(*) as total FROM payroll.worker_type_template WHERE ${whereClause}`,
-        params,
-        organizationId
+      // Delegate to repository with proper structure
+      const result = await this.workerTypeRepository.findAllWithPagination(
+        organizationId,
+        filters,
+        {
+          page: pagination.page || 1,
+          limit: Math.min(pagination.limit || 20, 100),
+          sortBy: sort.sortBy || 'name',
+          sortOrder: sort.sortOrder || 'asc'
+        }
       );
-      const total = parseInt(countResult.rows[0].total);
-
-      // Get paginated results
-      const result = await query(
-        `SELECT 
-          id, code, name, description,
-          default_pay_frequency as "defaultPayFrequency",
-          default_payment_method as "defaultPaymentMethod",
-          benefits_eligible as "benefitsEligible",
-          overtime_eligible as "overtimeEligible",
-          pto_eligible as "ptoEligible",
-          sick_leave_eligible as "sickLeaveEligible",
-          vacation_accrual_rate as "vacationAccrualRate",
-          status,
-          organization_id as "organizationId",
-          created_at as "createdAt", created_by as "createdBy",
-          updated_at as "updatedAt", updated_by as "updatedBy"
-        FROM payroll.worker_type_template
-        WHERE ${whereClause}
-        ORDER BY ${sortField} ${sortDirection}
-        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-        [...params, limit, offset],
-        organizationId
-      );
-
+      
+      // Transform worker types using DTO
       return {
-        workerTypes: result.rows,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-          hasNext: offset + limit < total,
-          hasPrev: page > 1,
-        },
+        workerTypes: mapWorkerTypesDbToApi(result.workerTypes),
+        pagination: result.pagination,
       };
     } catch (err) {
       logger.error('Error fetching worker types', { error: err.message, organizationId });
@@ -217,8 +154,8 @@ class WorkerTypeService {
    */
   async getWorkerTypeTemplates(organizationId, filters = {}) {
     try {
-      const dbTemplates = await this.workerTypeRepository.findTemplatesByOrganization(organizationId, filters);
-      return mapTemplatesDbToApi(dbTemplates);
+      const dbTemplates = await this.workerTypeRepository.findAll(organizationId, filters);
+      return mapWorkerTypesDbToApi(dbTemplates);
     } catch (err) {
       logger.error('Error fetching worker type templates', { error: err.message, organizationId });
       throw err;
@@ -233,18 +170,13 @@ class WorkerTypeService {
    */
   async getWorkerTypeTemplateById(templateId, organizationId) {
     try {
-      // Check if template exists at all (without org filter)
-      const dbTemplate = await this.workerTypeRepository.findTemplateByIdAnyOrg(templateId);
+      // Query with organizationId to enforce tenant isolation
+      const dbTemplate = await this.workerTypeRepository.findById(templateId, organizationId);
       if (!dbTemplate) {
         throw new NotFoundError('Worker type template not found');
       }
       
-      // Check organization ownership
-      if (dbTemplate.organization_id !== organizationId) {
-        throw new ForbiddenError('Access denied to resource from another organization');
-      }
-      
-      return mapTemplateDbToApi(dbTemplate);
+      return mapWorkerTypeDbToApi(dbTemplate);
     } catch (err) {
       logger.error('Error fetching worker type template', { error: err.message, templateId });
       throw err;
@@ -261,22 +193,22 @@ class WorkerTypeService {
    */
   async updateWorkerTypeTemplate(templateId, updates, organizationId, userId) {
     try {
-      // Check if template exists at all (without org filter)
-      const existingTemplate = await this.workerTypeRepository.findTemplateByIdAnyOrg(templateId);
+      // Query with organizationId to enforce tenant isolation
+      const existingTemplate = await this.workerTypeRepository.findById(templateId, organizationId);
       if (!existingTemplate) {
         throw new NotFoundError('Worker type template not found');
       }
       
-      // Check organization ownership
-      if (existingTemplate.organization_id !== organizationId) {
-        throw new ForbiddenError('Access denied to resource from another organization');
+      // Validate pay structure template code if being updated
+      if (updates.payStructureTemplateCode !== undefined) {
+        await this.validateTemplateCode(updates.payStructureTemplateCode, organizationId);
       }
       
       // Validate partial schema
       const allowedFields = [
         'name', 'description', 'defaultPayFrequency', 'defaultPaymentMethod',
         'benefitsEligible', 'overtimeEligible', 'ptoEligible', 
-        'sickLeaveEligible', 'vacationAccrualRate'
+        'sickLeaveEligible', 'vacationAccrualRate', 'payStructureTemplateCode'
       ];
 
       const filteredUpdates = {};
@@ -291,9 +223,15 @@ class WorkerTypeService {
       }
 
       // Convert API format (camelCase) to DB format (snake_case)
-      const dbUpdates = mapTemplateApiToDb(filteredUpdates);
+      const dbUpdates = mapWorkerTypeApiToDb(filteredUpdates);
 
-      const dbTemplate = await this.workerTypeRepository.updateTemplate(
+      logger.info('updateWorkerTypeTemplate - Data transformation:', {
+        filteredUpdates,
+        dbUpdates,
+        hasPayStructureTemplateCode: 'pay_structure_template_code' in dbUpdates
+      });
+
+      const dbTemplate = await this.workerTypeRepository.update(
         templateId,
         dbUpdates,
         organizationId,
@@ -303,10 +241,11 @@ class WorkerTypeService {
       logger.info('Worker type template updated', {
         templateId,
         updatedFields: Object.keys(filteredUpdates),
+        payStructureTemplateCode: filteredUpdates.payStructureTemplateCode,
         organizationId
       });
 
-      return mapTemplateDbToApi(dbTemplate);
+      return mapWorkerTypeDbToApi(dbTemplate);
     } catch (err) {
       logger.error('Error updating worker type template', { error: err.message, templateId });
       throw err;
@@ -329,18 +268,13 @@ class WorkerTypeService {
    */
   async deleteWorkerTypeTemplate(templateId, organizationId, userId) {
     try {
-      // Check if template exists at all (without org filter)
-      const existingTemplate = await this.workerTypeRepository.findTemplateByIdAnyOrg(templateId);
+      // Query with organizationId to enforce tenant isolation
+      const existingTemplate = await this.workerTypeRepository.findById(templateId, organizationId);
       if (!existingTemplate) {
         throw new NotFoundError('Worker type template not found');
       }
       
-      // Check organization ownership
-      if (existingTemplate.organization_id !== organizationId) {
-        throw new ForbiddenError('Access denied to resource from another organization');
-      }
-      
-      const deleted = await this.workerTypeRepository.deleteTemplate(
+      const deleted = await this.workerTypeRepository.delete(
         templateId,
         organizationId,
         userId
@@ -358,6 +292,75 @@ class WorkerTypeService {
   }
 
   // ==================== ASSIGNMENTS ====================
+
+  /**
+   * Auto-assign pay structure template to worker when assigning worker type
+   * Resolves template code to latest active version
+   * @param {string} employeeRecordId - Employee record UUID
+   * @param {string} templateCode - Pay structure template code
+   * @param {Date} effectiveFrom - Effective from date
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User creating the assignment
+   * @returns {Promise<void>}
+   * @private
+   */
+  async autoAssignPayStructureTemplate(
+    employeeRecordId,
+    templateCode,
+    effectiveFrom,
+    organizationId,
+    userId
+  ) {
+    // Import PayStructureRepository to find template by code
+    const PayStructureRepository = (await import('../repositories/payStructureRepository.js')).default;
+    const payStructureRepo = new PayStructureRepository();
+
+    // Find latest active version of template by code
+    const templates = await payStructureRepo.findTemplates(organizationId, {
+      templateCode,
+      status: 'active'
+    });
+
+    if (templates.length === 0) {
+      throw new NotFoundError(
+        `No active pay structure template found with code: ${templateCode}`
+      );
+    }
+
+    // Sort templates by version (descending) to get latest
+    const sortedTemplates = templates.sort((a, b) => {
+      if (a.version_major !== b.version_major) return b.version_major - a.version_major;
+      if (a.version_minor !== b.version_minor) return b.version_minor - a.version_minor;
+      return b.version_patch - a.version_patch;
+    });
+
+    const latestTemplate = sortedTemplates[0];
+
+    logger.info('Resolved template code to latest version', {
+      templateCode,
+      latestTemplateId: latestTemplate.id,
+      latestVersion: `${latestTemplate.version_major}.${latestTemplate.version_minor}.${latestTemplate.version_patch}`,
+      organizationId
+    });
+
+    // Import PayStructureService to assign template
+    const PayStructureService = (await import('./payStructureService.js')).default;
+    const payStructureService = new PayStructureService(payStructureRepo);
+
+    // Assign template to worker
+    await payStructureService.assignTemplateToWorker(
+      {
+        employeeId: employeeRecordId,
+        templateId: latestTemplate.id,
+        assignmentType: 'worker_type',
+        assignmentReason: `Auto-assigned from worker type template code: ${templateCode}`,
+        effectiveFrom,
+        effectiveTo: null
+      },
+      organizationId,
+      userId
+    );
+  }
 
   /**
    * Assign worker type to employee
@@ -424,9 +427,37 @@ class WorkerTypeService {
       logger.info('Worker type assigned to employee', {
         assignmentId: dbAssignment.id,
         employeeId: dbAssignment.employee_id,
-        templateId: dbAssignment.worker_type_template_id,
+        workerTypeId: dbAssignment.worker_type_id,
         organizationId
       });
+
+      // Auto-assign pay structure template if worker type has template code
+      if (template.pay_structure_template_code) {
+        try {
+          await this.autoAssignPayStructureTemplate(
+            value.employeeRecordId,
+            template.pay_structure_template_code,
+            value.effectiveFrom,
+            organizationId,
+            userId
+          );
+          
+          logger.info('Auto-assigned pay structure template from worker type', {
+            employeeId: value.employeeRecordId,
+            templateCode: template.pay_structure_template_code,
+            workerTypeCode: template.code,
+            organizationId
+          });
+        } catch (autoAssignError) {
+          // Log but don't fail the worker type assignment if pay structure assignment fails
+          logger.warn('Failed to auto-assign pay structure template', {
+            employeeId: value.employeeRecordId,
+            templateCode: template.pay_structure_template_code,
+            error: autoAssignError.message,
+            organizationId
+          });
+        }
+      }
 
       return mapAssignmentDbToApi(dbAssignment);
     } catch (err) {
@@ -528,62 +559,12 @@ class WorkerTypeService {
    */
   async getEmployeesByWorkerType(workerTypeId, organizationId, pagination = {}) {
     try {
-      const page = pagination.page || 1;
-      const limit = Math.min(pagination.limit || 20, 100); // Max 100 per API standards
-      const offset = (page - 1) * limit;
-
-      // Get total count
-      const countResult = await query(
-        `SELECT COUNT(*) as total 
-         FROM payroll.worker_type_assignment wta
-         WHERE wta.worker_type_id = $1 
-         AND wta.organization_id = $2 
-         AND wta.deleted_at IS NULL`,
-        [workerTypeId, organizationId],
+      // Delegate to repository
+      return await this.workerTypeRepository.getEmployeesByWorkerType(
+        workerTypeId,
         organizationId,
-        { operation: 'SELECT', table: 'worker_type_assignment' }
+        pagination
       );
-
-      const total = parseInt(countResult.rows[0].total);
-      const totalPages = Math.ceil(total / limit);
-
-      // Get paginated employees
-      const result = await query(
-        `SELECT 
-           wta.id,
-           wta.employee_record_id as "employeeRecordId",
-           wta.worker_type_id as "workerTypeId",
-           wta.effective_date as "effectiveDate",
-           wta.end_date as "endDate",
-           wta.created_at as "createdAt",
-           wta.updated_at as "updatedAt",
-           e.first_name as "firstName",
-           e.last_name as "lastName",
-           e.email,
-           e.employee_number as "employeeNumber"
-         FROM payroll.worker_type_assignment wta
-         LEFT JOIN public.employees e ON wta.employee_record_id = e.id
-         WHERE wta.worker_type_id = $1 
-         AND wta.organization_id = $2 
-         AND wta.deleted_at IS NULL
-         ORDER BY wta.created_at DESC
-         LIMIT $3 OFFSET $4`,
-        [workerTypeId, organizationId, limit, offset],
-        organizationId,
-        { operation: 'SELECT', table: 'worker_type_assignment' }
-      );
-
-      return {
-        employees: result.rows,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages,
-          hasNext: page < totalPages,
-          hasPrev: page > 1
-        }
-      };
     } catch (err) {
       logger.error('Error fetching employees by worker type', { 
         error: err.message, 
@@ -603,19 +584,12 @@ class WorkerTypeService {
    */
   async checkWorkerTypeLimit(organizationId) {
     try {
-      // Get organization's tier
-      const orgResult = await query(
-        'SELECT tier FROM public.organizations WHERE id = $1',
-        [organizationId],
-        organizationId,
-        { operation: 'SELECT', table: 'organizations' }
-      );
+      // Get organization's tier using repository
+      const tierName = await this.workerTypeRepository.getOrganizationTier(organizationId);
 
-      if (!orgResult.rows.length) {
+      if (!tierName) {
         throw new NotFoundError('Organization not found');
       }
-
-      const tierName = orgResult.rows[0].tier;
 
       // Get tier preset from database
       const tierPreset = await productConfig.tierManagement.getTierPreset(tierName, query);
@@ -649,6 +623,536 @@ class WorkerTypeService {
       }
       logger.error('Error checking worker type limit', { error: err.message, organizationId });
       // Don't block on limit check errors
+    }
+  }
+
+  // ==================== PAY STRUCTURE TEMPLATE UPGRADE ====================
+
+  /**
+   * Get upgrade status for a worker type template
+   * Shows how many workers need template updates
+   * @param {string} workerTypeId - Worker type template UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Upgrade status with worker details
+   */
+  async getUpgradeStatus(workerTypeId, organizationId) {
+    try {
+      // Verify worker type exists
+      const workerType = await this.workerTypeRepository.findById(workerTypeId, organizationId);
+      if (!workerType) {
+        throw new NotFoundError('Worker type not found');
+      }
+
+      // Get upgrade status from repository
+      const status = await this.workerTypeRepository.getTemplateUpgradeStatus(workerTypeId, organizationId);
+      
+      if (!status) {
+        throw new NotFoundError('Could not retrieve upgrade status');
+      }
+
+      // Get detailed list of employees needing upgrade
+      const employeesNeedingUpgrade = await this.workerTypeRepository.getEmployeesNeedingTemplateUpgrade(
+        workerTypeId, 
+        organizationId
+      );
+
+      return {
+        workerTypeId: status.worker_type_id,
+        workerTypeName: status.worker_type_name,
+        workerTypeCode: status.worker_type_code,
+        targetTemplateCode: status.target_template_code,
+        totalWorkers: parseInt(status.total_workers) || 0,
+        upToDateCount: parseInt(status.up_to_date_count) || 0,
+        outdatedCount: parseInt(status.outdated_count) || 0,
+        requiresUpgrade: status.target_template_code && parseInt(status.outdated_count) > 0,
+        workers: employeesNeedingUpgrade.map(w => ({
+          employeeId: w.employee_id,
+          employeeNumber: w.employee_number,
+          employeeName: `${w.first_name} ${w.last_name}`,
+          email: w.email,
+          hireDate: w.hire_date,
+          workerPayStructureId: w.worker_pay_structure_id,
+          currentTemplateId: w.current_template_id,
+          currentTemplateCode: w.current_template_code,
+          currentTemplateName: w.current_template_name,
+          currentTemplateVersion: w.current_template_version,
+          targetTemplateId: w.target_template_id,
+          targetTemplateCode: w.target_template_code,
+          targetTemplateName: w.target_template_name,
+          targetTemplateVersion: w.target_template_version,
+          needsUpgrade: true
+        }))
+      };
+    } catch (err) {
+      logger.error('Error getting upgrade status', { 
+        error: err.message, 
+        workerTypeId, 
+        organizationId 
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Upgrade workers to new pay structure template
+   * Updates all or selected workers to the target template
+   * @param {string} workerTypeId - Worker type template UUID
+   * @param {Object} upgradeData - Upgrade parameters
+   * @param {Array<string>} upgradeData.workerIds - Employee IDs to upgrade (optional - all if not provided)
+   * @param {Date} upgradeData.effectiveDate - Effective date for upgrade (optional - now if not provided)
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User performing upgrade
+   * @returns {Promise<Object>} Upgrade result
+   */
+  async upgradeWorkersToTemplate(workerTypeId, upgradeData, organizationId, userId) {
+    // Validation schema
+    const upgradeSchema = Joi.object({
+      workerIds: Joi.array().items(Joi.string().uuid()).optional().allow(null),
+      effectiveDate: Joi.date().iso().optional().default(() => new Date()),
+      notifyWorkers: Joi.boolean().optional().default(false)
+    });
+
+    const { error, value } = upgradeSchema.validate(upgradeData, {
+      stripUnknown: true,
+      abortEarly: false
+    });
+
+    if (error) {
+      throw new ValidationError(error.details[0].message);
+    }
+
+    try {
+      // Get worker type with pay structure template reference
+      const workerType = await this.workerTypeRepository.findById(workerTypeId, organizationId);
+      if (!workerType) {
+        throw new NotFoundError('Worker type template not found');
+      }
+
+      if (!workerType.pay_structure_template_code) {
+        throw new ValidationError('Worker type does not have a pay structure template assigned');
+      }
+
+      // Resolve template code to template ID using pay structure repository
+      // Note: This requires importing PayStructureRepository
+      const PayStructureRepository = (await import('../repositories/payStructureRepository.js')).default;
+      const payStructureRepo = new PayStructureRepository();
+      const template = await payStructureRepo.findCurrentTemplateByCode(
+        workerType.pay_structure_template_code,
+        organizationId
+      );
+
+      if (!template) {
+        throw new NotFoundError(`Pay structure template '${workerType.pay_structure_template_code}' not found`);
+      }
+
+      const templateId = template.id;
+
+      // Get upgrade status to determine which workers need upgrade
+      const status = await this.getUpgradeStatus(workerTypeId, organizationId);
+
+      // Determine worker IDs to upgrade
+      let targetWorkerIds = value.workerIds;
+      
+      if (!targetWorkerIds || targetWorkerIds.length === 0) {
+        // Upgrade all workers that need it
+        targetWorkerIds = status.workers
+          .filter(w => w.needsUpgrade)
+          .map(w => w.employeeId);
+      } else {
+        // Validate provided worker IDs belong to this worker type
+        const validWorkerIds = new Set(status.workers.map(w => w.employeeId));
+        const invalidIds = targetWorkerIds.filter(id => !validWorkerIds.has(id));
+        
+        if (invalidIds.length > 0) {
+          throw new ValidationError(`Invalid worker IDs: ${invalidIds.join(', ')}`);
+        }
+      }
+
+      if (targetWorkerIds.length === 0) {
+        return {
+          success: true,
+          message: 'No workers need upgrading',
+          upgradedCount: 0,
+          workerIds: []
+        };
+      }
+
+      // Perform bulk upgrade within transaction
+      const { pool } = await import('../../../config/database.js');
+      const client = await pool.connect();
+      
+      try {
+        await client.query('BEGIN');
+
+        // Use repository method for bulk update
+        const upgradedCount = await this.workerTypeRepository.bulkUpdateWorkerTemplates(
+          targetWorkerIds,
+          templateId,
+          organizationId,
+          userId,
+          value.effectiveDate
+        );
+
+        await client.query('COMMIT');
+
+        logger.info('Workers upgraded to pay structure template', {
+          workerTypeId,
+          templateCode: workerType.pay_structure_template_code,
+          upgradedCount,
+          organizationId,
+          userId
+        });
+
+        return {
+          success: true,
+          message: `Successfully upgraded ${upgradedCount} worker(s)`,
+          upgradedCount,
+          workerIds: targetWorkerIds,
+          templateCode: workerType.pay_structure_template_code,
+          effectiveDate: value.effectiveDate
+        };
+
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+
+    } catch (err) {
+      logger.error('Error upgrading workers to template', {
+        error: err.message,
+        workerTypeId,
+        organizationId,
+        userId
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Preview template upgrade
+   * Shows what will change when upgrading workers to new template
+   * @param {string} workerTypeId - Worker type template UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Preview object with changes
+   */
+  async previewTemplateUpgrade(workerTypeId, organizationId) {
+    try {
+      // Get upgrade status first
+      const status = await this.getUpgradeStatus(workerTypeId, organizationId);
+      
+      if (!status.requiresUpgrade) {
+        return {
+          requiresUpgrade: false,
+          message: 'No upgrade needed - all workers are up to date',
+          workersToUpgrade: 0,
+          changes: []
+        };
+      }
+
+      // Get the target template details
+      const targetTemplate = await this.payStructureRepository.findTemplateByCode(
+        status.targetTemplateCode,
+        organizationId
+      );
+
+      if (!targetTemplate) {
+        throw new NotFoundError(`Target template with code '${status.targetTemplateCode}' not found`);
+      }
+
+      // Get components for target template
+      const targetComponents = await this.payStructureRepository.getTemplateComponents(
+        targetTemplate.id,
+        organizationId
+      );
+
+      // Group workers by their current template
+      const workersByTemplate = {};
+      for (const worker of status.workers.filter(w => w.needsUpgrade)) {
+        const currentTemplateId = worker.currentTemplateId || 'none';
+        if (!workersByTemplate[currentTemplateId]) {
+          workersByTemplate[currentTemplateId] = {
+            currentTemplateId,
+            currentTemplateCode: worker.currentTemplateCode,
+            currentTemplateName: worker.currentTemplateName,
+            workers: [],
+            changes: null
+          };
+        }
+        workersByTemplate[currentTemplateId].workers.push(worker);
+      }
+
+      // Compare each current template with target template
+      const changes = [];
+      for (const [currentTemplateId, group] of Object.entries(workersByTemplate)) {
+        let comparison;
+        
+        if (currentTemplateId === 'none') {
+          // Workers with no template - all target components are additions
+          comparison = {
+            added: targetComponents.map(c => ({
+              componentCode: c.component_code,
+              componentName: c.component_name,
+              componentType: c.component_type,
+              calculationType: c.calculation_type,
+              rate: c.rate,
+              amount: c.amount
+            })),
+            removed: [],
+            modified: []
+          };
+        } else {
+          // Workers with existing template - compare
+          comparison = await this.compareTemplates(
+            currentTemplateId,
+            targetTemplate.id,
+            organizationId
+          );
+        }
+
+        changes.push({
+          fromTemplateId: currentTemplateId,
+          fromTemplateCode: group.currentTemplateCode || null,
+          fromTemplateName: group.currentTemplateName || 'No template',
+          toTemplateId: targetTemplate.id,
+          toTemplateCode: targetTemplate.templateCode,
+          toTemplateName: targetTemplate.templateName,
+          affectedWorkers: group.workers.length,
+          componentsAdded: comparison.added,
+          componentsRemoved: comparison.removed,
+          componentsModified: comparison.modified
+        });
+      }
+
+      // Flatten changes into a single list for UI display
+      const flatChanges = [];
+      let totalAdded = 0;
+      let totalRemoved = 0;
+      let totalModified = 0;
+
+      for (const change of changes) {
+        // Added components
+        for (const comp of change.componentsAdded) {
+          flatChanges.push({
+            changeType: 'added',
+            componentCode: comp.componentCode,
+            componentName: comp.componentName,
+            componentType: comp.componentType,
+            description: `New ${comp.componentType} component: ${comp.componentName}`,
+            details: {
+              calculationType: comp.calculationType,
+              rate: comp.rate,
+              amount: comp.amount
+            }
+          });
+          totalAdded++;
+        }
+
+        // Removed components
+        for (const comp of change.componentsRemoved) {
+          flatChanges.push({
+            changeType: 'removed',
+            componentCode: comp.componentCode,
+            componentName: comp.componentName,
+            componentType: comp.componentType,
+            description: `Removed ${comp.componentType} component: ${comp.componentName}`,
+            details: {
+              calculationType: comp.calculationType,
+              rate: comp.rate,
+              amount: comp.amount
+            }
+          });
+          totalRemoved++;
+        }
+
+        // Modified components
+        for (const comp of change.componentsModified) {
+          flatChanges.push({
+            changeType: 'modified',
+            componentCode: comp.componentCode,
+            componentName: comp.componentName,
+            componentType: comp.componentType,
+            description: `Updated ${comp.componentType} component: ${comp.componentName}`,
+            oldValue: comp.oldValue,
+            newValue: comp.newValue,
+            changes: comp.changes
+          });
+          totalModified++;
+        }
+      }
+
+      return {
+        requiresUpgrade: true,
+        workersToUpgrade: status.outdatedCount,
+        targetTemplate: {
+          id: targetTemplate.id,
+          code: targetTemplate.templateCode,
+          name: targetTemplate.templateName,
+          version: `${targetTemplate.versionMajor}.${targetTemplate.versionMinor}.${targetTemplate.versionPatch}`
+        },
+        componentsAdded: totalAdded,
+        componentsRemoved: totalRemoved,
+        componentsModified: totalModified,
+        changes: flatChanges,
+        detailedChanges: changes // Keep detailed breakdown if needed
+      };
+
+    } catch (err) {
+      logger.error('Error previewing template upgrade', {
+        error: err.message,
+        workerTypeId,
+        organizationId
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Compare two pay structure templates
+   * Shows components added, removed, and modified
+   * @param {string} fromTemplateId - Source template UUID
+   * @param {string} toTemplateId - Target template UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Comparison object
+   */
+  async compareTemplates(fromTemplateId, toTemplateId, organizationId) {
+    try {
+      // Get components for both templates
+      const [fromComponents, toComponents] = await Promise.all([
+        this.payStructureRepository.getTemplateComponents(fromTemplateId, organizationId),
+        this.payStructureRepository.getTemplateComponents(toTemplateId, organizationId)
+      ]);
+
+      // Create maps for easy lookup
+      const fromMap = new Map(fromComponents.map(c => [c.component_code, c]));
+      const toMap = new Map(toComponents.map(c => [c.component_code, c]));
+
+      // Find added components (in target but not in source)
+      const added = toComponents
+        .filter(c => !fromMap.has(c.component_code))
+        .map(c => ({
+          componentCode: c.component_code,
+          componentName: c.component_name,
+          componentType: c.component_type,
+          calculationType: c.calculation_type,
+          rate: c.rate,
+          amount: c.amount,
+          sequenceOrder: c.sequence_order
+        }));
+
+      // Find removed components (in source but not in target)
+      const removed = fromComponents
+        .filter(c => !toMap.has(c.component_code))
+        .map(c => ({
+          componentCode: c.component_code,
+          componentName: c.component_name,
+          componentType: c.component_type,
+          calculationType: c.calculation_type,
+          rate: c.rate,
+          amount: c.amount,
+          sequenceOrder: c.sequence_order
+        }));
+
+      // Find modified components (in both but with different values)
+      const modified = [];
+      for (const [code, fromComp] of fromMap.entries()) {
+        const toComp = toMap.get(code);
+        if (toComp) {
+          const changes = [];
+          
+          if (fromComp.calculation_type !== toComp.calculation_type) {
+            changes.push({
+              field: 'calculationType',
+              from: fromComp.calculation_type,
+              to: toComp.calculation_type
+            });
+          }
+          
+          if (fromComp.rate !== toComp.rate) {
+            changes.push({
+              field: 'rate',
+              from: fromComp.rate,
+              to: toComp.rate
+            });
+          }
+          
+          if (fromComp.amount !== toComp.amount) {
+            changes.push({
+              field: 'amount',
+              from: fromComp.amount,
+              to: toComp.amount
+            });
+          }
+          
+          if (fromComp.sequence_order !== toComp.sequence_order) {
+            changes.push({
+              field: 'sequenceOrder',
+              from: fromComp.sequence_order,
+              to: toComp.sequence_order
+            });
+          }
+
+          if (changes.length > 0) {
+            modified.push({
+              componentCode: code,
+              componentName: fromComp.component_name,
+              componentType: fromComp.component_type,
+              changes
+            });
+          }
+        }
+      }
+
+      return {
+        added,
+        removed,
+        modified
+      };
+
+    } catch (err) {
+      logger.error('Error comparing templates', {
+        error: err.message,
+        fromTemplateId,
+        toTemplateId,
+        organizationId
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Validate pay structure template code exists
+   * @param {string} templateCode - Template code to validate
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<boolean>} True if exists and active
+   * @throws {ValidationError} If template doesn't exist
+   */
+  async validateTemplateCode(templateCode, organizationId) {
+    if (!templateCode) return true; // Optional field
+    
+    try {
+      const template = await this.payStructureRepository.findTemplateByCode(
+        templateCode,
+        organizationId
+      );
+      
+      if (!template) {
+        throw new ValidationError(
+          `Pay structure template with code '${templateCode}' not found or is not active`
+        );
+      }
+      
+      return true;
+    } catch (err) {
+      if (err instanceof ValidationError) throw err;
+      
+      logger.error('Error validating template code', {
+        error: err.message,
+        templateCode,
+        organizationId
+      });
+      throw err;
     }
   }
 }

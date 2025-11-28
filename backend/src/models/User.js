@@ -158,7 +158,9 @@ class User {
       LEFT JOIN role_permissions rp ON r.id = rp.role_id
       LEFT JOIN permissions p ON rp.permission_id = p.id OR p.id = ANY(u.additional_permissions)
       LEFT JOIN organizations o ON u.organization_id = o.id
-      WHERE u.id = $1 AND u.deleted_at IS NULL
+      WHERE u.id = $1 
+        AND ($2::uuid IS NULL OR u.organization_id = $2)
+        AND u.deleted_at IS NULL
       GROUP BY u.id, u.organization_id, u.email, u.password_hash, u.email_verified,
                u.name, u.avatar_url, u.phone, u.timezone, u.user_type, u.role_id,
                u.legacy_role, u.additional_permissions, u.last_login_at, u.last_login_ip,
@@ -167,7 +169,7 @@ class User {
                r.name, r.level, r.role_type, o.name, o.tier
     `;
     
-    const result = await db.query(query, [id]);
+    const result = await db.query(query, [id, organizationId || null]);
     if (result.rows[0]) {
       const user = result.rows[0];
       // Parse JSON array to regular array if needed

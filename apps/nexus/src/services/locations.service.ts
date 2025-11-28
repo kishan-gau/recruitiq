@@ -48,6 +48,16 @@ export const locationsService = {
     await apiClient.delete(`/locations/${id}`);
   },
 
+  getStatistics: async (id: string): Promise<any> => {
+    const { data } = await apiClient.get<ApiResponse<any>>(`/locations/${id}/statistics`);
+    return data.data;
+  },
+
+  getAllStatistics: async (): Promise<any[]> => {
+    const { data } = await apiClient.get<ApiResponse<any[]>>('/locations/statistics');
+    return data.data;
+  },
+
   getStats: async (id: string): Promise<unknown> => {
     const { data } = await apiClient.get<ApiResponse<unknown>>(`/locations/${id}/stats`);
     return data.data;

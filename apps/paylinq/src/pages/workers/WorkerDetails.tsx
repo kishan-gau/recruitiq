@@ -384,7 +384,7 @@ export default function WorkerDetails() {
       )}
 
       {/* Pay Structure Tab */}
-      {activeTab === 'pay-structure' && worker && <WorkerPayStructure workerId={worker.id} workerName={worker.fullName} />}
+      {activeTab === 'pay-structure' && worker && <WorkerPayStructure workerId={worker.employeeId || worker.id} workerName={worker.fullName} />}
 
       {activeTab === 'ytd-summary' && ytdSummary && (
         <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">

@@ -119,7 +119,11 @@ export interface CreateAttendanceRecordDTO {
   clockOutTime?: string;
   scheduledStartTime?: string;
   scheduledEndTime?: string;
+  breakDuration?: number;
+  totalHoursWorked?: number;
   notes?: string;
+  reason?: string;
+  isManualEntry?: boolean;
 }
 
 export interface UpdateAttendanceRecordDTO {

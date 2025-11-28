@@ -158,3 +158,65 @@ export function mapPayStructureWithTemplateSummaryDbToApi(dbStructure) {
     updatedAt: dbStructure.updated_at,
   };
 }
+
+/**
+ * Map a pay structure template from database format to API format
+ * Maps from pay_structure_template table to API response
+ * @param {Object} dbTemplate - Template record from database
+ * @returns {Object} Template in API format
+ */
+export function mapPayStructureTemplateDbToApi(dbTemplate) {
+  if (!dbTemplate) return null;
+
+  return {
+    id: dbTemplate.id,
+    organizationId: dbTemplate.organization_id,
+    
+    // Template identification
+    templateCode: dbTemplate.template_code,
+    templateName: dbTemplate.template_name,
+    description: dbTemplate.description || null,
+    
+    // Versioning
+    version: dbTemplate.version_number || 1,
+    versionString: dbTemplate.version_string || '1.0',
+    parentVersionId: dbTemplate.parent_version_id || null,
+    
+    // Status and settings
+    status: dbTemplate.status || 'draft',
+    isOrganizationDefault: dbTemplate.is_organization_default || false,
+    effectiveFrom: dbTemplate.effective_from || null,
+    effectiveTo: dbTemplate.effective_to || null,
+    
+    // Metadata
+    notes: dbTemplate.notes || null,
+    changeLog: dbTemplate.change_log || null,
+    
+    // Counts (from JOINs)
+    componentCount: parseInt(dbTemplate.component_count) || 0,
+    assignedWorkerCount: parseInt(dbTemplate.assigned_worker_count) || 0,
+    
+    // Audit
+    createdBy: dbTemplate.created_by,
+    createdByName: dbTemplate.created_by_name || null,
+    createdAt: dbTemplate.created_at,
+    updatedBy: dbTemplate.updated_by,
+    updatedAt: dbTemplate.updated_at,
+    deletedAt: dbTemplate.deleted_at || null,
+    publishedAt: dbTemplate.published_at || null,
+    publishedBy: dbTemplate.published_by || null,
+    deprecatedAt: dbTemplate.deprecated_at || null,
+  };
+}
+
+/**
+ * Map array of pay structure templates from database format to API format
+ * @param {Array} dbTemplates - Array of template records
+ * @returns {Array} Array of templates in API format
+ */
+export function mapPayStructureTemplatesDbToApi(dbTemplates) {
+  if (!Array.isArray(dbTemplates)) return [];
+  
+  return dbTemplates.map(mapPayStructureTemplateDbToApi);
+}
+

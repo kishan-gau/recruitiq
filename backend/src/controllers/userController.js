@@ -70,9 +70,9 @@ export async function getUser(req, res, next) {
     const { id } = req.params;
     const organizationId = req.user.organization_id;
 
-    const user = await User.findById(id);
+    const user = await User.findById(id, organizationId);
 
-    if (!user || user.organization_id !== organizationId) {
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 
@@ -188,8 +188,8 @@ export async function updateUser(req, res, next) {
       throw new ValidationError(error.details[0].message);
     }
 
-    const user = await User.findById(id);
-    if (!user || user.organization_id !== organizationId) {
+    const user = await User.findById(id, organizationId);
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 
@@ -233,8 +233,8 @@ export async function updateUserRole(req, res, next) {
       throw new ValidationError(error.details[0].message);
     }
 
-    const user = await User.findById(id);
-    if (!user || user.organization_id !== organizationId) {
+    const user = await User.findById(id, organizationId);
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 
@@ -276,8 +276,8 @@ export async function deleteUser(req, res, next) {
       throw new ForbiddenError('Only owners and admins can delete users');
     }
 
-    const user = await User.findById(id);
-    if (!user || user.organization_id !== organizationId) {
+    const user = await User.findById(id, organizationId);
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 
@@ -323,8 +323,8 @@ export async function updateUserStatus(req, res, next) {
       throw new ValidationError('is_active must be a boolean value');
     }
 
-    const user = await User.findById(id);
-    if (!user || user.organization_id !== organizationId) {
+    const user = await User.findById(id, organizationId);
+    if (!user) {
       throw new NotFoundError('User not found');
     }
 

@@ -1,8 +1,8 @@
 # Testing Standards
 
 **Part of:** [RecruitIQ Coding Standards](../CODING_STANDARDS.md)  
-**Version:** 1.2  
-**Last Updated:** November 18, 2025
+**Version:** 1.3  
+**Last Updated:** November 24, 2025
 
 ---
 
@@ -11,15 +11,16 @@
 1. [AI-Assisted Testing Strategy](#ai-assisted-testing-strategy)
 2. [Testing Philosophy](#testing-philosophy)
 3. [Test Coverage Requirements](#test-coverage-requirements)
-4. [Test File Organization](#test-file-organization)
-5. [Import Path Standards](#import-path-standards)
-6. [Unit Testing Standards](#unit-testing-standards)
-7. [Integration Testing Standards](#integration-testing-standards)
-8. [E2E Testing Standards](#e2e-testing-standards)
-9. [Test Structure](#test-structure)
-10. [Mocking Standards](#mocking-standards)
-11. [Test Data Management](#test-data-management)
-12. [Refactoring Resilience](#refactoring-resilience)
+4. [Test Classification: Unit vs Integration](#test-classification-unit-vs-integration)
+5. [Test File Organization](#test-file-organization)
+6. [Import Path Standards](#import-path-standards)
+7. [Unit Testing Standards](#unit-testing-standards)
+8. [Integration Testing Standards](#integration-testing-standards)
+9. [E2E Testing Standards](#e2e-testing-standards)
+10. [Test Structure](#test-structure)
+11. [Mocking Standards](#mocking-standards)
+12. [Test Data Management](#test-data-management)
+13. [Refactoring Resilience](#refactoring-resilience)
 
 ---
 
@@ -33,8 +34,11 @@ When AI assistants write tests without proper verification, common failures incl
 - ❌ Wrong data format expectations (snake_case vs camelCase)
 - ❌ Testing singleton exports that can't be mocked
 - ❌ Missing DTO transformations in assertions
+- ❌ **Invalid UUID formats (prefixes like 'emp-123' instead of valid UUIDs)**
+- ❌ **Enum values that don't match schema definitions**
+- ❌ **Numeric values that violate min/max/positive constraints**
 
-**Root Cause:** Assuming implementation details instead of verifying actual source code.
+**Root Cause:** Assuming implementation details instead of verifying actual source code and validation schemas.
 
 ### The Solution: Systematic Pre-Implementation Verification
 
@@ -66,19 +70,29 @@ When AI assistants write tests without proper verification, common failures incl
 └──────────────────┬──────────────────────────────────┘
                    ↓
 ┌─────────────────────────────────────────────────────┐
-│ Step 5: Document Findings                           │
+│ Step 5: Examine Validation Schemas (NEW!)           │
+│ ✓ grep "static.*Schema" ServiceName.js             │
+│ ✓ Document Joi validation constraints               │
+│ ✓ Note UUID, enum, numeric, and date constraints    │
+│ ✓ Identify required vs optional fields              │
+└──────────────────┬──────────────────────────────────┘
+                   ↓
+┌─────────────────────────────────────────────────────┐
+│ Step 6: Document Findings                           │
 │ ✓ List all verified method names                    │
 │ ✓ Document parameter signatures                     │
 │ ✓ Note DTO usage                                    │
+│ ✓ Document validation constraints                   │
 │ ✓ Confirm export pattern                            │
 └──────────────────┬──────────────────────────────────┘
                    ↓
 ┌─────────────────────────────────────────────────────┐
-│ Step 6: Write Tests (Only Now!)                     │
+│ Step 7: Write Tests (Only Now!)                     │
 │ ✓ Use EXACT method names from source                │
 │ ✓ Use EXACT parameter order                         │
 │ ✓ Mock with correct data format (DB if DTO used)    │
 │ ✓ Assert with correct format (API if DTO used)      │
+│ ✓ Use valid data formats matching schema constraints│
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -127,6 +141,49 @@ Select-String "async \w+\(" src/products/paylinq/services/AllowanceService.js
  *    - DTO: YES (uses mapAllowancesDbToApi)
  */
 ```
+
+**CRITICAL: Verify Method Call Chain**
+
+Don't just check method names—verify **what each method calls**:
+
+```powershell
+# Check the implementation of the method you're testing
+Get-Content src/products/paylinq/services/DeductionsService.js | Select-String -Pattern "getYearToDateDeductions" -Context 5,15
+
+# Example reveals actual behavior:
+# async getYearToDateDeductions(employeeId, organizationId) {
+#   // Calls repository directly, NOT another service method
+#   return await this.repository.getYearToDateDeductions(employeeId, organizationId);
+# }
+```
+
+**Real-World Failure Example:**
+
+```javascript
+// ❌ WRONG: Test assumes method calls another service method
+describe('getYearToDateDeductions', () => {
+  it('should return YTD deductions', async () => {
+    // This spy will NEVER be called - getYearToDateDeductions doesn't call getDeductionSummary!
+    jest.spyOn(service, 'getDeductionSummary').mockResolvedValue(mockData);
+    
+    // Test will fail: TypeError - mock not found
+    const result = await service.getYearToDateDeductions(employeeId, orgId);
+  });
+});
+
+// ✅ CORRECT: Test verifies actual method calls
+describe('getYearToDateDeductions', () => {
+  it('should return YTD deductions from repository', async () => {
+    // Mock what the method ACTUALLY calls (verified by reading source)
+    mockRepository.getYearToDateDeductions.mockResolvedValue(mockData);
+    
+    const result = await service.getYearToDateDeductions(employeeId, orgId);
+    expect(result).toEqual(mockData);
+  });
+});
+```
+
+**Lesson:** Reading method signatures isn't enough. You must verify the **implementation** to know what to mock.
 
 #### Step 3: Verify Export Pattern
 
@@ -188,7 +245,68 @@ const createDbAllowance = (overrides = {}) => ({
 });
 ```
 
-#### Step 5: Document Findings
+#### Step 5: Examine Validation Schemas (CRITICAL)
+
+```powershell
+# Search for Joi schema definitions
+Select-String "static.*Schema" src/products/paylinq/services/AllowanceService.js
+```
+
+**Extract validation rules:**
+```javascript
+static createSchema = Joi.object({
+  employeeRecordId: Joi.string().uuid().required(),      // ✓ Must be valid UUID
+  deductionType: Joi.string().valid('tax', 'pension'),   // ✓ Must be enum value
+  deductionAmount: Joi.number().positive().required(),   // ✓ Must be positive number
+  effectiveDate: Joi.date().max('now'),                  // ✓ Must be past/present date
+  description: Joi.string().max(500).optional()          // ✓ Optional with max length
+});
+```
+
+**CRITICAL: Create test helpers matching constraints:**
+```javascript
+// ✅ CORRECT: Valid test data matching schema
+const createValidDeduction = (overrides = {}) => ({
+  employee_record_id: '123e4567-e89b-12d3-a456-426614174000',  // Valid UUID v4
+  deduction_type: 'tax',                                        // Valid enum
+  deduction_amount: 100.00,                                     // Positive number
+  effective_date: new Date('2025-01-01'),                       // Past date
+  description: 'Test deduction',                                // Within max length
+  ...overrides
+});
+
+// ❌ WRONG: Invalid formats that will fail validation
+const createInvalidDeduction = () => ({
+  employee_record_id: 'emp-123',          // ❌ Not a valid UUID
+  deduction_type: 'invalid',              // ❌ Not in enum
+  deduction_amount: -50,                  // ❌ Negative number
+  effective_date: new Date('2099-01-01'), // ❌ Future date
+  description: 'x'.repeat(1000)           // ❌ Exceeds max length
+});
+```
+
+**Why This Matters:**
+- Prevents validation errors disguised as logic errors
+- Ensures test data matches production constraints
+- Catches schema mismatches early
+- Reduces trial-and-error debugging
+
+**Common Schema Patterns to Check:**
+
+| Joi Validator | Test Data Requirement | Example |
+|---------------|----------------------|---------|
+| `.uuid()` | Valid UUID v4 format | `'123e4567-e89b-12d3-a456-426614174000'` |
+| `.valid(...)` | Must be in enum list | `.valid('active', 'inactive')` → `'active'` |
+| `.positive()` | Number > 0 | `100.00` not `-50` or `0` |
+| `.min(n)` | Value ≥ n | `.min(18)` → `18` or higher |
+| `.max(n)` | Value ≤ n | `.max(100)` → `100` or lower |
+| `.email()` | Valid email format | `'user@example.com'` |
+| `.pattern(regex)` | Must match regex | `.pattern(/^\d{5}$/)` → `'12345'` |
+| `.date().max('now')` | Past/present date | `new Date('2025-01-01')` not future |
+| `.required()` | Cannot be undefined | Must provide value |
+| `.optional()` | Can be omitted | Can use `undefined` or omit |
+
+#### Step 6: Document Findings
 
 Before writing tests, create a summary:
 
@@ -198,6 +316,7 @@ Before writing tests, create a summary:
  * 
  * EXPORT PATTERN: ✅ Class export (testable)
  * DTO USAGE: ✅ Uses allowanceDto.js
+ * VALIDATION SCHEMAS: ✅ createSchema, updateSchema documented
  * 
  * VERIFIED METHODS:
  * 1. calculateTaxFreeAllowance(grossPay, payDate, payPeriod, organizationId)
@@ -217,13 +336,20 @@ Before writing tests, create a summary:
  *    - Returns: object or null
  *    - DTO: Yes (mapAllowanceDbToApi)
  * 
+ * VALIDATION CONSTRAINTS (from Joi schemas):
+ * - id: UUID v4 required
+ * - organizationId: UUID v4 required
+ * - allowanceType: enum ['housing', 'transport', 'meal']
+ * - allowanceAmount: positive number required
+ * - effectiveDate: date, max 'now'
+ * 
  * DEPENDENCIES:
  * - AllowanceRepository (inject mock)
  * - No other service dependencies
  */
 ```
 
-#### Step 6: Write Tests with Verified Information
+#### Step 7: Write Tests with Verified Information
 
 ```javascript
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
@@ -234,12 +360,12 @@ describe('AllowanceService', () => {
   let service;
   let mockRepository;
 
-  // Helper using VERIFIED DB format (snake_case)
+  // Helper using VERIFIED DB format (snake_case) with VALID UUID
   const createDbAllowance = (overrides = {}) => ({
-    id: 'allow-123',
-    organization_id: 'org-456',
-    allowance_type: 'housing',
-    allowance_amount: 500.00,
+    id: '123e4567-e89b-12d3-a456-426614174000',  // ✅ Valid UUID v4
+    organization_id: '223e4567-e89b-12d3-a456-426614174001',  // ✅ Valid UUID v4
+    allowance_type: 'housing',  // ✅ Valid enum value
+    allowance_amount: 500.00,   // ✅ Positive number
     is_taxable: false,
     created_at: new Date(),
     ...overrides
@@ -371,14 +497,21 @@ Before submitting tests, verify:
 
 - [ ] ✅ Read complete source file
 - [ ] ✅ Extracted all method signatures with grep
+- [ ] ✅ **Verified what each method calls internally** (not just signatures)
 - [ ] ✅ Documented verified method names
 - [ ] ✅ Checked export pattern (class vs singleton)
 - [ ] ✅ Verified DTO usage (searched for DTO imports)
+- [ ] ✅ **Examined Joi validation schemas for data constraints**
+- [ ] ✅ **Created test constants that match schema requirements (UUIDs, enums, etc.)**
 - [ ] ✅ Created test data helpers with correct format
 - [ ] ✅ All test method calls match source exactly
 - [ ] ✅ All parameter orders match source
 - [ ] ✅ Mock data uses DB format (snake_case) if DTOs used
 - [ ] ✅ Assertions expect API format (camelCase) if DTOs used
+- [ ] ✅ **All UUIDs are in valid v4 format (no prefixes like 'emp-123')**
+- [ ] ✅ **All enum values match schema definitions exactly**
+- [ ] ✅ **All numeric values satisfy min/max/positive constraints**
+- [ ] ✅ **Mocks match what methods actually call** (verified in source)
 - [ ] ✅ No assumed method names (all verified)
 - [ ] ✅ Tests pass on first run (no trial-and-error)
 
@@ -386,8 +519,11 @@ Before submitting tests, verify:
 
 **Acceptance Criteria for AI-Written Tests:**
 - ✅ **ZERO** `TypeError: service.methodName is not a function` errors
+- ✅ **ZERO** `TypeError: Cannot read properties of undefined (reading 'mockResolvedValue')` errors
+- ✅ **ZERO** `ValidationError` due to invalid test data formats
 - ✅ **ZERO** incorrect parameter order errors
 - ✅ **ZERO** data format mismatches (snake_case vs camelCase)
+- ✅ **ZERO** incorrect mock targets (mocking wrong methods)
 - ✅ All tests pass on **first execution**
 - ✅ No refactoring needed after initial test run
 
@@ -431,6 +567,22 @@ Select-String "from '../dto" backend/src/products/paylinq/services/PayrollRunTyp
 ```
 
 This systematic approach ensures **accurate, maintainable tests that pass on the first run**.
+
+### Key Lessons from Real-World Testing
+
+**From implementing taxCalculationService tests (November 2025):**
+
+1. **UUID Validation is Non-Negotiable** - The biggest issue was using invalid UUID formats with prefixes like `'ded-123'` or `'emp-123'` instead of proper UUID v4 format. This violated Joi schema validation.
+
+2. **Validation Schemas Are Documentation** - Joi schemas tell you EXACTLY what test data must look like. Read them BEFORE writing test helpers.
+
+3. **Test Constants Must Match Production Format** - Descriptive names are good (`testEmployeeId`), but the values must be valid production formats (proper UUIDs, not `'emp-123'`).
+
+4. **Bulk Operations Need Special Attention** - Each object in array must pass validation. Test both success and partial failure scenarios.
+
+5. **Error Messages Guide Debugging** - Clear validation errors like `"deductionId" must be a valid GUID` immediately pinpoint the issue.
+
+**This reinforces Step 5: Always examine validation schemas before creating test data helpers.**
 
 ---
 
@@ -488,6 +640,282 @@ This systematic approach ensures **accurate, maintainable tests that pass on the
 - Configuration files
 - Simple getters/setters
 - Database migrations
+
+---
+
+## Test Classification: Unit vs Integration (CRITICAL)
+
+### The Problem: Misclassified Tests
+
+**COMMON MISTAKE:** Writing unit tests with excessive mocking for methods that should be integration tests.
+
+**Red Flags - This is NOT a Unit Test:**
+```javascript
+// ❌ WRONG: Unit test with 10+ mocks
+describe('calculateEmployeeTaxes', () => {
+  it('should calculate taxes', async () => {
+    // Mock database query
+    const { query } = await import('database.js');
+    query.mockResolvedValue({ rows: [...] });
+    
+    // Mock service dependencies
+    mockAllowanceService.calculateTaxFreeAllowance.mockResolvedValue(9000);
+    mockTaxRepository.findApplicableTaxRuleSets.mockResolvedValue([...]);
+    mockTaxRepository.findTaxBrackets.mockResolvedValue([...]);
+    mockTaxRepository.calculateBracketTax.mockResolvedValue(100);
+    mockTaxRepository.getSurinameseAOVRate.mockResolvedValue({...});
+    mockTaxRepository.getSurinameseAWWRate.mockResolvedValue({...});
+    mockDeductionRepository.findActiveDeductionsForPayroll.mockResolvedValue([]);
+    // ... 5 more mocks ...
+    
+    // What are we testing? The mocks or the code?
+  });
+});
+```
+
+**Problems with this approach:**
+- ❌ Testing mock setup, not real behavior
+- ❌ Fragile - breaks when dependencies change
+- ❌ High maintenance burden
+- ❌ Low confidence - are mocks realistic?
+- ❌ Violates testing pyramid principles
+
+### Decision Matrix: Unit Test or Integration Test?
+
+| Factor | Unit Test | Integration Test |
+|--------|-----------|------------------|
+| **Dependencies** | 0-2 services/repos | 3+ services/repos |
+| **Database queries** | None or 1 simple query | Multiple or complex queries |
+| **Transactions** | No | Yes (BEGIN/COMMIT/ROLLBACK) |
+| **External services** | None or 1 | Multiple |
+| **Method purpose** | Pure calculation/validation | Orchestration/coordination |
+| **Mocking complexity** | Simple (1-2 mocks) | Complex (5+ mocks) |
+| **Execution time** | < 10ms | < 1000ms |
+
+### Classification Examples
+
+#### ✅ Unit Test Candidates (Pure Business Logic)
+
+```javascript
+// Pure calculation - NO dependencies
+async calculateBracketTax(income, brackets) {
+  let tax = 0;
+  for (const bracket of brackets) {
+    // Math logic only
+  }
+  return tax;
+}
+
+// Simple validation - 1 dependency
+async validateTaxRule(data, organizationId) {
+  const validated = await TaxRuleSchema.validateAsync(data);
+  return validated;
+}
+
+// Data transformation - NO dependencies
+function mapTaxRuleDbToApi(dbRule) {
+  return {
+    id: dbRule.id,
+    ruleName: dbRule.rule_name, // snake_case → camelCase
+  };
+}
+```
+
+#### ❌ Integration Test Candidates (Orchestration)
+
+```javascript
+// Orchestrates 5+ dependencies
+async calculateEmployeeTaxes(employeeId, grossPay, payDate, period, orgId) {
+  // 1. Database query for employee
+  const employee = await query('SELECT * FROM employees WHERE id = $1');
+  
+  // 2. External service call
+  const taxFreeAllowance = await allowanceService.calculate(...);
+  
+  // 3. Repository call
+  const taxRules = await taxRepository.findApplicable(...);
+  
+  // 4. Another repository call
+  const brackets = await taxRepository.findBrackets(...);
+  
+  // 5. Calculation using another method
+  const federalTax = await this.calculateBracketTax(...);
+  
+  // 6. Another repository
+  const deductions = await deductionRepository.findActive(...);
+  
+  // This method ORCHESTRATES - it's an integration test!
+}
+```
+
+### The Migration Rule (MANDATORY)
+
+**RULE:** When you encounter a "unit test" that violates the decision matrix:
+
+1. ✅ **Immediately stop writing unit tests**
+2. ✅ **Move test to `tests/integration/` folder**
+3. ✅ **Rewrite using real database**
+4. ✅ **Document in original file why it was moved**
+
+### Migration Template
+
+**Step 1: Mark original unit test as moved**
+
+```javascript
+// tests/unit/services/TaxCalculationService.test.js
+
+/**
+ * calculateEmployeeTaxes - MOVED TO INTEGRATION TESTS
+ * 
+ * This method orchestrates multiple services and repositories:
+ * - _getEmployeeResidenceStatus (database query)
+ * - allowanceService.calculateTaxFreeAllowance (external service)
+ * - taxEngineRepository.findApplicableTaxRuleSets (repository)
+ * - taxEngineRepository.findTaxBrackets (repository)
+ * - deductionRepository.findActiveDeductionsForPayroll (repository)
+ * 
+ * Reason for migration: 5+ dependencies make unit testing impractical.
+ * Unit tests with excessive mocking test mock setup, not real behavior.
+ * 
+ * Integration tests provide higher confidence and are more maintainable.
+ * 
+ * Location: tests/integration/paylinq/tax-calculation.test.js
+ * 
+ * See TESTING_STANDARDS.md - "Test Classification" section.
+ */
+describe.skip('calculateEmployeeTaxes - MOVED TO INTEGRATION', () => {
+  // Original tests removed
+});
+```
+
+**Step 2: Create integration test**
+
+```javascript
+// tests/integration/paylinq/tax-calculation.test.js
+
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import pool from '../../../src/config/database.js';
+import { TaxCalculationService } from '../../../src/products/paylinq/services/taxCalculationService.js';
+
+describe('Tax Calculation - Integration Tests', () => {
+  let testOrgId, testEmployeeId;
+
+  beforeAll(async () => {
+    // Setup real test data in database
+    const orgResult = await pool.query(`
+      INSERT INTO organizations (id, name)
+      VALUES (gen_random_uuid(), 'Test Org')
+      RETURNING id
+    `);
+    testOrgId = orgResult.rows[0].id;
+
+    // Setup employee, tax rules, brackets, etc.
+  });
+
+  afterAll(async () => {
+    // Cleanup test data
+    await pool.query('DELETE FROM organizations WHERE id = $1', [testOrgId]);
+    await pool.end();
+  });
+
+  describe('calculateEmployeeTaxes - Full Workflow', () => {
+    it('should calculate taxes with real database', async () => {
+      // Real service with real database
+      const service = new TaxCalculationService();
+      
+      const result = await service.calculateEmployeeTaxes(
+        testEmployeeId,
+        15000,
+        new Date('2025-01-15'),
+        'monthly',
+        testOrgId
+      );
+
+      // Assert real behavior
+      expect(result.grossPay).toBe(15000);
+      expect(result.totalTaxes).toBeGreaterThan(0);
+      expect(result.taxableIncome).toBeLessThan(result.grossPay);
+    });
+  });
+});
+```
+
+### Benefits of Proper Classification
+
+| Metric | Wrong (Unit with Mocks) | Correct (Integration) |
+|--------|------------------------|----------------------|
+| **Setup complexity** | High (10+ mocks) | Medium (test data) |
+| **Maintenance** | High (breaks often) | Low (stable) |
+| **Confidence** | Low (testing mocks) | High (testing reality) |
+| **Debugging** | Hard (which mock is wrong?) | Easy (real errors) |
+| **Execution time** | ~50ms | ~200ms |
+| **Value** | Low | High |
+
+### Real-World Example: Tax Calculation Service
+
+**Before (Wrong):**
+- 4 unit tests skipped due to mock complexity
+- Database query mocking was fragile
+- Tests never ran successfully
+
+**After (Correct):**
+- 7 integration tests passing
+- Real database interactions
+- Tests complete workflows
+- High confidence in code
+
+### Classification Checklist
+
+**Before writing ANY test, ask:**
+
+- [ ] How many dependencies does this method have?
+- [ ] Does it make database queries?
+- [ ] Does it coordinate multiple services?
+- [ ] Would I need 5+ mocks to test it?
+- [ ] Is it an orchestration method?
+
+**If you answered "many/yes" to 3+ questions → Integration Test**
+
+### When to Skip Unit Tests Entirely
+
+Some methods should **ONLY** have integration tests:
+
+1. **Orchestration methods** - coordinate multiple services
+2. **Transaction handlers** - BEGIN/COMMIT/ROLLBACK logic
+3. **Complex workflows** - multi-step processes
+4. **External API integrations** - third-party service calls
+
+**Example:**
+```javascript
+// DON'T write unit test - write integration test only
+async executePayrollRun(runId, orgId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // 1. Load run configuration
+    // 2. Calculate for all employees
+    // 3. Generate payslips
+    // 4. Create payment records
+    // 5. Update run status
+    
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  }
+}
+```
+
+### Summary: The Golden Rule
+
+**"If you need more than 5 mocks, you're writing the wrong type of test."**
+
+- ✅ Unit tests = Pure logic with 0-2 dependencies
+- ✅ Integration tests = Orchestration with 3+ dependencies
+- ✅ Move misclassified tests immediately
+- ✅ Document why tests were moved
+- ✅ Write integration tests with real database
 
 ---
 
@@ -3588,7 +4016,23 @@ describe('Jobs API - Integration Tests', () => {
 import { v4 as uuidv4 } from 'uuid';
 
 const id = uuidv4(); // Generates unique UUID v4
+
+// ✅ CORRECT: Valid UUID v4 format (8-4-4-4-12 hexadecimal)
+const validUUID = '123e4567-e89b-12d3-a456-426614174000';
+
+// ❌ WRONG: Invalid formats that will fail Joi .uuid() validation
+const invalidUUID1 = 'emp-123';                    // Prefixed short ID
+const invalidUUID2 = 'emp-123e4567-e89b-12d3';    // Prefixed partial UUID
+const invalidUUID3 = '123e4567e89b12d3';          // Missing hyphens
+const invalidUUID4 = '123e4567-e89b-12d3-a456';   // Too short
 ```
+
+**UUID Validation Best Practices:**
+- Always use full UUID v4 format: `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+- Never use prefixes for readability (e.g., `'emp-123'`, `'job-456'`)
+- Use descriptive variable names instead: `testEmployeeId`, `testJobId`
+- Generate with `uuid` package for production code
+- Use fixed valid UUIDs for test constants (for deterministic tests)
 
 **2. Timestamp-Based Cleanup (Safe for Parallel Tests):**
 ```javascript
@@ -4062,6 +4506,49 @@ describe('API Integration Tests', () => {
   });
 });
 ```
+
+---
+
+## Quick Reference Card: Test Classification
+
+### 🚦 When to Write Unit Tests vs Integration Tests
+
+#### ✅ Write Unit Test If:
+- Method has **0-2 dependencies**
+- Pure calculation/validation logic
+- Data transformation (DTOs)
+- No database queries
+- No external service calls
+- **Example:** `calculateBracketTax()`, `validateInput()`, `mapDbToApi()`
+
+#### ✅ Write Integration Test If:
+- Method has **3+ dependencies**
+- Orchestrates multiple services/repos
+- Makes database queries
+- Uses transactions (BEGIN/COMMIT)
+- Calls external services
+- **Example:** `calculateEmployeeTaxes()`, `executePayrollRun()`, `reconcilePayments()`
+
+#### 🔄 Migration Rule
+**If you start writing unit test and realize:**
+- Need 5+ mocks
+- Mocking database queries
+- Mocking multiple services
+- Tests are fragile
+
+**→ STOP. Move to integration tests immediately.**
+
+#### 📋 Quick Checklist
+```
+□ Count dependencies (0-2 = unit, 3+ = integration)
+□ Check for database queries (complex = integration)
+□ Check for transactions (any = integration)
+□ Count needed mocks (5+ = integration)
+□ Is this orchestration? (yes = integration)
+```
+
+#### 💡 The Golden Rule
+**"If you need more than 5 mocks, you're writing the wrong type of test."**
 
 ---
 

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Users, Briefcase, CheckCircle, XCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Briefcase, CheckCircle, XCircle, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CardSkeleton from '@/components/ui/CardSkeleton';
 import Dialog from '@/components/ui/Dialog';
@@ -9,19 +9,25 @@ import {
   useCreateWorkerTypeTemplate,
   useUpdateWorkerTypeTemplate,
   useDeleteWorkerTypeTemplate,
+  useWorkerTypeUpgradeStatus,
   type WorkerTypeTemplate,
 } from '@/hooks/useWorkerTypes';
+import { usePayStructureTemplates } from '@/hooks/usePayStructures';
 import type { CreateWorkerTypeTemplateRequest, UpdateWorkerTypeTemplateRequest } from '@recruitiq/types';
+import { UpgradeWorkersModal, TemplateComparisonModal } from '@/components/worker-types';
 
 export default function WorkerTypesList() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
   const [selectedWorkerType, setSelectedWorkerType] = useState<WorkerTypeTemplate | null>(null);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
 
   // React Query hooks
   const { data: workerTypes, isLoading, error } = useWorkerTypeTemplates();
+  console.log('🔍 Current workerTypes from query:', workerTypes);
   const createMutation = useCreateWorkerTypeTemplate();
   const updateMutation = useUpdateWorkerTypeTemplate();
   const deleteMutation = useDeleteWorkerTypeTemplate();
@@ -43,6 +49,16 @@ export default function WorkerTypesList() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleUpgrade = (workerType: WorkerTypeTemplate) => {
+    setSelectedWorkerType(workerType);
+    setIsUpgradeModalOpen(true);
+  };
+
+  const handleCompare = (workerType: WorkerTypeTemplate) => {
+    setSelectedWorkerType(workerType);
+    setIsComparisonModalOpen(true);
+  };
+
   const handleConfirmDelete = async () => {
     if (selectedWorkerType?.id) {
       await deleteMutation.mutateAsync(selectedWorkerType.id);
@@ -51,9 +67,9 @@ export default function WorkerTypesList() {
     }
   };
 
-  // Filter worker types by status
-  const activeTypes = workerTypes?.filter((wt: WorkerTypeTemplate) => wt.status === 'active') || [];
-  const inactiveTypes = workerTypes?.filter((wt: WorkerTypeTemplate) => wt.status === 'inactive') || [];
+  // Filter worker types by status (isActive is boolean from backend DTO)
+  const activeTypes = workerTypes?.filter((wt: WorkerTypeTemplate) => (wt as any).isActive === true) || [];
+  const inactiveTypes = workerTypes?.filter((wt: WorkerTypeTemplate) => (wt as any).isActive === false) || [];
 
   if (isLoading) {
     return (
@@ -149,6 +165,8 @@ export default function WorkerTypesList() {
                 workerType={workerType}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onUpgrade={handleUpgrade}
+                onCompare={handleCompare}
               />
             ))}
           </div>
@@ -169,6 +187,8 @@ export default function WorkerTypesList() {
                 workerType={workerType}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onUpgrade={handleUpgrade}
+                onCompare={handleCompare}
               />
             ))}
           </div>
@@ -181,15 +201,30 @@ export default function WorkerTypesList() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSubmit={async (data) => {
-            if (modalMode === 'add') {
-              await createMutation.mutateAsync(data as CreateWorkerTypeTemplateRequest);
-            } else if (selectedWorkerType?.id) {
-              await updateMutation.mutateAsync({
-                id: selectedWorkerType.id,
-                data: data as UpdateWorkerTypeTemplateRequest,
-              });
+            // Convert empty string to null for template code
+            const cleanData = {
+              ...data,
+              payStructureTemplateCode: data.payStructureTemplateCode || null,
+            };
+
+            try {
+              if (modalMode === 'add') {
+                await createMutation.mutateAsync(cleanData as CreateWorkerTypeTemplateRequest);
+              } else if (selectedWorkerType?.id) {
+                await updateMutation.mutateAsync({
+                  id: selectedWorkerType.id,
+                  data: cleanData as UpdateWorkerTypeTemplateRequest,
+                });
+              }
+              
+              // React Query's onSuccess handlers already update the cache
+              // No need to manually refetch - that causes race conditions
+              
+              setIsModalOpen(false);
+            } catch (error) {
+              // Error is already handled by the mutation's onError
+              console.error('Form submission error:', error);
             }
-            setIsModalOpen(false);
           }}
           workerType={selectedWorkerType}
           mode={modalMode}
@@ -206,6 +241,34 @@ export default function WorkerTypesList() {
           isDeleting={deleteMutation.isPending}
         />
       )}
+
+      {/* Upgrade Workers Modal */}
+      {isUpgradeModalOpen && selectedWorkerType && (
+        <UpgradeWorkersModal
+          isOpen={isUpgradeModalOpen}
+          onClose={() => {
+            setIsUpgradeModalOpen(false);
+            setSelectedWorkerType(null);
+          }}
+          workerTypeId={selectedWorkerType.id}
+          workerTypeName={selectedWorkerType.name}
+        />
+      )}
+
+      {/* Template Comparison Modal */}
+      {isComparisonModalOpen && selectedWorkerType && (
+        <TemplateComparisonModal
+          isOpen={isComparisonModalOpen}
+          onClose={() => {
+            setIsComparisonModalOpen(false);
+            setSelectedWorkerType(null);
+          }}
+          fromTemplateCode={selectedWorkerType.code}
+          toTemplateCode={selectedWorkerType.code} // TODO: Get latest template code
+          fromTemplateName={selectedWorkerType.name}
+          toTemplateName={selectedWorkerType.name}
+        />
+      )}
     </div>
   );
 }
@@ -215,9 +278,23 @@ interface WorkerTypeCardProps {
   workerType: WorkerTypeTemplate;
   onEdit: (workerType: WorkerTypeTemplate) => void;
   onDelete: (workerType: WorkerTypeTemplate) => void;
+  onUpgrade: (workerType: WorkerTypeTemplate) => void;
+  onCompare: (workerType: WorkerTypeTemplate) => void;
 }
 
-function WorkerTypeCard({ workerType, onEdit, onDelete }: WorkerTypeCardProps) {
+function WorkerTypeCard({ workerType, onEdit, onDelete, onUpgrade, onCompare }: WorkerTypeCardProps) {
+  // Check if upgrade is available
+  const { data: upgradeStatus, isLoading: isLoadingUpgrade, error: upgradeError } = useWorkerTypeUpgradeStatus(workerType.id);
+  
+  console.log(`🔍 [${workerType.name}] Upgrade query status:`, {
+    workerTypeId: workerType.id,
+    payStructureTemplateCode: workerType.payStructureTemplateCode,
+    isLoading: isLoadingUpgrade,
+    hasError: !!upgradeError,
+    error: upgradeError,
+    upgradeStatus
+  });
+
   const eligibilityFlags = [
     { label: 'Benefits', value: workerType.benefitsEligible },
     { label: 'Overtime', value: workerType.overtimeEligible },
@@ -227,6 +304,28 @@ function WorkerTypeCard({ workerType, onEdit, onDelete }: WorkerTypeCardProps) {
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5 hover:shadow-lg transition-shadow">
+      {/* Upgrade Banner */}
+      {upgradeStatus?.needsUpgrade && (
+        <div className="mb-4 -mt-1 -mx-1">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Update Available
+                </span>
+              </div>
+              <button
+                onClick={() => onUpgrade(workerType)}
+                className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+              >
+                Upgrade {upgradeStatus.workersNeedingUpgrade} Worker(s)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
@@ -235,8 +334,8 @@ function WorkerTypeCard({ workerType, onEdit, onDelete }: WorkerTypeCardProps) {
               {workerType.name}
             </h3>
             <StatusBadge
-              status={workerType.status}
-              variant={workerType.status === 'active' ? 'green' : 'gray'}
+              status={(workerType as any).isActive ? 'active' : 'inactive'}
+              variant={(workerType as any).isActive ? 'green' : 'gray'}
               size="sm"
             />
           </div>
@@ -269,6 +368,21 @@ function WorkerTypeCard({ workerType, onEdit, onDelete }: WorkerTypeCardProps) {
 
       {/* Default Settings */}
       <div className="space-y-3 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-500 dark:text-gray-400">Pay Structure Template</span>
+          <span className="font-medium text-gray-900 dark:text-white">
+            {(() => {
+              console.log('🎨 Rendering workerType:', workerType.name, 'payStructureTemplateCode:', workerType.payStructureTemplateCode);
+              return workerType.payStructureTemplateCode ? (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-medium">
+                  {workerType.payStructureTemplateCode}
+                </span>
+              ) : (
+                <span className="text-gray-500 dark:text-gray-400">Manual Config</span>
+              );
+            })()}
+          </span>
+        </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-500 dark:text-gray-400">Pay Frequency</span>
           <span className="font-medium text-gray-900 dark:text-white capitalize">
@@ -347,6 +461,7 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
     name: workerType?.name || '',
     code: workerType?.code || '',
     description: workerType?.description || '',
+    payStructureTemplateCode: workerType?.payStructureTemplateCode || null,
     defaultPayFrequency: workerType?.defaultPayFrequency || 'bi-weekly',
     defaultPaymentMethod: workerType?.defaultPaymentMethod || 'ach',
     benefitsEligible: workerType?.benefitsEligible ?? true,
@@ -359,6 +474,30 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Fetch active pay structure templates for dropdown
+  const { data: payStructureTemplates, isLoading: isLoadingTemplates } = usePayStructureTemplates({
+    params: { status: 'active' },
+  });
+
+  // Get unique templates (latest version only per template code)
+  const uniqueTemplates = React.useMemo(() => {
+    if (!payStructureTemplates) return [];
+    
+    // Group by template code and keep only the latest version
+    const templateMap = new Map<string, typeof payStructureTemplates[0]>();
+    
+    payStructureTemplates.forEach(template => {
+      const existing = templateMap.get(template.templateCode);
+      if (!existing || template.version > existing.version) {
+        templateMap.set(template.templateCode, template);
+      }
+    });
+    
+    return Array.from(templateMap.values()).sort((a, b) => 
+      a.templateName.localeCompare(b.templateName)
+    );
+  }, [payStructureTemplates]);
+
   // Update form data when workerType changes (for edit mode)
   useEffect(() => {
     if (workerType) {
@@ -366,6 +505,7 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
         name: workerType.name || '',
         code: workerType.code || '',
         description: workerType.description || '',
+        payStructureTemplateCode: workerType.payStructureTemplateCode || null,
         defaultPayFrequency: workerType.defaultPayFrequency || 'bi-weekly',
         defaultPaymentMethod: workerType.defaultPaymentMethod || 'ach',
         benefitsEligible: workerType.benefitsEligible ?? true,
@@ -380,6 +520,7 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
         name: '',
         code: '',
         description: '',
+        payStructureTemplateCode: null,
         defaultPayFrequency: 'bi-weekly',
         defaultPaymentMethod: 'ach',
         benefitsEligible: true,
@@ -428,7 +569,7 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
     setIsSubmitting(true);
     try {
       await onSubmit(formData);
-      onClose();
+      // Don't call onClose here - let parent handle it after mutation succeeds
     } catch (error) {
       console.error('Error submitting worker type:', error);
     } finally {
@@ -514,6 +655,29 @@ function WorkerTypeFormModal({ isOpen, onClose, onSubmit, workerType, mode }: Wo
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="Regular full-time employee with full benefits"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Pay Structure Template
+              </label>
+              <select
+                value={formData.payStructureTemplateCode || ''}
+                onChange={(e) => setFormData({ ...formData, payStructureTemplateCode: e.target.value || null })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                disabled={isLoadingTemplates}
+              >
+                <option value="">No template (manual configuration)</option>
+                {uniqueTemplates.map((template) => (
+                  <option key={template.templateCode} value={template.templateCode}>
+                    {template.templateName} - {template.templateCode}
+                    {template.version > 1 && ` (v${template.version})`}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Workers will automatically get the latest published version of the selected template
+              </p>
             </div>
           </div>
 

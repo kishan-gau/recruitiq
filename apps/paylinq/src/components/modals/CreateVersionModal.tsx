@@ -88,11 +88,11 @@ export default function CreateVersionModal({
       size="lg"
     >
       <div className="space-y-4">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-sm text-gray-700">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             Current Version: <span className="font-semibold">v{currentVersion || '1.0.0'}</span>
           </p>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             New Version: <span className="font-semibold">v{getNextVersion()}</span>
           </p>
         </div>
@@ -180,14 +180,14 @@ export default function CreateVersionModal({
           <textarea
             value={changeSummary}
             onChange={(e) => setChangeSummary(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             rows={4}
             placeholder="Describe the changes in this version..."
           />
         </FormField>
 
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-          <p className="text-sm text-yellow-800">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+          <p className="text-sm text-yellow-800 dark:text-yellow-300">
             A new draft version will be created with all components from the current version.
             You can then modify the components before publishing.
           </p>
@@ -197,7 +197,7 @@ export default function CreateVersionModal({
       <div className="flex justify-end gap-3 mt-6">
         <button
           onClick={onClose}
-          className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           disabled={createVersionMutation.isPending}
         >
           Cancel

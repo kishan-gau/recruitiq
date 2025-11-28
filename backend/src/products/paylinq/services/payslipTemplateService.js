@@ -581,4 +581,4 @@ class PayslipTemplateService {
   }
 }
 
-export default new PayslipTemplateService();
+export default PayslipTemplateService;

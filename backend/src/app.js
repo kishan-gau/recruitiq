@@ -49,6 +49,7 @@ import licenseTierRoutes from './modules/license/routes/tiers.js';
 import productManagementRoutes from './products/nexus/routes/productManagementRoutes.js';
 import systemRoutes from './products/nexus/routes/systemRoutes.js';
 import rbacRoutes from './modules/rbac/routes/index.js';
+import vpsRoutes from './routes/portal/vps.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -174,6 +175,22 @@ export function createApp(options = {}) {
     try {
       const dbHealth = await dbHealthCheck();
       
+      // Check TransIP connection (only if enabled)
+      let transipHealth = { status: 'disabled', message: 'TransIP integration not enabled' };
+      if (config.transip?.enabled) {
+        try {
+          const { default: TransIPService } = await import('./services/transip/TransIPService.js');
+          const transipService = new TransIPService();
+          transipHealth = await transipService.checkConnection();
+        } catch (error) {
+          transipHealth = {
+            status: 'error',
+            message: error.message,
+            available: false
+          };
+        }
+      }
+      
       const health = {
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -183,6 +200,7 @@ export function createApp(options = {}) {
         services: {
           database: dbHealth.status === 'healthy' ? 'ok' : 'degraded',
           api: 'ok',
+          transip: transipHealth.status
         },
         system: {
           memory: {
@@ -193,6 +211,11 @@ export function createApp(options = {}) {
           cpu: process.cpuUsage(),
         }
       };
+      
+      // Include TransIP details if not disabled
+      if (transipHealth.status !== 'disabled') {
+        health.transip = transipHealth;
+      }
       
       const statusCode = dbHealth.status === 'healthy' ? 200 : 503;
       res.status(statusCode).json(health);
@@ -276,6 +299,7 @@ export function createApp(options = {}) {
   apiRouter.use('/portal', provisioningRoutes);
   apiRouter.use('/portal', userManagementRoutes);
   apiRouter.use('/portal', rolesPermissionsRoutes);
+  apiRouter.use('/portal/vps', vpsRoutes);
   apiRouter.use('/security', securityRoutes);
   apiRouter.use('/settings/email', emailSettingsRoutes);
   apiRouter.use('/admin', licenseAdminRoutes);

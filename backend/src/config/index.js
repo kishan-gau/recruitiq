@@ -239,6 +239,15 @@ const config = {
     apiUrl: process.env.LICENSE_API_URL || 'https://license.recruitiq.com',
     checkIntervalHours: parseInt(process.env.LICENSE_CHECK_INTERVAL_HOURS, 10) || 24,
   },
+  
+  // TransIP VPS Management
+  transip: {
+    username: process.env.TRANSIP_USERNAME,
+    privateKeyPath: process.env.TRANSIP_PRIVATE_KEY_PATH || './transip-private.key',
+    testMode: process.env.TRANSIP_TEST_MODE === 'true',
+    vpsName: process.env.TRANSIP_VPS_NAME,
+    enabled: process.env.TRANSIP_ENABLED === 'true',
+  },
 };
 
 // ============================================================================

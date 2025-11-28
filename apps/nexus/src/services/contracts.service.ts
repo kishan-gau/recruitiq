@@ -95,4 +95,28 @@ export const contractsService = {
     const response = await nexusClient.uploadContractDocument(id, file);
     return response.data as { documentUrl: string };
   },
+
+  /**
+   * Get contracts expiring within specified days
+   */
+  getExpiring: async (days: number = 30): Promise<Contract[]> => {
+    const response = await nexusClient.getExpiringContracts(days);
+    return response.data as Contract[];
+  },
+
+  /**
+   * Progress contract to next sequence
+   */
+  progressSequence: async (id: string): Promise<Contract> => {
+    const response = await nexusClient.progressContractSequence(id);
+    return response.data as Contract;
+  },
+
+  /**
+   * Renew a contract
+   */
+  renew: async (id: string, data: { startDate: string; endDate: string; terms?: string }): Promise<Contract> => {
+    const response = await nexusClient.renewContract(id, data);
+    return response.data as Contract;
+  },
 };

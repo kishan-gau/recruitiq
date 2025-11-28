@@ -3,7 +3,6 @@ import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, Select } from '@/components/ui/FormField';
 import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
-import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useShiftTypes } from '@/hooks';
 

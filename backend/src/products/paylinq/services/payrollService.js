@@ -38,6 +38,14 @@ class PayrollService {
 
   // ==================== VALIDATION SCHEMAS ====================
 
+  /**
+   * Employee Record Validation Schema
+   * 
+   * Note: As of Phase 1 migration (Nov 2025):
+   * - nationalId/taxIdNumber → stored in payroll_config.tax_id
+   * - phone → stored in hris.employee.phone
+   * - dateOfBirth → stored in hris.employee.date_of_birth
+   */
   employeeRecordSchema = Joi.object({
     // Allow both simple employee creation (from frontend) and detailed payroll config
     hrisEmployeeId: Joi.string().optional(),
@@ -48,6 +56,20 @@ class PayrollService {
     lastName: Joi.string().required(),
     email: Joi.string().email().required(),
     hireDate: Joi.string().isoDate().required(),
+    // PII fields (Phase 1 Migration - moved from metadata)
+    phone: Joi.string().pattern(/^\+?[0-9\s\-()]+$/).max(20).allow(null, ''),
+    nationalId: Joi.string().allow(null, ''),
+    dateOfBirth: Joi.date()
+      .max('now')  // Cannot be in the future
+      .min('1900-01-01')  // Reasonable minimum date
+      .allow(null, ''),
+    // Phase 2: Organizational Structure (replaces text fields in metadata)
+    departmentId: Joi.string().uuid().allow(null, ''),
+    locationId: Joi.string().uuid().allow(null, ''),
+    managerId: Joi.string().uuid().allow(null, ''),
+    // Backward compatibility: Still accept text fields during migration
+    department: Joi.string().allow(null, ''),
+    location: Joi.string().allow(null, ''),
     // Payroll configuration fields
     payFrequency: Joi.string().valid('weekly', 'bi-weekly', 'biweekly', 'semi-monthly', 'semimonthly', 'monthly').optional(),
     paymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash', 'direct_deposit', 'card').optional(),
@@ -65,7 +87,7 @@ class PayrollService {
     taxExemptions: Joi.number().integer().min(0).allow(null),
     taxAllowances: Joi.number().integer().min(0).allow(null),
     additionalWithholding: Joi.number().min(0).allow(null),
-    metadata: Joi.object().allow(null).optional() // Worker metadata (phone, department, position, compensation)
+    metadata: Joi.object().allow(null).optional() // Worker metadata (department, position, compensation)
   }).or('hrisEmployeeId', 'employeeId').options({ stripUnknown: true }); // At least one identifier required, reject unknown fields
 
   compensationSchema = Joi.object({
@@ -166,15 +188,24 @@ class PayrollService {
       const employeeNumber = value.employeeNumber || value.hrisEmployeeId || `EMP-${Date.now()}`;
       const hireDate = value.startDate || value.hireDate || toUTCDateString(nowUTC());
       
+      // Phase 1: PII fields (no backwards compatibility needed in dev)
+      const phoneValue = value.phone || null;
+      const dobValue = value.dateOfBirth || null;
+      
+      // Phase 2: Organizational structure fields
+      const departmentId = value.departmentId || null;
+      const locationId = value.locationId || null;
+      const managerId = value.managerId || null;
+      
       // Insert into hris.employee table (which payroll.employee_payroll_config references)
       const employeeInsertQuery = `
         INSERT INTO hris.employee (
           id, organization_id, employee_number,
           first_name, last_name, email, phone,
-          hire_date, employment_status, employment_type,
-          job_title, created_by
+          hire_date, date_of_birth, employment_status, employment_type,
+          job_title, department_id, location_id, manager_id, created_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING id
       `;
       
@@ -185,11 +216,15 @@ class PayrollService {
         value.firstName,
         value.lastName,
         value.email?.toLowerCase(),
-        value.phone || null,
+        phoneValue,
         hireDate,
+        dobValue,
         value.status || 'active',
         value.employmentType || 'full_time',
         value.jobTitle || null,
+        departmentId,   // Phase 2: Department FK
+        locationId,     // Phase 2: Location FK
+        managerId,      // Phase 2: Manager FK
         userId
       ];
       
@@ -216,6 +251,9 @@ class PayrollService {
       }
     }
     
+    // Metadata is now only for non-structured data
+    const cleanMetadata = value.metadata || null;
+    
     const payrollData = {
       employeeId: targetEmployeeId, // Use created or provided user ID
       employeeNumber: value.employeeNumber || value.hrisEmployeeId || `EMP-${Date.now()}`,
@@ -234,11 +272,12 @@ class PayrollService {
       accountNumber: value.accountNumber || value.bankAccountNumber || null,
       routingNumber: value.routingNumber || null,
       accountType: value.accountType || null,
-      taxId: value.taxId || value.taxIdNumber || null,
+      // Phase 1: National ID in tax_id field
+      taxId: value.taxId || value.taxIdNumber || value.nationalId || null,
       taxFilingStatus: value.taxFilingStatus || null,
       taxAllowances: value.taxAllowances || value.taxExemptions || 0,
       additionalWithholding: value.additionalWithholding || 0,
-      metadata: value.metadata || null // Pass through metadata from request
+      metadata: cleanMetadata // Clean metadata without PII
     };
 
     // Business rule: Validate payment method has required bank details

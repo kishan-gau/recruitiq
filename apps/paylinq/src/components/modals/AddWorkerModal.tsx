@@ -5,6 +5,9 @@ import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
+import { useDepartments } from '@/hooks/useDepartments';
+import { useLocations } from '@/hooks/useLocations';
+import { useWorkersForManager } from '@/hooks/useWorkersForManager';
 
 interface AddWorkerModalProps {
   isOpen: boolean;
@@ -21,7 +24,10 @@ interface WorkerFormData {
   dateOfBirth: string;
   startDate: string;
   workerType: string;
-  department: string;
+  departmentId: string;   // Phase 2: FK to hris.department
+  locationId: string;     // Phase 2: FK to hris.location
+  managerId: string;      // Phase 2: Self-referencing FK
+  department: string;     // Fallback for legacy
   position: string;
   compensation: string;
   payFrequency: string;
@@ -32,8 +38,14 @@ interface WorkerFormData {
 
 export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorkerModalProps) {
   const { paylinq } = usePaylinqAPI();
-  const { success, error } = useToast();
+  const toast = useToast();
+  const { success, error } = toast;
   const { data: workerTypes = [], isLoading: loadingTypes } = useWorkerTypeTemplates({ status: 'active' });
+  
+  // Phase 2: Load organizational structure data
+  const { data: departments = [], isLoading: loadingDepartments } = useDepartments({ isActive: true });
+  const { data: locations = [], isLoading: loadingLocations } = useLocations({ isActive: true });
+  const { data: managers = [], isLoading: loadingManagers } = useWorkersForManager({ status: 'active' });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof WorkerFormData, string>>>({});
   const [formData, setFormData] = useState<WorkerFormData>({
@@ -45,7 +57,10 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
     dateOfBirth: '',
     startDate: new Date().toISOString().split('T')[0],
     workerType: '',
-    department: '',
+    departmentId: '',   // Phase 2
+    locationId: '',     // Phase 2
+    managerId: '',      // Phase 2
+    department: '',     // Fallback
     position: '',
     compensation: '',
     payFrequency: 'monthly',
@@ -66,7 +81,7 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
     if (!formData.nationalId.trim()) newErrors.nationalId = 'National ID is required';
     if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
     if (!formData.startDate) newErrors.startDate = 'Start date is required';
-    if (!formData.department.trim()) newErrors.department = 'Department is required';
+    // Phase 2: Department is now optional (can be set via departmentId or legacy text)
     if (!formData.position.trim()) newErrors.position = 'Position is required';
     if (!formData.compensation.trim()) newErrors.compensation = 'Compensation is required';
     else if (isNaN(Number(formData.compensation)) || Number(formData.compensation) <= 0)
@@ -97,23 +112,27 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
       // Convert date to ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)
       const hireDateISO = new Date(formData.startDate).toISOString();
       
+      // Phase 1 & 2 Migration: Send PII and organizational structure at root level
       const response = await paylinq.createWorker({
-        hrisEmployeeId: formData.employeeNumber, // Use employee number as HRIS ID
+        hrisEmployeeId: formData.employeeNumber,
         employeeNumber: formData.employeeNumber,
         firstName: firstName,
         lastName: lastName,
         email: formData.email,
+        phone: formData.phone, // Phase 1: Root level
+        nationalId: formData.nationalId, // Phase 1: Root level (maps to taxIdNumber)
+        dateOfBirth: formData.dateOfBirth, // Phase 1: Root level
         hireDate: hireDateISO,
         status: 'active',
         paymentMethod: 'direct_deposit',
         bankAccountNumber: formData.bankAccount,
-        bankRoutingNumber: '', // Optional
+        bankRoutingNumber: '',
+        // Phase 2: Organizational structure at root level
+        departmentId: formData.departmentId || null,
+        locationId: formData.locationId || null,
+        managerId: formData.managerId || null,
         metadata: {
-          phone: formData.phone,
-          nationalId: formData.nationalId,
-          dateOfBirth: formData.dateOfBirth,
-          workerType: formData.workerType,
-          department: formData.department,
+          department: formData.department || null, // Fallback for legacy
           position: formData.position,
           compensation: Number(formData.compensation),
           payFrequency: formData.payFrequency,
@@ -122,7 +141,22 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
         },
       });
       
-      if (response.success) {
+      if (response.success && response.employee) {
+        // Assign worker type if specified
+        if (formData.workerType) {
+          try {
+            await paylinq.assignWorkerType({
+              employeeId: response.employee.employeeId,
+              workerTypeTemplateId: formData.workerType,
+              effectiveFrom: formData.startDate,
+            });
+          } catch (wtError: any) {
+            console.error('Failed to assign worker type:', wtError);
+            // Don't fail the whole operation, just warn
+            error('Worker created but failed to assign worker type. Please assign manually.');
+          }
+        }
+        
         success(`Worker ${formData.fullName} has been added successfully`);
         // Reset form
         setFormData({
@@ -134,7 +168,10 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
           dateOfBirth: '',
           startDate: new Date().toISOString().split('T')[0],
           workerType: 'Full-Time',
-          department: '',
+          departmentId: '',   // Phase 2
+          locationId: '',     // Phase 2
+          managerId: '',      // Phase 2
+          department: '',     // Fallback
           position: '',
           compensation: '',
           payFrequency: 'monthly',
@@ -338,12 +375,19 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
               />
             </FormField>
 
-            <FormField label="Department" required error={errors.department}>
-              <Input
-                value={formData.department}
-                onChange={(e) => handleChange('department', e.target.value)}
-                placeholder="Engineering"
-                error={!!errors.department}
+            {/* Phase 2: Department dropdown from Nexus HRIS */}
+            <FormField label="Department" error={errors.departmentId}>
+              <Select
+                value={formData.departmentId}
+                onChange={(e) => handleChange('departmentId', e.target.value)}
+                options={[
+                  { value: '', label: loadingDepartments ? 'Loading...' : 'Select Department (Optional)' },
+                  ...departments.map((dept: any) => ({
+                    value: dept.id,
+                    label: dept.departmentName || dept.name || dept.departmentCode
+                  }))
+                ]}
+                disabled={loadingDepartments}
               />
             </FormField>
 
@@ -353,6 +397,38 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
                 onChange={(e) => handleChange('position', e.target.value)}
                 placeholder="Software Engineer"
                 error={!!errors.position}
+              />
+            </FormField>
+
+            {/* Phase 2: Location dropdown from Nexus HRIS */}
+            <FormField label="Location">
+              <Select
+                value={formData.locationId}
+                onChange={(e) => handleChange('locationId', e.target.value)}
+                options={[
+                  { value: '', label: loadingLocations ? 'Loading...' : 'Select Location (Optional)' },
+                  ...locations.map((loc: any) => ({
+                    value: loc.id,
+                    label: `${loc.name || loc.locationName}${loc.city ? ` - ${loc.city}` : ''}`
+                  }))
+                ]}
+                disabled={loadingLocations}
+              />
+            </FormField>
+
+            {/* Phase 2: Manager dropdown (self-referencing) */}
+            <FormField label="Manager / Supervisor">
+              <Select
+                value={formData.managerId}
+                onChange={(e) => handleChange('managerId', e.target.value)}
+                options={[
+                  { value: '', label: loadingManagers ? 'Loading...' : 'No Manager (Optional)' },
+                  ...managers.map((mgr: any) => ({
+                    value: mgr.id,
+                    label: mgr.fullName || `${mgr.firstName || ''} ${mgr.lastName || ''}`.trim()
+                  }))
+                ]}
+                disabled={loadingManagers}
               />
             </FormField>
           </div>

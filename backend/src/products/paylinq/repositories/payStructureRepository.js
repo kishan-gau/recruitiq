@@ -90,55 +90,61 @@ class PayStructureRepository {
    * Find templates by organization with filters
    */
   async findTemplates(organizationId, filters = {}) {
-    let whereClause = 'WHERE pst.organization_id = $1 AND pst.deleted_at IS NULL';
-    const params = [organizationId];
-    let paramCount = 1;
-    
-    if (filters.status) {
-      paramCount++;
-      whereClause += ` AND pst.status = $${paramCount}`;
-      params.push(filters.status);
+    try {
+      let whereClause = 'WHERE pst.organization_id = $1 AND pst.deleted_at IS NULL';
+      const params = [organizationId];
+      let paramCount = 1;
+      
+      if (filters.status) {
+        paramCount++;
+        whereClause += ` AND pst.status = $${paramCount}`;
+        params.push(filters.status);
+      }
+      
+      if (filters.templateCode) {
+        paramCount++;
+        whereClause += ` AND pst.template_code = $${paramCount}`;
+        params.push(filters.templateCode);
+      }
+      
+      if (filters.isOrganizationDefault !== undefined) {
+        paramCount++;
+        whereClause += ` AND pst.is_organization_default = $${paramCount}`;
+        params.push(filters.isOrganizationDefault);
+      }
+      
+      if (filters.search) {
+        paramCount++;
+        whereClause += ` AND (pst.template_name ILIKE $${paramCount} OR pst.template_code ILIKE $${paramCount})`;
+        params.push(`%${filters.search}%`);
+      }
+      
+      const sortField = filters.sortField || 'created_at';
+      const sortOrder = filters.sortOrder || 'DESC';
+      
+      const queryText = `SELECT pst.*,
+                (SELECT COUNT(*) FROM payroll.pay_structure_component psc 
+                 WHERE psc.template_id = pst.id 
+                 AND psc.deleted_at IS NULL) as component_count,
+                (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
+                 WHERE wps.template_version_id = pst.id 
+                 AND wps.is_current = true 
+                 AND wps.deleted_at IS NULL) as assigned_worker_count
+         FROM payroll.pay_structure_template pst
+         ${whereClause}
+         ORDER BY pst.${sortField} ${sortOrder}`;
+      
+      const result = await this.query(
+        queryText,
+        params,
+        organizationId,
+        { operation: 'SELECT', table: 'payroll.pay_structure_template' }
+      );
+      
+      return result.rows.map(row => mapPayStructureTemplateDbToApi(row));
+    } catch (error) {
+      throw error;
     }
-    
-    if (filters.templateCode) {
-      paramCount++;
-      whereClause += ` AND pst.template_code = $${paramCount}`;
-      params.push(filters.templateCode);
-    }
-    
-    if (filters.isOrganizationDefault !== undefined) {
-      paramCount++;
-      whereClause += ` AND pst.is_organization_default = $${paramCount}`;
-      params.push(filters.isOrganizationDefault);
-    }
-    
-    if (filters.search) {
-      paramCount++;
-      whereClause += ` AND (pst.template_name ILIKE $${paramCount} OR pst.template_code ILIKE $${paramCount})`;
-      params.push(`%${filters.search}%`);
-    }
-    
-    const sortField = filters.sortField || 'created_at';
-    const sortOrder = filters.sortOrder || 'DESC';
-    
-    const result = await this.query(
-      `SELECT pst.*,
-              (SELECT COUNT(*) FROM payroll.pay_structure_component psc 
-               WHERE psc.template_id = pst.id 
-               AND psc.deleted_at IS NULL) as component_count,
-              (SELECT COUNT(*) FROM payroll.worker_pay_structure wps 
-               WHERE wps.template_version_id = pst.id 
-               AND wps.is_current = true 
-               AND wps.deleted_at IS NULL) as assigned_worker_count
-       FROM payroll.pay_structure_template pst
-       ${whereClause}
-       ORDER BY pst.${sortField} ${sortOrder}`,
-      params,
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
-    );
-    
-    return result.rows.map(row => mapPayStructureTemplateDbToApi(row));
   }
 
   /**
@@ -372,9 +378,7 @@ class PayStructureRepository {
        AND pst.organization_id = $2
        AND psc.deleted_at IS NULL
        ORDER BY psc.sequence_order ASC`,
-      [templateId, organizationId],
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.pay_structure_component' }
+      [templateId], organizationId, { operation: 'SELECT', table: 'payroll.pay_structure_component' }
     );
     
     return result.rows;
@@ -1068,8 +1072,8 @@ class PayStructureRepository {
       { operation: 'INSERT', table: 'payroll.pay_structure_template_inclusion', userId }
     );
     
-    // Invalidate resolution cache
-    await this.invalidateTemplateResolutionCache(inclusionData.parentTemplateId, organizationId);
+    // Cascade invalidate resolution cache when inclusion changes
+    await this.cascadeInvalidateTemplateCache(inclusionData.parentTemplateId, organizationId);
     
     return result.rows[0];
   }
@@ -1186,8 +1190,8 @@ class PayStructureRepository {
     );
 
     if (result.rows[0]) {
-      // Invalidate resolution cache
-      await this.invalidateTemplateResolutionCache(result.rows[0].parent_template_id, organizationId);
+      // Cascade invalidate resolution cache
+      await this.cascadeInvalidateTemplateCache(result.rows[0].parent_template_id, organizationId);
     }
 
     return result.rows[0];
@@ -1210,8 +1214,8 @@ class PayStructureRepository {
     );
     
     if (result.rows[0]) {
-      // Invalidate resolution cache
-      await this.invalidateTemplateResolutionCache(result.rows[0].parent_template_id, organizationId);
+      // Cascade invalidate resolution cache
+      await this.cascadeInvalidateTemplateCache(result.rows[0].parent_template_id, organizationId);
     }
     
     return result.rows[0];
@@ -1331,16 +1335,52 @@ class PayStructureRepository {
   /**
    * Invalidate template resolution cache
    */
-  async invalidateTemplateResolutionCache(templateId, organizationId) {
-    await this.query(
-      `UPDATE payroll.pay_structure_template_resolution_cache
+  async invalidateTemplateResolutionCache(templateId, organizationId, cacheKey = null) {
+    let query = `UPDATE payroll.pay_structure_template_resolution_cache
        SET is_valid = false
        WHERE template_id = $1
-       AND organization_id = $2`,
-      [templateId, organizationId],
+       AND organization_id = $2`;
+    
+    const params = [templateId, organizationId];
+    
+    if (cacheKey) {
+      query += ' AND cache_key = $3';
+      params.push(cacheKey);
+    }
+    
+    await this.query(
+      query,
+      params,
       organizationId,
       { operation: 'UPDATE', table: 'payroll.pay_structure_template_resolution_cache' }
     );
+  }
+
+  /**
+   * Cascade invalidate cache when a template is modified
+   * Invalidates the template's own cache AND any parent templates that include it
+   */
+  async cascadeInvalidateTemplateCache(templateId, organizationId) {
+    // Invalidate the template's own cache
+    await this.invalidateTemplateResolutionCache(templateId, organizationId);
+
+    // Find all templates that include this template (parents)
+    const parentTemplatesResult = await this.query(
+      `SELECT DISTINCT psti.parent_template_id
+       FROM payroll.pay_structure_template_inclusion psti
+       JOIN payroll.pay_structure_template pst ON pst.template_code = psti.included_template_code
+       WHERE pst.id = $1
+       AND psti.organization_id = $2
+       AND psti.deleted_at IS NULL`,
+      [templateId, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template_inclusion' }
+    );
+
+    // Recursively invalidate parent templates
+    for (const parent of parentTemplatesResult.rows) {
+      await this.cascadeInvalidateTemplateCache(parent.parent_template_id, organizationId);
+    }
   }
 
   /**
@@ -1367,14 +1407,12 @@ class PayStructureRepository {
    */
   async getTemplateComponents(templateId, organizationId) {
     const result = await this.query(
-      `SELECT psc.*, pc.component_name, pc.component_category
+      `SELECT psc.*, pc.component_name, pc.component_type
        FROM payroll.pay_structure_component psc
        LEFT JOIN payroll.pay_component pc ON pc.component_code = psc.component_code
-       WHERE psc.template_id = $1 AND psc.organization_id = $2 AND psc.deleted_at IS NULL
+       WHERE psc.template_id = $1 AND psc.deleted_at IS NULL
        ORDER BY psc.sequence_order`,
-      [templateId, organizationId],
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.pay_structure_component' }
+      [templateId], organizationId, { operation: 'SELECT', table: 'payroll.pay_structure_component' }
     );
     
     return result.rows;
@@ -1428,27 +1466,35 @@ class PayStructureRepository {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24); // Cache for 24 hours
 
+    // resolvedTemplateIds must be string[] - no defensive coercion
+    if (!Array.isArray(cacheData.resolvedTemplateIds) || 
+        !cacheData.resolvedTemplateIds.every(id => typeof id === 'string')) {
+      throw new Error('resolvedTemplateIds must be an array of strings');
+    }
+
     const result = await this.query(
       `INSERT INTO payroll.pay_structure_template_resolution_cache
-      (organization_id, template_id, resolved_template_ids, resolved_components,
-       resolution_depth, cache_key, expires_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (template_id, cache_key)
+      (organization_id, template_id, cache_key, resolved_components,
+       resolution_metadata, expires_at)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (template_id, cache_key, organization_id)
       DO UPDATE SET 
-        resolved_template_ids = EXCLUDED.resolved_template_ids,
         resolved_components = EXCLUDED.resolved_components,
-        resolution_depth = EXCLUDED.resolution_depth,
-        resolved_at = NOW(),
+        resolution_metadata = EXCLUDED.resolution_metadata,
+        updated_at = NOW(),
         expires_at = EXCLUDED.expires_at,
         is_valid = true
       RETURNING *`,
       [
         organizationId,
         cacheData.templateId,
-        cacheData.resolvedTemplateIds,
-        JSON.stringify(cacheData.resolvedComponents),
-        cacheData.resolutionDepth,
         cacheData.cacheKey,
+        JSON.stringify(cacheData.resolvedComponents),
+        JSON.stringify({
+          resolvedTemplateIds: cacheData.resolvedTemplateIds,
+          resolutionDepth: cacheData.resolutionDepth,
+          resolvedAt: new Date().toISOString()
+        }),
         expiresAt
       ],
       organizationId,
@@ -1463,14 +1509,12 @@ class PayStructureRepository {
    */
   async getTemplateComponents(templateId, organizationId) {
     const result = await this.query(
-      `SELECT psc.*, pc.component_name, pc.component_category
+      `SELECT psc.*, pc.component_name, pc.component_type
        FROM payroll.pay_structure_component psc
        LEFT JOIN payroll.pay_component pc ON pc.component_code = psc.component_code
-       WHERE psc.template_id = $1 AND psc.organization_id = $2 AND psc.deleted_at IS NULL
+       WHERE psc.template_id = $1 AND psc.deleted_at IS NULL
        ORDER BY psc.sequence_order`,
-      [templateId, organizationId],
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.pay_structure_component' }
+      [templateId], organizationId, { operation: 'SELECT', table: 'payroll.pay_structure_component' }
     );
     
     return result.rows;
@@ -1515,6 +1559,28 @@ class PayStructureRepository {
     );
     
     return mapPayStructureTemplateDbToApi(result.rows[0]);
+  }
+
+  /**
+   * Find current template by code
+   * Returns the current version of a template (is_current = true)
+   * Used for worker type template upgrades
+   */
+  async findCurrentTemplateByCode(templateCode, organizationId) {
+    const result = await this.query(
+      `SELECT id, template_code, template_name, version_major, version_minor, version_patch
+       FROM payroll.pay_structure_template
+       WHERE template_code = $1
+         AND organization_id = $2
+         AND deleted_at IS NULL
+         AND is_current = true
+       LIMIT 1`,
+      [templateCode, organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
+    );
+    
+    return result.rows[0] || null;
   }
 
   /**
@@ -1575,13 +1641,6 @@ class PayStructureRepository {
     );
 
     return result.rows;
-  }
-
-  /**
-   * Find all templates (convenience method for getAllTemplates)
-   */
-  async findTemplates(organizationId, filters = {}) {
-    return this.findAll(organizationId, { ...filters, isTemplate: true });
   }
 
   /**

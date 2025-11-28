@@ -91,7 +91,7 @@ export default function PayslipsList() {
 
   useEffect(() => {
     fetchPayslips();
-  }, [paylinq, showError]);
+  }, [paylinq]);
 
   // Filter configuration
   const filterConfigs: FilterConfig[] = [

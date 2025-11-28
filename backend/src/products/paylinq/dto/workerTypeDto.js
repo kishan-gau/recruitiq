@@ -1,74 +1,82 @@
 /**
  * Worker Type DTO Mappers
  * 
+ * ARCHITECTURE NOTE: Worker types are now owned by HRIS (hris.worker_type).
+ * This DTO combines HRIS worker type data with PayLinQ-specific pay configurations.
+ * 
  * Transforms data between database format (snake_case) and API format (camelCase)
- * for worker type templates and assignments.
+ * for worker types, pay configurations, and historical assignments.
  * 
  * @module products/paylinq/dto/workerTypeDto
  */
 
 /**
- * Map worker type template from DB to API format
- * @param {Object} dbTemplate - Database worker type template (snake_case)
- * @returns {Object|null} API-formatted worker type template (camelCase)
+ * Map worker type from DB to API format
+ * Combines hris.worker_type with payroll.worker_type_pay_config
+ * @param {Object} dbWorkerType - Combined database record (snake_case)
+ * @returns {Object|null} API-formatted worker type (camelCase)
  */
-export function mapTemplateDbToApi(dbTemplate) {
-  if (!dbTemplate) return null;
+export function mapWorkerTypeDbToApi(dbWorkerType) {
+  if (!dbWorkerType) return null;
 
   return {
-    id: dbTemplate.id,
-    organizationId: dbTemplate.organization_id,
+    id: dbWorkerType.id,
+    organizationId: dbWorkerType.organization_id,
     
-    // Template details
-    name: dbTemplate.name,
-    code: dbTemplate.code,
-    description: dbTemplate.description || null,
+    // Worker Type Identity (from hris.worker_type)
+    name: dbWorkerType.name,
+    code: dbWorkerType.code,
+    description: dbWorkerType.description || null,
     
-    // Default settings
-    defaultPayFrequency: dbTemplate.default_pay_frequency,
-    defaultPaymentMethod: dbTemplate.default_payment_method,
+    // HRIS Settings (from hris.worker_type)
+    benefitsEligible: dbWorkerType.benefits_eligible,
+    ptoEligible: dbWorkerType.pto_eligible,
+    sickLeaveEligible: dbWorkerType.sick_leave_eligible,
+    vacationAccrualRate: dbWorkerType.vacation_accrual_rate ? parseFloat(dbWorkerType.vacation_accrual_rate) : null,
     
-    // Eligibility flags
-    benefitsEligible: dbTemplate.benefits_eligible,
-    overtimeEligible: dbTemplate.overtime_eligible,
-    ptoEligible: dbTemplate.pto_eligible,
-    sickLeaveEligible: dbTemplate.sick_leave_eligible,
-    vacationAccrualRate: dbTemplate.vacation_accrual_rate ? parseFloat(dbTemplate.vacation_accrual_rate) : null,
+    // PayLinQ Pay Settings (from payroll.worker_type_pay_config - may be null)
+    defaultPayFrequency: dbWorkerType.default_pay_frequency || null,
+    defaultPaymentMethod: dbWorkerType.default_payment_method || null,
+    overtimeEligible: dbWorkerType.overtime_eligible !== undefined ? dbWorkerType.overtime_eligible : true,
+    payStructureTemplateCode: dbWorkerType.pay_structure_template_code || null,
     
     // Status
-    status: dbTemplate.status,
+    isActive: dbWorkerType.is_active,
     
     // Audit fields
-    createdAt: dbTemplate.created_at,
-    updatedAt: dbTemplate.updated_at,
-    deletedAt: dbTemplate.deleted_at,
-    createdBy: dbTemplate.created_by,
-    updatedBy: dbTemplate.updated_by,
-    deletedBy: dbTemplate.deleted_by
+    createdAt: dbWorkerType.created_at,
+    updatedAt: dbWorkerType.updated_at,
+    deletedAt: dbWorkerType.deleted_at,
+    createdBy: dbWorkerType.created_by,
+    updatedBy: dbWorkerType.updated_by,
+    deletedBy: dbWorkerType.deleted_by
   };
 }
 
 /**
- * Map multiple worker type templates from DB to API format
- * @param {Array} dbTemplates - Array of database worker type templates
- * @returns {Array} Array of API-formatted worker type templates
+ * Map multiple worker types from DB to API format
+ * @param {Array} dbWorkerTypes - Array of database worker types
+ * @returns {Array} Array of API-formatted worker types
  */
-export function mapTemplatesDbToApi(dbTemplates) {
-  if (!Array.isArray(dbTemplates)) return [];
-  return dbTemplates.map(mapTemplateDbToApi);
+export function mapWorkerTypesDbToApi(dbWorkerTypes) {
+  if (!Array.isArray(dbWorkerTypes)) return [];
+  return dbWorkerTypes.map(mapWorkerTypeDbToApi);
 }
 
 /**
- * Map worker type template from API to DB format
- * @param {Object} apiData - API worker type template data (camelCase)
- * @returns {Object} Database-formatted worker type template (snake_case)
+ * Map worker type from API to DB format
+ * Returns a flat object with all fields in snake_case
+ * The repository layer handles the separation into multiple tables
+ * 
+ * @param {Object} apiData - API worker type data (camelCase)
+ * @returns {Object} Flat database-formatted object (snake_case)
  */
-export function mapTemplateApiToDb(apiData) {
+export function mapWorkerTypeApiToDb(apiData) {
   if (!apiData) return null;
 
   const dbData = {};
 
-  // Map only provided fields (for updates)
+  // HRIS Worker Type fields (hris.worker_type)
   if (apiData.name !== undefined) {
     dbData.name = apiData.name;
   }
@@ -78,17 +86,8 @@ export function mapTemplateApiToDb(apiData) {
   if (apiData.description !== undefined) {
     dbData.description = apiData.description;
   }
-  if (apiData.defaultPayFrequency !== undefined) {
-    dbData.default_pay_frequency = apiData.defaultPayFrequency;
-  }
-  if (apiData.defaultPaymentMethod !== undefined) {
-    dbData.default_payment_method = apiData.defaultPaymentMethod;
-  }
   if (apiData.benefitsEligible !== undefined) {
     dbData.benefits_eligible = apiData.benefitsEligible;
-  }
-  if (apiData.overtimeEligible !== undefined) {
-    dbData.overtime_eligible = apiData.overtimeEligible;
   }
   if (apiData.ptoEligible !== undefined) {
     dbData.pto_eligible = apiData.ptoEligible;
@@ -99,47 +98,63 @@ export function mapTemplateApiToDb(apiData) {
   if (apiData.vacationAccrualRate !== undefined) {
     dbData.vacation_accrual_rate = apiData.vacationAccrualRate;
   }
-  if (apiData.status !== undefined) {
-    dbData.status = apiData.status;
+  if (apiData.isActive !== undefined) {
+    dbData.is_active = apiData.isActive;
+  }
+
+  // PayLinQ Pay Config fields (payroll.worker_type_pay_config)
+  if (apiData.defaultPayFrequency !== undefined) {
+    dbData.default_pay_frequency = apiData.defaultPayFrequency;
+  }
+  if (apiData.defaultPaymentMethod !== undefined) {
+    dbData.default_payment_method = apiData.defaultPaymentMethod;
+  }
+  if (apiData.overtimeEligible !== undefined) {
+    dbData.overtime_eligible = apiData.overtimeEligible;
+  }
+  if (apiData.payStructureTemplateCode !== undefined) {
+    dbData.pay_structure_template_code = apiData.payStructureTemplateCode;
   }
 
   return dbData;
 }
 
 /**
- * Map worker type assignment from DB to API format
- * @param {Object} dbAssignment - Database worker type assignment (snake_case)
- * @returns {Object|null} API-formatted worker type assignment (camelCase)
+ * Map worker type history/assignment from DB to API format
+ * @param {Object} dbHistory - Database worker type history record (snake_case)
+ * @returns {Object|null} API-formatted worker type history (camelCase)
  */
-export function mapAssignmentDbToApi(dbAssignment) {
-  if (!dbAssignment) return null;
+export function mapAssignmentDbToApi(dbHistory) {
+  if (!dbHistory) return null;
 
   return {
-    id: dbAssignment.id,
-    organizationId: dbAssignment.organization_id,
-    employeeId: dbAssignment.employee_id,
-    workerTypeTemplateId: dbAssignment.worker_type_template_id,
+    id: dbHistory.id,
+    organizationId: dbHistory.organization_id,
+    employeeId: dbHistory.employee_id,
+    workerTypeId: dbHistory.worker_type_id,
     
     // Assignment details
-    effectiveFrom: dbAssignment.effective_from,
-    effectiveTo: dbAssignment.effective_to,
-    isCurrent: dbAssignment.is_current,
+    effectiveFrom: dbHistory.effective_from,
+    effectiveTo: dbHistory.effective_to || null,
+    isCurrent: dbHistory.is_current,
     
-    // Overrides
-    payFrequency: dbAssignment.pay_frequency,
-    paymentMethod: dbAssignment.payment_method,
+    // Optional overrides
+    payFrequency: dbHistory.pay_frequency || null,
+    paymentMethod: dbHistory.payment_method || null,
     
-    // Template details (if joined)
-    templateName: dbAssignment.template_name,
-    templateCode: dbAssignment.template_code,
+    // Change tracking
+    changeReason: dbHistory.change_reason || null,
+    recordedAt: dbHistory.recorded_at,
+    recordedBy: dbHistory.recorded_by,
+    
+    // Worker Type details (if joined from hris.worker_type)
+    workerTypeName: dbHistory.worker_type_name || null,
+    workerTypeCode: dbHistory.worker_type_code || null,
     
     // Audit fields
-    createdAt: dbAssignment.created_at,
-    updatedAt: dbAssignment.updated_at,
-    deletedAt: dbAssignment.deleted_at,
-    createdBy: dbAssignment.created_by,
-    updatedBy: dbAssignment.updated_by,
-    deletedBy: dbAssignment.deleted_by
+    createdAt: dbHistory.created_at,
+    updatedAt: dbHistory.updated_at,
+    deletedAt: dbHistory.deleted_at
   };
 }
 
@@ -154,20 +169,20 @@ export function mapAssignmentsDbToApi(dbAssignments) {
 }
 
 /**
- * Map worker type assignment from API to DB format
- * @param {Object} apiData - API worker type assignment data (camelCase)
- * @returns {Object} Database-formatted worker type assignment (snake_case)
+ * Map worker type history from API to DB format
+ * @param {Object} apiData - API worker type history data (camelCase)
+ * @returns {Object} Database-formatted worker type history (snake_case)
  */
 export function mapAssignmentApiToDb(apiData) {
   if (!apiData) return null;
 
   const dbData = {};
 
-  if (apiData.employeeRecordId !== undefined) {
-    dbData.employee_id = apiData.employeeRecordId;
+  if (apiData.employeeId !== undefined) {
+    dbData.employee_id = apiData.employeeId;
   }
-  if (apiData.workerTypeTemplateId !== undefined) {
-    dbData.worker_type_template_id = apiData.workerTypeTemplateId;
+  if (apiData.workerTypeId !== undefined) {
+    dbData.worker_type_id = apiData.workerTypeId;
   }
   if (apiData.effectiveFrom !== undefined) {
     dbData.effective_from = apiData.effectiveFrom;
@@ -184,8 +199,8 @@ export function mapAssignmentApiToDb(apiData) {
   if (apiData.paymentMethod !== undefined) {
     dbData.payment_method = apiData.paymentMethod;
   }
-  if (apiData.notes !== undefined) {
-    dbData.notes = apiData.notes;
+  if (apiData.changeReason !== undefined) {
+    dbData.change_reason = apiData.changeReason;
   }
 
   return dbData;

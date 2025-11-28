@@ -181,6 +181,50 @@ CREATE INDEX idx_location_org ON hris.location(organization_id);
 CREATE INDEX idx_location_active ON hris.location(is_active) WHERE deleted_at IS NULL;
 
 -- =====================================================
+-- SECTION 2.5: WORKER TYPE CLASSIFICATION
+-- Employee classification types (Full-Time, Part-Time, etc.)
+-- =====================================================
+
+CREATE TABLE hris.worker_type (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    
+    -- Worker Type Identity
+    code VARCHAR(50) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    
+    -- HRIS-Specific Settings (Benefits, PTO, etc.)
+    benefits_eligible BOOLEAN DEFAULT true,
+    pto_eligible BOOLEAN DEFAULT true,
+    sick_leave_eligible BOOLEAN DEFAULT true,
+    vacation_accrual_rate NUMERIC(5, 2) DEFAULT 0, -- Hours per pay period
+    
+    -- Status
+    is_active BOOLEAN DEFAULT true,
+    
+    -- Audit fields
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
+    created_by UUID REFERENCES hris.user_account(id),
+    updated_by UUID REFERENCES hris.user_account(id),
+    deleted_by UUID REFERENCES hris.user_account(id),
+    
+    CONSTRAINT unique_worker_type_code UNIQUE (organization_id, code),
+    CONSTRAINT unique_worker_type_name UNIQUE (organization_id, name)
+);
+
+CREATE INDEX idx_worker_type_org ON hris.worker_type(organization_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_worker_type_active ON hris.worker_type(is_active) WHERE deleted_at IS NULL;
+CREATE INDEX idx_worker_type_code ON hris.worker_type(code) WHERE deleted_at IS NULL;
+
+COMMENT ON TABLE hris.worker_type IS 'Employee classification types (Full-Time, Part-Time, Contractor, etc.) - HRIS owns these';
+COMMENT ON COLUMN hris.worker_type.code IS 'Unique code for worker type (e.g., FT, PT, CTR)';
+COMMENT ON COLUMN hris.worker_type.benefits_eligible IS 'Whether workers of this type are eligible for benefits';
+COMMENT ON COLUMN hris.worker_type.vacation_accrual_rate IS 'Default vacation accrual rate in hours per pay period';
+
+-- =====================================================
 -- SECTION 3: EMPLOYEE CORE
 -- Core employee information
 -- =====================================================
@@ -229,6 +273,9 @@ CREATE TABLE hris.employee (
         CHECK (employment_status IN ('active', 'on_leave', 'terminated', 'suspended')),
     employment_type VARCHAR(50) CHECK (employment_type IN ('full_time', 'part_time', 'contract', 'temporary', 'intern')),
     
+    -- Worker Type Classification
+    worker_type_id UUID REFERENCES hris.worker_type(id) ON DELETE SET NULL,
+    
     -- Organizational Assignment
     department_id UUID REFERENCES hris.department(id) ON DELETE SET NULL,
     location_id UUID REFERENCES hris.location(id) ON DELETE SET NULL,
@@ -254,18 +301,30 @@ CREATE TABLE hris.employee (
     updated_by UUID,
     deleted_at TIMESTAMPTZ,
     
-    CONSTRAINT unique_employee_number UNIQUE (organization_id, employee_number)
+    CONSTRAINT unique_employee_number UNIQUE (organization_id, employee_number),
+    CONSTRAINT check_employee_age CHECK (date_of_birth IS NULL OR date_of_birth <= CURRENT_DATE - INTERVAL '18 years')
 );
 
 CREATE INDEX idx_employee_org ON hris.employee(organization_id);
 CREATE INDEX idx_employee_user_account ON hris.employee(user_account_id);
-CREATE INDEX idx_employee_department ON hris.employee(department_id);
-CREATE INDEX idx_employee_manager ON hris.employee(manager_id);
+CREATE INDEX idx_employee_department ON hris.employee(department_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_employee_location ON hris.employee(location_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_employee_manager ON hris.employee(manager_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_employee_worker_type ON hris.employee(worker_type_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_employee_status ON hris.employee(employment_status) WHERE deleted_at IS NULL;
 CREATE INDEX idx_employee_email ON hris.employee(email);
 CREATE INDEX idx_employee_resident_status ON hris.employee(is_suriname_resident) WHERE deleted_at IS NULL;
 
+-- Composite indexes for PayLinQ organizational queries (Phase 2 Migration)
+CREATE INDEX idx_employee_org_dept ON hris.employee(organization_id, department_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_employee_org_location ON hris.employee(organization_id, location_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_employee_manager_org ON hris.employee(manager_id, organization_id) WHERE deleted_at IS NULL;
+
 COMMENT ON COLUMN hris.employee.is_suriname_resident IS 'Per Wet Loonbelasting Article 13.1a: Indicates if employee is Suriname resident. Non-residents do NOT receive tax-free allowance (belastingvrije som). Critical for payroll tax calculations.';
+COMMENT ON COLUMN hris.employee.department_id IS 'Links employee to department structure. Used by Nexus for organizational management and by PayLinQ for cost allocation and reporting.';
+COMMENT ON COLUMN hris.employee.location_id IS 'Links employee to physical location/office. Used by Nexus for location-based management and by PayLinQ for location-based payroll reports.';
+COMMENT ON COLUMN hris.employee.manager_id IS 'Self-referencing FK for reporting hierarchy. Used by Nexus for org chart and by PayLinQ for approval workflows.';
+COMMENT ON CONSTRAINT check_employee_age ON hris.employee IS 'Ensures employee is at least 18 years old at time of record creation';
 
 -- Add FK constraint from user_account to employee (circular reference resolved)
 ALTER TABLE hris.user_account

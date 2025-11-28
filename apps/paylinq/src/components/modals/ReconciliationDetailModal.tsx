@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import Dialog from '@/components/ui/Dialog';
 import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
-import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { formatCurrency, formatDate } from '@/utils/formatting';
 import { CheckCircle, XCircle, AlertCircle, DollarSign, Calendar, FileText } from 'lucide-react';

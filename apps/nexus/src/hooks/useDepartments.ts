@@ -9,6 +9,10 @@ export const departmentKeys = {
   list: (filters?: DepartmentFilters) => [...departmentKeys.lists(), filters] as const,
   details: () => [...departmentKeys.all, 'detail'] as const,
   detail: (id: string) => [...departmentKeys.details(), id] as const,
+  hierarchies: () => [...departmentKeys.all, 'hierarchy'] as const,
+  hierarchy: (id?: string) => [...departmentKeys.hierarchies(), id] as const,
+  structure: () => [...departmentKeys.all, 'structure'] as const,
+  employees: (id: string) => [...departmentKeys.all, 'employees', id] as const,
 };
 
 // Hooks
@@ -86,3 +90,29 @@ export function useDeleteDepartment() {
     },
   });
 }
+
+export function useDepartmentHierarchy(id?: string) {
+  return useQuery({
+    queryKey: departmentKeys.hierarchy(id),
+    queryFn: () => (id ? departmentsService.getHierarchy(id) : departmentsService.getOrganizationStructure().then(arr => arr[0])),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrganizationStructure() {
+  return useQuery({
+    queryKey: departmentKeys.structure(),
+    queryFn: () => departmentsService.getOrganizationStructure(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useDepartmentEmployees(id: string) {
+  return useQuery({
+    queryKey: departmentKeys.employees(id),
+    queryFn: () => departmentsService.getEmployees(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+

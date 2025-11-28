@@ -46,6 +46,7 @@ const TimeOffTypesManagement = lazy(() => import('@/pages/time-off/TimeOffTypesM
 // Attendance
 const AttendanceDashboard = lazy(() => import('@/pages/attendance/AttendanceDashboard'));
 const AttendanceRecords = lazy(() => import('@/pages/attendance/AttendanceRecords'));
+const ManualAttendanceEntry = lazy(() => import('@/pages/attendance/ManualAttendanceEntry'));
 
 // Benefits
 const BenefitPlansList = lazy(() => import('@/pages/benefits/BenefitPlansList'));
@@ -56,12 +57,14 @@ const EnrollmentDetails = lazy(() => import('@/pages/benefits/EnrollmentDetails'
 const EnrollmentForm = lazy(() => import('@/pages/benefits/EnrollmentForm'));
 
 // Documents
+const DocumentsDashboard = lazy(() => import('@/pages/documents/DocumentsDashboard'));
 const DocumentsList = lazy(() => import('@/pages/documents/DocumentsList'));
 const DocumentUpload = lazy(() => import('@/pages/documents/DocumentUpload'));
 const DocumentDetails = lazy(() => import('@/pages/documents/DocumentDetails'));
 
 // Departments & Locations
 const DepartmentsList = lazy(() => import('@/pages/departments/DepartmentsList'));
+const DepartmentHierarchy = lazy(() => import('@/pages/departments/DepartmentHierarchy'));
 const DepartmentDetails = lazy(() => import('@/pages/departments/DepartmentDetails'));
 const DepartmentNew = lazy(() => import('@/pages/departments/DepartmentNew'));
 const DepartmentEdit = lazy(() => import('@/pages/departments/DepartmentEdit'));
@@ -80,6 +83,7 @@ const BenefitsReport = lazy(() => import('@/pages/reports/BenefitsReport'));
 const PerformanceReport = lazy(() => import('@/pages/reports/PerformanceReport'));
 const Settings = lazy(() => import('@/pages/settings/Settings'));
 const RolesPermissions = lazy(() => import('@/pages/settings/RolesPermissions'));
+const BulkUserAccessManagement = lazy(() => import('@/pages/settings/BulkUserAccessManagement'));
 
 // ScheduleHub
 const ScheduleHubDashboard = lazy(() => import('@/pages/schedulehub/ScheduleHubDashboard'));
@@ -165,6 +169,7 @@ function App() {
                   <Route path="attendance">
                     <Route index element={<AttendanceDashboard />} />
                     <Route path="records" element={<AttendanceRecords />} />
+                    <Route path="manual-entry" element={<ManualAttendanceEntry />} />
                   </Route>
 
                   {/* Benefits */}
@@ -185,6 +190,7 @@ function App() {
                   {/* Departments */}
                   <Route path="departments">
                     <Route index element={<DepartmentsList />} />
+                    <Route path="hierarchy" element={<DepartmentHierarchy />} />
                     <Route path="create" element={<DepartmentNew />} />
                     <Route path=":id" element={<DepartmentDetails />} />
                     <Route path=":id/edit" element={<DepartmentEdit />} />
@@ -201,6 +207,7 @@ function App() {
                   {/* Documents */}
                   <Route path="documents">
                     <Route index element={<DocumentsList />} />
+                    <Route path="dashboard" element={<DocumentsDashboard />} />
                     <Route path="upload" element={<DocumentUpload />} />
                     <Route path=":id" element={<DocumentDetails />} />
                   </Route>
@@ -231,6 +238,7 @@ function App() {
                   <Route path="settings">
                     <Route index element={<Settings />} />
                     <Route path="roles-permissions" element={<RolesPermissions />} />
+                    <Route path="bulk-user-access" element={<BulkUserAccessManagement />} />
                   </Route>
 
                   {/* 404 */}

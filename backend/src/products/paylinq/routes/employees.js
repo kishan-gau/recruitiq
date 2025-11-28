@@ -6,6 +6,7 @@
 import express from 'express';
 import employeeRecordController from '../controllers/employeeRecordController.js';
 import userAccessController from '../controllers/userAccessController.js';
+import payComponentController from '../controllers/payComponentController.js';
 import { validate  } from '../../../middleware/validation.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
@@ -119,6 +120,18 @@ router.get(
   requirePermission('payroll:employees:read'),
   validate(uuidParamSchema, 'params'),
   employeeRecordController.getEmployeePayrollHistory
+);
+
+// GET /api/paylinq/employees/:id/assignments - Get employee pay component assignments
+router.get(
+  '/:id/assignments',
+  requirePermission('payroll:employees:read'),
+  (req, res, next) => {
+    // Map :id to :employeeId for the controller
+    req.params.employeeId = req.params.id;
+    next();
+  },
+  payComponentController.getEmployeeComponentAssignments
 );
 
 // ==================== USER ACCESS MANAGEMENT ====================

@@ -20,12 +20,46 @@ INSERT INTO organizations (
 ) ON CONFLICT (slug) DO NOTHING
 RETURNING id;
 
+-- Seed worker types for the test organization FIRST (needed for employees)
+DO $$
+DECLARE
+  org_id UUID;
+BEGIN
+  -- Get the test organization ID
+  SELECT id INTO org_id FROM organizations WHERE slug = 'test-company';
+  
+  -- Insert worker types for this organization
+  INSERT INTO hris.worker_type (
+    id, organization_id, code, name, description,
+    benefits_eligible, pto_eligible, sick_leave_eligible, vacation_accrual_rate,
+    is_active, created_by
+  ) VALUES
+    -- Full-Time
+    (gen_random_uuid(), org_id, 'FT', 'Full-Time', 
+     'Full-time employees working standard 40 hours per week',
+     true, true, true, 3.33, true, NULL),
+    
+    -- Part-Time
+    (gen_random_uuid(), org_id, 'PT', 'Part-Time',
+     'Part-time employees working less than 40 hours per week',
+     false, true, true, 1.67, true, NULL),
+    
+    -- Contractor
+    (gen_random_uuid(), org_id, 'CTR', 'Contractor',
+     'Independent contractors paid per project or hourly',
+     false, false, false, 0, true, NULL)
+  ON CONFLICT (organization_id, code) DO NOTHING;
+  
+  RAISE NOTICE '[OK] Worker types seeded for Test Company';
+END $$;
+
 -- Create a tenant admin user for the test organization
 -- Password: Admin123!
 DO $$
 DECLARE
   org_id UUID;
   v_user_account_id UUID;
+  v_worker_type_id UUID;
 BEGIN
   -- Get the test organization ID
   SELECT id INTO org_id FROM organizations WHERE slug = 'test-company';
@@ -59,9 +93,17 @@ BEGIN
   END IF;
   
   -- Create employee record for tenant admin
+  -- Get Full-Time worker type ID for tenant admin employee
+  SELECT id INTO v_worker_type_id
+  FROM hris.worker_type
+  WHERE organization_id = org_id
+    AND code = 'FT'
+  LIMIT 1;
+
   INSERT INTO hris.employee (
     organization_id,
     user_account_id,
+    worker_type_id,
     employee_number,
     first_name,
     last_name,
@@ -73,6 +115,7 @@ BEGIN
   ) VALUES (
     org_id,
     v_user_account_id,
+    v_worker_type_id,
     'EMP001',
     'Tenant',
     'Administrator',
@@ -146,10 +189,12 @@ BEGIN
   ON CONFLICT (employee_id, effective_from) DO NOTHING;
   
   -- Assign worker type for tenant admin (Full-Time)
-  INSERT INTO payroll.worker_type (
+  -- NOTE: Uses payroll.worker_type_history for historical tracking
+  -- References hris.worker_type (not the old worker_type_template)
+  INSERT INTO payroll.worker_type_history (
     organization_id,
     employee_id,
-    worker_type_template_id,
+    worker_type_id,
     is_current,
     effective_from,
     created_by,
@@ -158,23 +203,25 @@ BEGIN
   SELECT
     org_id,
     e.id,
-    wtt.id,
+    wt.id,
     true,
     NOW()::date,
     v_user_account_id,
     NOW()
   FROM hris.employee e
-  CROSS JOIN payroll.worker_type_template wtt
+  CROSS JOIN hris.worker_type wt
   WHERE e.organization_id = org_id 
     AND e.employee_number = 'EMP001'
-    AND wtt.name = 'Full-Time'
+    AND wt.code = 'FT'
+    AND wt.deleted_at IS NULL
     AND NOT EXISTS (
-      SELECT 1 FROM payroll.worker_type wt
-      WHERE wt.employee_id = e.id
-        AND wt.organization_id = org_id
-        AND wt.is_current = true
-        AND wt.deleted_at IS NULL
-    );
+      SELECT 1 FROM payroll.worker_type_history wth
+      WHERE wth.employee_id = e.id
+        AND wth.organization_id = org_id
+        AND wth.is_current = true
+        AND wth.deleted_at IS NULL
+    )
+  ON CONFLICT (organization_id, employee_id, worker_type_id, effective_from) DO NOTHING;
   
   RAISE NOTICE '[OK] Test organization and tenant user created successfully!';
   RAISE NOTICE '[INFO] Organization: Test Company Ltd (test-company)';
@@ -188,6 +235,7 @@ DO $$
 DECLARE
   org_id UUID;
   v_user_account_id UUID;
+  v_worker_type_id UUID;
 BEGIN
   -- Get the test organization ID
   SELECT id INTO org_id FROM organizations WHERE slug = 'test-company';
@@ -220,10 +268,18 @@ BEGIN
     WHERE organization_id = org_id AND email = 'payroll@testcompany.com';
   END IF;
   
+  -- Get Full-Time worker type ID for payroll manager
+  SELECT id INTO v_worker_type_id
+  FROM hris.worker_type
+  WHERE organization_id = org_id
+    AND code = 'FT'
+  LIMIT 1;
+
   -- Create employee record for payroll manager
   INSERT INTO hris.employee (
     organization_id,
     user_account_id,
+    worker_type_id,
     employee_number,
     first_name,
     last_name,
@@ -235,6 +291,7 @@ BEGIN
   ) VALUES (
     org_id,
     v_user_account_id,
+    v_worker_type_id,
     'EMP002',
     'Payroll',
     'Manager',
@@ -308,10 +365,10 @@ BEGIN
   ON CONFLICT (employee_id, effective_from) DO NOTHING;
   
   -- Assign worker type for payroll manager (Full-Time)
-  INSERT INTO payroll.worker_type (
+  INSERT INTO payroll.worker_type_history (
     organization_id,
     employee_id,
-    worker_type_template_id,
+    worker_type_id,
     is_current,
     effective_from,
     created_by,
@@ -320,23 +377,25 @@ BEGIN
   SELECT
     org_id,
     e.id,
-    wtt.id,
+    wt.id,
     true,
     NOW()::date,
     v_user_account_id,
     NOW()
   FROM hris.employee e
-  CROSS JOIN payroll.worker_type_template wtt
+  CROSS JOIN hris.worker_type wt
   WHERE e.organization_id = org_id 
     AND e.employee_number = 'EMP002'
-    AND wtt.name = 'Full-Time'
+    AND wt.code = 'FT'
+    AND wt.deleted_at IS NULL
     AND NOT EXISTS (
-      SELECT 1 FROM payroll.worker_type wt
-      WHERE wt.employee_id = e.id
-        AND wt.organization_id = org_id
-        AND wt.is_current = true
-        AND wt.deleted_at IS NULL
-    );
+      SELECT 1 FROM payroll.worker_type_history wth
+      WHERE wth.employee_id = e.id
+        AND wth.organization_id = org_id
+        AND wth.is_current = true
+        AND wth.deleted_at IS NULL
+    )
+  ON CONFLICT (organization_id, employee_id, worker_type_id, effective_from) DO NOTHING;
   
   RAISE NOTICE '[INFO] Payroll Manager: payroll@testcompany.com';
   RAISE NOTICE '[INFO] Password: Admin123!';
@@ -347,6 +406,7 @@ DO $$
 DECLARE
   org_id UUID;
   v_user_account_id UUID;
+  v_worker_type_id UUID;
 BEGIN
   -- Get the test organization ID
   SELECT id INTO org_id FROM organizations WHERE slug = 'test-company';
@@ -379,10 +439,18 @@ BEGIN
     WHERE organization_id = org_id AND email = 'employee@testcompany.com';
   END IF;
   
+  -- Get Part-Time worker type ID for regular employee
+  SELECT id INTO v_worker_type_id
+  FROM hris.worker_type
+  WHERE organization_id = org_id
+    AND code = 'PT'
+  LIMIT 1;
+
   -- Create employee record for self-service user
   INSERT INTO hris.employee (
     organization_id,
     user_account_id,
+    worker_type_id,
     employee_number,
     first_name,
     last_name,
@@ -394,6 +462,7 @@ BEGIN
   ) VALUES (
     org_id,
     v_user_account_id,
+    v_worker_type_id,
     'EMP003',
     'John',
     'Employee',
@@ -469,10 +538,10 @@ BEGIN
   ON CONFLICT (employee_id, effective_from) DO NOTHING;
   
   -- Assign worker type for employee (Part-Time hourly)
-  INSERT INTO payroll.worker_type (
+  INSERT INTO payroll.worker_type_history (
     organization_id,
     employee_id,
-    worker_type_template_id,
+    worker_type_id,
     is_current,
     effective_from,
     created_by,
@@ -481,23 +550,25 @@ BEGIN
   SELECT
     org_id,
     e.id,
-    wtt.id,
+    wt.id,
     true,
     NOW()::date,
     v_user_account_id,
     NOW()
   FROM hris.employee e
-  CROSS JOIN payroll.worker_type_template wtt
+  CROSS JOIN hris.worker_type wt
   WHERE e.organization_id = org_id 
     AND e.employee_number = 'EMP003'
-    AND wtt.name = 'Part-Time'
+    AND wt.code = 'PT'
+    AND wt.deleted_at IS NULL
     AND NOT EXISTS (
-      SELECT 1 FROM payroll.worker_type wt
-      WHERE wt.employee_id = e.id
-        AND wt.organization_id = org_id
-        AND wt.is_current = true
-        AND wt.deleted_at IS NULL
-    );
+      SELECT 1 FROM payroll.worker_type_history wth
+      WHERE wth.employee_id = e.id
+        AND wth.organization_id = org_id
+        AND wth.is_current = true
+        AND wth.deleted_at IS NULL
+    )
+  ON CONFLICT (organization_id, employee_id, worker_type_id, effective_from) DO NOTHING;
   
   RAISE NOTICE '[INFO] Employee: employee@testcompany.com';
   RAISE NOTICE '[INFO] Password: Admin123!';

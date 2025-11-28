@@ -6,7 +6,7 @@
 import express from 'express';
 import { authenticatePlatform, requirePlatformRole, requirePlatformPermission } from '../middleware/auth.js';
 import vpsManager from '../services/vpsManager.js';
-import transipService from '../services/transip.js';
+import transipService from '../services/transip/TransIPService.js';
 import deploymentOrchestrator from '../services/deploymentOrchestrator.js';
 import sharedVPSOrchestrator from '../services/sharedVPSOrchestrator.js';
 import pool from '../config/database.js';

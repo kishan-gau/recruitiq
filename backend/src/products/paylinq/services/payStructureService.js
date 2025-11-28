@@ -80,6 +80,7 @@ class PayStructureService {
     allowWorkerOverride: Joi.boolean().default(false),
     overrideAllowedFields: Joi.array().items(Joi.string()),
     requiresApproval: Joi.boolean().default(false),
+    allowCurrencyOverride: Joi.boolean().default(false),
     displayOnPayslip: Joi.boolean().default(true),
     displayName: Joi.string().allow(null),
     displayOrder: Joi.number().integer().allow(null),
@@ -159,15 +160,17 @@ class PayStructureService {
 
       const template = await this.repository.createTemplate(value, organizationId, userId);
 
-    // Add changelog entry
-    await this.repository.addChangelogEntry({
-      templateId: template.id,
-      fromVersion: null,
-      toVersion: template.version,
-      changeType: 'created',
-      changeSummary: 'Initial template creation',
-      changelogEntries: [{ type: 'created', description: 'Template created' }]
-    }, organizationId, userId);      logger.info('Pay structure template created', {
+      // Add changelog entry
+      await this.repository.addChangelogEntry({
+        templateId: template.id,
+        fromVersion: null,
+        toVersion: template.version,
+        changeType: 'created',
+        changeSummary: 'Initial template creation',
+        changelogEntries: [{ type: 'created', description: 'Template created' }]
+      }, organizationId, userId);
+      
+      logger.info('Pay structure template created', {
         templateId: template.id,
         templateCode: template.templateCode,
         version: template.version,
@@ -186,24 +189,16 @@ class PayStructureService {
    * Get template by ID with components
    */
   async getTemplateById(templateId, organizationId) {
-    const template = await this.repository.findById(templateId, organizationId);
+    const template = await this.repository.findTemplateById(templateId, organizationId);
     if (!template) {
       throw new NotFoundError('Template not found');
     }
-    
-    if (!template.is_template) {
-      throw new ValidationError('Specified pay structure is not a template');
-    }
 
-    // For now, return without components (would need getTemplateComponents method)
-    const components = [];
-    
-    // Return DTO-transformed template
-    const { mapPayStructureDbToApi } = await import('../dto/payStructureDto.js');
-    const transformed = mapPayStructureDbToApi(template);
+    // Get template components
+    const components = await this.repository.getTemplateComponents(templateId, organizationId);
     
     return {
-      ...transformed,
+      ...template,
       components,
     };
   }
@@ -212,7 +207,20 @@ class PayStructureService {
    * Get all templates for organization
    */
   async getTemplates(organizationId, filters = {}) {
-    return await this.repository.findTemplates(organizationId, filters);
+    logger.info('Getting templates', { organizationId, filters });
+    const templates = await this.repository.findTemplates(organizationId, filters);
+    logger.info('Templates found', { 
+      count: templates.length, 
+      organizationId,
+      templateDetails: templates.map(t => ({
+        id: t.id,
+        name: t.templateName,
+        code: t.templateCode,
+        status: t.status,
+        version: t.version
+      }))
+    });
+    return templates;
   }
 
   /**
@@ -439,7 +447,7 @@ class PayStructureService {
     }
 
     // Validate formula if provided
-    if (value.calculationType === 'formula' && value.formulaExpression) {
+    if (value.calculationType === 'formula' && value.formulaExpression && value.formulaExpression.trim()) {
       try {
         // Parse and validate formula
         const parsed = await this.formulaEngine.parseFormula(value.formulaExpression);
@@ -473,6 +481,14 @@ class PayStructureService {
       return result;
     });
     return mapped;
+  }
+
+  /**
+   * Get template inclusions (templates included by this template)
+   */
+  async getTemplateInclusions(templateId, organizationId) {
+    const inclusions = await this.repository.findTemplateInclusions(templateId, organizationId);
+    return inclusions.map(inc => dtoMapper.mapTemplateInclusionDbToApi(inc));
   }
 
   /**
@@ -1955,8 +1971,14 @@ class PayStructureService {
       throw new Error('Maximum template nesting depth exceeded');
     }
 
-    // Check cache first
-    const cacheKey = `${templateId}_${asOfDate || 'current'}_${currentDepth}`;
+    // Get template first to include version in cache key
+    const template = await this.repository.findTemplateById(templateId, organizationId);
+    if (!template) {
+      throw new NotFoundError('Template not found');
+    }
+
+    // Check cache first - cache key is depth-independent and includes version
+    const cacheKey = `${templateId}:${template.version_major}.${template.version_minor}.${template.version_patch}:${asOfDate ? new Date(asOfDate).toISOString() : 'current'}`;
     const cached = await this.repository.getTemplateResolutionCache(
       templateId,
       cacheKey,
@@ -1965,13 +1987,8 @@ class PayStructureService {
 
     if (cached) {
       logger.debug('Template resolution cache hit', { templateId, cacheKey });
-      return JSON.parse(cached.resolved_components);
-    }
-
-    // Get template
-    const template = await this.repository.findTemplateById(templateId, organizationId);
-    if (!template) {
-      throw new NotFoundError('Template not found');
+      // PostgreSQL JSONB columns always return parsed objects
+      return cached.resolved_components;
     }
 
     // Check for circular reference
@@ -1983,7 +2000,7 @@ class PayStructureService {
     visitedTemplates.add(template.templateCode);
 
     // Get template's own components
-    const ownComponents = await this.repository.findComponentsByTemplateId(
+    const ownComponents = await this.repository.getTemplateComponents(
       templateId,
       organizationId
     );
@@ -2361,10 +2378,6 @@ class PayStructureService {
       throw new NotFoundError('Template not found');
     }
 
-    if (!sourceTemplate.is_template) {
-      throw new ValidationError('Specified pay structure is not a template');
-    }
-
     // Create new structure from template (merge template data with overrides)
     const newStructureData = {
       structure_code: value.structureCode,
@@ -2445,7 +2458,7 @@ class PayStructureService {
       visited.add(currentStructureId);
 
       // Get current template/structure (don't enforce is_template check for inheritance resolution)
-      const structure = await this.repository.findById(currentStructureId, organizationId);
+      const structure = await this.repository.findTemplateById(currentStructureId, organizationId);
       if (!structure) {
         throw new NotFoundError(`Pay structure not found: ${currentStructureId}`);
       }
