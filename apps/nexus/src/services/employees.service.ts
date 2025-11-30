@@ -20,6 +20,17 @@ import type { PaginatedResponse } from '@/types/common.types';
 const apiClient = new APIClient();
 const nexusClient = new NexusClient(apiClient);
 
+// Permission metadata for RBAC
+export const employeesServicePermissions = {
+  list: 'nexus.employees.view',
+  view: 'nexus.employees.view',
+  create: 'nexus.employees.create',
+  update: 'nexus.employees.update',
+  delete: 'nexus.employees.delete',
+  terminate: 'nexus.employees.terminate',
+  export: 'nexus.employees.export',
+};
+
 export const employeesService = {
   /**
    * List all employees with optional filters

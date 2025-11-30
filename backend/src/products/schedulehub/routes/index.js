@@ -74,6 +74,7 @@ router.get('/workers/:workerId/shifts', requirePermission('scheduling:shifts:rea
 // AVAILABILITY ROUTES
 // ============================================================================
 
+router.get('/availability', requirePermission('scheduling:availability:read'), availabilityController.listAvailability);
 router.post('/availability', requirePermission('scheduling:availability:create'), availabilityController.createAvailability);
 router.patch('/availability/:id', requirePermission('scheduling:availability:update'), availabilityController.updateAvailability);
 router.delete('/availability/:id', requirePermission('scheduling:availability:delete'), availabilityController.deleteAvailability);

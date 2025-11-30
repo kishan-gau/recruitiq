@@ -1529,31 +1529,31 @@ export class NexusClient {
   // ============================================================================
 
   async listAvailability(filters?: any) {
-    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/availability`, { params: filters });
+    return this.client.get<ApiResponse<any>>('products/schedulehub/availability', { params: filters });
   }
 
   async getAvailability(id: string) {
-    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/${id}`);
+    return this.client.get<ApiResponse<any>>(`products/schedulehub/availability/${id}`);
   }
 
   async createAvailability(data: any) {
-    return this.client.post<ApiResponse<any>>(`${this.basePath}/schedulehub/availability`, data);
+    return this.client.post<ApiResponse<any>>('products/schedulehub/availability', data);
   }
 
   async updateAvailability(id: string, updates: any) {
-    return this.client.put<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/${id}`, updates);
+    return this.client.put<ApiResponse<any>>(`products/schedulehub/availability/${id}`, updates);
   }
 
   async deleteAvailability(id: string) {
-    return this.client.delete<ApiResponse<void>>(`${this.basePath}/schedulehub/availability/${id}`);
+    return this.client.delete<ApiResponse<void>>(`products/schedulehub/availability/${id}`);
   }
 
   async bulkUpdateAvailability(employeeId: string, data: any) {
-    return this.client.post<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/bulk`, { ...data, employeeId });
+    return this.client.post<ApiResponse<any>>('products/schedulehub/availability/bulk', { ...data, employeeId });
   }
 
   async checkWorkerAvailability(workerId: string, startDate: string, endDate: string) {
-    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/check`, {
+    return this.client.get<ApiResponse<any>>('products/schedulehub/availability/check', {
       params: { workerId, startDate, endDate }
     });
   }
@@ -1563,14 +1563,14 @@ export class NexusClient {
   // ============================================================================
 
   async listAvailabilityExceptions(filters?: any) {
-    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/exceptions`, { params: filters });
+    return this.client.get<ApiResponse<any>>('products/schedulehub/availability/exceptions', { params: filters });
   }
 
   async createAvailabilityException(data: any) {
-    return this.client.post<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/exceptions`, data);
+    return this.client.post<ApiResponse<any>>('products/schedulehub/availability/exceptions', data);
   }
 
   async deleteAvailabilityException(id: string) {
-    return this.client.delete<ApiResponse<void>>(`${this.basePath}/schedulehub/availability/exceptions/${id}`);
+    return this.client.delete<ApiResponse<void>>(`products/schedulehub/availability/exceptions/${id}`);
   }
 }

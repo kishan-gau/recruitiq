@@ -5,8 +5,8 @@
  * Shows availability patterns, conflicts, and allows quick navigation
  */
 
-import React, { useState, useMemo } from 'react';
-import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addDays, parseISO } from 'date-fns';
+import { useState, useMemo } from 'react';
+import { format, addWeeks, subWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO } from 'date-fns';
 import { Calendar, ChevronLeft, ChevronRight, Users, Clock, AlertTriangle } from 'lucide-react';
 
 interface AvailabilityRule {
@@ -35,12 +35,10 @@ interface AvailabilityCalendarProps {
   highlightConflicts?: boolean;
 }
 
-const HOURS_IN_DAY = 24;
 const MINUTES_IN_HOUR = 60;
 
 export default function AvailabilityCalendar({
   availability,
-  viewMode = 'week',
   onDateSelect,
   onRuleClick,
   showWorkerNames = true,
@@ -168,13 +166,13 @@ export default function AvailabilityCalendar({
   }, [availability, daysInWeek]);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       {/* Header with Navigation */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">
+            <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               Availability Calendar
             </h2>
           </div>
@@ -182,47 +180,47 @@ export default function AvailabilityCalendar({
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrevious}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title="Previous week"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+              <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
 
             <button
               onClick={handleToday}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               Today
             </button>
 
             <button
               onClick={handleNext}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title="Next week"
             >
-              <ChevronRight className="w-5 h-5 text-gray-600" />
+              <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
           </div>
         </div>
 
         {/* Week Display */}
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             Week of {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
           </div>
 
           {/* Statistics */}
           <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1 text-gray-600">
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
               <Users className="w-4 h-4" />
               <span>{statistics.workersWithAvailability}/{statistics.totalWorkers} workers</span>
             </div>
-            <div className="flex items-center gap-1 text-gray-600">
+            <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
               <Clock className="w-4 h-4" />
               <span>{statistics.totalRules} rules</span>
             </div>
             {highlightConflicts && statistics.conflictCount > 0 && (
-              <div className="flex items-center gap-1 text-amber-600">
+              <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="w-4 h-4" />
                 <span>{statistics.conflictCount} conflicts</span>
               </div>
@@ -235,30 +233,30 @@ export default function AvailabilityCalendar({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
+            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
               {showWorkerNames && (
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 sticky left-0 bg-gray-50 z-10">
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 dark:text-gray-300 sticky left-0 bg-gray-50 dark:bg-gray-900 z-10">
                   Worker
                 </th>
               )}
               {daysInWeek.map(day => (
                 <th
                   key={day.toISOString()}
-                  className="px-4 py-3 text-center text-sm font-medium text-gray-700 min-w-[120px]"
+                  className="px-4 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[120px]"
                 >
                   <div>{format(day, 'EEE')}</div>
-                  <div className={`text-xs ${isSameDay(day, new Date()) ? 'text-blue-600 font-semibold' : 'text-gray-500'}`}>
+                  <div className={`text-xs ${isSameDay(day, new Date()) ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-gray-500 dark:text-gray-400'}`}>
                     {format(day, 'MMM d')}
                   </div>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
-            {availability.map(worker => (
-              <tr key={worker.workerId} className="hover:bg-gray-50 transition-colors">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            {availability.map((worker, workerIndex) => (
+              <tr key={worker.workerId || `worker-${workerIndex}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 {showWorkerNames && (
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-gray-800 z-10">
                     {worker.workerName}
                   </td>
                 )}
@@ -272,34 +270,34 @@ export default function AvailabilityCalendar({
                     <td
                       key={`${worker.workerId}-${day.toISOString()}`}
                       className={`px-2 py-3 text-center cursor-pointer transition-colors ${
-                        hasRules ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'
-                      } ${hasConflict ? 'bg-amber-50' : ''}`}
+                        hasRules ? 'bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      } ${hasConflict ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}
                       onClick={() => onDateSelect?.(day, worker.workerId)}
                     >
                       {hasRules ? (
                         <div className="space-y-1">
-                          {dayRules.map(rule => (
+                          {dayRules.map((rule, index) => (
                             <div
-                              key={rule.id}
+                              key={rule.id || `${worker.workerId}-${day.toISOString()}-${index}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onRuleClick?.(rule);
                               }}
                               className={`text-xs px-2 py-1 rounded ${
                                 hasConflict
-                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                  : 'bg-green-100 text-green-800'
+                                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700'
+                                  : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200'
                               } hover:opacity-80 transition-opacity`}
                             >
                               {rule.startTime} - {rule.endTime}
                             </div>
                           ))}
-                          <div className="text-xs text-gray-500 font-medium mt-1">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-1">
                             {totalHours.toFixed(1)}h
                           </div>
                         </div>
                       ) : (
-                        <div className="text-xs text-gray-400">
+                        <div className="text-xs text-gray-400 dark:text-gray-500">
                           Not available
                         </div>
                       )}
@@ -315,30 +313,30 @@ export default function AvailabilityCalendar({
       {/* Empty State */}
       {availability.length === 0 && (
         <div className="px-4 py-12 text-center">
-          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-500">No worker availability data to display</p>
-          <p className="text-sm text-gray-400 mt-1">
+          <Calendar className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <p className="text-gray-500 dark:text-gray-400">No worker availability data to display</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
             Add availability rules to see them here
           </p>
         </div>
       )}
 
       {/* Legend */}
-      <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+      <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-100 border border-green-200 rounded"></div>
-            <span className="text-gray-600">Available</span>
+            <div className="w-4 h-4 bg-green-100 dark:bg-green-900/40 border border-green-200 dark:border-green-700 rounded"></div>
+            <span className="text-gray-600 dark:text-gray-400">Available</span>
           </div>
           {highlightConflicts && (
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-amber-100 border border-amber-300 rounded"></div>
-              <span className="text-gray-600">Conflict</span>
+              <div className="w-4 h-4 bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 rounded"></div>
+              <span className="text-gray-600 dark:text-gray-400">Conflict</span>
             </div>
           )}
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded"></div>
-            <span className="text-gray-600">Not available</span>
+            <div className="w-4 h-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded"></div>
+            <span className="text-gray-600 dark:text-gray-400">Not available</span>
           </div>
         </div>
       </div>

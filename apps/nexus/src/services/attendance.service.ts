@@ -35,6 +35,15 @@ import type {
 const apiClient = new APIClient();
 const nexusClient = new NexusClient(apiClient);
 
+// Permission metadata for RBAC
+export const attendanceServicePermissions = {
+  view: 'nexus.attendance.view',
+  create: 'nexus.attendance.create',
+  update: 'nexus.attendance.update',
+  approve: 'nexus.attendance.approve',
+  export: 'nexus.reports.export',
+};
+
 export const attendanceService = {
   // ============ Attendance Records ============
   

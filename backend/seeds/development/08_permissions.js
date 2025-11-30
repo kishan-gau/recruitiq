@@ -72,12 +72,55 @@ export async function seed(knex) {
     // ============================================================================
     // SCHEDULEHUB PERMISSIONS
     // ============================================================================
-    { product: 'schedulehub', name: 'schedules.view', display_name: 'View Schedules', description: 'View work schedules', category: 'Scheduling' },
-    { product: 'schedulehub', name: 'schedules.create', display_name: 'Create Schedules', description: 'Create work schedules', category: 'Scheduling' },
-    { product: 'schedulehub', name: 'schedules.update', display_name: 'Update Schedules', description: 'Edit work schedules', category: 'Scheduling' },
-    { product: 'schedulehub', name: 'schedules.delete', display_name: 'Delete Schedules', description: 'Delete work schedules', category: 'Scheduling' },
-    { product: 'schedulehub', name: 'schedules.publish', display_name: 'Publish Schedules', description: 'Publish schedules to employees', category: 'Scheduling' },
+    // Scheduling
+    { product: 'schedulehub', name: 'scheduling:schedules:read', display_name: 'View Schedules', description: 'View work schedules', category: 'Scheduling' },
+    { product: 'schedulehub', name: 'scheduling:schedules:create', display_name: 'Create Schedules', description: 'Create work schedules', category: 'Scheduling' },
+    { product: 'schedulehub', name: 'scheduling:schedules:update', display_name: 'Update Schedules', description: 'Edit work schedules', category: 'Scheduling' },
+    { product: 'schedulehub', name: 'scheduling:schedules:delete', display_name: 'Delete Schedules', description: 'Delete work schedules', category: 'Scheduling' },
+    { product: 'schedulehub', name: 'scheduling:schedules:publish', display_name: 'Publish Schedules', description: 'Publish schedules to employees', category: 'Scheduling' },
 
+    // Workers
+    { product: 'schedulehub', name: 'scheduling:workers:read', display_name: 'View Workers', description: 'View worker information', category: 'Worker Management' },
+    { product: 'schedulehub', name: 'scheduling:workers:create', display_name: 'Create Workers', description: 'Create worker records', category: 'Worker Management' },
+    { product: 'schedulehub', name: 'scheduling:workers:update', display_name: 'Update Workers', description: 'Edit worker information', category: 'Worker Management' },
+    { product: 'schedulehub', name: 'scheduling:workers:delete', display_name: 'Delete Workers', description: 'Delete worker records', category: 'Worker Management' },
+
+    // Shifts
+    { product: 'schedulehub', name: 'scheduling:shifts:read', display_name: 'View Shifts', description: 'View shift details', category: 'Shift Management' },
+    { product: 'schedulehub', name: 'scheduling:shifts:create', display_name: 'Create Shifts', description: 'Create work shifts', category: 'Shift Management' },
+    { product: 'schedulehub', name: 'scheduling:shifts:update', display_name: 'Update Shifts', description: 'Edit shift details', category: 'Shift Management' },
+    { product: 'schedulehub', name: 'scheduling:shifts:delete', display_name: 'Delete Shifts', description: 'Delete shifts', category: 'Shift Management' },
+    { product: 'schedulehub', name: 'scheduling:shifts:assign', display_name: 'Assign Shifts', description: 'Assign workers to shifts', category: 'Shift Management' },
+    { product: 'schedulehub', name: 'scheduling:shifts:clock', display_name: 'Clock In/Out', description: 'Clock in/out of shifts', category: 'Shift Management' },
+
+    // Availability
+    { product: 'schedulehub', name: 'scheduling:availability:read', display_name: 'View Availability', description: 'View worker availability', category: 'Availability Management' },
+    { product: 'schedulehub', name: 'scheduling:availability:create', display_name: 'Create Availability', description: 'Create availability records', category: 'Availability Management' },
+    { product: 'schedulehub', name: 'scheduling:availability:update', display_name: 'Update Availability', description: 'Edit availability records', category: 'Availability Management' },
+    { product: 'schedulehub', name: 'scheduling:availability:delete', display_name: 'Delete Availability', description: 'Delete availability records', category: 'Availability Management' },
+
+    // Time Off
+    { product: 'schedulehub', name: 'scheduling:time_off:read', display_name: 'View Time Off', description: 'View time off requests', category: 'Time Off Management' },
+    { product: 'schedulehub', name: 'scheduling:time_off:create', display_name: 'Create Time Off', description: 'Create time off requests', category: 'Time Off Management' },
+    { product: 'schedulehub', name: 'scheduling:time_off:approve', display_name: 'Approve Time Off', description: 'Approve time off requests', category: 'Time Off Management' },
+    { product: 'schedulehub', name: 'scheduling:time_off:delete', display_name: 'Cancel Time Off', description: 'Cancel time off requests', category: 'Time Off Management' },
+
+    // Shift Trades
+    { product: 'schedulehub', name: 'scheduling:shift_trades:read', display_name: 'View Shift Trades', description: 'View shift trade requests', category: 'Shift Trade Management' },
+    { product: 'schedulehub', name: 'scheduling:shift_trades:create', display_name: 'Create Shift Trades', description: 'Request shift trades', category: 'Shift Trade Management' },
+    { product: 'schedulehub', name: 'scheduling:shift_trades:approve', display_name: 'Approve Shift Trades', description: 'Approve shift trade requests', category: 'Shift Trade Management' },
+    { product: 'schedulehub', name: 'scheduling:shift_trades:delete', display_name: 'Cancel Shift Trades', description: 'Cancel shift trade requests', category: 'Shift Trade Management' },
+
+    // Roles
+    { product: 'schedulehub', name: 'scheduling:roles:read', display_name: 'View Roles', description: 'View scheduling roles', category: 'Role Management' },
+    { product: 'schedulehub', name: 'scheduling:roles:create', display_name: 'Create Roles', description: 'Create scheduling roles', category: 'Role Management' },
+    { product: 'schedulehub', name: 'scheduling:roles:update', display_name: 'Update Roles', description: 'Edit scheduling roles', category: 'Role Management' },
+    { product: 'schedulehub', name: 'scheduling:roles:delete', display_name: 'Delete Roles', description: 'Delete scheduling roles', category: 'Role Management' },
+
+    // Stats
+    { product: 'schedulehub', name: 'scheduling:stats:read', display_name: 'View Statistics', description: 'View scheduling statistics', category: 'Statistics' },
+
+    // Stations
     { product: 'schedulehub', name: 'stations.view', display_name: 'View Stations', description: 'View work stations', category: 'Station Management' },
     { product: 'schedulehub', name: 'stations.create', display_name: 'Create Stations', description: 'Create work stations', category: 'Station Management' },
     { product: 'schedulehub', name: 'stations.update', display_name: 'Update Stations', description: 'Edit work stations', category: 'Station Management' },

@@ -2636,5 +2636,60 @@ export class PaylinqClient {
       `${this.basePath}/employees/${employeeId}/assignments/${assignmentId}`
     );
   }
+
+  // ============================================================================
+  // Forfait Rules
+  // ============================================================================
+
+  /**
+   * Get forfait rule templates
+   * Returns predefined forfait rule configurations for common benefits
+   */
+  async getForfaitRuleTemplates() {
+    return this.client.get<ApiResponse<ForfaitRuleTemplate[]>>(
+      `${this.basePath}/forfait-rules/templates`
+    );
+  }
+
+  /**
+   * Get forfait rule for a component
+   * Returns: { success: true, forfaitRule: {...} }
+   */
+  async getForfaitRule(componentCode: string) {
+    return this.client.get<ApiResponse<ForfaitRule>>(
+      `${this.basePath}/components/${componentCode}/forfait-rule`
+    );
+  }
+
+  /**
+   * Set forfait rule on a component
+   * Returns: { success: true, forfaitRule: {...} }
+   */
+  async setForfaitRule(componentCode: string, data: SetForfaitRuleRequest) {
+    return this.client.put<ApiResponse<ForfaitRule>>(
+      `${this.basePath}/components/${componentCode}/forfait-rule`,
+      data
+    );
+  }
+
+  /**
+   * Remove forfait rule from a component
+   */
+  async removeForfaitRule(componentCode: string) {
+    return this.client.delete<ApiResponse<void>>(
+      `${this.basePath}/components/${componentCode}/forfait-rule`
+    );
+  }
+
+  /**
+   * Preview forfait calculation
+   * Returns: { success: true, preview: {...} }
+   */
+  async previewForfaitCalculation(data: ForfaitPreviewRequest) {
+    return this.client.post<ApiResponse<ForfaitPreview>>(
+      `${this.basePath}/forfait-rules/preview`,
+      data
+    );
+  }
 }
 

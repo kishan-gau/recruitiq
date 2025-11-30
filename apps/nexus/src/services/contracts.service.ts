@@ -15,6 +15,15 @@ import type {
 const apiClient = new APIClient();
 const nexusClient = new NexusClient(apiClient);
 
+// Permission metadata for RBAC
+export const contractsServicePermissions = {
+  view: 'nexus.contracts.view',
+  create: 'nexus.contracts.create',
+  update: 'nexus.contracts.update',
+  sign: 'nexus.contracts.sign',
+  delete: 'nexus.contracts.delete',
+};
+
 export const contractsService = {
   /**
    * List all contracts with optional filters

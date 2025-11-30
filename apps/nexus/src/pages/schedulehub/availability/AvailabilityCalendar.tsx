@@ -39,7 +39,7 @@ import {
   useDeleteAvailability,
   useCreateAvailabilityException,
 } from '@/hooks/schedulehub/useAvailability';
-import { useWorkers } from '@/hooks/schedulehub/useWorkers';
+import { useEmployees } from '@/hooks/useEmployees';
 
 interface TimeSlot {
   hour: number;
@@ -60,16 +60,16 @@ interface DayAvailability {
 
 export default function AvailabilityCalendar() {
   const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [selectedWorkerId, setSelectedWorkerId] = useState<string>('');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
   const [isDragging, setIsDragging] = useState(false);
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   const [showFilters, setShowFilters] = useState(false);
 
   // Fetch data
-  const { data: workers } = useWorkers();
+  const { data: employees } = useEmployees();
   const { data: availability, isLoading } = useAvailability({
-    workerId: selectedWorkerId,
+    workerId: selectedEmployeeId,
     startDate: format(currentWeek, 'yyyy-MM-dd'),
     endDate: format(addDays(currentWeek, 6), 'yyyy-MM-dd'),
   });
@@ -119,15 +119,23 @@ export default function AvailabilityCalendar() {
 
     weekDays.forEach((day) => {
       const dateKey = format(day.date, 'yyyy-MM-dd');
-      const dayOfWeek = format(day.date, 'EEEE').toLowerCase();
+      const dayOfWeekNumber = day.date.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
       // Find availability rules for this day
+      // NOTE: API returns snake_case field names from database
       const dayAvailability = Array.isArray(availability)
-        ? availability.filter(
-            (rule: any) =>
-              rule.dayOfWeek?.toLowerCase() === dayOfWeek ||
-              (rule.date && isSameDay(parseISO(rule.date), day.date))
-          )
+        ? availability.filter((rule: any) => {
+            // Match recurring availability by day of week number
+            if (rule.availability_type === 'recurring' && rule.day_of_week === dayOfWeekNumber) {
+              return true;
+            }
+            // Match one-time or unavailable by specific date
+            if ((rule.availability_type === 'one_time' || rule.availability_type === 'unavailable') && 
+                rule.specific_date && isSameDay(parseISO(rule.specific_date), day.date)) {
+              return true;
+            }
+            return false;
+          })
         : [];
 
       dataMap.set(dateKey, {
@@ -135,10 +143,10 @@ export default function AvailabilityCalendar() {
         dayName: day.dayName,
         slots: dayAvailability.map((rule: any) => ({
           id: rule.id,
-          startTime: rule.startTime,
-          endTime: rule.endTime,
-          isRecurring: rule.isRecurring || false,
-          isException: !!rule.date,
+          startTime: rule.start_time, // snake_case from database
+          endTime: rule.end_time, // snake_case from database
+          isRecurring: rule.availability_type === 'recurring',
+          isException: rule.availability_type === 'one_time' || rule.availability_type === 'unavailable',
         })),
       });
     });
@@ -182,7 +190,7 @@ export default function AvailabilityCalendar() {
 
   // Save selected slots as availability
   const handleSaveAvailability = async () => {
-    if (!selectedWorkerId || selectedSlots.size === 0) return;
+    if (!selectedEmployeeId || selectedSlots.size === 0) return;
 
     // Group consecutive slots by day
     const slotsByDay = new Map<string, number[]>();
@@ -198,7 +206,8 @@ export default function AvailabilityCalendar() {
     for (const [dateKey, timeIndices] of slotsByDay.entries()) {
       const sortedIndices = timeIndices.sort((a, b) => a - b);
       const date = parseISO(dateKey);
-      const dayOfWeek = format(date, 'EEEE');
+      // Convert day of week to number: Sunday = 0, Monday = 1, ..., Saturday = 6
+      const dayOfWeekNumber = date.getDay();
 
       // Group consecutive time slots
       const ranges: Array<{ start: number; end: number }> = [];
@@ -229,11 +238,12 @@ export default function AvailabilityCalendar() {
         );
 
         await createAvailability.mutateAsync({
-          workerId: selectedWorkerId,
-          dayOfWeek,
+          workerId: selectedEmployeeId,
+          availabilityType: 'recurring',
+          dayOfWeek: dayOfWeekNumber,
           startTime,
           endTime,
-          isRecurring: true,
+          priority: 'preferred',
         });
       }
     }
@@ -252,16 +262,16 @@ export default function AvailabilityCalendar() {
               Availability Calendar
             </h1>
 
-            {/* Worker Selection */}
+            {/* Employee Selection */}
             <select
-              value={selectedWorkerId}
-              onChange={(e) => setSelectedWorkerId(e.target.value)}
+              value={selectedEmployeeId}
+              onChange={(e) => setSelectedEmployeeId(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">Select Worker</option>
-              {workers?.map((worker: any) => (
-                <option key={worker.id} value={worker.id}>
-                  {worker.firstName} {worker.lastName}
+              <option value="">Select Employee</option>
+              {employees?.map((employee: any) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.firstName} {employee.lastName}
                 </option>
               ))}
             </select>
@@ -339,7 +349,7 @@ export default function AvailabilityCalendar() {
               <span className="text-sm text-gray-600">{selectedSlots.size} slots selected</span>
               <button
                 onClick={handleSaveAvailability}
-                disabled={!selectedWorkerId || createAvailability.isPending}
+                disabled={!selectedEmployeeId || createAvailability.isPending}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Plus className="w-4 h-4" />
@@ -358,11 +368,11 @@ export default function AvailabilityCalendar() {
 
       {/* Calendar Grid */}
       <div className="flex-1 overflow-auto">
-        {!selectedWorkerId ? (
+        {!selectedEmployeeId ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-500">
             <Users className="w-16 h-16 mb-4 text-gray-300" />
-            <p className="text-lg font-medium">Select a worker to view availability</p>
-            <p className="text-sm">Choose a worker from the dropdown above</p>
+            <p className="text-lg font-medium">Select an employee to view availability</p>
+            <p className="text-sm">Choose an employee from the dropdown above</p>
           </div>
         ) : (
           <div className="min-w-[1200px]">

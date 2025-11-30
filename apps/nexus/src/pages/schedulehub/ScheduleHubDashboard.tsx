@@ -1,4 +1,4 @@
-import { Calendar, Users, Clock, Repeat, AlertCircle, TrendingUp, Building2, Briefcase } from 'lucide-react';
+import { Calendar, Users, Clock, Repeat, AlertCircle, TrendingUp, Building2, Briefcase, CalendarCheck, CalendarDays } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useScheduleStats } from '@/hooks/schedulehub/useScheduleStats';
 
@@ -7,11 +7,18 @@ export default function ScheduleHubDashboard() {
 
   const quickActions = [
     {
+      title: 'View Schedules',
+      description: 'Browse all published schedules',
+      href: '/schedulehub/schedules',
+      icon: CalendarDays,
+      color: 'bg-blue-500',
+    },
+    {
       title: 'Create Schedule',
       description: 'Build a new work schedule',
       href: '/schedulehub/schedules/create',
       icon: Calendar,
-      color: 'bg-blue-500',
+      color: 'bg-emerald-500',
     },
     {
       title: 'Manage Workers',
@@ -19,6 +26,13 @@ export default function ScheduleHubDashboard() {
       href: '/schedulehub/workers',
       icon: Users,
       color: 'bg-green-500',
+    },
+    {
+      title: 'Worker Availability',
+      description: 'Set worker availability schedules',
+      href: '/schedulehub/availability',
+      icon: CalendarCheck,
+      color: 'bg-indigo-500',
     },
     {
       title: 'Manage Stations',
@@ -145,7 +159,7 @@ export default function ScheduleHubDashboard() {
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {quickActions.map((action, index) => (
             <Link
               key={index}

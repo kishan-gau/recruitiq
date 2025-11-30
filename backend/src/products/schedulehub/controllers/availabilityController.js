@@ -12,6 +12,33 @@ class AvailabilityController {
   }
 
   /**
+   * List all availability records
+   * GET /api/schedulehub/availability
+   */
+  listAvailability = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const filters = {
+        workerId: req.query.workerId,
+        availabilityType: req.query.availabilityType,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        dayOfWeek: req.query.dayOfWeek ? parseInt(req.query.dayOfWeek) : undefined
+      };
+
+      const result = await this.availabilityService.listAvailability(
+        organizationId,
+        filters
+      );
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in listAvailability controller:', error);
+      next(error);
+    }
+  };
+
+  /**
    * Create availability entry
    * POST /api/schedulehub/availability
    */

@@ -4,6 +4,7 @@
 
 import express from 'express';
 import payComponentController from '../controllers/payComponentController.js';
+import * as forfaitRuleController from '../controllers/forfaitRuleController.js';
 import { validate  } from '../../../middleware/validation.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
@@ -97,6 +98,42 @@ const updateEmployeeComponentAssignmentSchema = Joi.object({
 const assignmentIdParamSchema = Joi.object({
   employeeId: Joi.string().uuid().required(),
   assignmentId: Joi.string().uuid().required(),
+});
+
+const componentCodeParamSchema = Joi.object({
+  componentCode: Joi.string().max(50).required(),
+});
+
+const forfaitRuleSchema = Joi.object({
+  enabled: Joi.boolean().required(),
+  forfaitComponentCode: Joi.string().when('enabled', {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional()
+  }),
+  valueMapping: Joi.object().when('enabled', {
+    is: true,
+    then: Joi.required(),
+    otherwise: Joi.optional()
+  }).pattern(
+    Joi.string(),
+    Joi.object({
+      sourceField: Joi.string().required(),
+      targetField: Joi.string().required(),
+      required: Joi.boolean().default(true)
+    })
+  ),
+  conditions: Joi.object({
+    minValue: Joi.number().optional(),
+    maxValue: Joi.number().optional(),
+    requiresApproval: Joi.boolean().default(false)
+  }).optional(),
+  description: Joi.string().max(500).optional()
+});
+
+const forfaitPreviewSchema = Joi.object({
+  componentCode: Joi.string().max(50).required(),
+  configuration: Joi.object().required()
 });
 
 // Global pay component routes
@@ -195,6 +232,42 @@ router.delete(
   requirePermission('payroll:employee-components:delete'),
   validate(assignmentIdParamSchema, 'params'),
   payComponentController.removeEmployeeComponentAssignment
+);
+
+// Forfait rule management routes
+router.get(
+  '/forfait-rules/templates',
+  requirePermission('components:read'),
+  forfaitRuleController.getForfaitRuleTemplates
+);
+
+router.post(
+  '/forfait-rules/preview',
+  requirePermission('components:read'),
+  validate(forfaitPreviewSchema, 'body'),
+  forfaitRuleController.previewForfaitCalculation
+);
+
+router.put(
+  '/:componentCode/forfait-rule',
+  requirePermission('components:update'),
+  validate(componentCodeParamSchema, 'params'),
+  validate(forfaitRuleSchema, 'body'),
+  forfaitRuleController.setForfaitRule
+);
+
+router.get(
+  '/:componentCode/forfait-rule',
+  requirePermission('components:read'),
+  validate(componentCodeParamSchema, 'params'),
+  forfaitRuleController.getForfaitRule
+);
+
+router.delete(
+  '/:componentCode/forfait-rule',
+  requirePermission('components:delete'),
+  validate(componentCodeParamSchema, 'params'),
+  forfaitRuleController.removeForfaitRule
 );
 
 export default router;

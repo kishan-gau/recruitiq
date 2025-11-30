@@ -92,7 +92,6 @@ const SchedulesList = lazy(() => import('@/pages/schedulehub/SchedulesList'));
 const ScheduleBuilder = lazy(() => import('@/pages/schedulehub/ScheduleBuilder'));
 const ScheduleHubTimeOff = lazy(() => import('@/pages/schedulehub/TimeOffRequests'));
 const ShiftSwapMarketplace = lazy(() => import('@/pages/schedulehub/ShiftSwapMarketplace'));
-const StationsList = lazy(() => import('@/pages/schedulehub/stations/StationsList'));
 const StationManagement = lazy(() => import('@/pages/schedulehub/stations/StationManagement'));
 const StationDetails = lazy(() => import('@/pages/schedulehub/stations/StationDetails'));
 const RolesList = lazy(() => import('@/pages/schedulehub/RolesList'));

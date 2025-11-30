@@ -6,6 +6,10 @@
 import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import Joi from 'joi';
+import { 
+  mapAvailabilityDbToApi, 
+  mapAvailabilitiesDbToApi 
+} from '../dto/availabilityDto.js';
 
 class AvailabilityService {
   constructor() {
@@ -90,9 +94,10 @@ class AvailabilityService {
         organizationId
       });
 
+      // Transform DB format to API format
       return {
         success: true,
-        data: result.rows[0]
+        data: mapAvailabilityDbToApi(result.rows[0])
       };
 
     } catch (error) {
@@ -101,6 +106,78 @@ class AvailabilityService {
       throw error;
     } finally {
       client.release();
+    }
+  }
+
+  /**
+   * List all availability records with employee details
+   */
+  async listAvailability(organizationId, filters = {}) {
+    try {
+      const { workerId, availabilityType, startDate, endDate, dayOfWeek } = filters;
+
+      let query = `
+        SELECT 
+          wa.*,
+          e.first_name,
+          e.last_name,
+          e.email
+        FROM scheduling.worker_availability wa
+        INNER JOIN hris.employee e ON wa.employee_id = e.id
+        WHERE wa.organization_id = $1
+      `;
+      const params = [organizationId];
+      let paramCount = 1;
+
+      if (workerId) {
+        paramCount++;
+        query += ` AND wa.employee_id = $${paramCount}`;
+        params.push(workerId);
+      }
+
+      if (availabilityType) {
+        paramCount++;
+        query += ` AND wa.availability_type = $${paramCount}`;
+        params.push(availabilityType);
+      }
+
+      if (dayOfWeek !== undefined) {
+        paramCount++;
+        query += ` AND wa.day_of_week = $${paramCount}`;
+        params.push(dayOfWeek);
+      }
+
+      if (startDate && endDate) {
+        paramCount++;
+        query += ` AND (
+          (wa.availability_type = 'recurring' AND (wa.effective_to IS NULL OR wa.effective_to >= $${paramCount}))
+          OR
+          (wa.availability_type IN ('one_time', 'unavailable') AND wa.specific_date BETWEEN $${paramCount} AND $${paramCount + 1})
+        )`;
+        params.push(startDate, endDate);
+      }
+
+      query += ` ORDER BY 
+        e.first_name,
+        e.last_name,
+        CASE wa.availability_type 
+          WHEN 'recurring' THEN wa.day_of_week
+          ELSE NULL 
+        END,
+        wa.specific_date,
+        wa.start_time`;
+
+      const result = await pool.query(query, params);
+
+      // Transform DB format to API format
+      return {
+        success: true,
+        data: mapAvailabilitiesDbToApi(result.rows)
+      };
+
+    } catch (error) {
+      this.logger.error('Error listing availability:', error);
+      throw error;
     }
   }
 
@@ -144,9 +221,10 @@ class AvailabilityService {
 
       const result = await pool.query(query, params);
 
+      // Transform DB format to API format
       return {
         success: true,
-        data: result.rows
+        data: mapAvailabilitiesDbToApi(result.rows)
       };
 
     } catch (error) {
@@ -215,9 +293,10 @@ class AvailabilityService {
         organizationId
       });
 
+      // Transform DB format to API format
       return {
         success: true,
-        data: result.rows[0]
+        data: mapAvailabilityDbToApi(result.rows[0])
       };
 
     } catch (error) {
@@ -256,9 +335,10 @@ class AvailabilityService {
         organizationId
       });
 
+      // Transform DB format to API format
       return {
         success: true,
-        data: result.rows[0]
+        data: mapAvailabilityDbToApi(result.rows[0])
       };
 
     } catch (error) {
@@ -318,9 +398,10 @@ class AvailabilityService {
         count: results.length
       });
 
+      // Transform DB format to API format
       return {
         success: true,
-        data: results
+        data: mapAvailabilitiesDbToApi(results)
       };
 
     } catch (error) {

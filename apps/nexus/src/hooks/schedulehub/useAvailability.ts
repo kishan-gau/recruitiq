@@ -99,12 +99,13 @@ export function useCreateAvailability() {
   return useMutation({
     mutationFn: async (data: {
       workerId: string;
-      dayOfWeek: string;
+      availabilityType: 'recurring' | 'one_time' | 'unavailable';
+      dayOfWeek: number;
       startTime: string;
       endTime: string;
-      isRecurring?: boolean;
       effectiveFrom?: string;
       effectiveTo?: string;
+      priority?: 'preferred' | 'required' | 'unavailable';
     }) => {
       const response = await nexusClient.createAvailability(data);
       return response.data.availability || response.data;
@@ -127,7 +128,18 @@ export function useUpdateAvailability() {
   const toast = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+    mutationFn: async ({ id, updates }: { 
+      id: string; 
+      updates: {
+        availabilityType?: 'recurring' | 'one_time' | 'unavailable';
+        dayOfWeek?: number;
+        startTime?: string;
+        endTime?: string;
+        effectiveFrom?: string;
+        effectiveTo?: string;
+        priority?: 'preferred' | 'required' | 'unavailable';
+      } 
+    }) => {
       const response = await nexusClient.updateAvailability(id, updates);
       return response.data.availability || response.data;
     },

@@ -16,8 +16,8 @@ export async function seed(knex) {
     .where({ organization_id: testOrg.id, name: 'owner' })
     .first();
   
-  const managerRole = await knex('roles')
-    .where({ organization_id: testOrg.id, name: 'manager' })
+  const schedulerRole = await knex('roles')
+    .where({ organization_id: testOrg.id, name: 'scheduler' })
     .first();
   
   const demoOwnerRole = await knex('roles')
@@ -48,7 +48,7 @@ export async function seed(knex) {
     {
       id: knex.raw('uuid_generate_v4()'),
       user_id: managerUser.id,
-      role_id: managerRole.id,
+      role_id: schedulerRole.id,
       created_at: knex.fn.now()
     },
     {
