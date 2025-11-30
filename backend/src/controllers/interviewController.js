@@ -3,13 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 import db from '../config/database.js';
 import { NotFoundError, ValidationError, ForbiddenError } from '../middleware/errorHandler.js';
 import logger from '../utils/logger.js';
+import { futureDate } from '../validators/dateValidators.js';
 
 // Validation schemas
 const scheduleInterviewSchema = Joi.object({
   applicationId: Joi.string().uuid().required(),
   title: Joi.string().min(1).max(200).required(),
   type: Joi.string().valid('phone', 'video', 'onsite', 'technical', 'behavioral', 'panel').required(),
-  scheduledAt: Joi.date().iso().greater('now').required(),
+  scheduledAt: futureDate.required(),
   duration: Joi.number().integer().min(15).max(480).default(60), // minutes
   location: Joi.string().max(500).allow(null, ''),
   meetingLink: Joi.string().uri().allow(null, ''),
@@ -19,7 +20,7 @@ const scheduleInterviewSchema = Joi.object({
 
 const updateInterviewSchema = Joi.object({
   type: Joi.string().valid('phone', 'video', 'onsite', 'technical', 'behavioral', 'panel'),
-  scheduledAt: Joi.date().iso(),
+  scheduledAt: futureDate.optional(),
   duration: Joi.number().integer().min(15).max(480),
   location: Joi.string().max(500).allow(null, ''),
   meetingLink: Joi.string().uri().allow(null, ''),

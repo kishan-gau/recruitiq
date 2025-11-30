@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AlertTriangle, ArrowRight, Calendar, CheckCircle, Users, XCircle } from 'lucide-react';
 import Dialog from '@/components/ui/Dialog';
 import { useWorkerTypeUpgradeStatus, usePreviewWorkerTypeUpgrade, useUpgradeWorkersToTemplate } from '@/hooks/useWorkerTypes';
@@ -17,7 +17,9 @@ export default function UpgradeWorkersModal({
   workerTypeId,
   workerTypeName,
 }: UpgradeWorkersModalProps) {
-  const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
+  // ✅ Memoize default date to avoid recalculation on every render
+  const defaultDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [effectiveDate, setEffectiveDate] = useState(defaultDate);
   const [notifyWorkers, setNotifyWorkers] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
 

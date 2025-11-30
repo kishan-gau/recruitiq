@@ -6,6 +6,7 @@
 import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import Joi from 'joi';
+import { dateOnlyRequired } from '../../../validators/dateValidators.js';
 
 class ScheduleService {
   constructor() {
@@ -16,8 +17,19 @@ class ScheduleService {
   createScheduleSchema = Joi.object({
     scheduleName: Joi.string().max(100).required(),
     description: Joi.string().allow(null, ''),
-    startDate: Joi.date().required(),
-    endDate: Joi.date().required().greater(Joi.ref('startDate'))
+    startDate: dateOnlyRequired,
+    endDate: dateOnlyRequired.messages({
+      'any.ref': 'End date must be after start date'
+    })
+  }).custom((value, helpers) => {
+    const start = new Date(value.startDate);
+    const end = new Date(value.endDate);
+    
+    if (end <= start) {
+      return helpers.error('date.range', { message: 'End date must be after start date' });
+    }
+    
+    return value;
   });
 
   createShiftSchema = Joi.object({

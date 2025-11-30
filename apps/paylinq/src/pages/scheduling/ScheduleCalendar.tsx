@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Plus, Users, Download } from 'lucide-react';
 import ScheduleGrid from '@/components/ui/ScheduleGrid';
 import Badge from '@/components/ui/Badge';
@@ -8,10 +8,12 @@ import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import ShiftModal from '@/components/modals/ShiftModal';
+import { useGetCurrentWeekMonday } from '@/hooks/useMemoizedDate';
 
 export default function ScheduleCalendar() {
   const { success, error: showError } = useToast();
   const { paylinq } = usePaylinqAPI();
+  const getCurrentWeekMonday = useGetCurrentWeekMonday();
   const [currentWeekStart, setCurrentWeekStart] = useState(new Date('2025-11-03')); // Monday
   const [shiftModal, setShiftModal] = useState<{ isOpen: boolean; employeeId?: string; date?: string }>({ isOpen: false });
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -109,24 +111,21 @@ export default function ScheduleCalendar() {
     return sum + hours;
   }, 0);
 
-  const goToPreviousWeek = () => {
+  const goToPreviousWeek = useCallback(() => {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() - 7);
     setCurrentWeekStart(newDate);
-  };
+  }, [currentWeekStart]);
 
-  const goToNextWeek = () => {
+  const goToNextWeek = useCallback(() => {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() + 7);
     setCurrentWeekStart(newDate);
-  };
+  }, [currentWeekStart]);
 
-  const goToCurrentWeek = () => {
-    const now = new Date();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - now.getDay() + 1);
-    setCurrentWeekStart(monday);
-  };
+  const goToCurrentWeek = useCallback(() => {
+    setCurrentWeekStart(getCurrentWeekMonday());
+  }, [getCurrentWeekMonday]);
 
   const handleCellClick = (workerId: string, day: string) => {
     // Extract date from day string (e.g., "Monday 3/11" -> "2025-11-03")

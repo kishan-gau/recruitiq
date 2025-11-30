@@ -92,8 +92,13 @@ const SchedulesList = lazy(() => import('@/pages/schedulehub/SchedulesList'));
 const ScheduleBuilder = lazy(() => import('@/pages/schedulehub/ScheduleBuilder'));
 const ScheduleHubTimeOff = lazy(() => import('@/pages/schedulehub/TimeOffRequests'));
 const ShiftSwapMarketplace = lazy(() => import('@/pages/schedulehub/ShiftSwapMarketplace'));
-const StationsList = lazy(() => import('@/pages/schedulehub/StationsList'));
+const StationsList = lazy(() => import('@/pages/schedulehub/stations/StationsList'));
+const StationManagement = lazy(() => import('@/pages/schedulehub/stations/StationManagement'));
+const StationDetails = lazy(() => import('@/pages/schedulehub/stations/StationDetails'));
 const RolesList = lazy(() => import('@/pages/schedulehub/RolesList'));
+const ShiftSwapApprovalQueue = lazy(() => import('@/pages/schedulehub/shift-swaps/ShiftSwapApprovalQueue'));
+const SwapRequestInbox = lazy(() => import('@/pages/schedulehub/shift-swaps/SwapRequestInbox'));
+const AvailabilityManagement = lazy(() => import('@/pages/schedulehub/AvailabilityManagement'));
 
 function App() {
   return (
@@ -219,10 +224,18 @@ function App() {
                     <Route path="schedules" element={<SchedulesList />} />
                     <Route path="schedules/builder" element={<ScheduleBuilder />} />
                     <Route path="schedules/create" element={<ScheduleBuilder />} />
-                    <Route path="stations" element={<StationsList />} />
+                    <Route path="stations">
+                      <Route index element={<StationManagement />} />
+                      <Route path=":id" element={<StationDetails />} />
+                    </Route>
                     <Route path="roles" element={<RolesList />} />
                     <Route path="time-off" element={<ScheduleHubTimeOff />} />
-                    <Route path="shift-swaps" element={<ShiftSwapMarketplace />} />
+                    <Route path="shift-swaps">
+                      <Route index element={<ShiftSwapMarketplace />} />
+                      <Route path="approvals" element={<ShiftSwapApprovalQueue />} />
+                      <Route path="inbox" element={<SwapRequestInbox />} />
+                    </Route>
+                    <Route path="availability" element={<AvailabilityManagement />} />
                   </Route>
 
                   {/* Reports & Settings */}

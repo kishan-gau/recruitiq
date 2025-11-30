@@ -9,15 +9,23 @@
 ## Table of Contents
 
 1. [API Principles](#api-principles)
-2. [Product-Based Routing](#product-based-routing)
-3. [Response Format](#response-format)
-4. [HTTP Status Codes](#http-status-codes)
-5. [Error Handling](#error-handling)
-6. [Pagination](#pagination)
-7. [Filtering & Sorting](#filtering--sorting)
-8. [Versioning](#versioning)
-9. [Rate Limiting](#rate-limiting)
-10. [Documentation](#documentation)
+2. [API Contracts](#api-contracts)
+3. [Product-Based Routing](#product-based-routing)
+4. [Authentication & Authorization](#authentication--authorization)
+5. [Request Handling](#request-handling)
+6. [Response Format](#response-format)
+7. [HTTP Status Codes](#http-status-codes)
+8. [Error Handling](#error-handling)
+9. [Controller Standards](#controller-standards)
+10. [Data Transformation](#data-transformation)
+11. [Pagination](#pagination)
+12. [Filtering & Sorting](#filtering--sorting)
+13. [File Upload Handling](#file-upload-handling)
+14. [Versioning](#versioning)
+15. [Rate Limiting](#rate-limiting)
+16. [Security Headers](#security-headers)
+17. [API Testing](#api-testing)
+18. [Documentation](#documentation)
 
 ---
 
@@ -56,7 +64,1016 @@ POST   /api/v1/jobs/:id/apply        // Nest resources properly
 
 ---
 
+## API Contracts
+
+### Contract Principles (MANDATORY)
+
+API Contracts define the "agreement" between frontend and backend about data structure, validation rules, and behavior.
+
+**Core Principles:**
+
+1. **Backward Compatibility** - Never break existing clients without versioning
+2. **Explicit Contracts** - Document all guarantees and requirements
+3. **Fail Fast** - Validate contracts at API boundaries
+4. **Version Breaking Changes** - Use API versioning for incompatible changes
+5. **Type Safety** - Use TypeScript types to enforce contracts
+6. **Contract Testing** - Automated tests verify contract compliance
+
+### Request Contract Definition
+
+Every endpoint MUST document its request contract with:
+
+```typescript
+/**
+ * Request contract for creating a job
+ */
+interface CreateJobRequest {
+  // Required fields - must be present, validated
+  title: string;           // Required, 3-200 chars, trimmed
+  description: string;     // Required, min 10 chars, trimmed
+  workspaceId: string;     // Required, UUID v4 format
+  
+  // Optional fields - with defaults or nullable
+  department?: string;     // Optional, max 100 chars, defaults to null
+  location?: string;       // Optional, max 200 chars, defaults to null
+  employmentType?: 'full-time' | 'part-time' | 'contract' | 'temporary'; // Defaults to 'full-time'
+  
+  // Numeric constraints
+  salaryMin?: number;      // Optional, >= 0, integer
+  salaryMax?: number;      // Optional, >= salaryMin, integer
+  
+  // Array fields
+  skills?: string[];       // Optional, each string max 50 chars, max 100 items
+  requirements?: string[]; // Optional, each string max 500 chars, max 50 items
+}
+```
+
+**Validation Rules Documentation:**
+
+```javascript
+// ✅ CORRECT: Explicit validation rules in Joi schema
+static createSchema = Joi.object({
+  title: Joi.string()
+    .required()
+    .trim()
+    .min(3)
+    .max(200)
+    .messages({
+      'string.empty': 'Title is required',
+      'string.min': 'Title must be at least 3 characters',
+      'string.max': 'Title cannot exceed 200 characters'
+    }),
+  
+  description: Joi.string()
+    .required()
+    .trim()
+    .min(10)
+    .messages({
+      'string.min': 'Description must be at least 10 characters'
+    }),
+  
+  workspaceId: Joi.string()
+    .uuid({ version: 'uuidv4' })
+    .required()
+    .messages({
+      'string.guid': 'Workspace ID must be a valid UUID'
+    }),
+  
+  employmentType: Joi.string()
+    .valid('full-time', 'part-time', 'contract', 'temporary')
+    .default('full-time'),
+  
+  salaryMin: Joi.number()
+    .integer()
+    .min(0)
+    .optional()
+    .allow(null),
+  
+  salaryMax: Joi.number()
+    .integer()
+    .min(Joi.ref('salaryMin'))
+    .optional()
+    .allow(null)
+    .messages({
+      'number.min': 'Maximum salary must be greater than or equal to minimum salary'
+    }),
+  
+  skills: Joi.array()
+    .items(Joi.string().trim().max(50))
+    .max(100)
+    .unique()
+    .optional(),
+  
+  requirements: Joi.array()
+    .items(Joi.string().trim().max(500))
+    .max(50)
+    .optional()
+}).options({ 
+  stripUnknown: true,  // Remove fields not in schema
+  abortEarly: false    // Return all validation errors
+});
+```
+
+### Response Contract Definition
+
+Every endpoint MUST guarantee its response structure:
+
+```typescript
+/**
+ * Response contract for job retrieval
+ */
+interface JobResponse {
+  success: true;
+  job: {
+    // Fields that are ALWAYS present (guaranteed)
+    id: string;                    // Always present, UUID v4
+    title: string;                 // Always present, never empty
+    description: string;           // Always present
+    status: JobStatus;             // Always present, enum
+    workspaceId: string;           // Always present, UUID v4
+    organizationId: string;        // Always present, UUID v4
+    employmentType: EmploymentType; // Always present, defaults to 'full-time'
+    createdAt: string;             // Always present, ISO 8601 timestamp
+    updatedAt: string;             // Always present, ISO 8601 timestamp
+    createdBy: string;             // Always present, UUID v4
+    
+    // Fields that may be null (present but nullable)
+    department: string | null;     // Present, may be null
+    location: string | null;       // Present, may be null
+    salaryMin: number | null;      // Present, may be null
+    salaryMax: number | null;      // Present, may be null
+    updatedBy: string | null;      // Present, may be null if never updated
+    
+    // Fields that may be omitted (conditional presence)
+    skills?: string[];             // Omitted in list views, present in detail views
+    requirements?: string[];       // Omitted in list views, present in detail views
+    applicationCount?: number;     // Omitted unless specifically requested
+  };
+}
+
+/**
+ * List response contract
+ */
+interface JobListResponse {
+  success: true;
+  jobs: Array<{
+    // Minimal fields for list views
+    id: string;
+    title: string;
+    status: JobStatus;
+    location: string | null;
+    employmentType: EmploymentType;
+    createdAt: string;
+    // Note: skills and requirements omitted for performance
+  }>;
+  pagination: {
+    page: number;        // Always >= 1
+    limit: number;       // Always >= 1, <= 100
+    total: number;       // Always >= 0
+    totalPages: number;  // Always >= 0
+    hasNext: boolean;    // Always present
+    hasPrev: boolean;    // Always present
+  };
+}
+```
+
+### Null vs Undefined vs Omitted
+
+**CRITICAL:** Be explicit about field presence:
+
+```typescript
+// ❌ WRONG: Ambiguous
+interface JobResponse {
+  department: string;  // Is this always present? Can it be null?
+}
+
+// ✅ CORRECT: Explicit contract
+interface JobResponse {
+  // Field is ALWAYS present, never null
+  id: string;
+  
+  // Field is ALWAYS present, but MAY be null
+  department: string | null;
+  
+  // Field MAY be omitted entirely
+  skills?: string[];
+  
+  // Field MAY be omitted OR null when present
+  metadata?: Record<string, any> | null;
+}
+```
+
+**Rules:**
+- **Always present, never null** → `field: Type`
+- **Always present, may be null** → `field: Type | null`
+- **May be omitted** → `field?: Type`
+- **May be omitted or null** → `field?: Type | null`
+
+### Breaking vs Non-Breaking Changes
+
+#### ❌ Breaking Changes (Require Version Bump)
+
+These changes **break existing clients** and require a new API version:
+
+```javascript
+// 1. Removing a field from response
+// Before: { success: true, job: { id, title, department } }
+// After:  { success: true, job: { id, title } }  // ❌ BREAKING!
+
+// 2. Changing field type
+// Before: { salaryMin: 50000 }  // number
+// After:  { salaryMin: "50000" }  // ❌ BREAKING! Now string
+
+// 3. Renaming a field
+// Before: { employmentType: 'full-time' }
+// After:  { employment_type: 'full-time' }  // ❌ BREAKING!
+
+// 4. Making optional field required
+// Before: { title: string, department?: string }
+// After:  { title: string, department: string }  // ❌ BREAKING!
+
+// 5. Removing enum values
+// Before: status: 'draft' | 'open' | 'closed'
+// After:  status: 'open' | 'closed'  // ❌ BREAKING! 'draft' removed
+
+// 6. Changing response structure
+// Before: { success: true, job: {...} }
+// After:  { success: true, data: {...} }  // ❌ BREAKING!
+
+// 7. Changing error codes
+// Before: { errorCode: 'NOT_FOUND' }
+// After:  { errorCode: 'RESOURCE_NOT_FOUND' }  // ❌ BREAKING!
+
+// 8. Changing validation rules (stricter)
+// Before: title: min 3 chars
+// After:  title: min 10 chars  // ❌ BREAKING! Rejects previously valid data
+```
+
+#### ✅ Non-Breaking Changes (Safe to Deploy)
+
+These changes are **backward compatible**:
+
+```javascript
+// 1. Adding new optional request fields
+// Before: { title: string }
+// After:  { title: string, tags?: string[] }  // ✅ Safe
+
+// 2. Adding new response fields
+// Before: { id, title }
+// After:  { id, title, createdBy }  // ✅ Safe - clients ignore unknown fields
+
+// 3. Adding new enum values (with client fallback)
+// Before: status: 'draft' | 'open'
+// After:  status: 'draft' | 'open' | 'archived'  // ✅ Safe if clients handle unknown
+
+// 4. Deprecating fields (with warning period)
+// { title: string, oldField: string }  // Mark as deprecated, remove in v2
+// ✅ Safe during deprecation period
+
+// 5. Adding new error codes
+// Existing: 'NOT_FOUND', 'VALIDATION_ERROR'
+// New:      'NOT_FOUND', 'VALIDATION_ERROR', 'DUPLICATE_ENTRY'  // ✅ Safe
+
+// 6. Improving error messages
+// Before: { error: 'Invalid input' }
+// After:  { error: 'Invalid input: title must be at least 3 characters' }  // ✅ Safe
+
+// 7. Making validation rules less strict
+// Before: title: min 10 chars
+// After:  title: min 3 chars  // ✅ Safe - accepts more data
+
+// 8. Changing internal implementation (same contract)
+// Database query optimization, caching, etc.  // ✅ Safe
+```
+
+### Contract Testing
+
+**JSON Schema Validation:**
+
+```javascript
+// contracts/jobResponse.schema.json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["success", "job"],
+  "properties": {
+    "success": { "type": "boolean", "const": true },
+    "job": {
+      "type": "object",
+      "required": ["id", "title", "description", "status", "createdAt"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "title": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "description": { "type": "string", "minLength": 10 },
+        "status": { 
+          "type": "string", 
+          "enum": ["draft", "open", "closed", "archived"] 
+        },
+        "department": { "type": ["string", "null"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}
+```
+
+**Contract Test Example:**
+
+```javascript
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+import request from 'supertest';
+import jobResponseSchema from './contracts/jobResponse.schema.json';
+
+describe('GET /api/jobs/:id - Contract Tests', () => {
+  const ajv = new Ajv({ strict: true });
+  addFormats(ajv);
+  const validate = ajv.compile(jobResponseSchema);
+
+  it('should match response contract', async () => {
+    const response = await request(app)
+      .get('/api/jobs/123e4567-e89b-12d3-a456-426614174000')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    const valid = validate(response.body);
+    
+    if (!valid) {
+      console.error('Contract validation errors:', validate.errors);
+    }
+    
+    expect(valid).toBe(true);
+  });
+
+  it('should have all required fields', async () => {
+    const response = await request(app).get('/api/jobs/123');
+    
+    expect(response.body).toHaveProperty('success');
+    expect(response.body).toHaveProperty('job');
+    expect(response.body.job).toHaveProperty('id');
+    expect(response.body.job).toHaveProperty('title');
+    expect(response.body.job).toHaveProperty('createdAt');
+  });
+
+  it('should have correct field types', async () => {
+    const response = await request(app).get('/api/jobs/123');
+    
+    expect(typeof response.body.success).toBe('boolean');
+    expect(typeof response.body.job.id).toBe('string');
+    expect(typeof response.body.job.title).toBe('string');
+    expect(Array.isArray(response.body.job.skills)).toBe(true);
+  });
+
+  it('should handle nullable fields correctly', async () => {
+    const response = await request(app).get('/api/jobs/123');
+    
+    // Department can be null or string, but must be present
+    expect(response.body.job).toHaveProperty('department');
+    expect(
+      response.body.job.department === null || 
+      typeof response.body.job.department === 'string'
+    ).toBe(true);
+  });
+});
+```
+
+### Deprecation Workflow
+
+**How to safely deprecate fields or endpoints:**
+
+```javascript
+// Step 1: Mark as deprecated in documentation and add warning header
+app.get('/api/v1/jobs/:id', (req, res) => {
+  // Add deprecation header
+  res.setHeader('Deprecation', 'true');
+  res.setHeader('Sunset', 'Wed, 31 Dec 2025 23:59:59 GMT');
+  res.setHeader('Link', '</api/v2/jobs/:id>; rel="successor-version"');
+  
+  // Return data with deprecated field
+  return res.json({
+    success: true,
+    job: {
+      id: job.id,
+      title: job.title,
+      oldField: job.oldField  // Mark in docs: DEPRECATED - Use newField instead
+    }
+  });
+});
+
+// Step 2: Add migration period (both old and new fields)
+{
+  oldField: job.oldField,  // DEPRECATED - Remove in v2
+  newField: job.newField   // Use this instead
+}
+
+// Step 3: After migration period, remove in new version
+// v2 removes oldField entirely
+```
+
+**Deprecation Notice Example:**
+
+```typescript
+/**
+ * @deprecated Use `employeeId` instead. Will be removed in API v2 (2026-03-01)
+ */
+interface JobResponse {
+  /**
+   * @deprecated Use employeeId instead
+   */
+  userId?: string;
+  
+  employeeId: string;  // Use this
+}
+```
+
+### Contract Documentation Template
+
+**Every new endpoint MUST document its contract:**
+
+```typescript
+/**
+ * POST /api/products/nexus/employees
+ * 
+ * Creates a new employee record
+ * 
+ * @auth Required - JWT token with 'employee:create' permission
+ * @rateLimit 100 requests per 15 minutes
+ * 
+ * REQUEST CONTRACT:
+ * @body {
+ *   firstName: string (required, 2-100 chars)
+ *   lastName: string (required, 2-100 chars)
+ *   email: string (required, valid email, unique)
+ *   workspaceId: string (required, UUID v4)
+ *   departmentId?: string (optional, UUID v4)
+ *   hireDate: string (required, YYYY-MM-DD format, not future)
+ *   employmentType: 'full-time' | 'part-time' | 'contract' (required)
+ * }
+ * 
+ * RESPONSE CONTRACT:
+ * @status 201 Created
+ * @returns {
+ *   success: true
+ *   employee: {
+ *     id: string (UUID v4)
+ *     firstName: string
+ *     lastName: string
+ *     email: string
+ *     workspaceId: string
+ *     departmentId: string | null
+ *     hireDate: string (YYYY-MM-DD)
+ *     employmentType: string
+ *     status: 'active' (always 'active' on creation)
+ *     createdAt: string (ISO 8601)
+ *     updatedAt: string (ISO 8601)
+ *   }
+ * }
+ * 
+ * ERROR RESPONSES:
+ * @status 400 Bad Request - Validation errors
+ * @status 401 Unauthorized - Missing or invalid token
+ * @status 403 Forbidden - Missing permission
+ * @status 409 Conflict - Email already exists
+ * @status 422 Unprocessable Entity - Invalid data format
+ * 
+ * BREAKING CHANGES:
+ * - v1.0.0: Initial release
+ * - v1.1.0: Added optional departmentId field (non-breaking)
+ * - v2.0.0 (planned 2026-03): Will require departmentId (breaking)
+ */
+```
+
+
+---
+
+## Authentication & Authorization
+
+### ⚠️ CRITICAL: Cookie-Based Authentication (MANDATORY)
+
+**Bearer tokens are FULLY DEPRECATED.** All authentication MUST use httpOnly cookies as per security standards.
+
+**Cookie-Based Authentication:**
+- ✅ `tenant_access_token` cookie for tenant users
+- ✅ `platform_access_token` cookie for platform users
+- ✅ httpOnly flag prevents XSS attacks
+- ✅ Secure flag for production
+- ✅ SameSite protection against CSRF
+
+**❌ DEPRECATED: Bearer Token Authentication (DO NOT USE)**
+- Bearer tokens expose tokens to JavaScript
+- No XSS protection
+- Manual token management required
+- **Status**: Fully deprecated as of November 2025
+- **Migration**: Update all code to use cookie-based authentication
+
+### Authentication Middleware (MANDATORY)
+
+**ALL protected routes MUST use the authenticate middleware:**
+
+```javascript
+import { authenticate } from '../middleware/auth.js';
+
+// ✅ CORRECT: Protected route with authentication
+router.get('/api/jobs', authenticate, listJobs);
+router.post('/api/jobs', authenticate, createJob);
+router.put('/api/jobs/:id', authenticate, updateJob);
+
+// ❌ WRONG: No authentication on protected endpoint
+router.post('/api/jobs', createJob);  // Anyone can create jobs!
+```
+
+### Authentication Implementation
+
+The authenticate middleware validates JWT tokens and attaches user to request:
+
+```javascript
+// middleware/auth.js
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../config/index.js';
+import { UnauthorizedError } from '../utils/errors.js';
+
+export async function authenticate(req, res, next) {
+  try {
+    // 1. Extract token from httpOnly cookie (SECURITY: Cookie-based auth)
+    const token = req.cookies.tenant_access_token;
+    
+    if (!token) {
+      throw new UnauthorizedError('No token provided');
+    }
+
+    // 2. Verify JWT token
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // 3. Check token blacklist (for logout)
+    const isBlacklisted = await tokenBlacklist.isBlacklisted(token);
+    if (isBlacklisted) {
+      throw new UnauthorizedError('Token has been revoked');
+    }
+
+    // 4. Attach user to request object
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      organizationId: decoded.organizationId,
+      role: decoded.role,
+      permissions: decoded.permissions || []
+    };
+
+    // 5. Log authentication event
+    logger.info('User authenticated', {
+      userId: req.user.id,
+      ip: req.ip,
+      path: req.path
+    });
+
+    next();
+  } catch (error) {
+    // Log security event
+    logger.logSecurityEvent('authentication_failed', {
+      ip: req.ip,
+      path: req.path,
+      error: error.message
+    });
+
+    next(new UnauthorizedError('Authentication failed'));
+  }
+}
+```
+
+### Accessing Authenticated User in Controllers
+
+```javascript
+// ✅ CORRECT: Access user from req.user
+export async function createJob(req, res, next) {
+  try {
+    const { organizationId, id: userId } = req.user;
+    
+    const job = await JobService.create(
+      req.body,
+      organizationId,  // From authenticated user
+      userId           // From authenticated user
+    );
+    
+    return res.status(201).json({
+      success: true,
+      job
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ❌ WRONG: Taking organizationId from request body (security risk!)
+export async function createJob(req, res, next) {
+  const { organizationId } = req.body;  // ❌ User could fake this!
+  const job = await JobService.create(req.body, organizationId);
+}
+```
+
+### Role-Based Access Control (RBAC)
+
+**Use requireRole middleware for role checks:**
+
+```javascript
+import { authenticate, requireRole } from '../middleware/auth.js';
+
+// Only admins and owners can access
+router.post('/api/admin/users', 
+  authenticate, 
+  requireRole('admin', 'owner'),
+  createUser
+);
+
+// Only recruiters and admins can create jobs
+router.post('/api/jobs',
+  authenticate,
+  requireRole('recruiter', 'admin'),
+  createJob
+);
+```
+
+**requireRole middleware implementation:**
+
+```javascript
+// middleware/auth.js
+
+/**
+ * Middleware to check user roles
+ * @param {Array<string>} allowedRoles - Roles that can access the endpoint
+ */
+export function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    // Ensure user is authenticated first
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        errorCode: 'UNAUTHORIZED'
+      });
+    }
+
+    const { role } = req.user;
+
+    // Check if user's role is in allowed roles
+    if (!allowedRoles.includes(role)) {
+      logger.logSecurityEvent('forbidden_access', {
+        userId: req.user.id,
+        userRole: role,
+        requiredRoles: allowedRoles,
+        path: req.path
+      });
+
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        errorCode: 'FORBIDDEN'
+      });
+    }
+
+    next();
+  };
+}
+```
+
+### Permission-Based Access Control
+
+**Check specific permissions for fine-grained control:**
+
+```javascript
+import { authenticate, requirePermission } from '../middleware/auth.js';
+
+// Requires specific permission
+router.delete('/api/jobs/:id',
+  authenticate,
+  requirePermission('job:delete'),
+  deleteJob
+);
+
+router.post('/api/admin/organizations',
+  authenticate,
+  requirePermission('organization:create'),
+  createOrganization
+);
+```
+
+**requirePermission middleware:**
+
+```javascript
+/**
+ * Middleware to check user permissions
+ * @param {string} permission - Required permission (format: 'resource:action')
+ */
+export function requirePermission(permission) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        errorCode: 'UNAUTHORIZED'
+      });
+    }
+
+    const { permissions = [] } = req.user;
+
+    // Check if user has the specific permission
+    if (!permissions.includes(permission)) {
+      logger.logSecurityEvent('forbidden_access', {
+        userId: req.user.id,
+        requiredPermission: permission,
+        userPermissions: permissions,
+        path: req.path
+      });
+
+      return res.status(403).json({
+        success: false,
+        error: `Missing required permission: ${permission}`,
+        errorCode: 'FORBIDDEN'
+      });
+    }
+
+    next();
+  };
+}
+```
+
+### Authorization in Service Layer
+
+**Sometimes authorization logic belongs in services:**
+
+```javascript
+// ✅ CORRECT: Check ownership in service
+class JobService {
+  async update(jobId, data, organizationId, userId) {
+    // Get existing job
+    const job = await this.repository.findById(jobId, organizationId);
+    
+    if (!job) {
+      throw new NotFoundError('Job not found');
+    }
+    
+    // Check if user is owner or admin
+    const user = await userRepository.findById(userId, organizationId);
+    
+    if (job.createdBy !== userId && user.role !== 'admin') {
+      throw new ForbiddenError('Only the job creator or admin can update this job');
+    }
+    
+    // Proceed with update
+    return await this.repository.update(jobId, data, organizationId, userId);
+  }
+}
+```
+
+### JWT Token Generation
+
+**Generate tokens with proper claims:**
+
+```javascript
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/index.js';
+
+/**
+ * Generates JWT access token
+ */
+export function generateToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      organizationId: user.organizationId,
+      role: user.role,
+      permissions: user.permissions || []
+    },
+    JWT_SECRET,
+    {
+      expiresIn: JWT_EXPIRES_IN,      // e.g., '15m', '24h'
+      issuer: 'recruitiq-api',
+      audience: 'recruitiq-client'
+    }
+  );
+}
+
+/**
+ * Generates refresh token
+ */
+export function generateRefreshToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      type: 'refresh'
+    },
+    JWT_REFRESH_SECRET,
+    {
+      expiresIn: '7d',  // Longer expiration for refresh tokens
+      issuer: 'recruitiq-api'
+    }
+  );
+}
+```
+
+### Token Refresh Pattern
+
+```javascript
+// POST /api/auth/refresh
+export async function refreshToken(req, res, next) {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      throw new UnauthorizedError('Refresh token required');
+    }
+    
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
+    
+    if (decoded.type !== 'refresh') {
+      throw new UnauthorizedError('Invalid token type');
+    }
+    
+    // Check if token is blacklisted
+    const isBlacklisted = await tokenBlacklist.isBlacklisted(refreshToken);
+    if (isBlacklisted) {
+      throw new UnauthorizedError('Token has been revoked');
+    }
+    
+    // Get user
+    const user = await userRepository.findById(decoded.id);
+    
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+    
+    // Generate new access token
+    const accessToken = generateToken(user);
+    
+    // Optionally rotate refresh token
+    const newRefreshToken = generateRefreshToken(user);
+    
+    // Blacklist old refresh token
+    await tokenBlacklist.add(refreshToken);
+    
+    return res.json({
+      success: true,
+      accessToken,
+      refreshToken: newRefreshToken
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+```
+
+### Common Authentication Patterns
+
+**Pattern 1: Public + Protected Routes**
+
+```javascript
+// Public routes (no authentication)
+router.get('/api/jobs/public', listPublicJobs);
+router.get('/api/jobs/public/:id', getPublicJob);
+
+// Protected routes (authentication required)
+router.get('/api/jobs', authenticate, listJobs);
+router.post('/api/jobs', authenticate, createJob);
+```
+
+**Pattern 2: Optional Authentication**
+
+```javascript
+/**
+ * Middleware for optional authentication
+ * Attaches user if token is valid, but doesn't fail if missing
+ */
+export async function optionalAuth(req, res, next) {
+  const token = req.cookies.tenant_access_token;
+  
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+    } catch (error) {
+      // Token invalid, but that's okay for optional auth
+      req.user = null;
+    }
+  }
+  
+  next();
+}
+
+// Usage: Show more data if user is authenticated
+router.get('/api/jobs/:id', optionalAuth, getJob);
+
+export async function getJob(req, res, next) {
+  const job = await JobService.getById(req.params.id);
+  
+  // Show salary only to authenticated users
+  if (req.user) {
+    return res.json({ success: true, job });
+  } else {
+    const { salaryMin, salaryMax, ...publicJob } = job;
+    return res.json({ success: true, job: publicJob });
+  }
+}
+```
+
+**Pattern 3: Cascading Permissions**
+
+```javascript
+// Check multiple conditions
+router.delete('/api/jobs/:id',
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const { organizationId, id: userId, role } = req.user;
+      const jobId = req.params.id;
+      
+      // Get job
+      const job = await JobService.getById(jobId, organizationId);
+      
+      // Allow if: admin, owner, or creator
+      if (role === 'admin' || 
+          role === 'owner' || 
+          job.createdBy === userId) {
+        return next();  // Authorized
+      }
+      
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins, owners, or job creators can delete jobs',
+        errorCode: 'FORBIDDEN'
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+  deleteJob
+);
+```
+
+### Authentication Testing
+
+**Test authentication in integration tests:**
+
+```javascript
+describe('POST /api/jobs - Authentication', () => {
+  it('should return 401 without token', async () => {
+    const response = await request(app)
+      .post('/api/jobs')
+      .send({ title: 'Test Job' })
+      .expect(401);
+    
+    expect(response.body.success).toBe(false);
+    expect(response.body.errorCode).toBe('UNAUTHORIZED');
+  });
+  
+  it('should return 401 with invalid token', async () => {
+    const response = await request(app)
+      .post('/api/jobs')
+      .set('Cookie', 'tenant_access_token=invalid-token')
+      .send({ title: 'Test Job' })
+      .expect(401);
+  });
+  
+  it('should succeed with valid token', async () => {
+    // Login to get auth cookie
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: testUser.email, password: 'password' });
+    
+    const authCookie = loginRes.headers['set-cookie'];
+    
+    const response = await request(app)
+      .post('/api/jobs')
+      .set('Cookie', authCookie)
+      .send({ title: 'Test Job', description: 'Description', workspaceId })
+      .expect(201);
+    
+    expect(response.body.success).toBe(true);
+  });
+  
+  it('should return 403 for insufficient role', async () => {
+    // Login as viewer
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: viewerUser.email, password: 'password' });
+    
+    const authCookie = loginRes.headers['set-cookie'];
+    
+    const response = await request(app)
+      .post('/api/admin/users')
+      .set('Cookie', authCookie)
+      .send({ email: 'newuser@example.com' })
+      .expect(403);
+    
+    expect(response.body.errorCode).toBe('FORBIDDEN');
+  });
+});
+```
+
+---
+
 ## Product-Based Routing
+
 
 ### ⚠️ CRITICAL: Dynamic Product System
 

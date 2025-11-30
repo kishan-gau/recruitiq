@@ -1487,4 +1487,90 @@ export class NexusClient {
   async getEmployeeFeedback(employeeId: string) {
     return this.client.get<ApiResponse<any>>(`${this.basePath}/performance/feedback/employee/${employeeId}`);
   }
+
+  // ============================================================================
+  // ScheduleHub - Stations
+  // ============================================================================
+
+  async listStations(filters?: any) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/stations`, { params: filters });
+  }
+
+  async getStation(id: string) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/stations/${id}`);
+  }
+
+  async createStation(data: any) {
+    return this.client.post<ApiResponse<any>>(`${this.basePath}/schedulehub/stations`, data);
+  }
+
+  async updateStation(id: string, updates: any) {
+    return this.client.put<ApiResponse<any>>(`${this.basePath}/schedulehub/stations/${id}`, updates);
+  }
+
+  async deleteStation(id: string) {
+    return this.client.delete<ApiResponse<void>>(`${this.basePath}/schedulehub/stations/${id}`);
+  }
+
+  async getStationRequirements(stationId: string, date: string) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/stations/${stationId}/requirements`, { params: { date } });
+  }
+
+  async updateStationRequirements(stationId: string, date: string, data: any) {
+    return this.client.put<ApiResponse<any>>(`${this.basePath}/schedulehub/stations/${stationId}/requirements`, { ...data, date });
+  }
+
+  async getStationUtilization(stationId: string, startDate: string, endDate: string) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/stations/${stationId}/utilization`, { params: { startDate, endDate } });
+  }
+
+  // ============================================================================
+  // ScheduleHub - Availability
+  // ============================================================================
+
+  async listAvailability(filters?: any) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/availability`, { params: filters });
+  }
+
+  async getAvailability(id: string) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/${id}`);
+  }
+
+  async createAvailability(data: any) {
+    return this.client.post<ApiResponse<any>>(`${this.basePath}/schedulehub/availability`, data);
+  }
+
+  async updateAvailability(id: string, updates: any) {
+    return this.client.put<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/${id}`, updates);
+  }
+
+  async deleteAvailability(id: string) {
+    return this.client.delete<ApiResponse<void>>(`${this.basePath}/schedulehub/availability/${id}`);
+  }
+
+  async bulkUpdateAvailability(employeeId: string, data: any) {
+    return this.client.post<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/bulk`, { ...data, employeeId });
+  }
+
+  async checkWorkerAvailability(workerId: string, startDate: string, endDate: string) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/check`, {
+      params: { workerId, startDate, endDate }
+    });
+  }
+
+  // ============================================================================
+  // ScheduleHub - Availability Exceptions
+  // ============================================================================
+
+  async listAvailabilityExceptions(filters?: any) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/exceptions`, { params: filters });
+  }
+
+  async createAvailabilityException(data: any) {
+    return this.client.post<ApiResponse<any>>(`${this.basePath}/schedulehub/availability/exceptions`, data);
+  }
+
+  async deleteAvailabilityException(id: string) {
+    return this.client.delete<ApiResponse<void>>(`${this.basePath}/schedulehub/availability/exceptions/${id}`);
+  }
 }

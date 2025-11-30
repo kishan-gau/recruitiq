@@ -10,25 +10,33 @@
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-// Mock database - create mockQuery BEFORE jest.mock
+// Create mocks before any imports
 const mockQuery = jest.fn();
-jest.mock('../../../../src/config/database.js', () => ({
+const mockLogger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn()
+};
+
+// Mock modules using unstable_mockModule for proper ES module support
+jest.unstable_mockModule('../../../../src/config/database.js', () => ({
   default: { query: mockQuery },
   query: mockQuery
 }));
 
-// Mock logger to avoid console spam
-jest.mock('../../../../src/utils/logger.js', () => ({
-  default: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn()
+jest.unstable_mockModule('../../../../src/utils/logger.js', () => ({
+  default: mockLogger,
+  logSecurityEvent: jest.fn(),
+  SecurityEventType: {
+    UNAUTHORIZED_ACCESS: 'unauthorized_access',
+    SQL_INJECTION_ATTEMPT: 'sql_injection_attempt',
   }
 }));
 
-import PayPeriodService from '../../../../src/products/paylinq/services/payPeriodService.js';
-import { ValidationError, NotFoundError } from '../../../../src/middleware/errorHandler.js';
+// Import after mocking
+const { default: PayPeriodService } = await import('../../../../src/products/paylinq/services/payPeriodService.js');
+const { ValidationError, NotFoundError } = await import('../../../../src/middleware/errorHandler.js');
 
 describe('PayPeriodService', () => {
   let service;
@@ -214,7 +222,9 @@ describe('PayPeriodService', () => {
         periodStartDate: '2025-01-06', // Monday
         payDayOffset: 7
       });
-      mockQuery.mockResolvedValue({ rows: [config] });
+      // Mock both queries: first for config, second for organization timezone
+      mockQuery.mockResolvedValueOnce({ rows: [config] });
+      mockQuery.mockResolvedValueOnce({ rows: [{ timezone: 'UTC' }] });
 
       const result = await service.getCurrentPayPeriod(orgId);
 
@@ -232,7 +242,9 @@ describe('PayPeriodService', () => {
         periodStartDate: '2025-01-06',
         payDayOffset: 5
       });
-      mockQuery.mockResolvedValue({ rows: [config] });
+      // Mock both queries: first for config, second for organization timezone
+      mockQuery.mockResolvedValueOnce({ rows: [config] });
+      mockQuery.mockResolvedValueOnce({ rows: [{ timezone: 'UTC' }] });
 
       const result = await service.getCurrentPayPeriod(orgId);
 
@@ -246,7 +258,9 @@ describe('PayPeriodService', () => {
         periodStartDate: '2025-01-01',
         payDayOffset: 3
       });
-      mockQuery.mockResolvedValue({ rows: [config] });
+      // Mock both queries: first for config, second for organization timezone
+      mockQuery.mockResolvedValueOnce({ rows: [config] });
+      mockQuery.mockResolvedValueOnce({ rows: [{ timezone: 'UTC' }] });
 
       // Use Jest fake timers to set a specific date (Jan 10, 2025)
       jest.useFakeTimers();
@@ -266,13 +280,15 @@ describe('PayPeriodService', () => {
       const config = createMockConfig({
         payFrequency: 'monthly',
         periodStartDate: '2025-01-01',
-        payDayOffset: 10
+        payDayOffset: 5
       });
-      mockQuery.mockResolvedValue({ rows: [config] });
+      // Mock both queries: first for config, second for organization timezone
+      mockQuery.mockResolvedValueOnce({ rows: [config] });
+      mockQuery.mockResolvedValueOnce({ rows: [{ timezone: 'UTC' }] });
 
-      // Use Jest fake timers to set a specific date (Jan 15, 2025)
+      // Use Jest fake timers to set a specific date (Jan 20, 2025)
       jest.useFakeTimers();
-      jest.setSystemTime(new Date('2025-01-15T12:00:00Z'));
+      jest.setSystemTime(new Date('2025-01-20T12:00:00Z'));
 
       const result = await service.getCurrentPayPeriod(orgId);
 
@@ -299,7 +315,15 @@ describe('PayPeriodService', () => {
         periodStartDate: '2025-01-06',
         payDayOffset: 7
       });
-      mockQuery.mockResolvedValue({ rows: [config] });
+      // Mock all 4 queries: 
+      // 1. getCurrentPayPeriod calls getPayPeriodConfig
+      mockQuery.mockResolvedValueOnce({ rows: [config] });
+      // 2. getCurrentPayPeriod queries timezone
+      mockQuery.mockResolvedValueOnce({ rows: [{ timezone: 'UTC' }] });
+      // 3. getNextPayPeriod calls getPayPeriodConfig again
+      mockQuery.mockResolvedValueOnce({ rows: [config] });
+      // 4. getNextPayPeriod queries timezone
+      mockQuery.mockResolvedValueOnce({ rows: [{ timezone: 'UTC' }] });
 
       const nextPeriod = await service.getNextPayPeriod(orgId);
 
@@ -315,10 +339,15 @@ describe('PayPeriodService', () => {
         periodStartDate: '2025-01-01',
         payDayOffset: 5
       });
-      // getNextPayPeriod calls getPayPeriodConfig twice (once for current, once for next)
-      mockQuery
-        .mockResolvedValueOnce({ rows: [config] })  // First call: getCurrentPayPeriod
-        .mockResolvedValueOnce({ rows: [config] }); // Second call: getNextPayPeriod
+      // Mock all 4 queries:
+      // 1. getCurrentPayPeriod calls getPayPeriodConfig
+      mockQuery.mockResolvedValueOnce({ rows: [config] });
+      // 2. getCurrentPayPeriod queries timezone
+      mockQuery.mockResolvedValueOnce({ rows: [{ timezone: 'UTC' }] });
+      // 3. getNextPayPeriod calls getPayPeriodConfig again
+      mockQuery.mockResolvedValueOnce({ rows: [config] });
+      // 4. getNextPayPeriod queries timezone
+      mockQuery.mockResolvedValueOnce({ rows: [{ timezone: 'UTC' }] });
 
       // Use Jest fake timers to set a specific date (Jan 15, 2025 at noon UTC to avoid timezone issues)
       jest.useFakeTimers();

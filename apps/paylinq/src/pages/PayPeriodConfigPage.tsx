@@ -107,7 +107,8 @@ export default function PayPeriodConfigPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState<PayFrequency>('bi-weekly');
-  const [startDate, setStartDate] = useState<Date | null>(new Date());
+  // ✅ Use lazy initializer to avoid recalculating on every render
+  const [startDate, setStartDate] = useState<Date | null>(() => new Date());
   const [payDayOffset, setPayDayOffset] = useState(3);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [showAddHoliday, setShowAddHoliday] = useState(false);

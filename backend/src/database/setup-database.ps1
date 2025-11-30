@@ -317,18 +317,6 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "[*] Seeding payroll run types..." -ForegroundColor Cyan
-Write-Host "================================================================" -ForegroundColor Cyan
-
-& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-payroll-run-types.sql
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Error seeding payroll run types" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ""
-Write-Host "================================================================" -ForegroundColor Cyan
 Write-Host "[*] Creating test organization and tenant users..." -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
@@ -336,6 +324,18 @@ Write-Host "================================================================" -F
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Error creating test organization" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host "================================================================" -ForegroundColor Cyan
+Write-Host "[*] Seeding payroll run types..." -ForegroundColor Cyan
+Write-Host "================================================================" -ForegroundColor Cyan
+
+& $psql -h $DBHost -p $DBPort -U $DBUser -d $DBName -f seeds/seed-payroll-run-types.sql
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Error seeding payroll run types" -ForegroundColor Red
     exit 1
 }
 

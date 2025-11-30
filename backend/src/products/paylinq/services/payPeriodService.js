@@ -7,6 +7,13 @@ import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.js';
 import Joi from 'joi';
+import { 
+  parseDate, 
+  toTimezone, 
+  addDaysInTimezone,
+  formatForDB,
+  nowInTimezone 
+} from '../../../utils/dateUtils.js';
 
 class PayPeriodService {
   /**
@@ -175,10 +182,19 @@ class PayPeriodService {
       throw new NotFoundError('Pay period configuration not found');
     }
 
-    const today = new Date();
-    const startDate = new Date(config.periodStartDate);
+    // Get organization timezone
+    const orgResult = await query(
+      'SELECT timezone FROM organizations WHERE id = $1',
+      [organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'organizations' }
+    );
+    const timezone = orgResult.rows[0]?.timezone || 'UTC';
+
+    const today = toTimezone(new Date(), timezone);
+    const startDate = parseDate(config.periodStartDate, timezone);
     
-    return this.calculatePayPeriod(config, today, startDate);
+    return this.calculatePayPeriod(config, today, startDate, timezone);
   }
 
   /**
@@ -188,57 +204,82 @@ class PayPeriodService {
     const current = await this.getCurrentPayPeriod(organizationId);
     const config = await this.getPayPeriodConfig(organizationId);
     
-    // Parse dates with time component to avoid timezone shift issues
-    const nextPeriodStart = this.addDays(new Date(current.periodEnd + 'T12:00:00'), 1);
-    const startDate = new Date(config.periodStartDate + 'T12:00:00');
+    // Get organization timezone
+    const orgResult = await query(
+      'SELECT timezone FROM organizations WHERE id = $1',
+      [organizationId],
+      organizationId,
+      { operation: 'SELECT', table: 'organizations' }
+    );
+    const timezone = orgResult.rows[0]?.timezone || 'UTC';
+
+    // Use timezone-aware date arithmetic (DST-safe)
+    const nextPeriodStart = addDaysInTimezone(parseDate(current.periodEnd), 1, timezone);
+    const startDate = parseDate(config.periodStartDate, timezone);
     
-    return this.calculatePayPeriod(config, nextPeriodStart, startDate);
+    return this.calculatePayPeriod(config, nextPeriodStart, startDate, timezone);
   }
 
   /**
    * Calculate pay period for a given date
+   * @param {Object} config - Pay period configuration
+   * @param {Date} targetDate - Date to calculate period for
+   * @param {Date} anchorDate - Anchor date for weekly/bi-weekly calculations
+   * @param {string} timezone - Organization timezone
    */
-  calculatePayPeriod(config, targetDate, anchorDate) {
+  calculatePayPeriod(config, targetDate, anchorDate, timezone = 'UTC') {
     const { payFrequency, payDayOffset } = config;
     let periodStart, periodEnd;
 
+    // Ensure dates are in correct timezone
+    const target = toTimezone(targetDate, timezone);
+    const anchor = toTimezone(anchorDate, timezone);
+
     switch (payFrequency) {
       case 'weekly': {
-        const daysSinceAnchor = Math.floor((targetDate - anchorDate) / (1000 * 60 * 60 * 24));
+        const daysSinceAnchor = Math.floor((target - anchor) / (1000 * 60 * 60 * 24));
         const weeksSinceAnchor = Math.floor(daysSinceAnchor / 7);
-        periodStart = this.addDays(anchorDate, weeksSinceAnchor * 7);
-        periodEnd = this.addDays(periodStart, 6);
+        periodStart = addDaysInTimezone(anchor, weeksSinceAnchor * 7, timezone);
+        periodEnd = addDaysInTimezone(periodStart, 6, timezone);
         break;
       }
 
       case 'bi-weekly': {
-        const daysSinceAnchor = Math.floor((targetDate - anchorDate) / (1000 * 60 * 60 * 24));
+        const daysSinceAnchor = Math.floor((target - anchor) / (1000 * 60 * 60 * 24));
         const biWeeksSinceAnchor = Math.floor(daysSinceAnchor / 14);
-        periodStart = this.addDays(anchorDate, biWeeksSinceAnchor * 14);
-        periodEnd = this.addDays(periodStart, 13);
+        periodStart = addDaysInTimezone(anchor, biWeeksSinceAnchor * 14, timezone);
+        periodEnd = addDaysInTimezone(periodStart, 13, timezone);
         break;
       }
 
       case 'semi-monthly': {
-        const day = targetDate.getDate();
-        const year = targetDate.getFullYear();
-        const month = targetDate.getMonth();
+        // Use timezone-aware date components
+        const zonedTarget = toTimezone(target, timezone);
+        const day = zonedTarget.getDate();
+        const year = zonedTarget.getFullYear();
+        const month = zonedTarget.getMonth();
         
         if (day <= 15) {
-          periodStart = new Date(year, month, 1);
-          periodEnd = new Date(year, month, 15);
+          // First half of month
+          periodStart = new Date(Date.UTC(year, month, 1));
+          periodEnd = new Date(Date.UTC(year, month, 15));
         } else {
-          periodStart = new Date(year, month, 16);
-          periodEnd = new Date(year, month + 1, 0); // Last day of month
+          // Second half of month
+          periodStart = new Date(Date.UTC(year, month, 16));
+          // Last day of month
+          periodEnd = new Date(Date.UTC(year, month + 1, 0));
         }
         break;
       }
 
       case 'monthly': {
-        const year = targetDate.getFullYear();
-        const month = targetDate.getMonth();
-        periodStart = new Date(year, month, 1);
-        periodEnd = new Date(year, month + 1, 0); // Last day of month
+        // Use timezone-aware date components
+        const zonedTarget = toTimezone(target, timezone);
+        const year = zonedTarget.getFullYear();
+        const month = zonedTarget.getMonth();
+        periodStart = new Date(Date.UTC(year, month, 1));
+        // Last day of month
+        periodEnd = new Date(Date.UTC(year, month + 1, 0));
         break;
       }
 
@@ -246,12 +287,13 @@ class PayPeriodService {
         throw new ValidationError(`Invalid pay frequency: ${payFrequency}`);
     }
 
-    const payDate = this.addDays(periodEnd, payDayOffset);
+    // DST-safe date arithmetic for pay date
+    const payDate = addDaysInTimezone(periodEnd, payDayOffset, timezone);
 
     return {
-      periodStart: this.formatDate(periodStart),
-      periodEnd: this.formatDate(periodEnd),
-      payDate: this.formatDate(payDate),
+      periodStart: formatForDB(periodStart),
+      periodEnd: formatForDB(periodEnd),
+      payDate: formatForDB(payDate),
       frequency: payFrequency,
     };
   }
@@ -371,15 +413,23 @@ class PayPeriodService {
     }
   }
 
-  // Helper methods
+  /**
+   * Helper method: Add days (delegates to dateUtils)
+   * @param {Date} date - Starting date
+   * @param {number} days - Number of days to add
+   * @returns {Date} New date with days added
+   */
   addDays(date, days) {
-    const result = new Date(date);
-    result.setDate(result.getDate() + days);
-    return result;
+    return addDaysInTimezone(date, days, 'UTC');
   }
 
+  /**
+   * Helper method: Format date to YYYY-MM-DD (delegates to dateUtils)
+   * @param {Date} date - Date to format
+   * @returns {string} Formatted date string
+   */
   formatDate(date) {
-    return date.toISOString().split('T')[0];
+    return formatForDB(date);
   }
 }
 

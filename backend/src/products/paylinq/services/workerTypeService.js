@@ -708,7 +708,10 @@ class WorkerTypeService {
     // Validation schema
     const upgradeSchema = Joi.object({
       workerIds: Joi.array().items(Joi.string().uuid()).optional().allow(null),
-      effectiveDate: Joi.date().iso().optional().default(() => new Date()),
+      effectiveDate: Joi.alternatives().try(
+        Joi.date().iso(),
+        Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/)
+      ).optional().allow(null),
       notifyWorkers: Joi.boolean().optional().default(false)
     });
 

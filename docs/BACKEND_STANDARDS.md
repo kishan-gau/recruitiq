@@ -945,10 +945,369 @@ phone: Joi.when('contactMethod', {
 address: Joi.object({
   street: Joi.string().required(),
   city: Joi.string().required(),
-  state: Joi.string().length(2).required(),
+  state: Joi.string().length(2).uppercase().required(),
   zip: Joi.string().pattern(/^\d{5}(-\d{4})?$/).required()
 }).optional()
 ```
+
+### Date Handling Standards (MANDATORY)
+
+**CRITICAL:** Proper date handling prevents timezone bugs, data corruption, and inconsistent date displays across the application.
+
+#### Date Format Requirements
+
+```javascript
+// ✅ CORRECT: Always use ISO 8601 format for API responses and database storage
+const dateString = '2025-11-27T14:30:00.000Z';  // ISO 8601 with UTC timezone
+
+// ❌ WRONG: Local date strings (ambiguous timezone)
+const dateString = 'Wed Nov 27 2025 14:30:00 GMT+0100';  // Locale-dependent!
+
+// ❌ WRONG: YYYY-MM-DD without time (loses time information)
+const dateString = '2025-11-27';  // No time component!
+```
+
+#### Joi Date Validation Patterns
+
+```javascript
+// ✅ CORRECT: Date validation with constraints
+static get createSchema() {
+  return Joi.object({
+    // Past dates only (e.g., birth date, start date)
+    birthDate: Joi.date()
+      .max('now')
+      .iso()
+      .messages({
+        'date.max': 'Birth date cannot be in the future',
+      }),
+    
+    // Future dates only (e.g., expiration date)
+    expiryDate: Joi.date()
+      .min('now')
+      .iso()
+      .messages({
+        'date.min': 'Expiry date must be in the future',
+      }),
+    
+    // Date range validation
+    startDate: Joi.date()
+      .iso()
+      .required(),
+    
+    endDate: Joi.date()
+      .iso()
+      .min(Joi.ref('startDate'))
+      .messages({
+        'date.min': 'End date must be after start date',
+      }),
+    
+    // Optional date with default
+    createdAt: Joi.date()
+      .iso()
+      .default(() => new Date(), 'current date'),
+    
+    // Date with specific format (if needed for external APIs)
+    reportDate: Joi.date()
+      .iso()
+      .custom((value, helpers) => {
+        // Ensure date is start of day in UTC
+        const date = new Date(value);
+        date.setUTCHours(0, 0, 0, 0);
+        return date.toISOString();
+      }),
+  });
+}
+
+// ❌ WRONG: No date validation
+hireDate: Joi.string(),  // Treats date as string - no validation!
+
+// ❌ WRONG: Missing timezone handling
+effectiveDate: Joi.date(),  // No .iso(), no timezone awareness
+```
+
+#### Date-Only Fields (No Time Component)
+
+```javascript
+// ✅ CORRECT: Store date-only fields as YYYY-MM-DD strings
+static get createSchema() {
+  return Joi.object({
+    // Date-only field (birth date, hire date, etc.)
+    birthDate: Joi.string()
+      .pattern(/^\d{4}-\d{2}-\d{2}$/)
+      .custom((value, helpers) => {
+        const date = new Date(value + 'T00:00:00.000Z');
+        if (isNaN(date.getTime())) {
+          return helpers.error('any.invalid');
+        }
+        if (date > new Date()) {
+          return helpers.error('date.max');
+        }
+        return value;
+      })
+      .messages({
+        'string.pattern.base': 'Birth date must be in YYYY-MM-DD format',
+        'date.max': 'Birth date cannot be in the future',
+      }),
+  });
+}
+
+// Database storage (date-only fields)
+CREATE TABLE employees (
+  id UUID PRIMARY KEY,
+  birth_date DATE,  -- Use DATE type, not TIMESTAMP
+  hire_date DATE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()  -- Use TIMESTAMP for audit fields
+);
+
+// ❌ WRONG: Using timestamp for date-only fields
+birth_date TIMESTAMP,  // Includes unnecessary time component
+```
+
+#### Service Layer Date Processing
+
+```javascript
+// ✅ CORRECT: Process dates consistently in services
+class EmployeeService {
+  async create(data, organizationId, userId) {
+    // Validate dates
+    const validated = await this.constructor.createSchema.validateAsync(data);
+    
+    // Process date-only fields (store as YYYY-MM-DD)
+    const employeeData = {
+      ...validated,
+      birthDate: validated.birthDate,  // Already validated as YYYY-MM-DD
+      hireDate: validated.hireDate,
+      
+      // Timestamp fields (store as ISO 8601 with timezone)
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    return await this.repository.create(employeeData, organizationId, userId);
+  }
+  
+  async calculateAge(employeeId, organizationId) {
+    const employee = await this.repository.findById(employeeId, organizationId);
+    
+    // Parse date-only field
+    const birthDate = new Date(employee.birthDate + 'T00:00:00.000Z');
+    const today = new Date();
+    
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  }
+}
+
+// ❌ WRONG: Inconsistent date handling
+const employeeData = {
+  birthDate: new Date(),  // Creates full timestamp when only date needed
+  hireDate: '2025-11-27',  // String without validation
+  createdAt: Date.now(),  // Unix timestamp instead of ISO string
+};
+```
+
+#### DTO Date Transformation
+
+```javascript
+// ✅ CORRECT: Transform dates in DTOs
+export function mapEmployeeDbToApi(dbEmployee) {
+  if (!dbEmployee) return null;
+
+  return {
+    id: dbEmployee.id,
+    name: dbEmployee.name,
+    
+    // Date-only fields: Keep as YYYY-MM-DD strings
+    birthDate: dbEmployee.birth_date,  // '2025-11-27'
+    hireDate: dbEmployee.hire_date,    // '2025-01-15'
+    
+    // Timestamp fields: Convert to ISO 8601 strings
+    createdAt: dbEmployee.created_at instanceof Date 
+      ? dbEmployee.created_at.toISOString()
+      : dbEmployee.created_at,  // Already ISO string from DB
+    
+    updatedAt: dbEmployee.updated_at instanceof Date
+      ? dbEmployee.updated_at.toISOString()
+      : dbEmployee.updated_at,
+  };
+}
+
+export function mapEmployeeApiToDb(apiData) {
+  if (!apiData) return null;
+
+  const dbData = {};
+  
+  // Date-only fields: Store as YYYY-MM-DD
+  if (apiData.birthDate !== undefined) {
+    dbData.birth_date = apiData.birthDate;  // Keep as string
+  }
+  
+  if (apiData.hireDate !== undefined) {
+    dbData.hire_date = apiData.hireDate;
+  }
+  
+  // Timestamp fields: Let database handle conversion
+  if (apiData.createdAt !== undefined) {
+    dbData.created_at = new Date(apiData.createdAt);  // Convert to Date object
+  }
+  
+  return dbData;
+}
+
+// ❌ WRONG: Converting date-only to timestamps
+birthDate: new Date(dbEmployee.birth_date).toISOString(),  // Adds unnecessary time!
+```
+
+#### Repository Layer Date Handling
+
+```javascript
+// ✅ CORRECT: Proper date handling in queries
+class EmployeeRepository {
+  async findByDateRange(startDate, endDate, organizationId) {
+    // Dates come in as YYYY-MM-DD strings
+    const result = await query(`
+      SELECT * FROM employees
+      WHERE organization_id = $1
+        AND hire_date >= $2
+        AND hire_date <= $3
+        AND deleted_at IS NULL
+      ORDER BY hire_date DESC
+    `, [organizationId, startDate, endDate], organizationId);
+    
+    return result.rows;
+  }
+  
+  async findByBirthMonth(month, organizationId) {
+    // Extract month from date field
+    const result = await query(`
+      SELECT * FROM employees
+      WHERE organization_id = $1
+        AND EXTRACT(MONTH FROM birth_date) = $2
+        AND deleted_at IS NULL
+      ORDER BY EXTRACT(DAY FROM birth_date)
+    `, [organizationId, month], organizationId);
+    
+    return result.rows;
+  }
+}
+
+// ❌ WRONG: String comparison for dates
+WHERE hire_date >= '2025-01-01'  // Works but fragile
+WHERE CAST(hire_date AS VARCHAR) LIKE '2025%'  // Very wrong!
+```
+
+#### Controller Layer Date Handling
+
+```javascript
+// ✅ CORRECT: Date validation in query parameters
+export async function listEmployeesByDateRange(req, res, next) {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    // Validate date format
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+    
+    if (!datePattern.test(startDate) || !datePattern.test(endDate)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Use YYYY-MM-DD',
+        errorCode: 'INVALID_DATE_FORMAT',
+      });
+    }
+    
+    // Validate date range
+    if (new Date(startDate) > new Date(endDate)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Start date must be before end date',
+        errorCode: 'INVALID_DATE_RANGE',
+      });
+    }
+    
+    const employees = await EmployeeService.findByDateRange(
+      startDate,
+      endDate,
+      req.user.organizationId
+    );
+    
+    return res.json({
+      success: true,
+      employees,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ❌ WRONG: No date validation
+const employees = await EmployeeService.findByDateRange(
+  req.query.startDate,  // Could be anything!
+  req.query.endDate,
+  req.user.organizationId
+);
+```
+
+#### Common Date Pitfalls to Avoid
+
+```javascript
+// ❌ WRONG: Using Date constructor without timezone
+const date = new Date('2025-11-27');  // Interpreted as local timezone!
+
+// ✅ CORRECT: Always specify UTC for date-only
+const date = new Date('2025-11-27T00:00:00.000Z');
+
+// ❌ WRONG: Mixing formats
+const dates = {
+  created: new Date(),           // Date object
+  updated: Date.now(),           // Unix timestamp
+  published: '2025-11-27',       // YYYY-MM-DD string
+  modified: '11/27/2025',        // US format string
+};
+
+// ✅ CORRECT: Consistent format
+const dates = {
+  created: new Date().toISOString(),      // ISO 8601
+  updated: new Date().toISOString(),      // ISO 8601
+  published: '2025-11-27',                // YYYY-MM-DD for date-only
+  birthDate: '1990-05-15',                // YYYY-MM-DD for date-only
+};
+
+// ❌ WRONG: Date arithmetic without proper handling
+const tomorrow = new Date();
+tomorrow.setDate(tomorrow.getDate() + 1);  // Mutates original date!
+
+// ✅ CORRECT: Create new date instances
+const today = new Date();
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+
+// ❌ WRONG: Comparing dates directly
+if (date1 > date2) { }  // May not work as expected
+
+// ✅ CORRECT: Compare timestamps
+if (date1.getTime() > date2.getTime()) { }
+if (new Date(dateString1) > new Date(dateString2)) { }
+```
+
+#### Date Handling Checklist
+
+**For every date field:**
+
+- [ ] Determine if field needs time component or date-only
+- [ ] Use DATE type for date-only fields, TIMESTAMP WITH TIME ZONE for timestamps
+- [ ] Validate date format in Joi schema (`.iso()` or YYYY-MM-DD pattern)
+- [ ] Store dates consistently (ISO 8601 for timestamps, YYYY-MM-DD for dates)
+- [ ] Transform dates properly in DTOs (DB ↔ API)
+- [ ] Validate date ranges (start before end, past vs future)
+- [ ] Handle timezones explicitly (always UTC for storage)
+- [ ] Test date edge cases (leap years, month boundaries, DST transitions)
+- [ ] Document date format expectations in API documentation
 
 ---
 

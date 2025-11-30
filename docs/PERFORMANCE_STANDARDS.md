@@ -455,6 +455,444 @@ export default {
 };
 ```
 
+### React Query Optimization (MANDATORY)
+
+React Query (TanStack Query) is our standard for API state management. Proper configuration prevents unnecessary API calls and improves performance.
+
+#### QueryClient Configuration
+
+```typescript
+// ✅ CORRECT: Optimized QueryClient configuration
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Stale time: Data stays fresh for 5 minutes
+      staleTime: 5 * 60 * 1000,
+      
+      // Garbage collection: Keep unused data for 10 minutes
+      gcTime: 10 * 60 * 1000,
+      
+      // Retry configuration
+      retry: (failureCount, error) => {
+        // Don't retry on auth errors
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          return false;
+        }
+        // Retry once for other errors
+        return failureCount < 1;
+      },
+      
+      // Don't refetch on window focus for stable data
+      refetchOnWindowFocus: false,
+      
+      // Refetch on reconnect for critical data
+      refetchOnReconnect: true,
+      
+      // Don't refetch on mount if data is fresh
+      refetchOnMount: false,
+    },
+    mutations: {
+      // Never retry mutations (data modification)
+      retry: false,
+    },
+  },
+});
+
+// ❌ WRONG: Default configuration causes excessive API calls
+const queryClient = new QueryClient();
+// Uses defaults: staleTime: 0, refetchOnWindowFocus: true, refetchOnMount: true
+// Results in API calls on every render, window focus, and mount!
+```
+
+#### Smart Query Key Structure
+
+```typescript
+// ✅ CORRECT: Hierarchical query keys for efficient invalidation
+export const queryKeys = {
+  // Top level
+  locations: ['locations'] as const,
+  
+  // With filters
+  locationsList: (filters?: any) => ['locations', 'list', filters] as const,
+  
+  // Single item
+  locationsDetail: (id: string) => ['locations', 'detail', id] as const,
+  
+  // Statistics (separate cache)
+  locationsStats: () => ['locations', 'statistics'] as const,
+};
+
+// Usage in hooks
+export function useLocations(filters?: any) {
+  return useQuery({
+    queryKey: queryKeys.locationsList(filters),
+    queryFn: () => locationsService.listLocations(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useLocation(id: string) {
+  return useQuery({
+    queryKey: queryKeys.locationsDetail(id),
+    queryFn: () => locationsService.getLocation(id),
+    enabled: !!id, // Only run when ID exists
+    staleTime: 10 * 60 * 1000, // 10 minutes for details
+  });
+}
+
+// ❌ WRONG: Flat query keys make invalidation difficult
+useQuery({
+  queryKey: ['locations'], // Too generic
+  queryFn: () => locationsService.listLocations(filters),
+});
+
+useQuery({
+  queryKey: ['location', id], // Inconsistent naming
+  queryFn: () => locationsService.getLocation(id),
+});
+```
+
+#### Efficient Cache Invalidation
+
+```typescript
+// ✅ CORRECT: Granular invalidation
+export function useCreateLocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: locationsService.createLocation,
+    onSuccess: () => {
+      // Invalidate ONLY the list queries, not individual items
+      queryClient.invalidateQueries({ 
+        queryKey: queryKeys.locations,
+        exact: false, // Invalidate all queries starting with ['locations']
+      });
+      
+      // Update statistics if shown
+      queryClient.invalidateQueries({ 
+        queryKey: queryKeys.locationsStats() 
+      });
+    },
+  });
+}
+
+export function useUpdateLocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: any }) =>
+      locationsService.updateLocation(id, updates),
+    onSuccess: (updatedLocation, { id }) => {
+      // Update specific item in cache (no refetch needed!)
+      queryClient.setQueryData(
+        queryKeys.locationsDetail(id),
+        updatedLocation
+      );
+      
+      // Invalidate list to show updated item
+      queryClient.invalidateQueries({ 
+        queryKey: queryKeys.locationsList() 
+      });
+    },
+  });
+}
+
+// ❌ WRONG: Nuclear invalidation
+export function useCreateLocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: locationsService.createLocation,
+    onSuccess: () => {
+      // Invalidates EVERYTHING!
+      queryClient.invalidateQueries();
+    },
+  });
+}
+```
+
+#### Optimistic Updates for Better UX
+
+```typescript
+// ✅ CORRECT: Optimistic update for instant feedback
+export function useUpdateLocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: any }) =>
+      locationsService.updateLocation(id, updates),
+    
+    // Optimistic update (runs before mutation)
+    onMutate: async ({ id, updates }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ 
+        queryKey: queryKeys.locationsDetail(id) 
+      });
+
+      // Snapshot previous value
+      const previousLocation = queryClient.getQueryData(
+        queryKeys.locationsDetail(id)
+      );
+
+      // Optimistically update cache
+      queryClient.setQueryData(
+        queryKeys.locationsDetail(id),
+        (old: any) => ({ ...old, ...updates })
+      );
+
+      // Return context with snapshot
+      return { previousLocation };
+    },
+    
+    // Rollback on error
+    onError: (error, { id }, context) => {
+      queryClient.setQueryData(
+        queryKeys.locationsDetail(id),
+        context?.previousLocation
+      );
+    },
+    
+    // Refetch to ensure sync
+    onSettled: (data, error, { id }) => {
+      queryClient.invalidateQueries({ 
+        queryKey: queryKeys.locationsDetail(id) 
+      });
+    },
+  });
+}
+```
+
+#### Prefetching for Anticipated Navigation
+
+```typescript
+// ✅ CORRECT: Prefetch data before navigation
+export function LocationCard({ location }: { location: Location }) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const handleMouseEnter = () => {
+    // Prefetch location details on hover
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.locationsDetail(location.id),
+      queryFn: () => locationsService.getLocation(location.id),
+      staleTime: 10 * 60 * 1000,
+    });
+  };
+
+  const handleClick = () => {
+    // Data already cached from prefetch!
+    navigate(`/locations/${location.id}`);
+  };
+
+  return (
+    <div 
+      onMouseEnter={handleMouseEnter}
+      onClick={handleClick}
+      className="cursor-pointer"
+    >
+      <h3>{location.name}</h3>
+      <p>{location.city}</p>
+    </div>
+  );
+}
+```
+
+#### Preventing Race Conditions
+
+```typescript
+// ✅ CORRECT: Use query cancellation
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+
+export function useSearchLocations(searchTerm: string) {
+  return useQuery({
+    queryKey: ['locations', 'search', searchTerm],
+    queryFn: async ({ signal }) => {
+      // Pass abort signal to axios
+      const response = await axios.get('/api/products/nexus/locations', {
+        params: { search: searchTerm },
+        signal, // Automatic cancellation
+      });
+      return response.data;
+    },
+    enabled: searchTerm.length >= 3, // Only search with 3+ chars
+    staleTime: 30 * 1000, // 30 seconds for search results
+  });
+}
+
+// React Query automatically cancels previous requests when searchTerm changes!
+```
+
+#### Dependent Queries
+
+```typescript
+// ✅ CORRECT: Enable query based on dependency
+export function useLocationDepartments(locationId: string | undefined) {
+  return useQuery({
+    queryKey: ['locations', locationId, 'departments'],
+    queryFn: () => departmentsService.listByLocation(locationId!),
+    enabled: !!locationId, // Only fetch when locationId exists
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// Usage
+function LocationDetails({ locationId }: { locationId?: string }) {
+  // First query
+  const { data: location } = useLocation(locationId);
+  
+  // Second query only runs when locationId exists
+  const { data: departments } = useLocationDepartments(locationId);
+  
+  return (
+    <div>
+      {location && <h1>{location.name}</h1>}
+      {departments && <DepartmentList departments={departments} />}
+    </div>
+  );
+}
+```
+
+#### Parallel Queries for Independent Data
+
+```typescript
+// ✅ CORRECT: Fetch multiple independent resources in parallel
+export function useDashboardData(organizationId: string) {
+  const locationsQuery = useQuery({
+    queryKey: queryKeys.locationsList(),
+    queryFn: () => locationsService.listLocations(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const departmentsQuery = useQuery({
+    queryKey: ['departments', 'list'],
+    queryFn: () => departmentsService.listDepartments(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const statsQuery = useQuery({
+    queryKey: queryKeys.locationsStats(),
+    queryFn: () => locationsService.getStatistics(),
+    staleTime: 2 * 60 * 1000, // Refresh stats more frequently
+  });
+
+  // All queries run in parallel
+  return {
+    locations: locationsQuery.data,
+    departments: departmentsQuery.data,
+    stats: statsQuery.data,
+    isLoading: locationsQuery.isLoading || departmentsQuery.isLoading || statsQuery.isLoading,
+    isError: locationsQuery.isError || departmentsQuery.isError || statsQuery.isError,
+  };
+}
+```
+
+#### Infinite Queries for Pagination
+
+```typescript
+// ✅ CORRECT: Use infinite queries for infinite scroll
+export function useInfiniteLocations(filters?: any) {
+  return useInfiniteQuery({
+    queryKey: ['locations', 'infinite', filters],
+    queryFn: ({ pageParam = 1 }) =>
+      locationsService.listLocations({ ...filters, page: pageParam }),
+    getNextPageParam: (lastPage) => {
+      const { pagination } = lastPage;
+      return pagination.hasNext ? pagination.page + 1 : undefined;
+    },
+    initialPageParam: 1,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// Usage
+function InfiniteLocationsList() {
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteLocations();
+
+  return (
+    <div>
+      {data?.pages.map((page) =>
+        page.locations.map((location) => (
+          <LocationCard key={location.id} location={location} />
+        ))
+      )}
+      
+      {hasNextPage && (
+        <button 
+          onClick={() => fetchNextPage()}
+          disabled={isFetchingNextPage}
+        >
+          {isFetchingNextPage ? 'Loading...' : 'Load More'}
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+#### React Query Anti-Patterns to Avoid
+
+```typescript
+// ❌ WRONG: Fetching in useEffect when React Query should be used
+function LocationDetails({ locationId }: { locationId: string }) {
+  const [location, setLocation] = useState<Location | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Manual fetching - loses caching, refetching, error handling!
+    setLoading(true);
+    locationsService.getLocation(locationId)
+      .then(setLocation)
+      .finally(() => setLoading(false));
+  }, [locationId]);
+
+  // Use useLocation hook instead!
+}
+
+// ❌ WRONG: Disabling all React Query features
+const { data } = useQuery({
+  queryKey: ['locations'],
+  queryFn: fetchLocations,
+  staleTime: 0, // Always stale
+  gcTime: 0, // Never cache
+  refetchOnMount: true,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+  // This defeats the purpose of React Query!
+});
+
+// ❌ WRONG: Too many unnecessary invalidations
+onSuccess: () => {
+  queryClient.invalidateQueries(); // Invalidates EVERYTHING
+  queryClient.refetchQueries(); // Refetches EVERYTHING
+}
+
+// ❌ WRONG: Storing query data in local state
+const { data: locations } = useLocations();
+const [localLocations, setLocalLocations] = useState(locations);
+// Breaks cache synchronization! Use query data directly.
+```
+
+#### Performance Checklist for React Query
+
+- [ ] QueryClient configured with appropriate `staleTime` and `gcTime`
+- [ ] Query keys use hierarchical structure for efficient invalidation
+- [ ] Mutations invalidate only affected queries (not everything)
+- [ ] Optimistic updates implemented for instant feedback
+- [ ] Prefetching used for anticipated navigation
+- [ ] Query cancellation enabled via abort signals
+- [ ] Dependent queries use `enabled` option
+- [ ] Infinite queries used for pagination/infinite scroll
+- [ ] No manual data fetching in `useEffect` when React Query could be used
+- [ ] No unnecessary query invalidations
+
 ---
 
 ## Database Performance

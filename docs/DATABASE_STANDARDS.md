@@ -223,13 +223,13 @@ CREATE TABLE example_table (
   organization_id UUID NOT NULL REFERENCES organizations(id),
   
   -- Audit Columns (REQUIRED)
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_by UUID REFERENCES users(id),
   updated_by UUID REFERENCES users(id),
   
   -- Soft Delete (REQUIRED)
-  deleted_at TIMESTAMP,
+  deleted_at TIMESTAMPTZ,
   
   -- Business columns
   name VARCHAR(255) NOT NULL,
@@ -324,7 +324,7 @@ CREATE TABLE candidates (
   desired_salary NUMERIC(10, 2),               -- NUMERIC for money
   is_active BOOLEAN NOT NULL DEFAULT true,     -- BOOLEAN for true/false
   last_contact_date DATE,                      -- DATE for dates without time
-  created_at TIMESTAMP NOT NULL,               -- TIMESTAMP for date+time
+  created_at TIMESTAMPTZ NOT NULL,             -- TIMESTAMPTZ for date+time with timezone
   metadata JSONB                               -- JSONB for flexible data
 );
 
@@ -334,7 +334,7 @@ CREATE TABLE candidates (
   email TEXT,                                  -- Too permissive
   phone INTEGER,                               -- Can't store +, (), -
   is_active INTEGER,                           -- Use BOOLEAN, not INTEGER
-  created_at VARCHAR(50)                       -- Use TIMESTAMP, not VARCHAR
+  created_at VARCHAR(50)                       -- Use TIMESTAMPTZ, not VARCHAR
 );
 ```
 

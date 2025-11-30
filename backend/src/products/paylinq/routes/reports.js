@@ -27,4 +27,7 @@ router.get('/time-attendance', requirePermission('reports:read'), reportsControl
 router.get('/deductions', requirePermission('reports:read'), reportsController.getDeductionsReport);
 router.get('/worker-type-distribution', requirePermission('reports:read'), reportsController.getWorkerTypeDistributionReport);
 
+// Export endpoints
+router.get('/:reportType/export', requirePermission('reports:read'), reportsController.exportReport);
+
 export default router;

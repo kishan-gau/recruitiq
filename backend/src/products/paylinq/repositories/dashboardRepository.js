@@ -88,7 +88,7 @@ class DashboardRepository {
         COUNT(CASE WHEN e.employment_status = 'inactive' THEN 1 END) as inactive_employees,
         COUNT(DISTINCT wt.id) as worker_types_count
       FROM hris.employee e
-      LEFT JOIN payroll.worker_type wt ON e.id = wt.employee_id AND wt.organization_id = e.organization_id AND wt.deleted_at IS NULL
+      LEFT JOIN hris.worker_type wt ON e.worker_type_id = wt.id AND wt.organization_id = e.organization_id AND wt.deleted_at IS NULL
       WHERE e.organization_id = $1
         AND e.deleted_at IS NULL
     `;

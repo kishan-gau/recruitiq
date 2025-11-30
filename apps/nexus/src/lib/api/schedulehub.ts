@@ -7,17 +7,45 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Send cookies with requests
+  withCredentials: true, // Send httpOnly cookies with requests for authentication
 });
 
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Add CSRF token to state-changing requests
+api.interceptors.request.use(async (config) => {
+  // Only add CSRF token for state-changing operations
+  const stateChangingMethods = ['POST', 'PUT', 'PATCH', 'DELETE'];
+  if (config.method && stateChangingMethods.includes(config.method.toUpperCase())) {
+    // Get CSRF token from cookie or fetch it
+    let csrfToken = getCsrfTokenFromCookie();
+    
+    if (!csrfToken) {
+      // Fetch CSRF token if not available
+      try {
+        const response = await axios.get(`${API_BASE_URL}/csrf-token`, { withCredentials: true });
+        csrfToken = response.data.csrfToken;
+      } catch (error) {
+        console.warn('Failed to fetch CSRF token:', error);
+      }
+    }
+    
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
   }
   return config;
 });
+
+// Helper to extract CSRF token from cookie
+function getCsrfTokenFromCookie(): string | null {
+  const cookies = document.cookie.split(';');
+  for (const cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'XSRF-TOKEN' || name === '_csrf') {
+      return decodeURIComponent(value);
+    }
+  }
+  return null;
+}
 
 export const schedulehubApi = {
   stats: {
@@ -98,18 +126,37 @@ export const schedulehubApi = {
   },
 
   shiftSwaps: {
+    // Marketplace and offers
     getMarketplace: (params?: any) =>
       api.get('/shift-swaps/marketplace', { params }).then((res) => res.data),
+    getMyOffers: () =>
+      api.get('/shift-swaps/my-offers').then((res) => res.data),
     get: (id: string) => api.get(`/shift-swaps/${id}`).then((res) => res.data),
     create: (data: any) => api.post('/shift-swaps', data).then((res) => res.data),
+    
+    // Swap requests
     requestSwap: (offerId: string, data: any) =>
       api.post(`/shift-swaps/${offerId}/request`, data).then((res) => res.data),
+    getRequests: (params?: any) =>
+      api.get('/shift-swap-requests', { params }).then((res) => res.data),
+    getRequest: (requestId: string) =>
+      api.get(`/shift-swap-requests/${requestId}`).then((res) => res.data),
     acceptRequest: (requestId: string) =>
       api.post(`/shift-swap-requests/${requestId}/accept`).then((res) => res.data),
-    approve: (offerId: string) =>
-      api.post(`/shift-swaps/${offerId}/approve`).then((res) => res.data),
-    cancel: (offerId: string) =>
-      api.post(`/shift-swaps/${offerId}/cancel`).then((res) => res.data),
+    rejectRequest: (requestId: string, data?: { reason?: string }) =>
+      api.post(`/shift-swap-requests/${requestId}/reject`, data).then((res) => res.data),
+    
+    // Manager approval
+    getPendingApprovals: (params?: any) =>
+      api.get('/shift-swaps/pending-approvals', { params }).then((res) => res.data),
+    approve: (offerId: string, data?: { notes?: string }) =>
+      api.post(`/shift-swaps/${offerId}/approve`, data).then((res) => res.data),
+    reject: (offerId: string, data: { reason: string }) =>
+      api.post(`/shift-swaps/${offerId}/reject`, data).then((res) => res.data),
+    
+    // Cancellation
+    cancel: (offerId: string, data?: { reason?: string }) =>
+      api.post(`/shift-swaps/${offerId}/cancel`, data).then((res) => res.data),
   },
 
   roles: {
@@ -118,6 +165,9 @@ export const schedulehubApi = {
     create: (data: any) => api.post('/roles', data).then((res) => res.data),
     update: (id: string, data: any) =>
       api.patch(`/roles/${id}`, data).then((res) => res.data),
+    delete: (id: string) => api.delete(`/roles/${id}`).then((res) => res.data),
+    getWorkers: (roleId: string) =>
+      api.get(`/roles/${roleId}/workers`).then((res) => res.data),
     assignWorker: (roleId: string, data: any) =>
       api.post(`/roles/${roleId}/workers`, data).then((res) => res.data),
     updateWorkerRole: (roleId: string, workerId: string, data: any) =>

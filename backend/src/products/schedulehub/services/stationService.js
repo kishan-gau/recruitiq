@@ -70,7 +70,7 @@ class StationService {
       query += ` ORDER BY s.station_name`;
 
       const result = await pool.query(query, params);
-      return { success: true, data: result.rows };
+      return result.rows;
     } catch (error) {
       this.logger.error('Error listing stations:', error);
       throw error;
@@ -89,8 +89,8 @@ class StationService {
         [stationId, organizationId]
       );
 
-      if (result.rows.length === 0) return { success: false, error: 'Station not found' };
-      return { success: true, data: result.rows[0] };
+      if (result.rows.length === 0) return null;
+      return result.rows[0];
     } catch (error) {
       this.logger.error('Error fetching station:', error);
       throw error;

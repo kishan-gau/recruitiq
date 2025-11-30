@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Download,
@@ -18,6 +18,7 @@ import ReportConfigModal from '@/components/modals/ReportConfigModal';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
+import { useDateRange } from '@/hooks/useMemoizedDate';
 
 interface ReportCard {
   id: string;
@@ -31,13 +32,17 @@ interface ReportCard {
 
 export default function ReportsDashboard() {
   const { paylinq } = usePaylinqAPI();
-  const { error: showError, success } = useToast();
+  const toast = useToast();
+  const { error: showError, success } = toast;
   const [activeTab, setActiveTab] = useState('all');
   const [selectedPeriod, setSelectedPeriod] = useState('current-month');
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportStats, setReportStats] = useState<any>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  // Memoized date range calculation
+  const dateRange = useDateRange(selectedPeriod);
 
   // Fetch report statistics from dashboard
   useEffect(() => {
@@ -194,32 +199,8 @@ export default function ReportsDashboard() {
     try {
       setIsGenerating(true);
       
-      // Get date range based on selected period
-      const now = new Date();
-      let startDate: string, endDate: string;
-      
-      switch (selectedPeriod) {
-        case 'current-month':
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-          break;
-        case 'last-month':
-          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
-          endDate = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
-          break;
-        case 'current-quarter':
-          const quarter = Math.floor(now.getMonth() / 3);
-          startDate = new Date(now.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
-          endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0).toISOString().split('T')[0];
-          break;
-        case 'ytd':
-          startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-          endDate = now.toISOString().split('T')[0];
-          break;
-        default:
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      }
+      // Use memoized date range
+      const { startDate, endDate } = dateRange;
 
       const response = await paylinq.exportReport(reportId, {
         start_date: startDate,

@@ -82,8 +82,13 @@ export function csrfMiddleware(req, res, next) {
     return next();
   }
   
-  // SECURITY: No Bearer token bypass - we use cookie-based auth exclusively
-  // All authenticated requests use httpOnly cookies, so CSRF protection is required
+  // Skip CSRF for webhook endpoints (external services)
+  if (req.path.includes('/webhook') || req.path.includes('/webhooks')) {
+    return next();
+  }
+  
+  // SECURITY: Cookie-based authentication requires CSRF protection
+  // All authenticated requests use httpOnly cookies
   
   // Apply CSRF protection
   csrfProtection(req, res, (err) => {
@@ -93,7 +98,7 @@ export function csrfMiddleware(req, res, next) {
         path: req.path,
         ip: req.ip,
         error: err.code,
-        hasToken: !!(req.body?._csrf || req.headers['csrf-token']),
+        hasToken: !!(req.body?._csrf || req.headers['csrf-token'] || req.headers['x-csrf-token']),
       });
       
       return res.status(403).json({
@@ -202,16 +207,14 @@ export function shouldApplyCsrf(req) {
     return false;
   }
   
-  // Skip CSRF for API endpoints using Bearer token
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  // Skip CSRF for webhook endpoints (external services)
+  if (req.path.includes('/webhook') || req.path.includes('/webhooks')) {
     return false;
   }
   
-  // Skip CSRF for webhook endpoints
-  if (req.path.includes('/webhook')) {
-    return false;
-  }
+  // NOTE: Bearer tokens are DEPRECATED - we use cookie-based authentication exclusively
+  // All API requests must use httpOnly cookies for authentication
+  // CSRF protection is REQUIRED for all cookie-based requests
   
   // Apply CSRF for cookie-based authentication
   return true;

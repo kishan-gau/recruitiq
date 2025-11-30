@@ -7,6 +7,7 @@ import schedulingController from '../controllers/schedulingController.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import { validate  } from '../../../middleware/validation.js';
 import Joi from 'joi';
+import { dateOnlyOptional } from '../../../validators/dateValidators.js';
 
 const router = express.Router();
 
@@ -14,9 +15,9 @@ const router = express.Router();
 // Accept both individual shift format and bulk schedule format
 const createScheduleSchema = Joi.object({
   employeeId: Joi.string().uuid().required(),
-  // Bulk schedule fields - validate as ISO date strings, keep as strings (no conversion)
-  startDate: Joi.date().iso().raw(),
-  endDate: Joi.date().iso().raw(),
+  // Bulk schedule fields - use proper date-only validation
+  startDate: dateOnlyOptional,
+  endDate: dateOnlyOptional,
   scheduleType: Joi.string().valid('regular', 'flexible', 'rotating', 'on_call', 'shift').allow(null, ''),
   shifts: Joi.array().items(Joi.object({
     dayOfWeek: Joi.number().min(0).max(6),
@@ -25,8 +26,7 @@ const createScheduleSchema = Joi.object({
     breakMinutes: Joi.number().min(0),
   })),
   // Single shift fields - scheduleDate is required when not using bulk format
-  // .raw() prevents Joi from converting the string to a Date object
-  scheduleDate: Joi.date().iso().raw().when('startDate', {
+  scheduleDate: dateOnlyOptional.when('startDate', {
     is: Joi.exist(),
     then: Joi.optional(),
     otherwise: Joi.required()
@@ -41,9 +41,9 @@ const createScheduleSchema = Joi.object({
 });
 
 const updateScheduleSchema = Joi.object({
-  // Bulk schedule fields - validate as ISO date strings, keep as strings (no conversion)
-  startDate: Joi.date().iso().raw(),
-  endDate: Joi.date().iso().raw(),
+  // Bulk schedule fields - use proper date-only validation
+  startDate: dateOnlyOptional,
+  endDate: dateOnlyOptional,
   scheduleType: Joi.string().valid('regular', 'flexible', 'rotating', 'on_call', 'shift'),
   shifts: Joi.array().items(Joi.object({
     dayOfWeek: Joi.number().min(0).max(6),
@@ -51,8 +51,8 @@ const updateScheduleSchema = Joi.object({
     endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
     breakMinutes: Joi.number().min(0),
   })),
-  // Single shift fields - .raw() prevents Joi from converting the string to a Date object
-  scheduleDate: Joi.date().iso().raw(),
+  // Single shift fields
+  scheduleDate: dateOnlyOptional,
   startTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
   breakMinutes: Joi.number().min(0),
@@ -67,10 +67,10 @@ const createChangeRequestSchema = Joi.object({
   employeeId: Joi.string().uuid().allow(null), // Added for compatibility
   requestType: Joi.string().valid('cancel', 'change', 'swap', 'time_off').required(),
   requestReason: Joi.string().max(500).required(),
-  // .raw() prevents Joi from converting date strings to Date objects
-  proposedDate: Joi.date().iso().raw().allow(null),
-  proposedStartDate: Joi.date().iso().raw().allow(null), // Added for compatibility
-  proposedEndDate: Joi.date().iso().raw().allow(null), // Added for compatibility
+  // Use proper date-only validation
+  proposedDate: dateOnlyOptional,
+  proposedStartDate: dateOnlyOptional, // Added for compatibility
+  proposedEndDate: dateOnlyOptional, // Added for compatibility
   proposedStartTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).allow(null),
   proposedEndTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).allow(null),
   swapWithEmployeeId: Joi.string().uuid().allow(null),

@@ -3146,9 +3146,11 @@ tests/unit/services/job-service.test.js
 
 ## Authentication in Tests
 
-### Cookie-Based Authentication (PREFERRED)
+### Cookie-Based Authentication (MANDATORY)
 
-**Current Migration Status:** The codebase is migrating from Bearer token to cookie-based authentication.
+**Migration Status:** ✅ **COMPLETE** - Bearer tokens are fully deprecated. All applications now use cookie-based authentication.
+
+**⚠️ DEPRECATED: Bearer Token Authentication** - No longer supported. Any remaining tests using Bearer tokens must be updated immediately to use cookies.
 
 ```javascript
 import request from 'supertest';
@@ -3181,9 +3183,13 @@ describe('API with Cookie Auth', () => {
 });
 ```
 
-### Bearer Token Authentication (LEGACY)
+### ❌ DEPRECATED: Bearer Token Authentication (LEGACY ONLY)
 
-**Status:** Being phased out, but still used in some tests.
+**Status:** ❌ **FULLY DEPRECATED** - Do not use in new code. Update legacy tests to use cookies.
+
+**Note:** Some backend integration test files may still contain Bearer token references (e.g., `tenant-isolation.test.js`, `license-restrictions.test.js`). These are legacy patterns from before the cookie-based auth migration. New tests must use the cookie-based pattern above. Legacy tests will be updated during the next test refactoring phase.
+
+**Migration Required:** Any tests still using Bearer tokens should be updated to the cookie-based pattern above.
 
 ```javascript
 import jwt from 'jsonwebtoken';

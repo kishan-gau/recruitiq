@@ -66,13 +66,13 @@ class StationController {
       const organizationId = req.user.organization_id;
       const { isActive, locationId } = req.query;
 
-      const result = await this.stationService.listStations(
+      const stations = await this.stationService.listStations(
         organizationId,
         isActive === 'true',
         locationId
       );
 
-      res.json(result);
+      res.json({ success: true, stations });
     } catch (error) {
       logger.error('Error in listStations controller:', error);
       next(error);
@@ -88,13 +88,17 @@ class StationController {
       const organizationId = req.user.organization_id;
       const { id } = req.params;
 
-      const result = await this.stationService.getStationById(id, organizationId);
+      const station = await this.stationService.getStationById(id, organizationId);
 
-      if (!result.success) {
-        return res.status(404).json(result);
+      if (!station) {
+        return res.status(404).json({
+          success: false,
+          error: 'Station not found',
+          errorCode: 'STATION_NOT_FOUND'
+        });
       }
 
-      res.json(result);
+      res.json({ success: true, station });
     } catch (error) {
       logger.error('Error in getStationById controller:', error);
       next(error);

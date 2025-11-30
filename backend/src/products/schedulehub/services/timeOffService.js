@@ -6,6 +6,7 @@
 import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import Joi from 'joi';
+import { dateOnlyRequired } from '../../../validators/dateValidators.js';
 
 class TimeOffService {
   constructor() {
@@ -15,14 +16,26 @@ class TimeOffService {
   createRequestSchema = Joi.object({
     workerId: Joi.string().uuid().required(),
     requestType: Joi.string().valid('vacation', 'sick', 'personal', 'unpaid', 'other').required(),
-    startDate: Joi.date().required(),
-    endDate: Joi.date().required().min(Joi.ref('startDate')),
+    startDate: dateOnlyRequired,
+    endDate: dateOnlyRequired,
     isFullDay: Joi.boolean().default(true),
     startTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).when('isFullDay', { is: false, then: Joi.required() }),
     endTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).when('isFullDay', { is: false, then: Joi.required() }),
     totalDays: Joi.number().positive().required(),
     reason: Joi.string().allow(null, ''),
     notes: Joi.string().allow(null, '')
+  }).custom((value, helpers) => {
+    // Validate endDate >= startDate
+    const start = new Date(value.startDate);
+    const end = new Date(value.endDate);
+    
+    if (end < start) {
+      return helpers.error('dateRange.order');
+    }
+    
+    return value;
+  }).messages({
+    'dateRange.order': 'End date must be on or after start date'
   });
 
   async createRequest(requestData, organizationId, userId) {

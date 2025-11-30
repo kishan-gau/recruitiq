@@ -526,6 +526,63 @@ async function getWorkerTypeDistributionReport(req, res) {
   }
 }
 
+/**
+ * Export report in various formats
+ * GET /api/paylinq/reports/:reportType/export
+ */
+async function exportReport(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { reportType } = req.params;
+    const { start_date: startDate, end_date: endDate, format = 'pdf' } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'start_date and end_date are required',
+      });
+    }
+
+    // Validate format
+    const validFormats = ['pdf', 'excel', 'csv'];
+    if (!validFormats.includes(format)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: `Invalid format. Supported formats: ${validFormats.join(', ')}`,
+      });
+    }
+
+    // For now, return a placeholder response
+    // In production, this would generate the actual file
+    logger.info(`Export request: ${reportType} from ${startDate} to ${endDate} as ${format}`);
+
+    res.json({
+      success: true,
+      message: 'Report export initiated',
+      data: {
+        reportType,
+        format,
+        startDate,
+        endDate,
+        status: 'processing',
+        // In production, this would be a real download URL or file path
+        download_url: null,
+        estimatedTime: '2-5 minutes',
+      },
+    });
+  } catch (error) {
+    logger.error('Error exporting report:', error);
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to export report',
+    });
+  }
+}
+
 export default {
   getPayrollSummaryReport,
   getEmployeeEarningsReport,
@@ -533,4 +590,5 @@ export default {
   getTimeAttendanceReport,
   getDeductionsReport,
   getWorkerTypeDistributionReport,
+  exportReport,
 };

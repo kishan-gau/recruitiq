@@ -4,7 +4,7 @@
  */
 
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Calendar, DollarSign, Users as UsersIcon, XCircle } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Users, XCircle } from 'lucide-react';
 import { useBenefitEnrollment, useCancelBenefitEnrollment } from '@/hooks/useBenefits';
 import type { EnrollmentStatus, CoverageLevel } from '@/types/benefits.types';
 
@@ -100,7 +100,7 @@ export default function EnrollmentDetails() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-lg border border-gray-200">
           <div className="flex items-center gap-3 mb-2">
-            <UsersIcon className="w-5 h-5 text-blue-600" />
+            <Users className="w-5 h-5 text-blue-600" />
             <span className="text-sm text-gray-600">Coverage Level</span>
           </div>
           <p className="text-lg font-semibold text-gray-900">

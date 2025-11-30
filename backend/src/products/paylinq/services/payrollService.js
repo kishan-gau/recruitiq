@@ -75,7 +75,10 @@ class PayrollService {
     paymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash', 'direct_deposit', 'card').optional(),
     currency: Joi.string().length(3).default('SRD'),
     status: Joi.string().valid('active', 'inactive', 'terminated').default('active'),
-    startDate: Joi.date().optional(),
+    startDate: Joi.alternatives().try(
+      Joi.date().iso(),
+      Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/)
+    ).optional().allow(null),
     bankName: Joi.string().allow(null, ''),
     bankAccountNumber: Joi.string().allow(null, ''),
     accountNumber: Joi.string().allow(null, ''),

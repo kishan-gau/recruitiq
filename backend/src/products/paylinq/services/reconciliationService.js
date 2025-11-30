@@ -55,7 +55,10 @@ class ReconciliationService {
     adjustmentType: Joi.string().valid('correction', 'bonus', 'deduction', 'reimbursement').required(),
     adjustmentReason: Joi.string().min(5).max(500).required(),
     adjustmentAmount: Joi.number().required(),
-    effectiveDate: Joi.date().default(() => new Date()),
+    effectiveDate: Joi.alternatives().try(
+      Joi.date().iso(),
+      Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/)
+    ).optional().allow(null),
     notes: Joi.string().max(500).allow(null, '')
   });
 
