@@ -405,7 +405,7 @@ export async function up(knex) {
   await knex.schema.withSchema('scheduling').createTable('coverage_requirements', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.uuid('organization_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
-    table.uuid('location_id');
+    table.uuid('location_id').references('id').inTable('hris.location').onDelete('SET NULL');
     table.uuid('station_id').references('id').inTable('scheduling.stations');
     table.integer('day_of_week');
     table.time('start_time').notNullable();
@@ -441,8 +441,8 @@ export async function up(knex) {
     table.date('date').notNullable();
     table.integer('hour');
     table.integer('day_of_week');
-    table.uuid('location_id');
-    table.uuid('department_id');
+    table.uuid('location_id').references('id').inTable('hris.location').onDelete('SET NULL');
+    table.uuid('department_id').references('id').inTable('hris.department').onDelete('SET NULL');
     table.integer('customer_count');
     table.integer('transaction_count');
     table.decimal('revenue', 12, 2);
@@ -473,8 +473,8 @@ export async function up(knex) {
     table.uuid('organization_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
     table.date('forecast_date').notNullable();
     table.integer('hour');
-    table.uuid('location_id');
-    table.uuid('department_id');
+    table.uuid('location_id').references('id').inTable('hris.location').onDelete('SET NULL');
+    table.uuid('department_id').references('id').inTable('hris.department').onDelete('SET NULL');
     table.integer('predicted_customer_count');
     table.integer('predicted_transaction_count');
     table.decimal('predicted_revenue', 12, 2);
@@ -539,8 +539,8 @@ export async function up(knex) {
     table.uuid('organization_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
     table.string('target_name', 100).notNullable();
     table.text('description');
-    table.uuid('location_id');
-    table.uuid('department_id');
+    table.uuid('location_id').references('id').inTable('hris.location').onDelete('SET NULL');
+    table.uuid('department_id').references('id').inTable('hris.department').onDelete('SET NULL');
     table.string('metric_type', 50).notNullable();
     table.decimal('target_value', 10, 2).notNullable();
     table.decimal('min_acceptable_value', 10, 2);

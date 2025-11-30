@@ -217,9 +217,8 @@ export async function up(knex) {
     
     COMMENT ON TABLE applications IS 'Job applications linking candidates to jobs';
     COMMENT ON COLUMN applications.tracking_code IS 'Unique code for applicants to track their application status';
-    COMMENT ON COLUMN applications.stage IS 'Current hiring pipeline stage';
+    COMMENT ON COLUMN applications.stage IS 'Current hiring pipeline stage. Stages: applied, screening, phone_screen, assessment, interview, offer, hired, rejected, withdrawn';
     COMMENT ON COLUMN applications.status IS 'Status: active, rejected, withdrawn, hired';
-    COMMENT ON COLUMN applications.stage IS 'Stages: applied, screening, phone_screen, assessment, interview, offer, hired, rejected, withdrawn';
   `);
 
   // ============================================================================
@@ -260,6 +259,7 @@ export async function up(knex) {
     COMMENT ON COLUMN interviews.rating IS 'Overall interview rating from 1-5';
     COMMENT ON COLUMN interviews.type IS 'Types: phone, video, onsite, technical, behavioral, panel';
     COMMENT ON COLUMN interviews.status IS 'Status: scheduled, in_progress, completed, cancelled, rescheduled, no_show';
+    COMMENT ON COLUMN interviews.duration IS 'Alias for duration_minutes for backward compatibility';
   `);
 
   // ============================================================================
