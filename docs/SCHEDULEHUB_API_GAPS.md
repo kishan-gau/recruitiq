@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-ScheduleHub has **64 backend API endpoints** fully implemented across 8 controllers. All endpoints are exposed through the frontend API client with corresponding React Query hooks.
+ScheduleHub has **64 backend API endpoints** fully implemented across 8 controllers. The majority of endpoints are exposed through the frontend API client with corresponding React Query hooks. The frontend API client in `apps/nexus/src/lib/api/schedulehub.ts` already includes methods for the newly added backend endpoints.
 
 ### Implementation Status
 

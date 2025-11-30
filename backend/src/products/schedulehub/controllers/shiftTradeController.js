@@ -247,7 +247,7 @@ class ShiftTradeController {
       const userId = req.user.id;
       const { status } = req.query;
 
-      // First get the worker ID for this user
+      // Note: userId is used as employeeId since the user is linked to their employee record
       const result = await this.shiftTradeService.getWorkerOffers(userId, organizationId, status);
 
       res.json(result);
