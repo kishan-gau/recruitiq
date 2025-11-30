@@ -218,6 +218,69 @@ class ShiftTradeController {
       next(error);
     }
   };
+
+  /**
+   * Get pending swap approvals for managers
+   * GET /api/schedulehub/shift-swaps/pending-approvals
+   */
+  getPendingApprovals = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const managerId = req.user.id;
+
+      const result = await this.shiftTradeService.getPendingApprovals(organizationId, managerId);
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in getPendingApprovals controller:', error);
+      next(error);
+    }
+  };
+
+  /**
+   * Get current user's swap offers
+   * GET /api/schedulehub/shift-swaps/my-offers
+   */
+  getMyOffers = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const userId = req.user.id;
+      const { status } = req.query;
+
+      // First get the worker ID for this user
+      const result = await this.shiftTradeService.getWorkerOffers(userId, organizationId, status);
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in getMyOffers controller:', error);
+      next(error);
+    }
+  };
+
+  /**
+   * Reject swap (manager rejection)
+   * POST /api/schedulehub/shift-swaps/:offerId/reject
+   */
+  rejectSwap = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const userId = req.user.id;
+      const { offerId } = req.params;
+      const { reason } = req.body;
+
+      const result = await this.shiftTradeService.rejectSwap(
+        offerId,
+        organizationId,
+        userId,
+        reason
+      );
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in rejectSwap controller:', error);
+      next(error);
+    }
+  };
 }
 
 export default ShiftTradeController;

@@ -227,6 +227,31 @@ class RoleController {
       next(error);
     }
   };
+
+  /**
+   * Delete (soft delete) a role
+   * DELETE /api/schedulehub/roles/:id
+   */
+  deleteRole = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const userId = req.user.id;
+      const { id } = req.params;
+
+      // Soft delete by setting isActive to false
+      const result = await this.roleService.updateRole(
+        id,
+        { isActive: false },
+        organizationId,
+        userId
+      );
+
+      res.json({ success: true, message: 'Role deleted successfully', role: result.data });
+    } catch (error) {
+      logger.error('Error in deleteRole controller:', error);
+      next(error);
+    }
+  };
 }
 
 export default RoleController;

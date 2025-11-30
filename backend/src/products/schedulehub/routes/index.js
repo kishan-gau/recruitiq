@@ -99,10 +99,13 @@ router.get('/workers/:workerId/time-off', requirePermission('scheduling:time_off
 // ============================================================================
 
 router.get('/shift-swaps/marketplace', requirePermission('scheduling:shift_swaps:read'), shiftTradeController.getOpenOffers);
+router.get('/shift-swaps/pending-approvals', requirePermission('scheduling:shift_swaps:approve'), shiftTradeController.getPendingApprovals);
+router.get('/shift-swaps/my-offers', requirePermission('scheduling:shift_swaps:read'), shiftTradeController.getMyOffers);
 router.post('/shift-swaps', requirePermission('scheduling:shift_swaps:create'), shiftTradeController.createSwapOffer);
 router.get('/shift-swaps/:id', requirePermission('scheduling:shift_swaps:read'), shiftTradeController.getOfferById);
 router.post('/shift-swaps/:offerId/request', requirePermission('scheduling:shift_swaps:create'), shiftTradeController.requestSwap);
 router.post('/shift-swaps/:offerId/approve', requirePermission('scheduling:shift_swaps:approve'), shiftTradeController.approveSwap);
+router.post('/shift-swaps/:offerId/reject', requirePermission('scheduling:shift_swaps:approve'), shiftTradeController.rejectSwap);
 router.post('/shift-swaps/:offerId/cancel', requirePermission('scheduling:shift_swaps:delete'), shiftTradeController.cancelOffer);
 router.get('/shift-swaps/:offerId/requests', requirePermission('scheduling:shift_swaps:read'), shiftTradeController.getOfferRequests);
 router.get('/workers/:workerId/swap-offers', requirePermission('scheduling:shift_swaps:read'), shiftTradeController.getWorkerOffers);
@@ -116,6 +119,7 @@ router.post('/roles', requirePermission('scheduling:roles:create'), roleControll
 router.get('/roles', requirePermission('scheduling:roles:read'), roleController.listRoles);
 router.get('/roles/:id', requirePermission('scheduling:roles:read'), roleController.getRoleById);
 router.patch('/roles/:id', requirePermission('scheduling:roles:update'), roleController.updateRole);
+router.delete('/roles/:id', requirePermission('scheduling:roles:delete'), roleController.deleteRole);
 router.get('/roles/:id/workers', requirePermission('scheduling:roles:read'), roleController.getRoleWorkers);
 router.post('/roles/:roleId/workers', requirePermission('scheduling:roles:assign'), roleController.assignWorker);
 router.delete('/roles/:roleId/workers/:workerId', requirePermission('scheduling:roles:assign'), roleController.removeWorker);
