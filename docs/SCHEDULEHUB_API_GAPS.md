@@ -17,7 +17,7 @@ ScheduleHub has **64 backend API endpoints** fully implemented across 8 controll
 | Category | Backend Endpoints | API Client Coverage | Status |
 |----------|-------------------|---------------------|--------|
 | **Stats** | 1 endpoint | ✅ 100% (1/1) | **✅ COMPLETE** |
-| **Workers** | 9 endpoints | ✅ 100% (9/9) | **✅ COMPLETE** |
+| **Workers** | 8 endpoints | ✅ 100% (8/8) | **✅ COMPLETE** |
 | **Schedules** | 5 endpoints | ✅ 100% (5/5) | **✅ COMPLETE** |
 | **Shifts** | 6 endpoints | ✅ 100% (6/6) | **✅ COMPLETE** |
 | **Availability** | 7 endpoints | ✅ 100% (7/7) | **✅ COMPLETE** |
@@ -37,7 +37,7 @@ ScheduleHub has **64 backend API endpoints** fully implemented across 8 controll
 |--------|----------|-------------|------------|
 | GET | `/stats` | Get scheduling statistics | `scheduling:stats:read` |
 
-### 2. Workers Management (9 endpoints)
+### 2. Workers Management (8 endpoints)
 
 | Method | Endpoint | Description | Permission |
 |--------|----------|-------------|------------|
@@ -49,7 +49,6 @@ ScheduleHub has **64 backend API endpoints** fully implemented across 8 controll
 | POST | `/workers/:id/terminate` | Terminate worker | `scheduling:workers:delete` |
 | GET | `/workers/:id/availability` | Get availability summary | `scheduling:workers:read` |
 | GET | `/workers/:id/shifts` | Get shift history | `scheduling:workers:read` |
-| GET | `/workers/:workerId/roles` | Get worker's assigned roles | `scheduling:roles:read` |
 
 ### 3. Schedules (5 endpoints)
 
@@ -126,6 +125,7 @@ ScheduleHub has **64 backend API endpoints** fully implemented across 8 controll
 | POST | `/roles/:roleId/workers` | Assign worker to role | `scheduling:roles:assign` |
 | DELETE | `/roles/:roleId/workers/:workerId` | Remove worker from role | `scheduling:roles:assign` |
 | PATCH | `/roles/:roleId/workers/:workerId` | Update worker role assignment | `scheduling:roles:assign` |
+| GET | `/workers/:workerId/roles` | Get worker's assigned roles | `scheduling:roles:read` |
 
 ### 9. Stations (8 endpoints)
 
