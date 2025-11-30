@@ -227,6 +227,35 @@ class RoleController {
       next(error);
     }
   };
+
+  /**
+   * Delete (soft delete) a role
+   * DELETE /api/schedulehub/roles/:id
+   * 
+   * Note: This uses the isActive flag for soft delete, consistent with the
+   * existing role schema which doesn't have a deleted_at column. The role
+   * remains in the database but is excluded from active role listings.
+   */
+  deleteRole = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const userId = req.user.id;
+      const { id } = req.params;
+
+      // Soft delete by setting isActive to false (consistent with role schema)
+      const result = await this.roleService.updateRole(
+        id,
+        { isActive: false },
+        organizationId,
+        userId
+      );
+
+      res.json({ success: true, message: 'Role deleted successfully', role: result.data });
+    } catch (error) {
+      logger.error('Error in deleteRole controller:', error);
+      next(error);
+    }
+  };
 }
 
 export default RoleController;

@@ -271,6 +271,147 @@ class ShiftTradeService {
       throw error;
     }
   }
+
+  async getOfferById(offerId, organizationId) {
+    try {
+      const result = await pool.query(
+        `SELECT o.*, s.shift_date, s.start_time, s.end_time, r.role_name,
+                e.first_name || ' ' || e.last_name as offering_worker_name,
+                st.station_name
+         FROM scheduling.shift_swap_offers o
+         JOIN scheduling.shifts s ON o.shift_id = s.id
+         JOIN scheduling.roles r ON s.role_id = r.id
+         JOIN hris.employee e ON o.offering_employee_id = e.id
+         LEFT JOIN scheduling.stations st ON s.station_id = st.id
+         WHERE o.id = $1 AND o.organization_id = $2`,
+        [offerId, organizationId]
+      );
+
+      if (result.rows.length === 0) {
+        return { success: false, error: 'Swap offer not found' };
+      }
+      return { success: true, data: result.rows[0] };
+    } catch (error) {
+      this.logger.error('Error fetching swap offer:', error);
+      throw error;
+    }
+  }
+
+  async getWorkerOffers(workerId, organizationId, status = null) {
+    try {
+      let query = `
+        SELECT o.*, s.shift_date, s.start_time, s.end_time, r.role_name,
+               st.station_name,
+               (SELECT COUNT(*) FROM scheduling.shift_swap_requests WHERE swap_offer_id = o.id) as request_count
+        FROM scheduling.shift_swap_offers o
+        JOIN scheduling.shifts s ON o.shift_id = s.id
+        JOIN scheduling.roles r ON s.role_id = r.id
+        LEFT JOIN scheduling.stations st ON s.station_id = st.id
+        WHERE o.offering_employee_id = $1 AND o.organization_id = $2
+      `;
+      const params = [workerId, organizationId];
+
+      if (status) {
+        query += ` AND o.status = $3`;
+        params.push(status);
+      }
+
+      query += ` ORDER BY o.created_at DESC`;
+      const result = await pool.query(query, params);
+      return { success: true, data: result.rows };
+    } catch (error) {
+      this.logger.error('Error fetching worker offers:', error);
+      throw error;
+    }
+  }
+
+  async getOfferRequests(offerId, organizationId) {
+    try {
+      const result = await pool.query(
+        `SELECT r.*, e.first_name || ' ' || e.last_name as requester_name,
+                e.employee_number as requester_number
+         FROM scheduling.shift_swap_requests r
+         JOIN hris.employee e ON r.requesting_employee_id = e.id
+         WHERE r.swap_offer_id = $1 AND r.organization_id = $2
+         ORDER BY r.created_at DESC`,
+        [offerId, organizationId]
+      );
+      return { success: true, data: result.rows };
+    } catch (error) {
+      this.logger.error('Error fetching offer requests:', error);
+      throw error;
+    }
+  }
+
+  async getPendingApprovals(organizationId, managerId = null) {
+    try {
+      const result = await pool.query(
+        `SELECT o.*, s.shift_date, s.start_time, s.end_time, r.role_name,
+                e.first_name || ' ' || e.last_name as offering_worker_name,
+                re.first_name || ' ' || re.last_name as requester_name,
+                st.station_name
+         FROM scheduling.shift_swap_offers o
+         JOIN scheduling.shifts s ON o.shift_id = s.id
+         JOIN scheduling.roles r ON s.role_id = r.id
+         JOIN hris.employee e ON o.offering_employee_id = e.id
+         JOIN scheduling.shift_swap_requests req ON o.id = req.swap_offer_id AND req.status = 'accepted'
+         JOIN hris.employee re ON req.requesting_employee_id = re.id
+         LEFT JOIN scheduling.stations st ON s.station_id = st.id
+         WHERE o.organization_id = $1 AND o.status = 'pending_approval'
+         ORDER BY o.created_at ASC`,
+        [organizationId]
+      );
+      return { success: true, data: result.rows };
+    } catch (error) {
+      this.logger.error('Error fetching pending approvals:', error);
+      throw error;
+    }
+  }
+
+  async rejectSwap(offerId, organizationId, rejectorId, reason = null) {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      // Verify offer exists and is pending approval
+      const offerCheck = await client.query(
+        `SELECT o.* FROM scheduling.shift_swap_offers o
+         WHERE o.id = $1 AND o.organization_id = $2 AND o.status = 'pending_approval'`,
+        [offerId, organizationId]
+      );
+
+      if (offerCheck.rows.length === 0) {
+        throw new Error('Swap offer not found or not pending approval');
+      }
+
+      // Update offer status to rejected
+      await client.query(
+        `UPDATE scheduling.shift_swap_offers
+         SET status = 'rejected', rejected_by = $1, rejected_at = NOW(), rejection_reason = $2
+         WHERE id = $3`,
+        [rejectorId, reason, offerId]
+      );
+
+      // Update associated request
+      await client.query(
+        `UPDATE scheduling.shift_swap_requests
+         SET status = 'rejected', responded_at = NOW()
+         WHERE swap_offer_id = $1 AND status = 'accepted'`,
+        [offerId]
+      );
+
+      await client.query('COMMIT');
+      this.logger.info('Swap rejected', { offerId, organizationId, rejectorId });
+      return { success: true, message: 'Swap request rejected' };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      this.logger.error('Error rejecting swap:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 export default ShiftTradeService;
