@@ -4,7 +4,7 @@
  * Creates the comprehensive payroll processing schema - aligned with paylinq-schema.sql
  * 
  * Schema: payroll
- * Tables: 50+
+ * Tables: 50
  * Features: Employee payroll records, compensation, time & attendance,
  *           tax calculation, deductions, pay components, payroll runs,
  *           paychecks, payments, reconciliation, multi-currency support,
@@ -41,7 +41,7 @@ exports.up = async function(knex) {
       WHEN OTHERS THEN
         RAISE EXCEPTION 'Invalid organization context: %', SQLERRM;
     END;
-    $$ LANGUAGE plpgsql STABLE SECURITY DEFINER
+    $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
   `);
   
   await knex.raw(`COMMENT ON FUNCTION payroll.get_current_organization_id IS 'Returns current organization UUID from session variable set by auth middleware. Throws error if not set.'`);
