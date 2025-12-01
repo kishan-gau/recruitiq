@@ -21,6 +21,8 @@ export interface PayComponent {
   isTaxable: boolean;
   status: 'active' | 'inactive';
   description: string;
+  // Forfait rule support
+  forfaitRuleId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -54,6 +56,14 @@ function mapPayComponentToApi(data: CreatePayComponentInput | UpdatePayComponent
   // Include formula if calculationType is 'formula'
   if (data.calculationType === 'formula' && (data as any).formula) {
     payload.formula = (data as any).formula;
+  }
+
+  // Include forfaitRuleId if present (store in metadata for now)
+  if ('forfaitRuleId' in data) {
+    payload.metadata = {
+      ...(payload.metadata || {}),
+      forfaitRuleId: (data as any).forfaitRuleId || null,
+    };
   }
 
   return payload;

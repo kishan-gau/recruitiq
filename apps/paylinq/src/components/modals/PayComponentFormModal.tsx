@@ -4,6 +4,7 @@ import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
 import CurrencySelector from '@/components/ui/CurrencySelector';
 import { useToast } from '@/contexts/ToastContext';
 import FormulaBuilder from './FormulaBuilder';
+import { type ForfaitRule } from '@/hooks/useForfaitRules';
 
 interface PayComponent {
   id?: string;
@@ -28,6 +29,7 @@ interface PayComponentFormModalProps {
   onSubmit: (component: PayComponent) => Promise<void>;
   component?: PayComponent | null;
   mode: 'add' | 'edit';
+  availableForfaitRules?: ForfaitRule[];
 }
 
 const initialFormData: Omit<PayComponent, 'id'> = {
@@ -44,6 +46,9 @@ const initialFormData: Omit<PayComponent, 'id'> = {
   description: '',
   defaultCurrency: 'SRD',
   allowCurrencyOverride: true,
+  // Forfait Rule
+  applyForfaitRule: false,
+  forfaitRuleId: null,
 };
 
 export default function PayComponentFormModal({
@@ -52,6 +57,7 @@ export default function PayComponentFormModal({
   onSubmit,
   component,
   mode,
+  availableForfaitRules,
 }: PayComponentFormModalProps) {
   const { error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -74,6 +80,9 @@ export default function PayComponentFormModal({
         description: component.description,
         defaultCurrency: component.defaultCurrency || 'SRD',
         allowCurrencyOverride: component.allowCurrencyOverride !== false,
+        // Forfait Rule
+        applyForfaitRule: !!((component as any).metadata?.forfaitRuleId || (component as any).forfaitRuleId),
+        forfaitRuleId: (component as any).metadata?.forfaitRuleId || (component as any).forfaitRuleId || null,
       });
     } else {
       setFormData(initialFormData);
@@ -101,6 +110,11 @@ export default function PayComponentFormModal({
       } else if (isNaN(Number(formData.defaultValue)) || Number(formData.defaultValue) < 0) {
         newErrors.defaultValue = 'Default value must be a positive number';
       }
+    }
+
+    // Forfait rule validation
+    if ((formData as any).applyForfaitRule && !(formData as any).forfaitRuleId) {
+      (newErrors as any).forfaitRuleId = 'Please select a forfait rule when forfait rule is enabled';
     }
 
     setErrors(newErrors);
@@ -328,6 +342,75 @@ export default function PayComponentFormModal({
               </label>
             </div>
           </FormField>
+        </div>
+
+        {/* Forfait Rule Application */}
+        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            Forfait Rule Application
+          </h3>
+          <div className="space-y-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={(formData as any).applyForfaitRule}
+                onChange={(e) => {
+                  const newFormData = { 
+                    ...formData, 
+                    applyForfaitRule: e.target.checked,
+                    forfaitRuleId: e.target.checked ? (formData as any).forfaitRuleId : null
+                  };
+                  setFormData(newFormData as any);
+                }}
+                disabled={isLoading}
+                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+              />
+              <span className="text-sm text-gray-900 dark:text-white">Apply Forfait Rule</span>
+            </label>
+
+            {(formData as any).applyForfaitRule && (
+              <>
+                <FormField 
+                  label="Forfait Rule" 
+                  error={(errors as any).forfaitRuleId}
+                  required
+                >
+                  <select
+                    value={(formData as any).forfaitRuleId || ''}
+                    onChange={(e) => setFormData({ ...formData, forfaitRuleId: e.target.value || null } as any)}
+                    disabled={isLoading}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Select a forfait rule...</option>
+                    {availableForfaitRules?.map((rule) => (
+                      <option key={rule.id} value={rule.id}>
+                        {rule.name} - {rule.calculationType}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+
+                {(formData as any).forfaitRuleId && (() => {
+                  const selectedRule = availableForfaitRules?.find(r => r.id === (formData as any).forfaitRuleId);
+                  return selectedRule ? (
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm space-y-2">
+                      <div className="font-medium text-gray-900 dark:text-white">
+                        {selectedRule.name}
+                      </div>
+                      <div className="text-gray-600 dark:text-gray-400">
+                        Type: {selectedRule.calculationType}
+                      </div>
+                      {selectedRule.description && (
+                        <div className="text-gray-600 dark:text-gray-400">
+                          {selectedRule.description}
+                        </div>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
+              </>
+            )}
+          </div>
         </div>
 
         <FormField label="Description" required error={errors.description}>

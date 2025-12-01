@@ -9,6 +9,7 @@ import MetadataBuilder from '@/components/ui/MetadataBuilder';
 import { usePayComponents } from '@/hooks/usePayComponents';
 import { useToast } from '@/contexts/ToastContext';
 import type { PayStructureComponent } from '@/hooks/usePayStructures';
+import { type ForfaitRule } from '@/hooks/useForfaitRules';
 
 interface PayStructureComponentModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface PayStructureComponentModalProps {
   onSubmit: (data: any) => Promise<void> | void;
   component?: PayStructureComponent | null;
   existingComponents?: PayStructureComponent[];
+  availableForfaitRules?: ForfaitRule[];
 }
 
 export default function PayStructureComponentModal({
@@ -24,6 +26,7 @@ export default function PayStructureComponentModal({
   onSubmit,
   component,
   existingComponents = [],
+  availableForfaitRules,
 }: PayStructureComponentModalProps) {
   const { error: showError } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,6 +69,9 @@ export default function PayStructureComponentModal({
     // Currency
     defaultCurrency: 'SRD',
     allowCurrencyOverride: true,
+    // Forfait Rule
+    applyForfaitRule: false,
+    forfaitRuleId: null,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -135,6 +141,9 @@ export default function PayStructureComponentModal({
           // Currency
           defaultCurrency: component.currency || component.defaultCurrency || 'SRD',
           allowCurrencyOverride: component.allowCurrencyOverride !== false,
+          // Forfait Rule
+          applyForfaitRule: !!(component.metadata?.forfaitRuleId || component.forfaitRuleId),
+          forfaitRuleId: component.metadata?.forfaitRuleId || component.forfaitRuleId || null,
         });
       } else {
         // Add mode - reset form
@@ -175,6 +184,9 @@ export default function PayStructureComponentModal({
           // Currency
           defaultCurrency: 'SRD',
           allowCurrencyOverride: true,
+          // Forfait Rule
+          applyForfaitRule: false,
+          forfaitRuleId: null,
         });
       }
       setErrors({});
@@ -238,6 +250,11 @@ export default function PayStructureComponentModal({
       } catch {
         newErrors.metadata = 'Invalid JSON format';
       }
+    }
+
+    // Forfait rule validation
+    if (formData.applyForfaitRule && !formData.forfaitRuleId) {
+      newErrors.forfaitRuleId = 'Please select a forfait rule when forfait rule is enabled';
     }
 
     setErrors(newErrors);
@@ -861,6 +878,70 @@ export default function PayStructureComponentModal({
                       />
                       <span className="text-sm text-gray-900 dark:text-white">Allow currency override at worker level</span>
                     </label>
+                  </div>
+                </div>
+
+                {/* Forfait Rule Application Section */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                    Forfait Rule Application
+                  </h3>
+                  <div className="space-y-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.applyForfaitRule}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          applyForfaitRule: e.target.checked,
+                          forfaitRuleId: e.target.checked ? formData.forfaitRuleId : null
+                        })}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-900 dark:text-white">Apply Forfait Rule</span>
+                    </label>
+
+                    {formData.applyForfaitRule && (
+                      <>
+                        <FormField 
+                          label="Forfait Rule" 
+                          error={errors.forfaitRuleId}
+                          required
+                        >
+                          <select
+                            value={formData.forfaitRuleId || ''}
+                            onChange={(e) => setFormData({ ...formData, forfaitRuleId: e.target.value || null })}
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
+                          >
+                            <option value="">Select a forfait rule...</option>
+                            {availableForfaitRules?.map((rule) => (
+                              <option key={rule.id} value={rule.id}>
+                                {rule.name} - {rule.calculationType}
+                              </option>
+                            ))}
+                          </select>
+                        </FormField>
+
+                        {formData.forfaitRuleId && (() => {
+                          const selectedRule = availableForfaitRules?.find(r => r.id === formData.forfaitRuleId);
+                          return selectedRule ? (
+                            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm space-y-2">
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {selectedRule.name}
+                              </div>
+                              <div className="text-gray-600 dark:text-gray-400">
+                                Type: {selectedRule.calculationType}
+                              </div>
+                              {selectedRule.description && (
+                                <div className="text-gray-600 dark:text-gray-400">
+                                  {selectedRule.description}
+                                </div>
+                              )}
+                            </div>
+                          ) : null;
+                        })()}
+                      </>
+                    )}
                   </div>
                 </div>
               </>

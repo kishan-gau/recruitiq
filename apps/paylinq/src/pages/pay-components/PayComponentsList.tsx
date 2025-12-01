@@ -14,6 +14,7 @@ import {
   useDeletePayComponent,
   type PayComponent,
 } from '@/hooks/usePayComponents';
+import { useForfaitRules } from '@/hooks/useForfaitRules';
 import {
   usePayStructureTemplates,
   useCreatePayStructureTemplate,
@@ -50,6 +51,7 @@ export default function PayComponentsList() {
   const createMutation = useCreatePayComponent();
   const updateMutation = useUpdatePayComponent();
   const deleteMutation = useDeletePayComponent();
+  const { data: forfaitRules } = useForfaitRules({ enabled: activeTab === 'components' });
 
   // React Query hooks - Templates (only fetch when templates tab is active)
   const { data: templates, isLoading: templatesLoading, error: templatesError } = usePayStructureTemplates({ enabled: activeTab === 'templates' });
@@ -273,6 +275,7 @@ export default function PayComponentsList() {
         onSubmit={handleFormSubmit}
         component={selectedComponent}
         mode={modalMode}
+        availableForfaitRules={forfaitRules}
       />
 
       <PayStructureTemplateModal
@@ -284,6 +287,7 @@ export default function PayComponentsList() {
         onSubmit={handleTemplateFormSubmit}
         template={selectedTemplate}
         mode={modalMode}
+        availableForfaitRules={forfaitRules}
       />
 
       <DeletePayComponentDialog
