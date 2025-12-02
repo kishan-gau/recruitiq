@@ -4,7 +4,7 @@
  * Creates the comprehensive workforce scheduling schema - aligned with schedulehub-schema.sql
  * 
  * Schema: scheduling
- * Tables: 16
+ * Tables: 17
  * Features: Shift scheduling, station management, role assignments,
  *           availability tracking, shift swapping, time-off requests,
  *           schedule optimization, demand forecasting
@@ -864,10 +864,9 @@ exports.up = async function(knex) {
     $$ LANGUAGE plpgsql;
   `);
   
-  // Apply triggers to all relevant tables
-  // Note: worker_scheduling_config table does not have a trigger (per original schema)
+  // Apply triggers to all relevant tables with updated_at column
   const tablesWithUpdatedAt = [
-    'roles', 'worker_roles', 'stations', 'schedules', 
+    'worker_scheduling_config', 'roles', 'worker_roles', 'stations', 'schedules', 
     'shifts', 'worker_availability', 'time_off_requests', 'shift_swap_offers',
     'shift_swap_requests', 'coverage_requirements', 'service_level_targets'
   ];
@@ -1048,7 +1047,7 @@ exports.up = async function(knex) {
   await knex.raw('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA scheduling TO PUBLIC');
   await knex.raw('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA scheduling TO PUBLIC');
   
-  console.log('✅ ScheduleHub schema created successfully with 16 tables');
+  console.log('✅ ScheduleHub schema created successfully with 17 tables');
 };
 
 exports.down = async function(knex) {
