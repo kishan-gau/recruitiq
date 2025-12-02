@@ -547,7 +547,7 @@ exports.up = async function(knex) {
   // Add check constraint and self-referencing FK
   await knex.raw(`
     ALTER TABLE hris.contract_sequence_step 
-    ADD CONSTRAINT check_contract_type 
+    ADD CONSTRAINT check_contract_sequence_step_type 
     CHECK (contract_type IN ('probation', 'fixed_term', 'permanent', 'seasonal'))
   `);
   
@@ -618,7 +618,7 @@ exports.up = async function(knex) {
   // Add check constraints
   await knex.raw(`
     ALTER TABLE hris.contract 
-    ADD CONSTRAINT check_contract_type 
+    ADD CONSTRAINT check_contract_contract_type 
     CHECK (contract_type IN ('probation', 'fixed_term', 'permanent', 'seasonal'))
   `);
   
@@ -672,7 +672,7 @@ exports.up = async function(knex) {
   // Add check constraint
   await knex.raw(`
     ALTER TABLE hris.review_template 
-    ADD CONSTRAINT check_review_type 
+    ADD CONSTRAINT check_review_template_type 
     CHECK (review_type IN ('annual', 'mid_year', 'probation', 'project', 'continuous'))
   `);
   
@@ -719,13 +719,13 @@ exports.up = async function(knex) {
   // Add check constraints
   await knex.raw(`
     ALTER TABLE hris.performance_review 
-    ADD CONSTRAINT check_review_type 
+    ADD CONSTRAINT check_performance_review_type 
     CHECK (review_type IN ('annual', 'mid_year', 'probation', 'project', 'continuous'))
   `);
   
   await knex.raw(`
     ALTER TABLE hris.performance_review 
-    ADD CONSTRAINT check_status 
+    ADD CONSTRAINT check_performance_review_status 
     CHECK (status IN ('draft', 'in_progress', 'submitted', 'approved', 'completed'))
   `);
   
@@ -765,13 +765,13 @@ exports.up = async function(knex) {
   // Add check constraints
   await knex.raw(`
     ALTER TABLE hris.performance_goal 
-    ADD CONSTRAINT check_completion_percentage 
+    ADD CONSTRAINT check_performance_goal_completion 
     CHECK (completion_percentage >= 0 AND completion_percentage <= 100)
   `);
   
   await knex.raw(`
     ALTER TABLE hris.performance_goal 
-    ADD CONSTRAINT check_status 
+    ADD CONSTRAINT check_performance_goal_status 
     CHECK (status IN ('active', 'completed', 'cancelled', 'deferred'))
   `);
   
@@ -915,7 +915,7 @@ exports.up = async function(knex) {
   
   await knex.raw(`
     ALTER TABLE hris.employee_benefit_enrollment 
-    ADD CONSTRAINT check_status 
+    ADD CONSTRAINT check_employee_benefit_enrollment_status 
     CHECK (status IN ('active', 'pending', 'cancelled', 'expired'))
   `);
   
@@ -1039,7 +1039,7 @@ exports.up = async function(knex) {
   // Add check constraint
   await knex.raw(`
     ALTER TABLE hris.time_off_request 
-    ADD CONSTRAINT check_status 
+    ADD CONSTRAINT check_time_off_request_status 
     CHECK (status IN ('pending', 'approved', 'rejected', 'cancelled'))
   `);
   
@@ -1119,7 +1119,7 @@ exports.up = async function(knex) {
   // Add check constraint
   await knex.raw(`
     ALTER TABLE hris.attendance_record 
-    ADD CONSTRAINT check_status 
+    ADD CONSTRAINT check_attendance_record_status 
     CHECK (status IN ('present', 'absent', 'late', 'half_day', 'on_leave', 'holiday', 'weekend'))
   `);
   
@@ -1200,7 +1200,7 @@ exports.up = async function(knex) {
   // Add check constraint
   await knex.raw(`
     ALTER TABLE hris.rule_execution_history 
-    ADD CONSTRAINT check_status 
+    ADD CONSTRAINT check_rule_execution_history_status 
     CHECK (status IN ('success', 'failure', 'skipped'))
   `);
   
@@ -1288,7 +1288,7 @@ exports.up = async function(knex) {
   // Add check constraint
   await knex.raw(`
     ALTER TABLE hris.employee_document 
-    ADD CONSTRAINT check_status 
+    ADD CONSTRAINT check_employee_document_status 
     CHECK (status IN ('active', 'expired', 'pending_review', 'approved', 'rejected'))
   `);
   
@@ -1455,7 +1455,7 @@ exports.up = async function(knex) {
     RETURNS TRIGGER AS $$
     BEGIN
       IF TG_OP = 'INSERT' AND NEW.status = 'approved' THEN
-        -- Deduct from balance
+        -- Deduct from balance for newly inserted approved requests
         UPDATE hris.employee_time_off_balance
         SET 
           total_used = total_used + NEW.total_days,
@@ -1466,12 +1466,25 @@ exports.up = async function(knex) {
           AND year = EXTRACT(YEAR FROM NEW.start_date);
           
       ELSIF TG_OP = 'UPDATE' THEN
-        IF OLD.status = 'approved' AND NEW.status = 'cancelled' THEN
-          -- Restore balance
+        -- Handle status change from pending to approved
+        IF OLD.status != 'approved' AND NEW.status = 'approved' THEN
+          -- Deduct from balance
           UPDATE hris.employee_time_off_balance
           SET 
-            total_used = total_used - NEW.total_days,
-            current_balance = current_balance + NEW.total_days,
+            total_used = total_used + NEW.total_days,
+            current_balance = current_balance - NEW.total_days,
+            updated_at = NOW()
+          WHERE employee_id = NEW.employee_id
+            AND time_off_type_id = NEW.time_off_type_id
+            AND year = EXTRACT(YEAR FROM NEW.start_date);
+            
+        -- Handle status change from approved to cancelled
+        ELSIF OLD.status = 'approved' AND NEW.status = 'cancelled' THEN
+          -- Restore balance using OLD.total_days (the amount that was originally deducted)
+          UPDATE hris.employee_time_off_balance
+          SET 
+            total_used = total_used - OLD.total_days,
+            current_balance = current_balance + OLD.total_days,
             updated_at = NOW()
           WHERE employee_id = NEW.employee_id
             AND time_off_type_id = NEW.time_off_type_id
