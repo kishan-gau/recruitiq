@@ -1,9 +1,9 @@
-const express = require('express');
-const deploymentController = require('../controllers/deploymentController');
-const tenantManagementController = require('../controllers/tenantManagementController');
-const approvalRoutes = require('./approvalRoutes');
-const tenantRoutes = require('./tenantRoutes');
-const { authenticate } = require('../middleware/auth');
+import express from 'express';
+import deploymentController from '../controllers/deploymentController.js';
+import tenantManagementController from '../controllers/tenantManagementController.js';
+import approvalRoutes from './approvalRoutes.js';
+import tenantRoutes from './tenantRoutes.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -35,4 +35,4 @@ router.post('/instances/:vpsName/reboot', deploymentController.rebootInstance.bi
 router.delete('/instances/:vpsName', deploymentController.deleteInstance.bind(deploymentController));
 router.post('/instances/:vpsName/snapshots', deploymentController.createSnapshot.bind(deploymentController));
 
-module.exports = router;
+export default router;

@@ -1,6 +1,6 @@
-const Queue = require('bull');
-const config = require('../../config');
-const deploymentService = require('../transip/deploymentService');
+import Queue from 'bull';
+import config from '../config/index.js';
+import deploymentService from '../services/transip/deploymentService.js';
 
 // Create deployment queue
 const deploymentQueue = new Queue('deployments', config.redis.url, {
@@ -213,7 +213,7 @@ async function cleanupOldJobs(gracePeriod = 7 * 24 * 60 * 60 * 1000) {
 /**
  * Graceful shutdown
  */
-async function shutdown() {
+export async function shutdown() {
   console.log('[Queue] Shutting down deployment queue...');
   await deploymentQueue.close();
   console.log('[Queue] Deployment queue closed');
@@ -223,12 +223,11 @@ async function shutdown() {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-module.exports = {
+export {
   deploymentQueue,
   createDeploymentJob,
   getDeploymentJobStatus,
   cancelDeploymentJob,
   getQueueStats,
   cleanupOldJobs,
-  shutdown,
 };

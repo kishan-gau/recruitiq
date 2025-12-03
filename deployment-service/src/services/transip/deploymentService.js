@@ -1,6 +1,6 @@
-const transipAuth = require('./auth');
-const { generateCloudInitConfig } = require('./cloudInit');
-const config = require('../../config');
+import transipAuth from './auth.js';
+import { generateCloudInitConfig } from './cloudInit.js';
+import config from '../../config/index.js';
 
 class TransIPDeploymentService {
   constructor() {
@@ -355,4 +355,4 @@ class TransIPDeploymentService {
   }
 }
 
-module.exports = new TransIPDeploymentService();
+export default new TransIPDeploymentService();

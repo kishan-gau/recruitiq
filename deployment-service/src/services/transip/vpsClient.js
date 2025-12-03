@@ -1,5 +1,5 @@
-const transipAuth = require('./auth');
-const config = require('../../config');
+import transipAuth from './auth.js';
+import config from '../../config/index.js';
 
 /**
  * TransIP VPS API Client
@@ -446,4 +446,4 @@ class TransIPVpsClient {
 }
 
 // Export singleton instance
-module.exports = new TransIPVpsClient();
+export default new TransIPVpsClient();

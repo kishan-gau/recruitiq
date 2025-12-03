@@ -1,7 +1,7 @@
 /**
  * Error handling middleware
  */
-function errorHandler(err, req, res, next) {
+export function errorHandler(err, req, res, next) {
   console.error('[Error]', {
     message: err.message,
     stack: err.stack,
@@ -44,14 +44,14 @@ function errorHandler(err, req, res, next) {
 /**
  * 404 handler
  */
-function notFoundHandler(req, res) {
+export function notFoundHandler(req, res) {
   res.status(404).json({
     success: false,
     error: 'Route not found',
   });
 }
 
-module.exports = {
+export default {
   errorHandler,
   notFoundHandler,
 };

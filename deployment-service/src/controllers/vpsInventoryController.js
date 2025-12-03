@@ -1,5 +1,5 @@
-const { TransipVpsInventory } = require('../models');
-const vpsClient = require('../services/transip/vpsClient');
+import { TransipVpsInventory } from '../models/index.js';
+import vpsClient from '../services/transip/vpsClient.js';
 
 /**
  * VPS Inventory Controller
@@ -243,4 +243,4 @@ class VpsInventoryController {
   }
 }
 
-module.exports = new VpsInventoryController();
+export default new VpsInventoryController();

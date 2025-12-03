@@ -7,6 +7,7 @@
 
 import TenantDeploymentService from '../services/TenantDeploymentService.js';
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
 
 class TenantManagementController {
   constructor(options = {}) {
@@ -192,7 +193,6 @@ class TenantManagementController {
   generateServiceToken() {
     // In production, use proper JWT signing
     // For now, return a placeholder that Portal should validate
-    const jwt = require('jsonwebtoken');
     const secret = this.deploymentServiceSecret || 'deployment-service-secret';
     
     return jwt.sign(

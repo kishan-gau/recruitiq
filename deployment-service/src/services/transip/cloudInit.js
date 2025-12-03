@@ -1,4 +1,5 @@
-const config = require('../../config');
+import config from '../../config/index.js';
+import crypto from 'crypto';
 
 /**
  * Generate cloud-init configuration for RecruitIQ deployment
@@ -306,16 +307,24 @@ function getNginxConfig(fqdn) {
 function generateRandomPassword(length = 24) {
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
   let password = '';
-  const randomBytes = require('crypto').randomBytes(length);
+  const randomBytesBuffer = crypto.randomBytes(length);
   
   for (let i = 0; i < length; i++) {
-    password += charset[randomBytes[i] % charset.length];
+    password += charset[randomBytesBuffer[i] % charset.length];
   }
   
   return password;
 }
 
-module.exports = {
+export {
+  generateCloudInitConfig,
+  getDockerComposeContent,
+  getEnvFileContent,
+  getNginxConfig,
+  generateRandomPassword,
+};
+
+export default {
   generateCloudInitConfig,
   getDockerComposeContent,
   getEnvFileContent,

@@ -1,4 +1,5 @@
-const { VpsProvisionRequest, VpsProvisionApprover } = require('../models');
+import { VpsProvisionRequest, VpsProvisionApprover } from '../models/index.js';
+import vpsProvisioningService from '../services/vpsProvisioningService.js';
 
 /**
  * VPS Provision Request Controller
@@ -249,7 +250,6 @@ class VpsProvisionController {
       });
 
       // Trigger provisioning workflow
-      const vpsProvisioningService = require('../services/vpsProvisioningService');
       try {
         // Queue provisioning job (non-blocking)
         vpsProvisioningService.provisionViaQueue(id).catch((error) => {
@@ -470,4 +470,4 @@ class VpsProvisionController {
   }
 }
 
-module.exports = new VpsProvisionController();
+export default new VpsProvisionController();

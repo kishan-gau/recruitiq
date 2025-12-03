@@ -5,9 +5,9 @@
  * These routes implement the Portal → Deployment Service communication.
  */
 
-const express = require('express');
-const tenantManagementController = require('../controllers/tenantManagementController');
-const { authenticate } = require('../middleware/auth');
+import express from 'express';
+import tenantManagementController from '../controllers/tenantManagementController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -52,4 +52,4 @@ router.get('/ports/stats', authenticate, tenantManagementController.getPortStats
  */
 router.post('/callback', tenantManagementController.handleTenantCallback);
 
-module.exports = router;
+export default router;

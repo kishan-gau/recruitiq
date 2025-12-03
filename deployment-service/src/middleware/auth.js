@@ -1,11 +1,11 @@
-const jwt = require('jsonwebtoken');
-const config = require('../config');
+import jwt from 'jsonwebtoken';
+import config from '../config/index.js';
 
 /**
  * Authentication middleware
  * Validates JWT token or API key
  */
-function authenticate(req, res, next) {
+export function authenticate(req, res, next) {
   // Skip auth if disabled
   if (!config.security.requireAuth) {
     return next();
@@ -47,7 +47,7 @@ function authenticate(req, res, next) {
 /**
  * Require admin role
  */
-function requireAdmin(req, res, next) {
+export function requireAdmin(req, res, next) {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({
       success: false,
@@ -57,7 +57,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = {
+export default {
   authenticate,
   requireAdmin,
 };

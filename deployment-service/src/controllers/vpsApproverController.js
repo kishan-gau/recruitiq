@@ -1,4 +1,4 @@
-const { VpsProvisionApprover } = require('../models');
+import { VpsProvisionApprover, VpsProvisionRequest } from '../models/index.js';
 
 /**
  * VPS Provision Approver Controller
@@ -278,7 +278,6 @@ class VpsApproverController {
       }
 
       // Get the request
-      const VpsProvisionRequest = require('../models/VpsProvisionRequest');
       const request = await VpsProvisionRequest.findById(requestId);
 
       if (!request) {
@@ -305,4 +304,4 @@ class VpsApproverController {
   }
 }
 
-module.exports = new VpsApproverController();
+export default new VpsApproverController();

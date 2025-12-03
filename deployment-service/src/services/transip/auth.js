@@ -1,7 +1,7 @@
-const crypto = require('crypto');
-const fs = require('fs');
-const axios = require('axios');
-const config = require('../../config');
+import crypto from 'crypto';
+import fs from 'fs';
+import axios from 'axios';
+import config from '../../config/index.js';
 
 class TransIPAuth {
   constructor() {
@@ -167,4 +167,4 @@ class TransIPAuth {
 }
 
 // Export singleton instance
-module.exports = new TransIPAuth();
+export default new TransIPAuth();
