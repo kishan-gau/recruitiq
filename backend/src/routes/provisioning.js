@@ -1,6 +1,10 @@
 /**
  * Provisioning API Routes
  * Handles client provisioning, VPS management, and deployment tracking
+ * 
+ * Integration with Deployment Service:
+ * For shared VPS deployments, this service communicates with the deployment-service
+ * which handles container orchestration, NGINX config, SSL, and database setup.
  */
 
 import express from 'express';
@@ -9,13 +13,18 @@ import vpsManager from '../services/vpsManager.js';
 import transipService from '../services/transip/TransIPService.js';
 import deploymentOrchestrator from '../services/deploymentOrchestrator.js';
 import sharedVPSOrchestrator from '../services/sharedVPSOrchestrator.js';
+import deploymentServiceClient from '../services/DeploymentServiceClient.js';
 import pool from '../config/database.js';
 import logger from '../utils/logger.js';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
 import config from '../config/index.js';
+import crypto from 'crypto';
 
 const router = express.Router();
+
+// Feature flag: Use deployment service for shared VPS deployments
+const USE_DEPLOYMENT_SERVICE = process.env.USE_DEPLOYMENT_SERVICE === 'true';
 
 // License Manager Database Connection
 const licenseManagerPool = new pg.Pool({
@@ -129,6 +138,73 @@ async function configureSharedTenantAsync(deploymentId, organizationId, slug, vp
 }
 
 /**
+ * Deploy tenant via Deployment Service
+ * Uses the deployment-service for container orchestration, NGINX, SSL, and database setup
+ * 
+ * @param {string} deploymentId - Deployment ID
+ * @param {string} organizationId - Organization UUID
+ * @param {string} slug - Organization slug
+ * @param {string} tier - Tier (starter, professional, enterprise)
+ * @param {Object} vps - VPS object with connection details
+ * @param {string} adminEmail - Admin email
+ * @param {string} adminName - Admin name
+ * @param {string} tempPassword - Temporary password for admin
+ */
+async function deployTenantViaDeploymentService(deploymentId, organizationId, slug, tier, vps, adminEmail, adminName, tempPassword) {
+  try {
+    logger.info(`🚀 Starting tenant deployment via Deployment Service for ${slug}`);
+
+    // Update status to show we're deploying
+    await pool.query(
+      `UPDATE instance_deployments 
+       SET status = 'provisioning', 
+           status_message = 'Initiating deployment via Deployment Service...'
+       WHERE id = $1`,
+      [deploymentId]
+    );
+
+    // Call deployment service
+    const result = await deploymentServiceClient.deployTenant({
+      vpsId: vps.id,
+      vpsIp: vps.ip_address || vps.vps_ip,
+      tenantId: organizationId,
+      organizationName: slug, // deployment service uses this for container naming
+      organizationSlug: slug,
+      tier,
+      adminEmail,
+      adminName
+    });
+
+    logger.info(`✅ Deployment Service accepted tenant ${slug}`, {
+      deploymentId: result.deploymentId,
+      status: result.status
+    });
+
+    // The deployment service will send a callback to /api/portal/deployments/callback
+    // when deployment completes or fails
+
+  } catch (error) {
+    logger.error(`❌ Deployment Service deployment failed for ${slug}:`, error);
+    
+    // Update deployment status to failed
+    await pool.query(
+      `UPDATE instance_deployments 
+       SET status = 'failed', 
+           error_message = $1,
+           status_message = 'Deployment Service failed'
+       WHERE id = $2`,
+      [error.message, deploymentId]
+    );
+
+    // If deployment service is unavailable, fall back to legacy orchestrator
+    if (error.isConnectionError) {
+      logger.warn(`⚠️ Deployment Service unavailable, falling back to legacy orchestrator for ${slug}`);
+      await configureSharedTenantAsync(deploymentId, organizationId, slug, vps);
+    }
+  }
+}
+
+/**
  * Provision new client instance
  * POST /api/portal/instances
  */
@@ -204,8 +280,8 @@ router.post('/instances',
         // Assign organization to VPS
         await vpsManager.assignOrganizationToVPS(organizationId, selectedVPS.id);
 
-        // Create admin user
-        const tempPassword = Math.random().toString(36).slice(-10) + 'A1!';
+        // Create admin user with secure password
+        const tempPassword = crypto.randomBytes(12).toString('base64').slice(0, 12) + 'A1!';
         const passwordHash = await bcrypt.hash(tempPassword, 10);
         
         // Split admin name into first and last name
@@ -219,14 +295,15 @@ router.post('/instances',
           [organizationId, adminEmail, passwordHash, adminName, firstName, lastName]
         );
 
-        // Create deployment record
+        // Create deployment record - status depends on whether we're using deployment service
+        const initialStatus = USE_DEPLOYMENT_SERVICE ? 'provisioning' : 'active';
         const deploymentResult = await client.query(
           `INSERT INTO instance_deployments (
             organization_id, deployment_model, status, subdomain, tier, vps_id
           )
           VALUES ($1, $2, $3, $4, $5, $6)
           RETURNING id`,
-          [organizationId, deploymentModel, 'active', slug, tier, selectedVPS.id]
+          [organizationId, deploymentModel, initialStatus, slug, tier, selectedVPS.id]
         );
 
         await client.query('COMMIT');
@@ -238,7 +315,9 @@ router.post('/instances',
           success: true,
           deploymentId,
           organizationId,
-          message: 'Tenant onboarding initiated',
+          message: USE_DEPLOYMENT_SERVICE 
+            ? 'Tenant deployment initiated via Deployment Service' 
+            : 'Tenant onboarding initiated',
           url: `https://${slug}.recruitiq.nl`,
           deploymentModel: 'shared',
           tier,
@@ -254,11 +333,19 @@ router.post('/instances',
           }
         });
 
-        // Configure subdomain on VPS asynchronously (NGINX config, SSL cert)
-        // Don't await - run in background
-        configureSharedTenantAsync(deploymentId, organizationId, slug, selectedVPS).catch(error => {
-          logger.error('Shared tenant configuration failed:', error);
-        });
+        // Configure subdomain on VPS asynchronously
+        if (USE_DEPLOYMENT_SERVICE) {
+          // Use deployment-service for container orchestration
+          deployTenantViaDeploymentService(deploymentId, organizationId, slug, tier, selectedVPS, adminEmail, adminName, tempPassword)
+            .catch(error => {
+              logger.error('Deployment service tenant configuration failed:', error);
+            });
+        } else {
+          // Use legacy local orchestrator (NGINX config, SSL cert only)
+          configureSharedTenantAsync(deploymentId, organizationId, slug, selectedVPS).catch(error => {
+            logger.error('Shared tenant configuration failed:', error);
+          });
+        }
 
       } else if (deploymentModel === 'dedicated') {
         // Create deployment record first
@@ -630,6 +717,67 @@ router.get('/deployments/:id/logs',
     } catch (error) {
       logger.error('Error fetching deployment logs:', error);
       res.status(500).json({ error: 'Failed to fetch logs' });
+    }
+  }
+);
+
+/**
+ * Get deployment service health status
+ * GET /api/portal/deployment-service/health
+ */
+router.get('/deployment-service/health',
+  authenticatePlatform,
+  requirePlatformPermission('vps.view'),
+  async (req, res) => {
+    try {
+      const health = await deploymentServiceClient.healthCheck();
+      
+      res.json({
+        success: true,
+        enabled: USE_DEPLOYMENT_SERVICE,
+        ...health
+      });
+    } catch (error) {
+      logger.error('Error checking deployment service health:', error);
+      res.status(500).json({ 
+        success: false,
+        enabled: USE_DEPLOYMENT_SERVICE,
+        status: 'error',
+        error: error.message 
+      });
+    }
+  }
+);
+
+/**
+ * Get port allocation statistics from deployment service
+ * GET /api/portal/deployment-service/ports
+ */
+router.get('/deployment-service/ports',
+  authenticatePlatform,
+  requirePlatformPermission('vps.view'),
+  async (req, res) => {
+    try {
+      if (!USE_DEPLOYMENT_SERVICE) {
+        return res.json({
+          success: true,
+          enabled: false,
+          message: 'Deployment service not enabled'
+        });
+      }
+
+      const stats = await deploymentServiceClient.getPortStats();
+      res.json({
+        success: true,
+        enabled: true,
+        ...stats
+      });
+    } catch (error) {
+      logger.error('Error getting port stats:', error);
+      res.status(500).json({ 
+        success: false,
+        error: error.message 
+      });
     }
   }
 );

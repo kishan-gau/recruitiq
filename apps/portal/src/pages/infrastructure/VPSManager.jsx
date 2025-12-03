@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Server, Plus, Activity, AlertCircle, CheckCircle } from 'lucide-react';
+import { Server, Plus, Activity, AlertCircle, CheckCircle, Cloud, CloudOff } from 'lucide-react';
 import axios from 'axios';
 
 export default function VPSManager() {
@@ -7,10 +7,12 @@ export default function VPSManager() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deploymentServiceStatus, setDeploymentServiceStatus] = useState(null);
 
   useEffect(() => {
     fetchVPSList();
     fetchStats();
+    fetchDeploymentServiceHealth();
   }, []);
 
   const fetchVPSList = async () => {
@@ -30,6 +32,16 @@ export default function VPSManager() {
       setStats(response.data);
     } catch (error) {
       console.error('Failed to fetch VPS stats:', error);
+    }
+  };
+
+  const fetchDeploymentServiceHealth = async () => {
+    try {
+      const response = await axios.get('/api/portal/deployment-service/health');
+      setDeploymentServiceStatus(response.data);
+    } catch (error) {
+      console.error('Failed to fetch deployment service status:', error);
+      setDeploymentServiceStatus({ status: 'error', enabled: false });
     }
   };
 
@@ -86,6 +98,44 @@ export default function VPSManager() {
           Add VPS
         </button>
       </div>
+
+      {/* Deployment Service Status */}
+      {deploymentServiceStatus && (
+        <div className={`rounded-lg p-4 ${
+          deploymentServiceStatus.status === 'healthy' 
+            ? 'bg-green-50 border border-green-200' 
+            : deploymentServiceStatus.status === 'error' 
+              ? 'bg-red-50 border border-red-200'
+              : 'bg-yellow-50 border border-yellow-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            {deploymentServiceStatus.status === 'healthy' ? (
+              <Cloud className="w-5 h-5 text-green-600" />
+            ) : (
+              <CloudOff className="w-5 h-5 text-red-600" />
+            )}
+            <div className="flex-1">
+              <h3 className={`font-medium ${
+                deploymentServiceStatus.status === 'healthy' ? 'text-green-900' : 'text-red-900'
+              }`}>
+                Deployment Service: {deploymentServiceStatus.status === 'healthy' ? 'Connected' : 'Unavailable'}
+              </h3>
+              <p className={`text-sm ${
+                deploymentServiceStatus.status === 'healthy' ? 'text-green-700' : 'text-red-700'
+              }`}>
+                {deploymentServiceStatus.enabled 
+                  ? 'Container orchestration is enabled for new tenant deployments'
+                  : 'Using legacy deployment (NGINX config only). Enable with USE_DEPLOYMENT_SERVICE=true'}
+              </p>
+            </div>
+            {deploymentServiceStatus.status === 'healthy' && (
+              <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+                v{deploymentServiceStatus.version || '1.0.0'}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stats Overview */}
       {stats && (

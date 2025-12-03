@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Server, Users, Package, AlertCircle, CheckCircle, Loader, Terminal } from 'lucide-react';
+import { Server, Users, Package, AlertCircle, CheckCircle, Loader, Terminal, Cloud, CloudOff } from 'lucide-react';
 import axios from 'axios';
 
 export default function ClientProvisioning() {
@@ -20,8 +20,10 @@ export default function ClientProvisioning() {
   const [deploymentLogs, setDeploymentLogs] = useState([]);
   const [pollingInterval, setPollingInterval] = useState(null);
   const [error, setError] = useState('');
+  const [deploymentServiceStatus, setDeploymentServiceStatus] = useState(null);
 
   useEffect(() => {
+    fetchDeploymentServiceHealth();
     if (formData.deploymentModel === 'shared') {
       fetchAvailableVPS();
     }
@@ -35,6 +37,16 @@ export default function ClientProvisioning() {
       }
     };
   }, [pollingInterval]);
+
+  const fetchDeploymentServiceHealth = async () => {
+    try {
+      const response = await axios.get('/api/portal/deployment-service/health');
+      setDeploymentServiceStatus(response.data);
+    } catch (error) {
+      console.error('Failed to fetch deployment service status:', error);
+      setDeploymentServiceStatus({ status: 'error', enabled: false });
+    }
+  };
 
   const fetchAvailableVPS = async () => {
     try {
@@ -89,18 +101,23 @@ export default function ClientProvisioning() {
       
       const result = response.data;
       
-      // If dedicated deployment, start polling for status
-      if (formData.deploymentModel === 'dedicated') {
+      // Check if deployment service is being used (async deployment)
+      const isAsyncDeployment = formData.deploymentModel === 'dedicated' || 
+        (deploymentServiceStatus?.enabled && formData.deploymentModel === 'shared');
+
+      if (isAsyncDeployment) {
         setDeploymentStatus({
           type: 'provisioning',
-          message: 'VPS provisioning started. This will take 3-5 minutes...',
+          message: formData.deploymentModel === 'dedicated' 
+            ? 'VPS provisioning started. This will take 3-5 minutes...'
+            : 'Container deployment started via Deployment Service...',
           data: result
         });
 
         // Start polling for deployment status
         startStatusPolling(result.deploymentId);
       } else {
-        // Shared deployment completes immediately
+        // Legacy shared deployment completes immediately (NGINX config only)
         setDeploymentStatus({
           type: 'success',
           message: 'Client provisioned successfully!',
@@ -203,6 +220,43 @@ export default function ClientProvisioning() {
         <h1 className="text-3xl font-bold text-gray-900">Provision New Client</h1>
         <p className="text-gray-600 mt-1">Create a new client instance with automated deployment</p>
       </div>
+
+      {/* Deployment Service Status Banner */}
+      {deploymentServiceStatus && (
+        <div className={`rounded-lg p-3 flex items-center gap-3 ${
+          deploymentServiceStatus.status === 'healthy' && deploymentServiceStatus.enabled
+            ? 'bg-green-50 border border-green-200' 
+            : deploymentServiceStatus.status === 'healthy'
+              ? 'bg-yellow-50 border border-yellow-200'
+              : 'bg-gray-50 border border-gray-200'
+        }`}>
+          {deploymentServiceStatus.status === 'healthy' ? (
+            <Cloud className={`w-5 h-5 ${deploymentServiceStatus.enabled ? 'text-green-600' : 'text-yellow-600'}`} />
+          ) : (
+            <CloudOff className="w-5 h-5 text-gray-500" />
+          )}
+          <div className="flex-1">
+            <span className={`text-sm font-medium ${
+              deploymentServiceStatus.status === 'healthy' && deploymentServiceStatus.enabled
+                ? 'text-green-800' 
+                : deploymentServiceStatus.status === 'healthy'
+                  ? 'text-yellow-800'
+                  : 'text-gray-600'
+            }`}>
+              {deploymentServiceStatus.status === 'healthy' && deploymentServiceStatus.enabled
+                ? '✓ Full Container Deployment Enabled'
+                : deploymentServiceStatus.status === 'healthy'
+                  ? '⚡ Deployment Service Available (not enabled)'
+                  : 'Legacy Deployment Mode'}
+            </span>
+            <span className="text-xs text-gray-500 ml-2">
+              {deploymentServiceStatus.enabled 
+                ? 'Docker containers, NGINX, SSL, and database will be configured automatically'
+                : 'Only NGINX subdomain configuration will be applied'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Deployment Status */}
       {deploymentStatus && (
