@@ -134,8 +134,10 @@ export function filterVIPEmployees(options = {}) {
       res.json = async function(data) {
         // Only filter if response has employees array
         if (data[employeesKey] && Array.isArray(data[employeesKey])) {
+          const originalCount = data[employeesKey].length;
+          
           logger.debug('Filtering VIP employees from list', {
-            originalCount: data[employeesKey].length,
+            originalCount,
             userId,
             organizationId
           });
@@ -189,7 +191,7 @@ export function filterVIPEmployees(options = {}) {
           data[employeesKey] = processedEmployees;
 
           logger.debug('VIP employees filtered', {
-            originalCount: data[employeesKey].length,
+            originalCount,
             filteredCount: processedEmployees.length
           });
         }

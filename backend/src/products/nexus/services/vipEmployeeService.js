@@ -23,6 +23,23 @@ class VIPEmployeeService {
     this.logger = logger;
   }
 
+  // ==================== HELPER METHODS ====================
+
+  /**
+   * Handle errors including Joi validation errors
+   * @private
+   */
+  handleServiceError(error, context) {
+    if (error.isJoi) {
+      throw new ValidationError('Validation failed', error.details);
+    }
+    this.logger.error(context.message || 'Service error', {
+      error: error.message,
+      ...context
+    });
+    throw error;
+  }
+
   // ==================== VALIDATION SCHEMAS ====================
 
   static markAsVIPSchema = Joi.object({
@@ -585,15 +602,11 @@ class VIPEmployeeService {
       return this.mapEmployeeToVIPResponse(employeeResult.rows[0]);
 
     } catch (error) {
-      if (error.isJoi) {
-        throw new ValidationError('Validation failed', error.details);
-      }
-      this.logger.error('Error marking employee as VIP', {
-        error: error.message,
+      this.handleServiceError(error, {
+        message: 'Error marking employee as VIP',
         employeeId,
         organizationId
       });
-      throw error;
     }
   }
 
@@ -872,15 +885,11 @@ class VIPEmployeeService {
       return this.mapAccessControlToResponse(result.rows[0]);
 
     } catch (error) {
-      if (error.isJoi) {
-        throw new ValidationError('Validation failed', error.details);
-      }
-      this.logger.error('Error updating VIP access control rules', {
-        error: error.message,
+      this.handleServiceError(error, {
+        message: 'Error updating VIP access control rules',
         employeeId,
         organizationId
       });
-      throw error;
     }
   }
 
