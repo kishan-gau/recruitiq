@@ -17,6 +17,7 @@ import LocationController from '../controllers/locationController.js';
 import DocumentController from '../controllers/documentController.js';
 import ReportsController from '../controllers/reportsController.js';
 import * as userAccessController from '../controllers/userAccessController.js';
+import vipEmployeesRoutes from './vipEmployees.js';
 import Joi from 'joi';
 import { validate } from '../../../middleware/validation.js';
 
@@ -220,5 +221,9 @@ router.get('/reports/time-off', requirePermission('reports:view'), reportsContro
 router.get('/reports/attendance', requirePermission('reports:attendance'), reportsController.getAttendanceReport);
 router.get('/reports/performance', requirePermission('reports:view'), reportsController.getPerformanceReport);
 router.get('/reports/benefits', requirePermission('reports:view'), reportsController.getBenefitsReport);
+
+// ========== VIP EMPLOYEE ROUTES ==========
+// VIP employee management and access control
+router.use('/vip-employees', vipEmployeesRoutes);
 
 export default router;

@@ -25,6 +25,7 @@ import {
   HeartPulse,
   LogOut,
   Shield,
+  Crown,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -44,6 +45,12 @@ const peopleItems: NavigationItem[] = [
     href: '/employees',
     icon: Users,
     description: 'Manage employee profiles and details',
+  },
+  {
+    name: 'VIP Employees',
+    href: '/vip-employees',
+    icon: Crown,
+    description: 'Manage VIP employee status and restrictions',
   },
   {
     name: 'Departments',

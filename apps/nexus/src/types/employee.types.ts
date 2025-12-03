@@ -137,6 +137,9 @@ export interface EmployeeListItem {
   employmentType: EmploymentType;
   hireDate: string;
   profilePhotoUrl?: string;
+  // VIP fields (optional, present when employee has VIP status)
+  isVip?: boolean;
+  isRestricted?: boolean;
 }
 
 export interface OrgChartNode {

@@ -75,6 +75,10 @@ export default function WorkersList() {
             compensationType: w.compensationType || w.compensation_type || 'salary',
             compensationAmount: w.currentCompensation || w.current_compensation || w.compensation_amount || w.compensationAmount || 0,
             status: w.status || w.employment_status || w.employmentStatus,
+            // VIP fields
+            isVip: w.isVip || w.is_vip || false,
+            isRestricted: w.isRestricted || w.is_restricted || false,
+            vipRestricted: w.vipRestricted || false, // Set when masked by VIP filter middleware
           }));
 
           setWorkers(mappedWorkers);

@@ -6,6 +6,7 @@ import express from 'express';
 import compensationController from '../controllers/compensationController.js';
 import { validate  } from '../../../middleware/validation.js';
 import { requirePermission } from '../../../middleware/auth.js';
+import { checkVIPAccess } from '../../../middleware/checkVIPAccess.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -53,11 +54,12 @@ router.post(
   compensationController.createCompensation
 );
 
-// New API client compatible routes (employee singular)
+// New API client compatible routes (employee singular) - with VIP access control
 router.get(
   '/employee/:employeeId/current',
   requirePermission('compensation:read'),
   validate(employeeIdParamSchema, 'params'),
+  checkVIPAccess('compensation'),
   compensationController.getEmployeeCompensation
 );
 
@@ -65,6 +67,7 @@ router.get(
   '/employee/:employeeId/history',
   requirePermission('compensation:read'),
   validate(employeeIdParamSchema, 'params'),
+  checkVIPAccess('compensation'),
   compensationController.getCompensationHistory
 );
 
@@ -72,6 +75,7 @@ router.get(
   '/employee/:employeeId/summary',
   requirePermission('compensation:read'),
   validate(employeeIdParamSchema, 'params'),
+  checkVIPAccess('compensation'),
   compensationController.getCompensationSummary
 );
 
@@ -79,14 +83,16 @@ router.get(
   '/employee/:employeeId',
   requirePermission('compensation:read'),
   validate(employeeIdParamSchema, 'params'),
+  checkVIPAccess('compensation'),
   compensationController.getEmployeeCompensation
 );
 
-// Legacy routes (employees plural) - kept for backwards compatibility
+// Legacy routes (employees plural) - kept for backwards compatibility, with VIP access control
 router.get(
   '/employees/:employeeId/compensation',
   requirePermission('compensation:read'),
   validate(employeeIdParamSchema, 'params'),
+  checkVIPAccess('compensation'),
   compensationController.getEmployeeCompensation
 );
 
@@ -94,6 +100,7 @@ router.get(
   '/employees/:employeeId/compensation/history',
   requirePermission('compensation:read'),
   validate(employeeIdParamSchema, 'params'),
+  checkVIPAccess('compensation'),
   compensationController.getCompensationHistory
 );
 

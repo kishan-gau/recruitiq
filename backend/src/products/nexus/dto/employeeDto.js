@@ -36,6 +36,14 @@ export function mapEmployeeDbToApi(dbEmployee) {
     managerName: dbEmployee.manager_name,
     jobTitle: dbEmployee.job_title,
     enrollmentCount: dbEmployee.enrollment_count ? parseInt(dbEmployee.enrollment_count) : 0,
+    // VIP fields
+    isVip: dbEmployee.is_vip || false,
+    isRestricted: dbEmployee.is_restricted || false,
+    restrictionLevel: dbEmployee.restriction_level || null,
+    restrictedBy: dbEmployee.restricted_by || null,
+    restrictedAt: dbEmployee.restricted_at || null,
+    restrictionReason: dbEmployee.restriction_reason || null,
+    // Metadata
     createdBy: dbEmployee.created_by,
     createdAt: dbEmployee.created_at,
     updatedBy: dbEmployee.updated_by,
@@ -135,6 +143,26 @@ export function mapEmployeeApiToDb(apiData) {
   }
   if (apiData.overtimeRate !== undefined) {
     dbData.overtime_rate = apiData.overtimeRate;
+  }
+
+  // VIP fields
+  if (apiData.isVip !== undefined || apiData.is_vip !== undefined) {
+    dbData.is_vip = apiData.is_vip ?? apiData.isVip;
+  }
+  if (apiData.isRestricted !== undefined || apiData.is_restricted !== undefined) {
+    dbData.is_restricted = apiData.is_restricted ?? apiData.isRestricted;
+  }
+  if (apiData.restrictionLevel !== undefined || apiData.restriction_level !== undefined) {
+    dbData.restriction_level = apiData.restriction_level ?? apiData.restrictionLevel;
+  }
+  if (apiData.restrictedBy !== undefined || apiData.restricted_by !== undefined) {
+    dbData.restricted_by = apiData.restricted_by ?? apiData.restrictedBy;
+  }
+  if (apiData.restrictedAt !== undefined || apiData.restricted_at !== undefined) {
+    dbData.restricted_at = apiData.restricted_at ?? apiData.restrictedAt;
+  }
+  if (apiData.restrictionReason !== undefined || apiData.restriction_reason !== undefined) {
+    dbData.restriction_reason = apiData.restriction_reason ?? apiData.restrictionReason;
   }
 
   return dbData;

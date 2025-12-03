@@ -9,6 +9,7 @@ import employeeRecordController from '../controllers/employeeRecordController.js
 import { validate  } from '../../../middleware/validation.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
+import { checkVIPAccess, filterVIPEmployees } from '../../../middleware/checkVIPAccess.js';
 import Joi from 'joi';
 
 const router = express.Router();
@@ -74,39 +75,48 @@ router.post(
   employeeRecordController.createEmployeeRecord
 );
 
-// GET /api/paylinq/workers - Get all worker records
-router.get('/', requirePermission('payroll:employees:read'), employeeRecordController.getEmployeeRecords);
+// GET /api/paylinq/workers - Get all worker records (with VIP filtering)
+router.get(
+  '/',
+  requirePermission('payroll:employees:read'),
+  filterVIPEmployees({ mask: true, employeesKey: 'employees' }),
+  employeeRecordController.getEmployeeRecords
+);
 
-// GET /api/paylinq/workers/:id - Get worker record by ID
+// GET /api/paylinq/workers/:id - Get worker record by ID (with VIP access check)
 router.get(
   '/:id',
   requirePermission('payroll:employees:read'),
   validate(uuidParamSchema, 'params'),
+  checkVIPAccess('general'),
   employeeRecordController.getEmployeeRecordById
 );
 
-// PUT /api/paylinq/workers/:id - Update worker record
+// PUT /api/paylinq/workers/:id - Update worker record (with VIP access check)
 router.put(
   '/:id',
   requirePermission('payroll:employees:update'),
   validate(uuidParamSchema, 'params'),
   validate(updateWorkerSchema, 'body'),
+  checkVIPAccess('general'),
   employeeRecordController.updateEmployeeRecord
 );
 
-// DELETE /api/paylinq/workers/:id - Delete worker record
+// DELETE /api/paylinq/workers/:id - Delete worker record (with VIP access check)
 router.delete(
   '/:id',
   requirePermission('payroll:employees:delete'),
   validate(uuidParamSchema, 'params'),
+  checkVIPAccess('general'),
   employeeRecordController.deleteEmployeeRecord
 );
 
-// GET /api/paylinq/workers/:id/history - Get payroll history
+// GET /api/paylinq/workers/:id/history - Get payroll history (with compensation-level VIP access check)
 router.get(
   '/:id/history',
   requirePermission('payroll:employees:read'),
   validate(uuidParamSchema, 'params'),
+  checkVIPAccess('compensation'),
   employeeRecordController.getEmployeePayrollHistory
 );
 
