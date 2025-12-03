@@ -5,6 +5,7 @@ import { useEmployees, useDeleteEmployee } from '@/hooks/useEmployees';
 import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { VIPBadge } from '@/components/vip/VIPBadge';
 import type { EmployeeFilters, EmploymentStatus, EmploymentType } from '@/types/employee.types';
 
 export default function EmployeesList() {
@@ -286,8 +287,11 @@ export default function EmployeesList() {
                           )}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-slate-900 dark:text-white">
-                            {employee.firstName} {employee.lastName}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">
+                              {employee.firstName} {employee.lastName}
+                            </span>
+                            <VIPBadge isVip={(employee as any).isVip} size="sm" showLabel={false} />
                           </div>
                           <div className="text-sm text-slate-500 dark:text-slate-400">
                             {employee.email}

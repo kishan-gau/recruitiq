@@ -99,6 +99,10 @@ const ShiftSwapApprovalQueue = lazy(() => import('@/pages/schedulehub/shift-swap
 const SwapRequestInbox = lazy(() => import('@/pages/schedulehub/shift-swaps/SwapRequestInbox'));
 const AvailabilityManagement = lazy(() => import('@/pages/schedulehub/AvailabilityManagement'));
 
+// VIP Employees
+const VIPEmployeesPage = lazy(() => import('@/pages/vip/VIPEmployeesPage'));
+const VIPEmployeeDetailPage = lazy(() => import('@/pages/vip/VIPEmployeeDetailPage'));
+
 function App() {
   return (
     <BrowserRouter>
@@ -235,6 +239,12 @@ function App() {
                       <Route path="inbox" element={<SwapRequestInbox />} />
                     </Route>
                     <Route path="availability" element={<AvailabilityManagement />} />
+                  </Route>
+
+                  {/* VIP Employees */}
+                  <Route path="vip-employees">
+                    <Route index element={<VIPEmployeesPage />} />
+                    <Route path=":id" element={<VIPEmployeeDetailPage />} />
                   </Route>
 
                   {/* Reports & Settings */}
