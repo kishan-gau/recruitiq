@@ -24,7 +24,20 @@ const RESTRICTION_LEVELS: { value: RestrictionLevel; label: string; description:
   { value: 'executive', label: 'Executive', description: 'Maximum protection - all sensitive data restricted' },
 ];
 
-const DATA_RESTRICTIONS = [
+// Define restriction keys as a const for type safety
+const RESTRICTION_KEYS = [
+  'restrictCompensation',
+  'restrictPersonalInfo',
+  'restrictPerformance',
+  'restrictDocuments',
+  'restrictTimeOff',
+  'restrictBenefits',
+  'restrictAttendance',
+] as const;
+
+type RestrictionKey = typeof RESTRICTION_KEYS[number];
+
+const DATA_RESTRICTIONS: { key: RestrictionKey; label: string; description: string }[] = [
   { key: 'restrictCompensation', label: 'Compensation Data', description: 'Salary, bonuses, benefits' },
   { key: 'restrictPersonalInfo', label: 'Personal Information', description: 'Address, SSN, contact details' },
   { key: 'restrictPerformance', label: 'Performance Data', description: 'Reviews, goals, feedback' },
@@ -33,6 +46,11 @@ const DATA_RESTRICTIONS = [
   { key: 'restrictBenefits', label: 'Benefits Data', description: 'Enrollments and plan details' },
   { key: 'restrictAttendance', label: 'Attendance Data', description: 'Clock-in/out, attendance records' },
 ];
+
+// Helper function to get restriction value safely
+const getRestrictionValue = (formData: MarkAsVIPDTO, key: RestrictionKey): boolean => {
+  return Boolean(formData[key]);
+};
 
 export function VIPEmployeeForm({
   employeeId,
@@ -255,41 +273,44 @@ export function VIPEmployeeForm({
                   </label>
                 </div>
                 <div className="space-y-2">
-                  {DATA_RESTRICTIONS.map((item) => (
-                    <label
-                      key={item.key}
-                      className={`
-                        flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors
-                        ${formData[item.key as keyof MarkAsVIPDTO]
-                          ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-700'
-                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-                        }
-                      `}
-                    >
-                      <div className="flex items-center gap-3">
-                        {formData[item.key as keyof MarkAsVIPDTO] ? (
-                          <Lock className="w-4 h-4 text-orange-500" />
-                        ) : (
-                          <Unlock className="w-4 h-4 text-slate-400" />
-                        )}
-                        <div>
-                          <span className="text-sm font-medium text-slate-900 dark:text-white">
-                            {item.label}
-                          </span>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {item.description}
-                          </p>
+                  {DATA_RESTRICTIONS.map((item) => {
+                    const isRestricted = getRestrictionValue(formData, item.key);
+                    return (
+                      <label
+                        key={item.key}
+                        className={`
+                          flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors
+                          ${isRestricted
+                            ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-700'
+                            : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center gap-3">
+                          {isRestricted ? (
+                            <Lock className="w-4 h-4 text-orange-500" />
+                          ) : (
+                            <Unlock className="w-4 h-4 text-slate-400" />
+                          )}
+                          <div>
+                            <span className="text-sm font-medium text-slate-900 dark:text-white">
+                              {item.label}
+                            </span>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {item.description}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={formData[item.key as keyof MarkAsVIPDTO] as boolean}
-                        onChange={(e) => setFormData(prev => ({ ...prev, [item.key]: e.target.checked }))}
-                        disabled={isSubmitting}
-                        className="w-4 h-4 text-orange-500 border-slate-300 rounded focus:ring-orange-500"
-                      />
-                    </label>
-                  ))}
+                        <input
+                          type="checkbox"
+                          checked={isRestricted}
+                          onChange={(e) => setFormData(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                          disabled={isSubmitting}
+                          className="w-4 h-4 text-orange-500 border-slate-300 rounded focus:ring-orange-500"
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 

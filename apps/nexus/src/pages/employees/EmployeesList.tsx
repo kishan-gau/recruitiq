@@ -291,7 +291,7 @@ export default function EmployeesList() {
                             <span className="text-sm font-medium text-slate-900 dark:text-white">
                               {employee.firstName} {employee.lastName}
                             </span>
-                            <VIPBadge isVip={(employee as any).isVip} size="sm" showLabel={false} />
+                            <VIPBadge isVip={employee.isVip || false} size="sm" showLabel={false} />
                           </div>
                           <div className="text-sm text-slate-500 dark:text-slate-400">
                             {employee.email}

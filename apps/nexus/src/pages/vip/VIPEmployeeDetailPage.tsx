@@ -25,6 +25,12 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { MarkAsVIPDTO, VIPAccessLog } from '@/types/vipEmployee.types';
 
+// Utility function for capitalizing first letter
+const capitalizeFirst = (text?: string): string => {
+  if (!text) return '';
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
 export default function VIPEmployeeDetailPage() {
   const { id: employeeId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -220,7 +226,7 @@ export default function VIPEmployeeDetailPage() {
                         Access Restrictions
                       </span>
                       <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
-                        {vipStatus.restrictionLevel?.charAt(0).toUpperCase()}{vipStatus.restrictionLevel?.slice(1)} Level
+                        {capitalizeFirst(vipStatus.restrictionLevel)} Level
                       </span>
                     </div>
                     
