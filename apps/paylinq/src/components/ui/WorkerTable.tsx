@@ -6,6 +6,10 @@ import StatusBadge from './StatusBadge';
 import Badge from './Badge';
 import CurrencyDisplay from './CurrencyDisplay';
 import DropdownMenu, { DropdownMenuItem } from './DropdownMenu';
+import VIPBadge from './VIPBadge';
+
+// Label for VIP-restricted masked data
+const VIP_RESTRICTED_LABEL = '[RESTRICTED]';
 
 export interface Worker {
   id: string;
@@ -15,6 +19,9 @@ export interface Worker {
   compensationType: 'hourly' | 'salary';
   compensationAmount: number;
   status?: 'active' | 'inactive' | 'suspended' | 'terminated';
+  isVip?: boolean;
+  isRestricted?: boolean;
+  vipRestricted?: boolean; // Set when data is masked by VIP filter
 }
 
 type SortField = 'employeeNumber' | 'fullName' | 'type' | 'compensationAmount' | 'status';
@@ -234,9 +241,12 @@ export default function WorkerTable({
                       className="flex items-center space-x-3 text-left hover:opacity-75 transition-opacity group"
                     >
                       <WorkerAvatar fullName={worker.fullName} size="sm" />
-                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline">
-                        {worker.fullName}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:underline">
+                          {worker.vipRestricted ? VIP_RESTRICTED_LABEL : worker.fullName}
+                        </span>
+                        <VIPBadge isVip={worker.isVip || false} isRestricted={worker.isRestricted || worker.vipRestricted} size="sm" showLabel={false} />
+                      </div>
                     </button>
                   </td>
 

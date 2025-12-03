@@ -6,6 +6,8 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import Badge from '@/components/ui/Badge';
 import Tabs from '@/components/ui/Tabs';
 import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
+import VIPBadge from '@/components/ui/VIPBadge';
+import VIPAccessDenied from '@/components/ui/VIPAccessDenied';
 import type { Tab } from '@/components/ui/Tabs';
 import { formatDate, maskAccountNumber } from '@/utils/helpers';
 import EditWorkerModal from '@/components/modals/EditWorkerModal';
@@ -21,6 +23,15 @@ import EmployeeComponentsList from '@/components/employees/EmployeeComponentsLis
 
 const CompensationManagementPage = lazy(() => import('@/pages/CompensationManagementPage'));
 
+// Helper to check if response indicates VIP access denied
+const isVIPAccessDenied = (data: any): boolean => {
+  return data?.isVIPRestricted === true || data?.errorCode === 'VIP_ACCESS_DENIED';
+};
+
+const extractVIPDenialReason = (data: any): string => {
+  return data?.error || 'Access to this VIP employee is restricted.';
+};
+
 export default function WorkerDetails() {
   const { workerId } = useParams();
   const navigate = useNavigate();
@@ -32,6 +43,7 @@ export default function WorkerDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [worker, setWorker] = useState<any>(null);
   const [ytdSummary, setYtdSummary] = useState<any>(null);
+  const [vipAccessDenied, setVipAccessDenied] = useState<{ denied: boolean; reason?: string }>({ denied: false });
 
   // Fetch worker details from API
   useEffect(() => {
@@ -40,9 +52,19 @@ export default function WorkerDetails() {
 
       try {
         setIsLoading(true);
+        setVipAccessDenied({ denied: false });
         const response = await paylinq.getWorker(workerId);
 
         console.log('Worker API Response:', response); // Debug log
+
+        // Check for VIP access denied response
+        if (isVIPAccessDenied(response)) {
+          setVipAccessDenied({
+            denied: true,
+            reason: extractVIPDenialReason(response),
+          });
+          return;
+        }
 
         if (response.success) {
           // API client returns response.data directly, so response IS the data
@@ -69,6 +91,9 @@ export default function WorkerDetails() {
             compensation: metadata.compensation || w.compensation || w.current_compensation || w.currentCompensation || 0,
             currency: w.currency || 'SRD',
             nationalId: w.tax_id || w.taxId || w.tax_id_number || w.taxIdNumber || w.national_id || metadata.nationalId || 'N/A',
+            // VIP status
+            isVip: w.isVip || w.is_vip || false,
+            isRestricted: w.isRestricted || w.is_restricted || false,
             // Bank info (structured for tax-info tab)
             bankInfo: {
               bankName: w.bank_name || w.bankName || metadata.bankName || 'Not provided',
@@ -107,6 +132,16 @@ export default function WorkerDetails() {
       } catch (err: any) {
         console.error('Failed to load worker:', err);
         console.error('Worker ID:', workerId);
+        
+        // Check if error is VIP access denied
+        if (isVIPAccessDenied(err.response?.data)) {
+          setVipAccessDenied({
+            denied: true,
+            reason: extractVIPDenialReason(err.response?.data),
+          });
+          return;
+        }
+        
         handleApiError(err, {
           toast,
           defaultMessage: 'Failed to load worker details',
@@ -118,6 +153,16 @@ export default function WorkerDetails() {
 
     fetchWorkerDetails();
   }, [workerId, paylinq, showError]);
+
+  // Show VIP access denied
+  if (vipAccessDenied.denied) {
+    return (
+      <VIPAccessDenied
+        reason={vipAccessDenied.reason}
+        backPath="/workers"
+      />
+    );
+  }
 
   // Show loading skeleton
   if (isLoading) {
@@ -196,6 +241,7 @@ export default function WorkerDetails() {
               <div className="flex items-center space-x-3">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{worker.fullName}</h2>
                 <StatusBadge status={worker.status} />
+                <VIPBadge isVip={worker.isVip} isRestricted={worker.isRestricted} />
               </div>
               <div className="mt-2 space-y-1">
                 <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
