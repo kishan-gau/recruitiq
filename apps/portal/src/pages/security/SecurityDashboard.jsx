@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Shield, AlertTriangle, Activity, TrendingUp } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 
 export default function SecurityDashboard() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['security-dashboard'],
-    queryFn: () => apiService.getSecurityDashboard(),
+    queryFn: () => portalService.getSecurityDashboard(),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 

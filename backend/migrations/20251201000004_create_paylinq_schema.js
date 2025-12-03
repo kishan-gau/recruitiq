@@ -15,7 +15,7 @@
  * Updated: December 1, 2025 - Aligned with paylinq-schema.sql
  */
 
-exports.up = async function(knex) {
+export async function up(knex) {
   // Create payroll schema
   await knex.raw('CREATE SCHEMA IF NOT EXISTS payroll');
   
@@ -54,20 +54,35 @@ exports.up = async function(knex) {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.uuid('organization_id').notNullable();
     table.uuid('employee_id').notNullable();
-    table.string('payroll_status', 20).defaultTo('active');
-    table.string('pay_frequency', 50);
-    table.string('payment_method', 50).defaultTo('direct_deposit');
-    table.string('bank_name', 200);
-    table.string('bank_account_number', 100);
-    table.string('bank_routing_number', 50);
-    table.string('bank_swift_code', 20);
-    table.boolean('is_direct_deposit').defaultTo(true);
-    table.string('tax_identification_number', 50);
+    
+    // Pay configuration (ONLY payroll-specific fields)
+    table.string('pay_frequency', 20).notNullable();
+    table.string('payment_method', 20).notNullable();
+    table.string('currency', 3).defaultTo('SRD');
+    table.string('payment_currency', 3);
+    table.boolean('allow_multi_currency').notNullable().defaultTo(false);
+    
+    // Bank information (for direct deposit)
+    table.string('bank_name', 100);
+    table.string('account_number', 50);
+    table.string('routing_number', 50);
+    table.string('account_type', 20);
+    
+    // Tax information
+    table.string('tax_id', 50);
     table.string('tax_filing_status', 20);
-    table.integer('federal_allowances').defaultTo(0);
-    table.integer('state_allowances').defaultTo(0);
-    table.boolean('additional_withholding_flat').defaultTo(false);
-    table.decimal('additional_withholding_amount', 12, 2).defaultTo(0);
+    table.integer('tax_allowances').defaultTo(0);
+    table.decimal('additional_withholding', 12, 2).defaultTo(0);
+    
+    // Payroll status (can differ from employment status)
+    table.string('payroll_status', 20).defaultTo('active');
+    table.date('payroll_start_date').notNullable();
+    table.date('payroll_end_date');
+    
+    // Additional payroll metadata
+    table.jsonb('metadata');
+    
+    // Audit fields
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
     table.timestamp('deleted_at', { useTz: true });
@@ -77,8 +92,39 @@ exports.up = async function(knex) {
     
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('employee_id').references('id').inTable('hris.employee').onDelete('CASCADE');
+    table.foreign('created_by').references('id').inTable('hris.user_account');
+    table.foreign('updated_by').references('id').inTable('hris.user_account');
+    table.foreign('deleted_by').references('id').inTable('hris.user_account');
     table.unique(['organization_id', 'employee_id']);
   });
+  
+  // Add CHECK constraints
+  await knex.raw(`
+    ALTER TABLE payroll.employee_payroll_config
+    ADD CONSTRAINT employee_payroll_config_pay_frequency_check
+    CHECK (pay_frequency IN ('weekly', 'biweekly', 'semimonthly', 'monthly'))
+  `);
+  
+  await knex.raw(`
+    ALTER TABLE payroll.employee_payroll_config
+    ADD CONSTRAINT employee_payroll_config_payment_method_check
+    CHECK (payment_method IN ('direct_deposit', 'check', 'cash', 'card'))
+  `);
+  
+  await knex.raw(`
+    ALTER TABLE payroll.employee_payroll_config
+    ADD CONSTRAINT employee_payroll_config_account_type_check
+    CHECK (account_type IN ('checking', 'savings'))
+  `);
+  
+  await knex.raw(`
+    ALTER TABLE payroll.employee_payroll_config
+    ADD CONSTRAINT employee_payroll_config_payroll_status_check
+    CHECK (payroll_status IN ('active', 'suspended', 'terminated'))
+  `);
+  
+  await knex.raw(`COMMENT ON TABLE payroll.employee_payroll_config IS 'Payroll-specific configuration for employees. Core employee data is in hris.employee (single source of truth)'`);
+  await knex.raw(`COMMENT ON COLUMN payroll.employee_payroll_config.employee_id IS 'References hris.employee(id) - the single source of truth for employee data'`);
   
   // ================================================================
   // COMPENSATION
@@ -109,6 +155,9 @@ exports.up = async function(knex) {
     
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('employee_id').references('id').inTable('hris.employee');
+    
+    // Legacy unique constraint - ensures one compensation record per employee per effective date
+    table.unique(['employee_id', 'effective_from']);
   });
   
   // ================================================================
@@ -148,8 +197,10 @@ exports.up = async function(knex) {
     table.uuid('worker_type_id').notNullable();
     table.string('pay_structure_template_code', 50);
     table.string('default_pay_frequency', 50).notNullable();
+    table.string('default_payment_method', 20);
     table.boolean('overtime_eligible').defaultTo(false);
     table.boolean('benefits_eligible').defaultTo(true);
+    table.boolean('is_active').defaultTo(true);
     table.jsonb('default_components').defaultTo('[]');
     table.jsonb('config_metadata').defaultTo('{}');
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
@@ -176,8 +227,11 @@ exports.up = async function(knex) {
     table.date('effective_from').notNullable();
     table.date('effective_to');
     table.boolean('is_current').defaultTo(true);
-    table.string('change_reason', 100);
-    table.text('notes');
+    
+    // Payroll Overrides (optional, defaults come from pay config)
+    table.string('pay_frequency', 20);
+    table.string('payment_method', 20);
+    
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
     table.timestamp('deleted_at', { useTz: true });
@@ -187,7 +241,8 @@ exports.up = async function(knex) {
     
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('employee_id').references('id').inTable('hris.employee').onDelete('CASCADE');
-    table.foreign('worker_type_id').references('id').inTable('hris.worker_type');
+    table.foreign('worker_type_id').references('id').inTable('hris.worker_type').onDelete('CASCADE');
+    table.unique(['organization_id', 'employee_id', 'worker_type_id', 'effective_from']);
   });
   
   // ================================================================
@@ -206,6 +261,7 @@ exports.up = async function(knex) {
     table.decimal('differential_rate', 5, 4).defaultTo(1.0);
     table.boolean('is_night_shift').defaultTo(false);
     table.boolean('is_weekend_shift').defaultTo(false);
+    table.string('status', 20).notNullable().defaultTo('active');
     table.boolean('is_active').defaultTo(true);
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
@@ -327,14 +383,17 @@ exports.up = async function(knex) {
     table.text('description');
     table.string('component_type', 20).notNullable();
     table.string('category', 50);
-    table.string('calculation_type', 50).notNullable();
-    table.decimal('default_amount', 15, 4);
+    table.string('calculation_type', 20).notNullable();
+    table.decimal('default_rate', 12, 2);
+    table.decimal('default_amount', 12, 2);
+    table.text('formula');
     table.decimal('default_percentage', 8, 4);
     table.jsonb('calculation_metadata').defaultTo('{}');
     table.boolean('is_taxable').defaultTo(true);
     table.string('tax_category', 50);
     table.boolean('affects_gross_pay').defaultTo(true);
     table.boolean('is_recurring').defaultTo(true);
+    table.boolean('is_system_component').defaultTo(false);
     table.boolean('is_active').defaultTo(true);
     table.integer('display_order').defaultTo(0);
     table.string('status', 20).defaultTo('active');
@@ -350,6 +409,27 @@ exports.up = async function(knex) {
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.unique(['organization_id', 'component_code']);
   });
+  
+  // Add CHECK constraint for calculation_type
+  await knex.raw(`
+    ALTER TABLE payroll.pay_component
+    ADD CONSTRAINT pay_component_calculation_type_check
+    CHECK (calculation_type IN ('fixed_amount', 'percentage', 'hourly_rate', 'formula'))
+  `);
+  
+  // Add CHECK constraint for component_type
+  await knex.raw(`
+    ALTER TABLE payroll.pay_component
+    ADD CONSTRAINT pay_component_type_check
+    CHECK (component_type IN ('earning', 'deduction'))
+  `);
+  
+  // Add CHECK constraint for status
+  await knex.raw(`
+    ALTER TABLE payroll.pay_component
+    ADD CONSTRAINT pay_component_status_check
+    CHECK (status IN ('active', 'inactive'))
+  `);
   
   // ================================================================
   // COMPONENT FORMULA
@@ -516,15 +596,11 @@ exports.up = async function(knex) {
     table.string('country', 2).defaultTo('SR');
     table.string('state', 50);
     table.string('locality', 100);
-    table.string('calculation_mode', 50).defaultTo('aggregated');
-    table.boolean('use_tax_free_allowance').defaultTo(true);
-    table.string('tax_free_allowance_type', 50);
-    table.decimal('base_exemption', 15, 4);
-    table.decimal('max_rate', 8, 4);
-    table.boolean('is_progressive').defaultTo(true);
+    table.decimal('annual_cap', 12, 2);
+    table.string('calculation_method', 20).defaultTo('bracket');
+    table.string('calculation_mode', 30).defaultTo('proportional_distribution');
     table.date('effective_from').notNullable();
     table.date('effective_to');
-    table.boolean('is_active').defaultTo(true);
     table.jsonb('metadata').defaultTo('{}');
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
@@ -545,10 +621,10 @@ exports.up = async function(knex) {
     table.uuid('organization_id').notNullable();
     table.uuid('tax_rule_set_id').notNullable();
     table.integer('bracket_order').notNullable();
-    table.decimal('income_from', 15, 4).notNullable();
-    table.decimal('income_to', 15, 4);
-    table.decimal('rate', 8, 4).notNullable();
-    table.decimal('fixed_amount', 15, 4).defaultTo(0);
+    table.decimal('income_min', 12, 2).notNullable();
+    table.decimal('income_max', 12, 2);
+    table.decimal('rate_percentage', 5, 2).notNullable();
+    table.decimal('fixed_amount', 12, 2).defaultTo(0);
     table.text('description');
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
@@ -569,20 +645,27 @@ exports.up = async function(knex) {
   await knex.schema.withSchema('payroll').createTable('allowance', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.uuid('organization_id').notNullable();
-    table.string('allowance_code', 50).notNullable();
+    
+    // Allowance details
+    table.string('allowance_type', 50).notNullable(); // 'personal', 'dependent', 'disability', 'veteran', 'tax_free_sum_monthly', 'holiday_allowance', 'bonus_gratuity'
     table.string('allowance_name', 100).notNullable();
-    table.string('allowance_type', 50).notNullable();
-    table.text('description');
+    
+    // Jurisdiction
     table.string('country', 2).defaultTo('SR');
-    table.decimal('amount', 15, 4);
-    table.decimal('annual_limit', 15, 4);
-    table.decimal('max_percentage', 8, 4);
-    table.boolean('is_tax_exempt').defaultTo(true);
-    table.string('frequency', 20).defaultTo('monthly');
+    table.string('state', 50);
+    
+    // Amount
+    table.decimal('amount', 12, 2).notNullable();
+    table.boolean('is_percentage').defaultTo(false); // Is amount a percentage or fixed
+    
+    // Effective dates
     table.date('effective_from').notNullable();
     table.date('effective_to');
     table.boolean('is_active').defaultTo(true);
-    table.jsonb('metadata').defaultTo('{}');
+    
+    table.text('description');
+    
+    // Audit fields
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
     table.timestamp('deleted_at', { useTz: true });
@@ -591,7 +674,7 @@ exports.up = async function(knex) {
     table.uuid('deleted_by');
     
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
-    table.unique(['organization_id', 'allowance_code']);
+    table.foreign('created_by').references('id').inTable('hris.user_account');
   });
   
   // ================================================================
@@ -676,15 +759,15 @@ exports.up = async function(knex) {
     table.string('type_code', 50).notNullable();
     table.string('type_name', 100).notNullable();
     table.text('description');
-    table.boolean('includes_regular_pay').defaultTo(true);
-    table.boolean('includes_overtime').defaultTo(true);
-    table.boolean('includes_bonuses').defaultTo(false);
-    table.boolean('includes_commissions').defaultTo(false);
-    table.boolean('includes_allowances').defaultTo(true);
-    table.specificType('excluded_component_codes', 'TEXT[]').defaultTo('{}');
-    table.jsonb('run_configuration').defaultTo('{}');
-    table.boolean('is_active').defaultTo(true);
     table.uuid('default_template_id');
+    table.string('component_override_mode', 20).defaultTo('template');
+    table.jsonb('allowed_components');
+    table.jsonb('excluded_components');
+    table.boolean('is_system_default').defaultTo(false);
+    table.boolean('is_active').defaultTo(true);
+    table.integer('display_order').defaultTo(0);
+    table.string('icon', 50);
+    table.string('color', 7);
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
     table.timestamp('deleted_at', { useTz: true });
@@ -1127,6 +1210,7 @@ exports.up = async function(knex) {
   
   await knex.schema.withSchema('payroll').createTable('pay_structure_component', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
+    table.uuid('organization_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
     table.uuid('template_id').notNullable();
     table.uuid('pay_component_id');
     table.string('component_code', 50).notNullable();
@@ -1229,6 +1313,7 @@ exports.up = async function(knex) {
   
   await knex.schema.withSchema('payroll').createTable('worker_pay_structure_component_override', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
+    table.uuid('organization_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
     table.uuid('worker_structure_id').notNullable();
     table.string('component_code', 50).notNullable();
     table.string('override_type', 20).notNullable();
@@ -1272,6 +1357,7 @@ exports.up = async function(knex) {
   
   await knex.schema.withSchema('payroll').createTable('pay_structure_template_changelog', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
+    table.uuid('organization_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
     table.uuid('template_id').notNullable();
     table.string('from_version', 20);
     table.string('to_version', 20).notNullable();
@@ -1485,6 +1571,7 @@ exports.up = async function(knex) {
   
   await knex.schema.withSchema('payroll').createTable('exchange_rate_audit', (table) => {
     table.bigIncrements('id').primary();
+    table.uuid('organization_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
     table.bigInteger('exchange_rate_id').notNullable();
     table.string('action', 20).notNullable();
     table.decimal('old_rate', 18, 8);
@@ -1736,7 +1823,7 @@ exports.up = async function(knex) {
   console.log('✅ PayLinQ schema created successfully with 50 tables');
 };
 
-exports.down = async function(knex) {
+export async function down(knex) {
   console.log('Dropping PayLinQ schema...');
   
   // Drop all tables in reverse dependency order

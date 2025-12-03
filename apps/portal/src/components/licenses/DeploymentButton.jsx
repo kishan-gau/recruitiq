@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Rocket, AlertCircle, Loader2 } from 'lucide-react';
 import Modal from './Modal';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 
 export default function DeploymentButton({ instance, customer, onDeploymentStart }) {
   const [showModal, setShowModal] = useState(false);
@@ -34,7 +34,7 @@ export default function DeploymentButton({ instance, customer, onDeploymentStart
         region: formData.region,
       };
 
-      const response = await apiService.deployInstance(deploymentData);
+      const response = await portalService.deployInstance(deploymentData);
 
       if (response.success) {
         alert('Deployment started! Track progress below.');

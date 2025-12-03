@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Shield, AlertCircle } from 'lucide-react'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -18,7 +18,7 @@ export default function Login() {
       try {
         // Try to get current user using cookie-based auth
         // Cookies are automatically sent with the request
-        await apiService.getMe()
+        await portalService.getMe()
         
         // If successful, user is already authenticated via SSO, redirect to dashboard
         navigate('/dashboard', { replace: true })
@@ -41,7 +41,7 @@ export default function Login() {
     setLoading(true)
 
     try {
-      await apiService.login(email, password)
+      await portalService.login(email, password)
       toast.success('Successfully logged in!')
       navigate('/dashboard')
     } catch (err) {

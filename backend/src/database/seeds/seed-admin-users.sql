@@ -28,7 +28,7 @@ BEGIN
     ) VALUES (
       uuid_generate_v4(),
       'admin@recruitiq.com',
-      '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5NU7WBLFBqHxO', -- Admin123!
+      '$2b$12$BYnDV2zjU63326HZx9.NsOCUC0vtUerrlR1xJeJCzG9Xr65GIiGAO', -- Admin123!
       'Super Administrator',
       true,
       NOW()
@@ -51,7 +51,7 @@ BEGIN
     ) VALUES (
       uuid_generate_v4(),
       'license@recruitiq.com',
-      '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5NU7WBLFBqHxO', -- Admin123!
+      '$2b$12$BYnDV2zjU63326HZx9.NsOCUC0vtUerrlR1xJeJCzG9Xr65GIiGAO', -- Admin123!
       'License Administrator',
       true,
       NOW()
@@ -74,7 +74,7 @@ BEGIN
     ) VALUES (
       uuid_generate_v4(),
       'security@recruitiq.com',
-      '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5NU7WBLFBqHxO', -- Admin123!
+      '$2b$12$BYnDV2zjU63326HZx9.NsOCUC0vtUerrlR1xJeJCzG9Xr65GIiGAO', -- Admin123!
       'Security Administrator',
       true,
       NOW()

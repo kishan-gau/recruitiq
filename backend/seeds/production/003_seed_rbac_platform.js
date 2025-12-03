@@ -69,18 +69,32 @@ export async function seed(knex) {
     { product: 'platform', name: 'tenant:users:manage', display_name: 'Manage Tenant Users', description: 'Manage users in tenant organizations', category: 'tenant' }
   ]).onConflict(['product', 'name']).ignore();
 
+  // Product Management Permissions
+  await knex('permissions').insert([
+    { product: 'platform', name: 'product:view', display_name: 'View Products', description: 'View product catalog', category: 'product' },
+    { product: 'platform', name: 'product:create', display_name: 'Create Products', description: 'Create new products', category: 'product' },
+    { product: 'platform', name: 'product:edit', display_name: 'Edit Products', description: 'Edit existing products', category: 'product' },
+    { product: 'platform', name: 'product:delete', display_name: 'Delete Products', description: 'Delete products', category: 'product' }
+  ]).onConflict(['product', 'name']).ignore();
+
+  // Feature Management Permissions
+  await knex('permissions').insert([
+    { product: 'platform', name: 'features:view', display_name: 'View Features', description: 'View feature catalog', category: 'features' },
+    { product: 'platform', name: 'features:manage', display_name: 'Manage Features', description: 'Manage features (create, edit, delete, rollout)', category: 'features' }
+  ]).onConflict(['product', 'name']).ignore();
+
   // ============================================================================
   // 2. SEED PLATFORM ROLES (organization_id IS NULL = platform-wide)
   // ============================================================================
 
   // Create platform roles (organization_id = NULL for platform-wide roles)
   const platformRoles = [
-    { organization_id: null, name: 'super_admin', display_name: 'Super Administrator', role_type: 'system', description: 'Full access to all platform features' },
-    { organization_id: null, name: 'platform_admin', display_name: 'Platform Administrator', role_type: 'system', description: 'Manage platform, licenses, and deployments' },
-    { organization_id: null, name: 'license_admin', display_name: 'License Administrator', role_type: 'system', description: 'Manage licenses and customers only' },
-    { organization_id: null, name: 'security_admin', display_name: 'Security Administrator', role_type: 'system', description: 'Manage security and monitoring' },
-    { organization_id: null, name: 'deployment_admin', display_name: 'Deployment Administrator', role_type: 'system', description: 'Manage VPS and deployments' },
-    { organization_id: null, name: 'support_staff', display_name: 'Support Staff', role_type: 'system', description: 'View-only access for customer support' }
+    { organization_id: null, name: 'super_admin', display_name: 'Super Administrator', role_type: 'platform', description: 'Full access to all platform features' },
+    { organization_id: null, name: 'platform_admin', display_name: 'Platform Administrator', role_type: 'platform', description: 'Manage platform, licenses, and deployments' },
+    { organization_id: null, name: 'license_admin', display_name: 'License Administrator', role_type: 'platform', description: 'Manage licenses and customers only' },
+    { organization_id: null, name: 'security_admin', display_name: 'Security Administrator', role_type: 'platform', description: 'Manage security and monitoring' },
+    { organization_id: null, name: 'deployment_admin', display_name: 'Deployment Administrator', role_type: 'platform', description: 'Manage VPS and deployments' },
+    { organization_id: null, name: 'support_staff', display_name: 'Support Staff', role_type: 'platform', description: 'View-only access for customer support' }
   ];
 
   for (const role of platformRoles) {

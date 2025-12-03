@@ -38,6 +38,11 @@ export async function seed(knex) {
   // SEED WORKER TYPES FOR THE ORGANIZATION
   // ============================================================================
   
+  // Declare user ID variables at function scope for later use
+  let tenantAdminUserId;
+  let payrollManagerUserId;
+  let employeeUserId;
+  
   // Check if hris schema exists
   const hrisSchemaExists = await knex.raw(`
     SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'hris'
@@ -87,7 +92,7 @@ export async function seed(knex) {
       RETURNING id
     `, [passwordHash, orgId]);
 
-    let tenantAdminUserId = tenantAdminResult.rows[0]?.id;
+    tenantAdminUserId = tenantAdminResult.rows[0]?.id;
 
     if (!tenantAdminUserId) {
       const existingUser = await knex.raw(`
@@ -126,6 +131,49 @@ export async function seed(knex) {
           AND e.user_account_id = ?
           AND ua.employee_id IS NULL
       `, [tenantAdminUserId, tenantAdminUserId]);
+
+      // Create payroll configuration for tenant admin
+      await knex.raw(`
+        INSERT INTO payroll.employee_payroll_config (
+          organization_id, employee_id, pay_frequency, payment_method,
+          currency, payroll_status, payroll_start_date, created_by, created_at
+        )
+        SELECT ?, e.id, 'monthly', 'direct_deposit', 'SRD', 'active', NOW(), ?, NOW()
+        FROM hris.employee e
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP001'
+        ON CONFLICT (organization_id, employee_id) DO NOTHING
+      `, [orgId, tenantAdminUserId, orgId]);
+
+      // Create compensation record for tenant admin
+      await knex.raw(`
+        INSERT INTO payroll.compensation (
+          organization_id, employee_id, compensation_type, amount, currency,
+          frequency, effective_from, is_current, created_by, created_at
+        )
+        SELECT ?, e.id, 'salary', 28000.00, 'SRD', 'monthly', NOW()::date, true, ?, NOW()
+        FROM hris.employee e
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP001'
+        ON CONFLICT (employee_id, effective_from) DO NOTHING
+      `, [orgId, tenantAdminUserId, orgId]);
+
+      // Assign worker type history for tenant admin (Full-Time)
+      await knex.raw(`
+        INSERT INTO payroll.worker_type_history (
+          organization_id, employee_id, worker_type_id, is_current,
+          effective_from, created_by, created_at
+        )
+        SELECT ?, e.id, wt.id, true, NOW()::date, ?, NOW()
+        FROM hris.employee e
+        CROSS JOIN hris.worker_type wt
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP001'
+          AND wt.code = 'FT' AND wt.deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM payroll.worker_type_history wth
+            WHERE wth.employee_id = e.id AND wth.organization_id = ?
+              AND wth.is_current = true AND wth.deleted_at IS NULL
+          )
+        ON CONFLICT (organization_id, employee_id, worker_type_id, effective_from) DO NOTHING
+      `, [orgId, tenantAdminUserId, orgId, orgId]);
     }
 
     console.log('[OK] Tenant admin user created: tenant@testcompany.com');
@@ -151,7 +199,7 @@ export async function seed(knex) {
       RETURNING id
     `, [passwordHash, orgId]);
 
-    let payrollManagerUserId = payrollManagerResult.rows[0]?.id;
+    payrollManagerUserId = payrollManagerResult.rows[0]?.id;
 
     if (!payrollManagerUserId) {
       const existingUser = await knex.raw(`
@@ -182,6 +230,49 @@ export async function seed(knex) {
           AND e.user_account_id = ?
           AND ua.employee_id IS NULL
       `, [payrollManagerUserId, payrollManagerUserId]);
+
+      // Create payroll configuration for payroll manager
+      await knex.raw(`
+        INSERT INTO payroll.employee_payroll_config (
+          organization_id, employee_id, pay_frequency, payment_method,
+          currency, payroll_status, payroll_start_date, created_by, created_at
+        )
+        SELECT ?, e.id, 'monthly', 'direct_deposit', 'SRD', 'active', NOW(), ?, NOW()
+        FROM hris.employee e
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP002'
+        ON CONFLICT (organization_id, employee_id) DO NOTHING
+      `, [orgId, payrollManagerUserId, orgId]);
+
+      // Create compensation record for payroll manager
+      await knex.raw(`
+        INSERT INTO payroll.compensation (
+          organization_id, employee_id, compensation_type, amount, currency,
+          frequency, effective_from, is_current, created_by, created_at
+        )
+        SELECT ?, e.id, 'salary', 26000.00, 'SRD', 'monthly', NOW()::date, true, ?, NOW()
+        FROM hris.employee e
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP002'
+        ON CONFLICT (employee_id, effective_from) DO NOTHING
+      `, [orgId, payrollManagerUserId, orgId]);
+
+      // Assign worker type history for payroll manager (Full-Time)
+      await knex.raw(`
+        INSERT INTO payroll.worker_type_history (
+          organization_id, employee_id, worker_type_id, is_current,
+          effective_from, created_by, created_at
+        )
+        SELECT ?, e.id, wt.id, true, NOW()::date, ?, NOW()
+        FROM hris.employee e
+        CROSS JOIN hris.worker_type wt
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP002'
+          AND wt.code = 'FT' AND wt.deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM payroll.worker_type_history wth
+            WHERE wth.employee_id = e.id AND wth.organization_id = ?
+              AND wth.is_current = true AND wth.deleted_at IS NULL
+          )
+        ON CONFLICT (organization_id, employee_id, worker_type_id, effective_from) DO NOTHING
+      `, [orgId, payrollManagerUserId, orgId, orgId]);
     }
 
     console.log('[OK] Payroll manager user created: payroll@testcompany.com');
@@ -215,7 +306,7 @@ export async function seed(knex) {
       RETURNING id
     `, [passwordHash, orgId]);
 
-    let employeeUserId = employeeResult.rows[0]?.id;
+    employeeUserId = employeeResult.rows[0]?.id;
 
     if (!employeeUserId) {
       const existingUser = await knex.raw(`
@@ -246,6 +337,49 @@ export async function seed(knex) {
           AND e.user_account_id = ?
           AND ua.employee_id IS NULL
       `, [employeeUserId, employeeUserId]);
+
+      // Create payroll configuration for employee
+      await knex.raw(`
+        INSERT INTO payroll.employee_payroll_config (
+          organization_id, employee_id, pay_frequency, payment_method,
+          currency, payroll_status, payroll_start_date, created_by, created_at
+        )
+        SELECT ?, e.id, 'weekly', 'direct_deposit', 'SRD', 'active', NOW(), ?, NOW()
+        FROM hris.employee e
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP003'
+        ON CONFLICT (organization_id, employee_id) DO NOTHING
+      `, [orgId, employeeUserId, orgId]);
+
+      // Create compensation record for employee (hourly worker)
+      await knex.raw(`
+        INSERT INTO payroll.compensation (
+          organization_id, employee_id, compensation_type, amount, currency,
+          frequency, effective_from, is_current, created_by, created_at
+        )
+        SELECT ?, e.id, 'hourly', 40.00, 'SRD', 'weekly', NOW()::date, true, ?, NOW()
+        FROM hris.employee e
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP003'
+        ON CONFLICT (employee_id, effective_from) DO NOTHING
+      `, [orgId, employeeUserId, orgId]);
+
+      // Assign worker type history for employee (Part-Time hourly)
+      await knex.raw(`
+        INSERT INTO payroll.worker_type_history (
+          organization_id, employee_id, worker_type_id, is_current,
+          effective_from, created_by, created_at
+        )
+        SELECT ?, e.id, wt.id, true, NOW()::date, ?, NOW()
+        FROM hris.employee e
+        CROSS JOIN hris.worker_type wt
+        WHERE e.organization_id = ? AND e.employee_number = 'EMP003'
+          AND wt.code = 'PT' AND wt.deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM payroll.worker_type_history wth
+            WHERE wth.employee_id = e.id AND wth.organization_id = ?
+              AND wth.is_current = true AND wth.deleted_at IS NULL
+          )
+        ON CONFLICT (organization_id, employee_id, worker_type_id, effective_from) DO NOTHING
+      `, [orgId, employeeUserId, orgId, orgId]);
     }
 
     console.log('[OK] Employee user created: employee@testcompany.com');
@@ -264,7 +398,7 @@ export async function seed(knex) {
         product_id: product.id,
         is_enabled: true,
         access_level: 'full',
-        enabled_features: product.default_features,
+        enabled_features: JSON.stringify(product.default_features || []),
         granted_at: knex.fn.now()
       })
       .onConflict(['organization_id', 'product_id'])
@@ -272,6 +406,102 @@ export async function seed(knex) {
   }
 
   console.log('[OK] Product permissions granted to test organization');
+
+  // ============================================================================
+  // ASSIGN RBAC ROLES TO TEST USERS
+  // ============================================================================
+  // NOTE: Roles are assigned here (immediately after user creation) instead of
+  // in a separate seed file to ensure roles are available in the same transaction
+  
+  console.log('');
+  console.log('[*] Assigning RBAC roles to test users...');
+  
+  // Get role IDs from roles table
+  const orgAdminRole = await knex('roles').where({ organization_id: orgId, name: 'org_admin' }).first();
+  const hrManagerRole = await knex('roles').where({ organization_id: orgId, name: 'hr_manager' }).first();
+  const payrollAdminRole = await knex('roles').where({ organization_id: orgId, name: 'payroll_admin' }).first();
+  const payrollManagerRole = await knex('roles').where({ organization_id: orgId, name: 'payroll_manager' }).first();
+  const employeeRole = await knex('roles').where({ organization_id: orgId, name: 'employee' }).first();
+
+  if (!orgAdminRole) {
+    console.log('[WARN] Default tenant roles not found. Role assignments will be skipped.');
+    console.log('[INFO] Run seed 008 (seed_rbac_tenant_roles) before this seed to enable role assignments.');
+  } else {
+    console.log('[INFO] Found tenant roles, proceeding with assignments...');
+
+    // Assign roles to tenant admin (tenant@testcompany.com)
+    if (tenantAdminUserId) {
+      // org_admin role (full access)
+      await knex('user_roles')
+        .insert({
+          user_id: tenantAdminUserId,
+          role_id: orgAdminRole.id,
+          created_by: tenantAdminUserId
+        })
+        .onConflict(['user_id', 'role_id'])
+        .merge({ created_at: knex.fn.now() });
+
+      console.log('[OK] Assigned: org_admin → tenant@testcompany.com');
+
+      // hr_manager role (multi-role example)
+      if (hrManagerRole) {
+        await knex('user_roles')
+          .insert({
+            user_id: tenantAdminUserId,
+            role_id: hrManagerRole.id,
+            created_by: tenantAdminUserId
+          })
+          .onConflict(['user_id', 'role_id'])
+          .merge({ created_at: knex.fn.now() });
+
+        console.log('[OK] Assigned: hr_manager → tenant@testcompany.com');
+      }
+
+      // payroll_admin role (multi-role example)
+      if (payrollAdminRole) {
+        await knex('user_roles')
+          .insert({
+            user_id: tenantAdminUserId,
+            role_id: payrollAdminRole.id,
+            created_by: tenantAdminUserId
+          })
+          .onConflict(['user_id', 'role_id'])
+          .merge({ created_at: knex.fn.now() });
+
+        console.log('[OK] Assigned: payroll_admin → tenant@testcompany.com');
+      }
+    }
+
+    // Assign roles to payroll manager (payroll@testcompany.com)
+    if (payrollManagerUserId && payrollManagerRole) {
+      await knex('user_roles')
+        .insert({
+          user_id: payrollManagerUserId,
+          role_id: payrollManagerRole.id,
+          created_by: tenantAdminUserId
+        })
+        .onConflict(['user_id', 'role_id'])
+        .merge({ created_at: knex.fn.now() });
+
+      console.log('[OK] Assigned: payroll_manager → payroll@testcompany.com');
+    }
+
+    // Assign roles to employee (employee@testcompany.com)
+    if (employeeUserId && employeeRole) {
+      await knex('user_roles')
+        .insert({
+          user_id: employeeUserId,
+          role_id: employeeRole.id,
+          created_by: tenantAdminUserId
+        })
+        .onConflict(['user_id', 'role_id'])
+        .merge({ created_at: knex.fn.now() });
+
+      console.log('[OK] Assigned: employee → employee@testcompany.com');
+    }
+
+    console.log('[OK] RBAC role assignments completed!');
+  }
 
   // ============================================================================
   // SUMMARY
@@ -290,13 +520,16 @@ export async function seed(knex) {
   console.log('');
   console.log('Test Users Created:');
   console.log('  1. tenant@testcompany.com (Owner)');
+  console.log('     Roles: org_admin, hr_manager, payroll_admin');
   console.log('  2. payroll@testcompany.com (Payroll Manager)');
+  console.log('     Roles: payroll_manager');
   console.log('  3. employee@testcompany.com (Employee)');
+  console.log('     Roles: employee');
   console.log('  Password for all: Admin123!');
   console.log('');
   console.log('Usage:');
-  console.log('  1. Login with tenant@testcompany.com to access Paylinq');
-  console.log('  2. Dashboard and all Paylinq features will be available');
+  console.log('  1. Login with tenant@testcompany.com to access all products');
+  console.log('  2. Dashboard and all product features will be available');
   console.log('  3. Use payroll@testcompany.com for payroll management');
   console.log('  4. Use employee@testcompany.com to test employee portal');
 }

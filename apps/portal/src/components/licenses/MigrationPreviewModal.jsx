@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, AlertTriangle, Check, Users, TrendingUp } from 'lucide-react'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 import { toast } from 'react-hot-toast'
 
 export default function MigrationPreviewModal({ tier, onClose, onSuccess }) {
@@ -19,7 +19,7 @@ export default function MigrationPreviewModal({ tier, onClose, onSuccess }) {
   const loadPreview = async () => {
     setLoading(true)
     try {
-      const response = await apiService.previewTierMigration(tier.tier_name, filters)
+      const response = await portalService.previewTierMigration(tier.tier_name, filters)
       setPreview(response)
     } catch (error) {
       console.error('Failed to load preview:', error)
@@ -49,7 +49,7 @@ export default function MigrationPreviewModal({ tier, onClose, onSuccess }) {
       toast.loading('Migration in progress...')
       
       // Execute migration with filters
-      const result = await apiService.executeTierMigration(tier.id, filters)
+      const result = await portalService.executeTierMigration(tier.id, filters)
       
       toast.dismiss()
       toast.success(result.message || 'Migration completed successfully')

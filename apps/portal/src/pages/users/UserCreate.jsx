@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function UserCreate() {
@@ -37,7 +37,7 @@ export default function UserCreate() {
       // Remove confirmPassword before sending
       const { confirmPassword, ...userData } = formData;
       
-      await apiService.createUser(userData);
+      await portalService.createUser(userData);
       toast.success('User created successfully');
       navigate('/users');
     } catch (error) {

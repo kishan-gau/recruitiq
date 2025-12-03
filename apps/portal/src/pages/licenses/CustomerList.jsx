@@ -5,7 +5,7 @@ import { Search, Filter, Plus, Download } from 'lucide-react'
 import Card from '../../components/licenses/Card'
 import Table from '../../components/licenses/Table'
 import Badge from '../../components/licenses/Badge'
-import apiService from '../../services/api'
+import { customersService } from '../../services'
 import { format } from 'date-fns'
 
 export default function CustomerList() {
@@ -26,10 +26,11 @@ export default function CustomerList() {
   const loadCustomers = async () => {
     setLoading(true)
     try {
-      const data = await apiService.getCustomers(filters)
+      const data = await customersService.getCustomers(filters)
       setCustomers(data)
     } catch (error) {
       console.error('Failed to load customers:', error)
+      toast.error('Failed to load customers')
     } finally {
       setLoading(false)
     }
@@ -38,16 +39,16 @@ export default function CustomerList() {
   const handleExport = () => {
     try {
       // Export to CSV
-      const headers = ['Name', 'Email', 'Tier', 'Deployment', 'Status', 'Users', 'Expires', 'MRR']
+      const headers = ['Name', 'Email', 'Tier', 'Deployment', 'Status', 'Max Users', 'Expires', 'MRR']
       const rows = customers.map(c => [
         c.name,
-        c.contactEmail,
+        c.contact_email || c.contactEmail,
         c.tier,
-        c.deploymentType,
+        c.deployment_type || c.deploymentType,
         c.status,
-        `${c.users.current}/${c.users.limit || '∞'}`,
-        format(new Date(c.contractEndDate), 'yyyy-MM-dd'),
-        c.mrr
+        c.max_users || 'Unlimited',
+        format(new Date(c.contract_end_date || c.contractEndDate), 'yyyy-MM-dd'),
+        c.mrr || 0
       ])
       
       const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
@@ -105,7 +106,7 @@ export default function CustomerList() {
       render: (row) => (
         <div>
           <p className="font-medium text-gray-900">{row.name}</p>
-          <p className="text-sm text-gray-500">{row.contactEmail}</p>
+          <p className="text-sm text-gray-500">{row.contact_email || row.contactEmail}</p>
         </div>
       )
     },
@@ -117,14 +118,14 @@ export default function CustomerList() {
     {
       header: 'Deployment',
       accessor: 'deploymentType',
-      render: (row) => getDeploymentBadge(row.deploymentType)
+      render: (row) => getDeploymentBadge(row.deployment_type || row.deploymentType)
     },
     {
-      header: 'Users',
-      accessor: 'users',
+      header: 'Max Users',
+      accessor: 'max_users',
       render: (row) => (
         <span className="text-sm">
-          {row.users.current} / {row.users.limit || '∞'}
+          {row.max_users || 'Unlimited'}
         </span>
       )
     },
@@ -132,10 +133,12 @@ export default function CustomerList() {
       header: 'Expires',
       accessor: 'contractEndDate',
       render: (row) => {
-        const daysLeft = Math.floor((new Date(row.contractEndDate) - new Date()) / (1000 * 60 * 60 * 24))
+        const endDate = row.contract_end_date || row.contractEndDate
+        if (!endDate) return <span className="text-sm text-gray-500">N/A</span>
+        const daysLeft = Math.floor((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24))
         return (
           <div>
-            <p className="text-sm text-gray-900">{format(new Date(row.contractEndDate), 'MMM dd, yyyy')}</p>
+            <p className="text-sm text-gray-900">{format(new Date(endDate), 'MMM dd, yyyy')}</p>
             {daysLeft <= 30 && daysLeft > 0 && (
               <p className="text-xs text-warning-600">{daysLeft} days left</p>
             )}

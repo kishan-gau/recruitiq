@@ -23,20 +23,22 @@ class Customer {
     try {
       await client.query('BEGIN')
 
+      // Generate instance key
+      const instanceKey = name.toLowerCase().replace(/\s+/g, '-') + '-prod'
+
       // Create customer
       const customerResult = await client.query(
         `INSERT INTO customers (
           name, contact_email, contact_name, deployment_type,
-          contract_start_date, contract_end_date, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          contract_start_date, contract_end_date, tier, instance_key, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *`,
-        [name, contactEmail, contactName, deploymentType, contractStartDate, contractEndDate, 'active']
+        [name, contactEmail, contactName, deploymentType, contractStartDate, contractEndDate, tier, instanceKey, 'active']
       )
 
       const customer = customerResult.rows[0]
 
       // Create instance
-      const instanceKey = name.toLowerCase().replace(/\s+/g, '-') + '-prod'
       const instanceResult = await client.query(
         `INSERT INTO instances (
           customer_id, instance_key, instance_url, status
@@ -51,16 +53,16 @@ class Customer {
       const licenseKey = `LIC-${instanceKey}-${Date.now()}`
       const licenseResult = await client.query(
         `INSERT INTO licenses (
-          customer_id, instance_id, license_key, tier,
+          customer_id, license_key, tier, instance_key,
           max_users, max_workspaces, max_jobs, max_candidates,
           features, expires_at, status
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *`,
         [
           customer.id,
-          instance.id,
           licenseKey,
           tier,
+          instanceKey,
           maxUsers,
           maxWorkspaces,
           maxJobs,
@@ -151,8 +153,8 @@ class Customer {
         i.instance_url,
         i.last_heartbeat,
         i.app_version,
-        i.database_host,
-        i.database_name,
+        i.status as instance_status,
+        i.instance_fingerprint,
         l.id as license_id,
         l.tier,
         l.license_key,
@@ -211,10 +213,10 @@ class Customer {
   static async getUsageStats(id, days = 30) {
     const result = await db.query(
       `SELECT 
-        MAX(user_count) as max_users,
-        MAX(workspace_count) as max_workspaces,
-        MAX(job_count) as max_jobs,
-        MAX(candidate_count) as max_candidates,
+        MAX(users_count) as max_users,
+        MAX(workspaces_count) as max_workspaces,
+        MAX(jobs_count) as max_jobs,
+        MAX(candidates_count) as max_candidates,
         COUNT(DISTINCT DATE(timestamp)) as active_days,
         COUNT(*) as total_events
       FROM usage_events

@@ -70,7 +70,7 @@ export default function TimeEntries() {
       } catch (err: any) {
         console.error('Failed to fetch time entries:', err);
         handleApiError(err, {
-          toast,
+          toast: { error },
           defaultMessage: 'Failed to load time entries',
         });
       } finally {

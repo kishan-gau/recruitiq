@@ -63,17 +63,34 @@ class PlatformUser {
 
   /**
    * Find platform user by email
+   * RBAC: Loads permissions from role_permissions table
    */
   static async findByEmail(email) {
     const query = `
       SELECT 
-        id, email, password_hash, name, first_name, last_name,
-        avatar_url, phone, timezone, role, permissions,
-        last_login_at, last_login_ip, failed_login_attempts, locked_until,
-        mfa_enabled, mfa_secret, mfa_backup_codes, mfa_backup_codes_used,
-        email_verified, is_active, created_at, updated_at
-      FROM platform_users
-      WHERE email = $1 AND deleted_at IS NULL
+        pu.id, pu.email, pu.password_hash, pu.name, pu.first_name, pu.last_name,
+        pu.avatar_url, pu.phone, pu.timezone,
+        pu.last_login_at, pu.last_login_ip, pu.failed_login_attempts, pu.locked_until,
+        pu.mfa_enabled, pu.mfa_secret, pu.mfa_backup_codes, pu.mfa_backup_codes_used,
+        pu.email_verified, pu.is_active, pu.created_at, pu.updated_at,
+        -- RBAC: Load role name from roles table
+        r.name as role,
+        -- RBAC: Aggregate permissions from role_permissions
+        COALESCE(
+          json_agg(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL),
+          '[]'::json
+        ) as permissions
+      FROM platform_users pu
+      LEFT JOIN user_roles ur ON pu.id = ur.user_id
+      LEFT JOIN roles r ON ur.role_id = r.id
+      LEFT JOIN role_permissions rp ON r.id = rp.role_id
+      LEFT JOIN permissions p ON rp.permission_id = p.id
+      WHERE pu.email = $1 AND pu.deleted_at IS NULL
+      GROUP BY pu.id, pu.email, pu.password_hash, pu.name, pu.first_name, pu.last_name,
+               pu.avatar_url, pu.phone, pu.timezone,
+               pu.last_login_at, pu.last_login_ip, pu.failed_login_attempts, pu.locked_until,
+               pu.mfa_enabled, pu.mfa_secret, pu.mfa_backup_codes, pu.mfa_backup_codes_used,
+               pu.email_verified, pu.is_active, pu.created_at, pu.updated_at, r.name
     `;
     
     const result = await db.query(query, [email.toLowerCase()]);
@@ -94,17 +111,34 @@ class PlatformUser {
 
   /**
    * Find platform user by ID
+   * RBAC: Loads permissions from role_permissions table
    */
   static async findById(id) {
     const query = `
       SELECT 
-        id, email, password_hash, name, first_name, last_name,
-        avatar_url, phone, timezone, role, permissions,
-        last_login_at, last_login_ip, failed_login_attempts, locked_until,
-        mfa_enabled, mfa_secret, mfa_backup_codes, mfa_backup_codes_used,
-        email_verified, is_active, created_at, updated_at
-      FROM platform_users
-      WHERE id = $1 AND deleted_at IS NULL
+        pu.id, pu.email, pu.password_hash, pu.name, pu.first_name, pu.last_name,
+        pu.avatar_url, pu.phone, pu.timezone, 
+        pu.last_login_at, pu.last_login_ip, pu.failed_login_attempts, pu.locked_until,
+        pu.mfa_enabled, pu.mfa_secret, pu.mfa_backup_codes, pu.mfa_backup_codes_used,
+        pu.email_verified, pu.is_active, pu.created_at, pu.updated_at,
+        -- RBAC: Load role name from roles table
+        r.name as role,
+        -- RBAC: Aggregate permissions from role_permissions
+        COALESCE(
+          json_agg(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL),
+          '[]'::json
+        ) as permissions
+      FROM platform_users pu
+      LEFT JOIN user_roles ur ON pu.id = ur.user_id
+      LEFT JOIN roles r ON ur.role_id = r.id
+      LEFT JOIN role_permissions rp ON r.id = rp.role_id
+      LEFT JOIN permissions p ON rp.permission_id = p.id
+      WHERE pu.id = $1 AND pu.deleted_at IS NULL
+      GROUP BY pu.id, pu.email, pu.password_hash, pu.name, pu.first_name, pu.last_name,
+               pu.avatar_url, pu.phone, pu.timezone, 
+               pu.last_login_at, pu.last_login_ip, pu.failed_login_attempts, pu.locked_until,
+               pu.mfa_enabled, pu.mfa_secret, pu.mfa_backup_codes, pu.mfa_backup_codes_used,
+               pu.email_verified, pu.is_active, pu.created_at, pu.updated_at, r.name
     `;
     
     const result = await db.query(query, [id]);

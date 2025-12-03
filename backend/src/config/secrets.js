@@ -91,8 +91,8 @@ const SECRET_DEFINITIONS = {
   },
   
   // License Manager Database
-  LICENSE_MANAGER_DB_PASSWORD: {
-    envVar: 'LICENSE_MANAGER_DB_PASSWORD',
+  PLATFORM_DATABASE_PASSWORD: {
+    envVar: 'PLATFORM_DATABASE_PASSWORD',
     required: true,
     minLength: 12,
     production: true,

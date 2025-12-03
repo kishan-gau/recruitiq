@@ -54,7 +54,7 @@ export async function seed(knex) {
       description: 'Base monthly salary',
       is_taxable: true,
       is_recurring: true,
-      is_system: true,
+      is_system_component: true,
       display_order: 1
     },
     {
@@ -65,7 +65,7 @@ export async function seed(knex) {
       description: 'Overtime at 150% rate',
       is_taxable: true,
       is_recurring: false,
-      is_system: true,
+      is_system_component: true,
       display_order: 2
     },
     {
@@ -76,7 +76,7 @@ export async function seed(knex) {
       description: 'Overtime at 200% rate (holidays/weekends)',
       is_taxable: true,
       is_recurring: false,
-      is_system: true,
+      is_system_component: true,
       display_order: 3
     },
     {
@@ -87,7 +87,7 @@ export async function seed(knex) {
       description: '8% holiday allowance, tax-free up to SRD 10,016/year',
       is_taxable: true,
       is_recurring: false,
-      is_system: true,
+      is_system_component: true,
       display_order: 4
     },
     {
@@ -98,7 +98,7 @@ export async function seed(knex) {
       description: 'Annual 13th month salary payment',
       is_taxable: true,
       is_recurring: false,
-      is_system: true,
+      is_system_component: true,
       display_order: 5
     },
     {
@@ -109,7 +109,7 @@ export async function seed(knex) {
       description: 'Performance-based bonus payment',
       is_taxable: true,
       is_recurring: false,
-      is_system: false,
+      is_system_component: false,
       display_order: 6
     },
     {
@@ -120,7 +120,7 @@ export async function seed(knex) {
       description: 'Gratuity payment, tax-free up to SRD 10,016/year',
       is_taxable: true,
       is_recurring: false,
-      is_system: false,
+      is_system_component: false,
       display_order: 7
     },
     {
@@ -131,7 +131,7 @@ export async function seed(knex) {
       description: 'Monthly transport/commute allowance',
       is_taxable: false,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 8
     },
     {
@@ -142,7 +142,7 @@ export async function seed(knex) {
       description: 'Monthly meal allowance',
       is_taxable: false,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 9
     },
     {
@@ -153,7 +153,7 @@ export async function seed(knex) {
       description: 'Monthly housing allowance',
       is_taxable: true,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 10
     },
     {
@@ -164,7 +164,7 @@ export async function seed(knex) {
       description: 'Monthly telephone/communication allowance',
       is_taxable: false,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 11
     },
     {
@@ -175,7 +175,7 @@ export async function seed(knex) {
       description: 'Child allowance SRD 125/child, max SRD 500 (4 children)',
       is_taxable: false,
       is_recurring: true,
-      is_system: true,
+      is_system_component: true,
       display_order: 12
     },
     {
@@ -186,7 +186,7 @@ export async function seed(knex) {
       description: 'Exchange rate compensation up to SRD 800/month',
       is_taxable: false,
       is_recurring: true,
-      is_system: true,
+      is_system_component: true,
       display_order: 13
     },
 
@@ -201,7 +201,7 @@ export async function seed(knex) {
       description: 'Progressive wage tax (8-38%)',
       is_taxable: false,
       is_recurring: true,
-      is_system: true,
+      is_system_component: true,
       display_order: 101
     },
     {
@@ -212,7 +212,7 @@ export async function seed(knex) {
       description: 'Old Age Pension - 4% flat rate',
       is_taxable: false,
       is_recurring: true,
-      is_system: true,
+      is_system_component: true,
       display_order: 102
     },
     {
@@ -223,7 +223,7 @@ export async function seed(knex) {
       description: 'General Widow and Orphan Fund - 1% flat rate',
       is_taxable: false,
       is_recurring: true,
-      is_system: true,
+      is_system_component: true,
       display_order: 103
     },
     {
@@ -234,7 +234,7 @@ export async function seed(knex) {
       description: 'Employee pension contribution (typically 5-7%)',
       is_taxable: false,
       is_recurring: true,
-      is_system: true,
+      is_system_component: true,
       display_order: 104
     },
     {
@@ -245,7 +245,7 @@ export async function seed(knex) {
       description: 'Health insurance premium deduction',
       is_taxable: false,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 105
     },
 
@@ -260,7 +260,7 @@ export async function seed(knex) {
       description: 'Employee loan repayment',
       is_taxable: false,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 110
     },
     {
@@ -271,7 +271,7 @@ export async function seed(knex) {
       description: 'Recovery of salary advance',
       is_taxable: false,
       is_recurring: false,
-      is_system: false,
+      is_system_component: false,
       display_order: 111
     },
     {
@@ -282,7 +282,7 @@ export async function seed(knex) {
       description: 'Trade union membership dues',
       is_taxable: false,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 112
     },
     {
@@ -293,33 +293,33 @@ export async function seed(knex) {
       description: 'Court-ordered wage garnishment',
       is_taxable: false,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 113
     },
 
     // ============================================================================
-    // EMPLOYER CONTRIBUTION COMPONENTS
+    // EMPLOYER CONTRIBUTION COMPONENTS (stored as earnings for accounting)
     // ============================================================================
     {
       component_code: 'PENSION_EMPLOYER',
       component_name: 'Pension (Employer Contribution)',
-      component_type: 'employer_contribution',
+      component_type: 'earning',
       category: 'pension',
       description: 'Employer pension contribution (typically 10-12%)',
       is_taxable: false,
       is_recurring: true,
-      is_system: true,
+      is_system_component: true,
       display_order: 201
     },
     {
       component_code: 'HEALTH_INSURANCE_EMPLOYER',
       component_name: 'Health Insurance (Employer)',
-      component_type: 'employer_contribution',
+      component_type: 'earning',
       category: 'benefits',
       description: 'Employer health insurance contribution',
       is_taxable: false,
       is_recurring: true,
-      is_system: false,
+      is_system_component: false,
       display_order: 202
     }
   ];
@@ -340,9 +340,9 @@ export async function seed(knex) {
         await knex.raw(`
           INSERT INTO payroll.pay_component (
             organization_id, component_code, component_name, component_type,
-            category, description, is_taxable, is_recurring, is_system,
+            category, calculation_type, description, is_taxable, is_recurring, is_system_component,
             display_order, is_active
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)
+          ) VALUES (?, ?, ?, ?, ?, 'fixed_amount', ?, ?, ?, ?, ?, true)
         `, [
           orgId,
           component.component_code,
@@ -352,7 +352,7 @@ export async function seed(knex) {
           component.description,
           component.is_taxable,
           component.is_recurring,
-          component.is_system,
+          component.is_system_component,
           component.display_order
         ]);
       }
@@ -387,7 +387,7 @@ export async function seed(knex) {
   console.log('    - LOAN_REPAYMENT, ADVANCE_RECOVERY');
   console.log('    - UNION_DUES, GARNISHMENT');
   console.log('');
-  console.log('  Employer Contributions:');
+  console.log('  Employer Contributions (as earnings):');
   console.log('    - PENSION_EMPLOYER (Employer pension)');
   console.log('    - HEALTH_INSURANCE_EMPLOYER');
   console.log('================================================================');

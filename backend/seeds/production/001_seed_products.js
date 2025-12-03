@@ -190,7 +190,7 @@ export async function seed(knex) {
         product_id: nexusProduct.id,
         is_enabled: true,
         access_level: 'full',
-        enabled_features: nexusProduct.default_features,
+        enabled_features: JSON.stringify(nexusProduct.default_features || []),
         granted_at: knex.fn.now()
       }).onConflict(['organization_id', 'product_id']).ignore();
     }
@@ -202,7 +202,7 @@ export async function seed(knex) {
         product_id: recruitiqProduct.id,
         is_enabled: true,
         access_level: 'full',
-        enabled_features: recruitiqProduct.default_features,
+        enabled_features: JSON.stringify(recruitiqProduct.default_features || []),
         granted_at: knex.fn.now()
       }).onConflict(['organization_id', 'product_id']).ignore();
     }
@@ -214,7 +214,7 @@ export async function seed(knex) {
         product_id: schedulehubProduct.id,
         is_enabled: true,
         access_level: 'full',
-        enabled_features: schedulehubProduct.default_features,
+        enabled_features: JSON.stringify(schedulehubProduct.default_features || []),
         granted_at: knex.fn.now()
       }).onConflict(['organization_id', 'product_id']).ignore();
     }
@@ -226,7 +226,7 @@ export async function seed(knex) {
         product_id: paylinqProduct.id,
         is_enabled: true,
         access_level: 'full',
-        enabled_features: paylinqProduct.default_features,
+        enabled_features: JSON.stringify(paylinqProduct.default_features || []),
         granted_at: knex.fn.now()
       }).onConflict(['organization_id', 'product_id']).ignore();
     }

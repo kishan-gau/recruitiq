@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, Edit, Trash2, Eye, Users, TrendingUp } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function FeatureCatalog() {
@@ -21,13 +21,13 @@ export default function FeatureCatalog() {
     setLoading(true);
     try {
       const [featuresRes, productsRes] = await Promise.all([
-        apiService.getFeatures({
+        portalService.getFeatures({
           productId: selectedProduct !== 'all' ? selectedProduct : undefined,
           status: selectedStatus !== 'all' ? selectedStatus : undefined,
           category: selectedCategory !== 'all' ? selectedCategory : undefined,
           limit: 100
         }),
-        apiService.getProducts()
+        portalService.getProducts()
       ]);
       
       setFeatures(featuresRes.features || []);

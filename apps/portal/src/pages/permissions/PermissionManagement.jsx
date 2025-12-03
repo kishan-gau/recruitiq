@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Key, Plus, Search, Edit, Trash2, Shield } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function PermissionManagement() {
@@ -19,7 +19,7 @@ export default function PermissionManagement() {
     try {
       setLoading(true);
       console.log('Fetching permissions...');
-      const data = await apiService.getPermissions();
+      const data = await portalService.getPermissions();
       console.log('Permissions response:', data);
       setPermissions(data.permissions || []);
       console.log('Permissions set:', data.permissions?.length || 0, 'items');
@@ -63,7 +63,7 @@ export default function PermissionManagement() {
     if (!confirm('Are you sure you want to delete this permission? This may affect roles and users.')) return;
 
     try {
-      await apiService.deletePermission(permissionId);
+      await portalService.deletePermission(permissionId);
       toast.success('Permission deleted successfully');
       fetchPermissions();
     } catch (error) {
@@ -265,13 +265,13 @@ function PermissionModal({ permission, categories, onClose, onSave }) {
     e.preventDefault();
     try {
       if (permission) {
-        await apiService.updatePermission(permission.id, {
+        await portalService.updatePermission(permission.id, {
           category: formData.category,
           description: formData.description
         });
         toast.success('Permission updated successfully');
       } else {
-        await apiService.createPermission(formData);
+        await portalService.createPermission(formData);
         toast.success('Permission created successfully');
       }
       onSave();

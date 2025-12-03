@@ -11,7 +11,7 @@ import {
   ChevronRight,
   Info
 } from 'lucide-react'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 import CreateTierVersionModal from '../../components/licenses/CreateTierVersionModal'
 import TierHistoryModal from '../../components/licenses/TierHistoryModal'
 import MigrationPreviewModal from '../../components/licenses/MigrationPreviewModal'
@@ -32,7 +32,7 @@ export default function Tiers() {
 
   const loadTiers = async () => {
     try {
-      const response = await apiService.getTiers()
+      const response = await portalService.getTiers()
       setTiers(response.tiers || [])
     } catch (error) {
       console.error('Failed to load tiers:', error)
@@ -44,7 +44,7 @@ export default function Tiers() {
 
   const loadStats = async () => {
     try {
-      const response = await apiService.getTierStats()
+      const response = await portalService.getTierStats()
       setStats(response.stats || [])
     } catch (error) {
       console.error('Failed to load stats:', error)
@@ -53,7 +53,7 @@ export default function Tiers() {
 
   const handleCreateVersion = async (tierData, autoMigrate) => {
     try {
-      const result = await apiService.createTierVersion(tierData, autoMigrate)
+      const result = await portalService.createTierVersion(tierData, autoMigrate)
       toast.success(result.message || 'Tier version created successfully')
       setShowCreateModal(false)
       loadTiers()

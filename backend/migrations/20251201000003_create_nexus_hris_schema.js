@@ -6,7 +6,7 @@
  * with employee management, contracts, benefits, time-off, attendance, and more.
  */
 
-exports.up = async function(knex) {
+export async function up(knex) {
   // Create hris schema
   await knex.raw('CREATE SCHEMA IF NOT EXISTS hris');
   
@@ -525,6 +525,7 @@ exports.up = async function(knex) {
   // Contract Sequence Steps (Define progression stages)
   await knex.schema.withSchema('hris').createTable('contract_sequence_step', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
+    table.uuid('organization_id').notNullable().references('id').inTable('organizations').onDelete('CASCADE');
     table.uuid('contract_sequence_policy_id').notNullable().references('id').inTable('hris.contract_sequence_policy').onDelete('CASCADE');
     
     // Step Definition
@@ -1607,7 +1608,7 @@ exports.up = async function(knex) {
   await knex.raw('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA hris TO PUBLIC');
 };
 
-exports.down = async function(knex) {
+export async function down(knex) {
   // Drop in reverse order
   await knex.raw('DROP SCHEMA IF EXISTS hris CASCADE');
 };

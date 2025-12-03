@@ -19,11 +19,11 @@ const router = express.Router();
 
 // License Manager Database Connection
 const licenseManagerPool = new pg.Pool({
-  host: process.env.LICENSE_MANAGER_DB_HOST || 'localhost',
-  port: process.env.LICENSE_MANAGER_DB_PORT || 5432,
-  database: process.env.LICENSE_MANAGER_DB_NAME || 'license_manager_db',
-  user: process.env.LICENSE_MANAGER_DB_USER || process.env.DATABASE_USER,
-  password: process.env.LICENSE_MANAGER_DB_PASSWORD || config.database.password, // Use validated secret
+  host: process.env.PLATFORM_DATABASE_HOST || process.env.DATABASE_HOST || 'localhost',
+  port: process.env.PLATFORM_DATABASE_PORT || process.env.DATABASE_PORT || 5432,
+  database: process.env.PLATFORM_DATABASE_NAME || process.env.DATABASE_NAME || 'recruitiq_dev',
+  user: process.env.PLATFORM_DATABASE_USER || process.env.DATABASE_USER || 'postgres',
+  password: process.env.PLATFORM_DATABASE_PASSWORD || process.env.DATABASE_PASSWORD || config.database.password,
   max: 5, // Smaller pool since we query infrequently
 });
 

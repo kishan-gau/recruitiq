@@ -262,16 +262,12 @@ export function createApp(options = {}) {
   const apiRouter = express.Router();
 
   // Dynamic product middleware - uses injected router or returns 503
-  const dynamicProductMiddleware = (req, res, next) => {
-    if (dynamicProductRouter) {
-      dynamicProductRouter(req, res, next);
-    } else {
-      res.status(503).json({
-        error: 'Dynamic product system not yet initialized',
-        message: 'Please wait for the system to complete initialization'
-      });
-    }
-  };
+  const dynamicProductMiddleware = dynamicProductRouter || ((req, res, next) => {
+    res.status(503).json({
+      error: 'Dynamic product system not yet initialized',
+      message: 'Please wait for the system to complete initialization'
+    });
+  });
 
   // CSRF token endpoint
   apiRouter.get('/csrf-token', getCsrfToken);

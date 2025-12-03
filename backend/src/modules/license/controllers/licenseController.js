@@ -22,7 +22,7 @@ export const licenseController = {
     }
   },
 
-  // Create license
+  // Create license and initialize tenant
   createLicense: async (req, res) => {
     try {
       const licenseData = req.body
@@ -43,9 +43,27 @@ export const licenseController = {
         licenseData.expiresAt = addMonths(new Date(), 12)
       }
 
+      // Get customer info for tenant creation
+      const customer = await Customer.findById(licenseData.customerId)
+      if (!customer) {
+        return res.status(404).json({ error: 'Customer not found' })
+      }
+
+      // Create license
       const license = await License.create(licenseData)
 
-      res.status(201).json({ license })
+      // NOTE: Tenant onboarding is now a manual process
+      // After license creation, run the onboarding script on the tenant's VPS:
+      // node scripts/onboard-tenant.js --license-id=<uuid> --customer-id=<uuid> --email=<email> --name="<name>"
+      
+      console.log('[OK] License created:', license.id)
+      console.log('[INFO] Run onboarding script on tenant VPS to complete setup')
+
+      return res.status(201).json({ 
+        license,
+        message: 'License created successfully. Run onboarding script on tenant VPS to initialize tenant.',
+        onboardingCommand: `node scripts/onboard-tenant.js --license-id=${license.id} --customer-id=${customer.id} --email=${customer.email} --name="${customer.name}"`
+      })
     } catch (error) {
       console.error('Create license error:', error)
       res.status(500).json({ error: 'Failed to create license' })

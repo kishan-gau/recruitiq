@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, Shield, Key, Plus, Search, Filter } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function UserManagement() {
@@ -18,7 +18,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const data = await apiService.getUsers();
+      const data = await portalService.getUsers();
       setUsers(data.users || []);
     } catch (error) {
       console.error('Failed to fetch users:', error);

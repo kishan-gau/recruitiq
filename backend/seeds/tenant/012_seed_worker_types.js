@@ -109,13 +109,13 @@ export async function seed(knex) {
     // Insert payroll-specific configurations if payroll schema exists
     if (payrollSchemaExists.rows.length > 0 && Object.keys(workerTypeMap).length > 0) {
       const payConfigs = [
-        { code: 'FT', pay_frequency: 'monthly', payment_method: 'ach', overtime_eligible: true },
-        { code: 'PT', pay_frequency: 'biweekly', payment_method: 'ach', overtime_eligible: true },
-        { code: 'CTR', pay_frequency: 'project', payment_method: 'ach', overtime_eligible: false },
-        { code: 'TMP', pay_frequency: 'weekly', payment_method: 'ach', overtime_eligible: false },
-        { code: 'INT', pay_frequency: 'monthly', payment_method: 'ach', overtime_eligible: false },
-        { code: 'FRL', pay_frequency: 'project', payment_method: 'ach', overtime_eligible: false },
-        { code: 'SEA', pay_frequency: 'weekly', payment_method: 'ach', overtime_eligible: false }
+        { code: 'FT', pay_frequency: 'monthly', payment_method: 'direct_deposit', overtime_eligible: false },
+        { code: 'PT', pay_frequency: 'monthly', payment_method: 'direct_deposit', overtime_eligible: true },
+        { code: 'CTR', pay_frequency: 'monthly', payment_method: 'direct_deposit', overtime_eligible: false },
+        { code: 'TMP', pay_frequency: 'weekly', payment_method: 'direct_deposit', overtime_eligible: false },
+        { code: 'INT', pay_frequency: 'monthly', payment_method: 'direct_deposit', overtime_eligible: false },
+        { code: 'FRL', pay_frequency: 'monthly', payment_method: 'check', overtime_eligible: false },
+        { code: 'SEA', pay_frequency: 'weekly', payment_method: 'direct_deposit', overtime_eligible: false }
       ];
 
       for (const config of payConfigs) {

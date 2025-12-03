@@ -16,7 +16,7 @@
  * Note: References hris.user_account for tenant users, not platform_users
  */
 
-exports.up = async function(knex) {
+export async function up(knex) {
   // ============================================================================
   // WORKSPACES TABLE - Multi-tenant workspace organization
   // ============================================================================
@@ -657,8 +657,8 @@ exports.up = async function(knex) {
   console.log('✅ RecruitIQ schema created successfully with 8 tables');
 };
 
-exports.down = async function(knex) {
-  console.log('Dropping RecruitIQ schema tables...');
+export async function down(knex) {
+  console.log('Dropping recruitiq schema...');
   
   // Drop tables in reverse dependency order
   await knex.schema.dropTableIfExists('communications');

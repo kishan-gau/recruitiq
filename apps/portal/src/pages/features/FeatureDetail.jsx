@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Edit, AlertTriangle, Users, TrendingUp, Package, CheckCircle, XCircle, Settings, BarChart3 } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function FeatureDetail() {
@@ -21,9 +21,9 @@ export default function FeatureDetail() {
     setLoading(true);
     try {
       const [featureRes, orgsRes, analyticsRes] = await Promise.all([
-        apiService.getFeature(id),
-        apiService.getFeatureOrganizations(id, { limit: 100 }),
-        apiService.getFeatureAnalytics(id, { 
+        portalService.getFeature(id),
+        portalService.getFeatureOrganizations(id, { limit: 100 }),
+        portalService.getFeatureAnalytics(id, { 
           startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
           endDate: new Date().toISOString()
         }).catch(() => null) // Analytics might not be available
@@ -47,7 +47,7 @@ export default function FeatureDetail() {
 
     const message = prompt('Enter deprecation message (optional):');
     try {
-      await apiService.deprecateFeature(id, message || 'This feature is deprecated');
+      await portalService.deprecateFeature(id, message || 'This feature is deprecated');
       toast.success('Feature deprecated');
       fetchFeatureData();
     } catch (error) {

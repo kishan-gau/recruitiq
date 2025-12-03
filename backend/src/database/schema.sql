@@ -1463,9 +1463,9 @@ CREATE TABLE IF NOT EXISTS tier_presets (
   -- Features
   features JSONB DEFAULT '[]',
   
-  -- Status
+  -- Status & Versioning
   is_active BOOLEAN DEFAULT FALSE,
-  effective_date DATE,
+  effective_date TIMESTAMPTZ DEFAULT NOW(),
   
   -- Metadata
   created_by UUID, -- References platform_users(id)
@@ -1478,6 +1478,7 @@ CREATE TABLE IF NOT EXISTS tier_presets (
 
 CREATE INDEX idx_tier_presets_tier ON tier_presets(tier_name);
 CREATE INDEX idx_tier_presets_active ON tier_presets(is_active);
+CREATE INDEX idx_tier_presets_effective_date ON tier_presets(effective_date);
 
 -- ============================================================================
 -- LICENSES TABLE

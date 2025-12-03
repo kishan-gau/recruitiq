@@ -1,9 +1,19 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { memo } from 'react';
 
-export default function ProtectedRoute({ children }) {
+/**
+ * Protected Route Component
+ * 
+ * Prevents re-authentication checks on every navigation by using React.memo
+ * Authentication state is managed by AuthContext (checked once on app load)
+ * 
+ * This component ONLY redirects if authentication state changes, not on every render
+ */
+function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
+  // Show loading state while initial authentication check is in progress
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -18,9 +28,14 @@ export default function ProtectedRoute({ children }) {
     );
   }
 
+  // Redirect to login if not authenticated (only checked once on mount via AuthContext)
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   return children;
 }
+
+// Memoize to prevent unnecessary re-renders during navigation
+export default memo(ProtectedRoute);
+

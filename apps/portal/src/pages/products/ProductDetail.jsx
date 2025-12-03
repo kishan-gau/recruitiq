@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Package, Users, Settings, Plus, Edit, Eye } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function ProductDetail() {
@@ -19,8 +19,8 @@ export default function ProductDetail() {
     setLoading(true);
     try {
       const [productRes, featuresRes] = await Promise.all([
-        apiService.getProduct(id),
-        apiService.getFeatures({ productId: id, limit: 100 })
+        portalService.getProduct(id),
+        portalService.getFeatures({ productId: id, limit: 100 })
       ]);
 
       setProduct(productRes.product);

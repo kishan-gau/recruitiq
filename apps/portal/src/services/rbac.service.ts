@@ -26,9 +26,10 @@
  * - Nexus system roles: "HR Manager", "Employee Viewer" (seeded with Nexus, not from portal)
  */
 
-import { APIClient } from '@recruitiq/api-client';
+import { APIClient, PortalAPI } from '@recruitiq/api-client';
 
 const apiClient = new APIClient();
+const portalAPI = new PortalAPI(apiClient);
 
 /**
  * Platform RBAC Service (Portal Admin Only)
@@ -51,8 +52,8 @@ export const platformRbacService = {
    */
   async getPlatformPermissions() {
     try {
-      const response = await apiClient.get('/api/platform/rbac/permissions');
-      return response.data;
+      const response = await portalAPI.getPlatformPermissions();
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to fetch platform permissions:', error);
       throw error;
@@ -71,8 +72,8 @@ export const platformRbacService = {
    */
   async getPlatformRoles() {
     try {
-      const response = await apiClient.get('/api/platform/rbac/roles');
-      return response.data;
+      const response = await portalAPI.getPlatformRoles();
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to fetch platform roles:', error);
       throw error;
@@ -84,8 +85,8 @@ export const platformRbacService = {
    */
   async getPlatformRole(roleId: string) {
     try {
-      const response = await apiClient.get(`/api/platform/rbac/roles/${roleId}`);
-      return response.data;
+      const response = await portalAPI.getPlatformRole(roleId);
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to fetch platform role:', error);
       throw error;
@@ -103,8 +104,8 @@ export const platformRbacService = {
     permissionIds?: string[];
   }) {
     try {
-      const response = await apiClient.post('/api/platform/rbac/roles', data);
-      return response.data;
+      const response = await portalAPI.createPlatformRole(data);
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to create platform role:', error);
       throw error;
@@ -120,8 +121,8 @@ export const platformRbacService = {
     permissionIds?: string[];
   }) {
     try {
-      const response = await apiClient.patch(`/api/platform/rbac/roles/${roleId}`, data);
-      return response.data;
+      const response = await portalAPI.updatePlatformRole(roleId, data);
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to update platform role:', error);
       throw error;
@@ -133,8 +134,8 @@ export const platformRbacService = {
    */
   async deletePlatformRole(roleId: string) {
     try {
-      const response = await apiClient.delete(`/api/platform/rbac/roles/${roleId}`);
-      return response.data;
+      const response = await portalAPI.deletePlatformRole(roleId);
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to delete platform role:', error);
       throw error;
@@ -146,8 +147,8 @@ export const platformRbacService = {
    */
   async getPlatformUsers() {
     try {
-      const response = await apiClient.get('/api/platform/rbac/users');
-      return response.data;
+      const response = await portalAPI.getPlatformUsers();
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to fetch platform users:', error);
       throw error;
@@ -159,8 +160,8 @@ export const platformRbacService = {
    */
   async getPlatformUserRoles(userId: string) {
     try {
-      const response = await apiClient.get(`/api/platform/rbac/users/${userId}/roles`);
-      return response.data;
+      const response = await portalAPI.getPlatformUserRoles(userId);
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to fetch platform user roles:', error);
       throw error;
@@ -172,10 +173,8 @@ export const platformRbacService = {
    */
   async assignPlatformRole(userId: string, roleId: string) {
     try {
-      const response = await apiClient.post(`/api/platform/rbac/users/${userId}/roles`, {
-        roleId,
-      });
-      return response.data;
+      const response = await portalAPI.assignPlatformRole(userId, roleId);
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to assign platform role:', error);
       throw error;
@@ -187,8 +186,8 @@ export const platformRbacService = {
    */
   async revokePlatformRole(userId: string, roleId: string) {
     try {
-      const response = await apiClient.delete(`/api/platform/rbac/users/${userId}/roles/${roleId}`);
-      return response.data;
+      const response = await portalAPI.revokePlatformRole(userId, roleId);
+      return response.data || response;
     } catch (error: any) {
       console.error('Failed to revoke platform role:', error);
       throw error;

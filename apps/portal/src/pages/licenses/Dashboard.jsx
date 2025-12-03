@@ -5,7 +5,7 @@ import MetricCard from '../../components/licenses/MetricCard'
 import Card from '../../components/licenses/Card'
 import Table from '../../components/licenses/Table'
 import Badge from '../../components/licenses/Badge'
-import apiService from '../../services/api'
+import { customersService } from '../../services'
 import { format, formatDistanceToNow } from 'date-fns'
 
 export default function Dashboard() {
@@ -21,8 +21,8 @@ export default function Dashboard() {
   const loadDashboardData = async () => {
     try {
       const [metricsData, renewalsData] = await Promise.all([
-        apiService.getDashboardMetrics(),
-        apiService.getUpcomingRenewals(60)
+        customersService.getDashboardMetrics(),
+        customersService.getUpcomingRenewals(60)
       ])
       setMetrics(metricsData)
       setUpcomingRenewals(renewalsData)

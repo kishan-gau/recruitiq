@@ -10,7 +10,7 @@ import TierStep from '../../components/licenses/steps/TierStep';
 import LimitsStep from '../../components/licenses/steps/LimitsStep';
 import SessionPolicyStep from '../../components/licenses/steps/SessionPolicyStep';
 import ReviewStep from '../../components/licenses/steps/ReviewStep';
-import apiService from '../../services/api';
+import portalService from '../../services/portalService';
 import { FORM_STEPS, INITIAL_FORM_DATA } from '../../constants/licenseConstants';
 import { validateStep, hasErrors } from '../../utils/validation';
 
@@ -57,7 +57,7 @@ export default function LicenseCreate() {
     const loadingToast = toast.loading('Creating customer...');
     
     try {
-      const customer = await apiService.createCustomer({
+      const customer = await portalService.createCustomer({
         name: formData.name,
         contactEmail: formData.contactEmail,
         contactName: formData.contactName,

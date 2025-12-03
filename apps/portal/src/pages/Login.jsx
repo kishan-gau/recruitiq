@@ -113,14 +113,12 @@ export default function Login() {
 
   const handleMFASuccess = async (code, isBackupCode) => {
     try {
-      // Call appropriate API based on code type
-      const response = isBackupCode 
-        ? await api.useBackupCode(mfaToken, code)
-        : await api.verifyMFA(mfaToken, code);
+      // Call appropriate API based on code type using authService
+      const userData = isBackupCode 
+        ? await authService.useBackupCode(mfaToken, code)
+        : await authService.verifyMFA(mfaToken, code);
       
-      // Store user data
-      const userData = response.user;
-      localStorage.setItem('user', JSON.stringify(userData));
+      // Update AuthContext state (no localStorage - cookies handle session)
       setUser(userData);
       
       // Navigate to returnTo or dashboard
@@ -213,7 +211,7 @@ export default function Login() {
               autoComplete="email"
               autoFocus
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-              placeholder="platform_admin@recruitiq.com"
+              placeholder="admin@recruitiq.com"
             />
           </div>
 
@@ -260,7 +258,7 @@ export default function Login() {
             Test Credentials (Development Only)
           </p>
           <p className="text-xs text-gray-400 text-center mt-1 font-mono">
-            platform_admin@recruitiq.com / Admin123!
+            admin@recruitiq.com / Admin123!
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, Users, TrendingUp, Settings, ExternalLink } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function ProductManagement() {
@@ -15,7 +15,7 @@ export default function ProductManagement() {
   async function fetchProducts() {
     setLoading(true);
     try {
-      const response = await apiService.getProducts();
+      const response = await portalService.getProducts();
       setProducts(response.products || []);
     } catch (error) {
       console.error('Failed to fetch products:', error);

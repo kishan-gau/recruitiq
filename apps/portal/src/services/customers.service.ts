@@ -96,4 +96,20 @@ export const customersService = {
     const response = await portalClient.downloadLicenseFile(customerId);
     return response;
   },
+
+  /**
+   * Get dashboard metrics
+   */
+  async getDashboardMetrics() {
+    // PortalAPI.getDashboardMetrics() already returns just the metrics
+    return await portalClient.getDashboardMetrics();
+  },
+
+  /**
+   * Get upcoming license renewals
+   */
+  async getUpcomingRenewals(days = 60) {
+    // PortalAPI.getUpcomingRenewals() already returns just the renewals array
+    return await portalClient.getUpcomingRenewals(days);
+  },
 };

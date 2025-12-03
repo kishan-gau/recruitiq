@@ -53,12 +53,9 @@ class License {
         l.*,
         c.name as customer_name,
         c.deployment_type,
-        c.status as customer_status,
-        i.instance_key,
-        i.instance_url
+        c.status as customer_status
       FROM licenses l
       JOIN customers c ON l.customer_id = c.id
-      JOIN instances i ON l.instance_id = i.id
       WHERE l.license_key = $1`,
       [licenseKey]
     )
@@ -69,9 +66,8 @@ class License {
   // Find license by customer ID
   static async findByCustomerId(customerId) {
     const result = await db.query(
-      `SELECT l.*, i.instance_key, i.instance_url
+      `SELECT l.*
       FROM licenses l
-      LEFT JOIN instances i ON l.instance_id = i.id
       WHERE l.customer_id = $1
       ORDER BY l.created_at DESC`,
       [customerId]
@@ -87,11 +83,13 @@ class License {
         l.*,
         c.name as customer_name,
         c.deployment_type,
+        c.instance_key as customer_instance_key,
+        c.instance_url as customer_instance_url,
         i.instance_key,
         i.instance_url
       FROM licenses l
       JOIN customers c ON l.customer_id = c.id
-      LEFT JOIN instances i ON l.instance_id = i.id
+      LEFT JOIN instances i ON c.id = i.customer_id
       WHERE l.id = $1`,
       [id]
     )

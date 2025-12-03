@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 
 export default function ProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(null) // null = checking, true/false = result
@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }) {
     const checkAuth = async () => {
       try {
         // Check if user is authenticated via cookies
-        await apiService.getMe()
+        await portalService.getMe()
         setIsAuthenticated(true)
       } catch (error) {
         setIsAuthenticated(false)

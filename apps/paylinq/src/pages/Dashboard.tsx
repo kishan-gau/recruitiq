@@ -30,7 +30,7 @@ export default function Dashboard() {
       } catch (err: any) {
         console.error('Failed to fetch dashboard data:', err);
         handleApiError(err, {
-          toast,
+          toast: { error: showError },
           defaultMessage: 'Failed to load dashboard data',
         });
       } finally {

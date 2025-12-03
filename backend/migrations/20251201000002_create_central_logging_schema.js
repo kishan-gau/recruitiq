@@ -8,7 +8,7 @@
  * For development/testing, it's in the same database as the tenant data.
  */
 
-exports.up = async function(knex) {
+export async function up(knex) {
   // ============================================================================
   // SYSTEM_LOGS TABLE
   // ============================================================================
@@ -120,7 +120,7 @@ exports.up = async function(knex) {
   await knex.raw("COMMENT ON COLUMN security_events.details IS 'Event-specific structured data'");
 };
 
-exports.down = async function(knex) {
+export async function down(knex) {
   await knex.schema.dropTableIfExists('security_events');
   await knex.schema.dropTableIfExists('system_logs');
 };

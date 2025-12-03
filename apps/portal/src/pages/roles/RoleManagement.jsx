@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Shield, Plus, Search, Edit, Trash2, Users, Key } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function RoleManagement() {
@@ -20,8 +20,8 @@ export default function RoleManagement() {
     try {
       setLoading(true);
       const [rolesData, permsData] = await Promise.all([
-        apiService.getRoles(),
-        apiService.getPermissions()
+        portalService.getRoles(),
+        portalService.getPermissions()
       ]);
       setRoles(rolesData.roles || []);
       setPermissions(permsData.permissions || []);
@@ -50,7 +50,7 @@ export default function RoleManagement() {
     if (!confirm('Are you sure you want to delete this role?')) return;
 
     try {
-      await apiService.deleteRole(roleId);
+      await portalService.deleteRole(roleId);
       toast.success('Role deleted successfully');
       fetchData();
     } catch (error) {
@@ -241,10 +241,10 @@ function RoleModal({ role, permissions, onClose, onSave }) {
     e.preventDefault();
     try {
       if (role) {
-        await apiService.updateRole(role.id, formData);
+        await portalService.updateRole(role.id, formData);
         toast.success('Role updated successfully');
       } else {
-        await apiService.createRole(formData);
+        await portalService.createRole(formData);
         toast.success('Role created successfully');
       }
       onSave();

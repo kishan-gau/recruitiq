@@ -15,7 +15,7 @@
  * - Views, functions, triggers, and RLS policies
  */
 
-exports.up = async function(knex) {
+export async function up(knex) {
   // Enable UUID extension
   await knex.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
   
@@ -889,7 +889,7 @@ exports.up = async function(knex) {
   });
   
   await knex.raw(`ALTER TABLE customers ADD CONSTRAINT check_customer_tier CHECK (tier IN ('starter', 'professional', 'enterprise'))`);
-  await knex.raw(`ALTER TABLE customers ADD CONSTRAINT check_customer_deployment_type CHECK (deployment_type IN ('cloud', 'self-hosted'))`);
+  await knex.raw(`ALTER TABLE customers ADD CONSTRAINT check_customer_deployment_type CHECK (deployment_type IN ('cloud-shared', 'cloud-dedicated', 'on-premise'))`);
   await knex.raw(`ALTER TABLE customers ADD CONSTRAINT check_customer_status CHECK (status IN ('active', 'suspended', 'canceled'))`);
   await knex.raw('CREATE INDEX idx_customers_organization ON customers(organization_id)');
   await knex.raw('CREATE INDEX idx_customers_tier ON customers(tier)');
@@ -916,9 +916,18 @@ exports.up = async function(knex) {
     // Features
     table.jsonb('features').defaultTo('[]');
     
-    // Status
+    // Pricing
+    table.decimal('monthly_price_per_user', 10, 2);
+    table.decimal('annual_price_per_user', 10, 2);
+    table.decimal('base_price', 10, 2);
+    
+    // Description
+    table.text('description');
+    
+    // Status & Versioning
     table.boolean('is_active').defaultTo(false);
-    table.date('effective_date');
+    table.timestamp('effective_from', { useTz: true }).defaultTo(knex.fn.now());
+    table.timestamp('effective_until', { useTz: true });
     
     // Metadata
     table.uuid('created_by');
@@ -932,6 +941,7 @@ exports.up = async function(knex) {
   await knex.raw(`ALTER TABLE tier_presets ADD CONSTRAINT check_tier_name CHECK (tier_name IN ('starter', 'professional', 'enterprise'))`);
   await knex.raw('CREATE INDEX idx_tier_presets_tier ON tier_presets(tier_name)');
   await knex.raw('CREATE INDEX idx_tier_presets_active ON tier_presets(is_active)');
+  await knex.raw('CREATE INDEX idx_tier_presets_effective ON tier_presets(effective_from, effective_until)');
   
   // ============================================================================
   // LICENSES TABLE
@@ -1478,7 +1488,7 @@ exports.up = async function(knex) {
   await knex.raw('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres');
 };
 
-exports.down = async function(knex) {
+export async function down(knex) {
   // Drop views first
   await knex.raw('DROP VIEW IF EXISTS active_feature_grants CASCADE');
   await knex.raw('DROP MATERIALIZED VIEW IF EXISTS feature_usage_summary CASCADE');

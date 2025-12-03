@@ -14,7 +14,7 @@
  * Updated: December 1, 2025 - Aligned with schedulehub-schema.sql
  */
 
-exports.up = async function(knex) {
+export async function up(knex) {
   // Create scheduling schema
   await knex.raw('CREATE SCHEMA IF NOT EXISTS scheduling');
   
@@ -1050,7 +1050,7 @@ exports.up = async function(knex) {
   console.log('✅ ScheduleHub schema created successfully with 17 tables');
 };
 
-exports.down = async function(knex) {
+export async function down(knex) {
   console.log('Dropping ScheduleHub schema...');
   
   // Drop all tables in reverse dependency order

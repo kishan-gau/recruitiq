@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function FeatureForm() {
@@ -43,7 +43,7 @@ export default function FeatureForm() {
 
   async function fetchProducts() {
     try {
-      const response = await apiService.getProducts();
+      const response = await portalService.getProducts();
       setProducts(response.products || []);
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -52,7 +52,7 @@ export default function FeatureForm() {
 
   async function fetchFeature() {
     try {
-      const response = await apiService.getFeature(id);
+      const response = await portalService.getFeature(id);
       const feature = response.feature;
       
       setFormData({
@@ -123,10 +123,10 @@ export default function FeatureForm() {
       };
 
       if (isEdit) {
-        await apiService.updateFeature(id, data);
+        await portalService.updateFeature(id, data);
         toast.success('Feature updated successfully');
       } else {
-        await apiService.createFeature(data);
+        await portalService.createFeature(data);
         toast.success('Feature created successfully');
       }
 

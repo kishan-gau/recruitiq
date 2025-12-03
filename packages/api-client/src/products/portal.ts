@@ -16,17 +16,67 @@ export class PortalAPI {
   constructor(private client: APIClient) {}
 
   // ============================================================================
+  // Authentication (Platform Admin)
+  // ============================================================================
+
+  async login(email: string, password: string) {
+    return this.client.post('auth/platform/login', { email, password });
+  }
+
+  async logout() {
+    return this.client.post('auth/platform/logout', {});
+  }
+
+  async getMe() {
+    const response = await this.client.get('auth/platform/me');
+    return response.data?.user || response.user || response;
+  }
+
+  // ============================================================================
+  // Multi-Factor Authentication (MFA)
+  // ============================================================================
+
+  async getMFAStatus() {
+    const response = await this.client.get('auth/mfa/status');
+    return response.data || response;
+  }
+
+  async setupMFA() {
+    return this.client.post('auth/mfa/setup', {});
+  }
+
+  async verifyMFASetup(token: string, secret: string) {
+    return this.client.post('auth/mfa/verify-setup', { token, secret });
+  }
+
+  async verifyMFA(mfaToken: string, token: string) {
+    return this.client.post('auth/mfa/verify', { mfaToken, token });
+  }
+
+  async useBackupCode(mfaToken: string, backupCode: string) {
+    return this.client.post('auth/mfa/use-backup-code', { mfaToken, backupCode });
+  }
+
+  async disableMFA(password: string, token: string) {
+    return this.client.post('auth/mfa/disable', { password, token });
+  }
+
+  async regenerateBackupCodes(password: string, token: string) {
+    return this.client.post('auth/mfa/regenerate-backup-codes', { password, token });
+  }
+
+  // ============================================================================
   // Dashboard & Analytics
   // ============================================================================
 
   async getDashboardMetrics() {
     const response = await this.client.get(`${this.adminPath}/dashboard`);
-    return response.metrics;
+    return response.metrics || response.data?.metrics || response;
   }
 
   async getUpcomingRenewals(_days: number = 60) {
     const response = await this.client.get(`${this.adminPath}/dashboard`);
-    return response.upcomingRenewals || [];
+    return response.upcomingRenewals || response.data?.upcomingRenewals || [];
   }
 
   async getAnalytics(period: string = '30d') {
@@ -293,5 +343,115 @@ export class PortalAPI {
   async searchLogs(query: string, filters: Record<string, any> = {}) {
     const params = new URLSearchParams({ ...filters, q: query });
     return this.client.get(`${this.logsPath}/search?${params.toString()}`);
+  }
+
+  // ============================================================================
+  // Products Management (Admin)
+  // ============================================================================
+
+  async getProducts(filters: Record<string, any> = {}) {
+    const params = new URLSearchParams(filters);
+    return this.client.get(`${this.adminPath}/products?${params.toString()}`);
+  }
+
+  async getProduct(id: string) {
+    return this.client.get(`${this.adminPath}/products/${id}`);
+  }
+
+  async createProduct(data: any) {
+    return this.client.post(`${this.adminPath}/products`, data);
+  }
+
+  async updateProduct(id: string, data: any) {
+    return this.client.patch(`${this.adminPath}/products/${id}`, data);
+  }
+
+  async deleteProduct(id: string) {
+    return this.client.delete(`${this.adminPath}/products/${id}`);
+  }
+
+  // ============================================================================
+  // Organizations Management (Admin)
+  // ============================================================================
+
+  async getOrganizations(filters: Record<string, any> = {}) {
+    const params = new URLSearchParams(filters);
+    return this.client.get(`${this.adminPath}/organizations?${params.toString()}`);
+  }
+
+  async getOrganization(id: string) {
+    return this.client.get(`${this.adminPath}/organizations/${id}`);
+  }
+
+  async createOrganization(data: any) {
+    return this.client.post(`${this.adminPath}/organizations`, data);
+  }
+
+  async updateOrganization(id: string, data: any) {
+    return this.client.patch(`${this.adminPath}/organizations/${id}`, data);
+  }
+
+  async deleteOrganization(id: string) {
+    return this.client.delete(`${this.adminPath}/organizations/${id}`);
+  }
+
+  async getOrganizationStats(id: string) {
+    return this.client.get(`${this.adminPath}/organizations/${id}/stats`);
+  }
+
+  // ============================================================================
+  // Platform RBAC Management (Portal Admin Only)
+  // ============================================================================
+
+  async getPlatformPermissions() {
+    return this.client.get('platform/rbac/permissions');
+  }
+
+  async getPlatformRoles() {
+    return this.client.get('platform/rbac/roles');
+  }
+
+  async getPlatformRole(roleId: string) {
+    return this.client.get(`platform/rbac/roles/${roleId}`);
+  }
+
+  async createPlatformRole(data: {
+    name: string;
+    display_name?: string;
+    description?: string;
+    permissionIds?: string[];
+  }) {
+    return this.client.post('platform/rbac/roles', data);
+  }
+
+  async updatePlatformRole(
+    roleId: string,
+    data: {
+      display_name?: string;
+      description?: string;
+      permissionIds?: string[];
+    }
+  ) {
+    return this.client.patch(`platform/rbac/roles/${roleId}`, data);
+  }
+
+  async deletePlatformRole(roleId: string) {
+    return this.client.delete(`platform/rbac/roles/${roleId}`);
+  }
+
+  async getPlatformUsers() {
+    return this.client.get('platform/rbac/users');
+  }
+
+  async getPlatformUserRoles(userId: string) {
+    return this.client.get(`platform/rbac/users/${userId}/roles`);
+  }
+
+  async assignPlatformRole(userId: string, roleId: string) {
+    return this.client.post(`platform/rbac/users/${userId}/roles`, { roleId });
+  }
+
+  async revokePlatformRole(userId: string, roleId: string) {
+    return this.client.delete(`platform/rbac/users/${userId}/roles/${roleId}`);
   }
 }

@@ -7,18 +7,18 @@ class Instance {
       customerId,
       instanceKey,
       instanceUrl,
-      databaseHost = null,
-      databaseName = null,
-      appVersion = null
+      appVersion = null,
+      instanceFingerprint = null,
+      metadata = {}
     } = instanceData
 
     const result = await db.query(
       `INSERT INTO instances (
         customer_id, instance_key, instance_url,
-        database_host, database_name, app_version, status
+        app_version, instance_fingerprint, metadata, status
       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *`,
-      [customerId, instanceKey, instanceUrl, databaseHost, databaseName, appVersion, 'active']
+      [customerId, instanceKey, instanceUrl, appVersion, instanceFingerprint, JSON.stringify(metadata), 'active']
     )
 
     return result.rows[0]

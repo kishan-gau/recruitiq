@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Search, CheckCircle, XCircle, Trash2 } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function FeatureGrants() {
@@ -29,9 +29,9 @@ export default function FeatureGrants() {
     setLoading(true);
     try {
       const [featureRes, orgsRes, allOrgsRes] = await Promise.all([
-        apiService.getFeature(id),
-        apiService.getFeatureOrganizations(id, { limit: 1000 }),
-        apiService.getOrganizations({ limit: 1000 })
+        portalService.getFeature(id),
+        portalService.getFeatureOrganizations(id, { limit: 1000 }),
+        portalService.getOrganizations({ limit: 1000 })
       ]);
 
       setFeature(featureRes.feature);
@@ -52,7 +52,7 @@ export default function FeatureGrants() {
     }
 
     try {
-      await apiService.grantFeature(selectedOrg, {
+      await portalService.grantFeature(selectedOrg, {
         featureId: id,
         grantedVia: grantData.grantedVia,
         reason: grantData.reason,
@@ -84,7 +84,7 @@ export default function FeatureGrants() {
     const reason = prompt('Enter revocation reason (optional):');
     
     try {
-      await apiService.revokeFeature(orgId, id, reason || 'Manually revoked by admin');
+      await portalService.revokeFeature(orgId, id, reason || 'Manually revoked by admin');
       toast.success('Feature revoked successfully');
       fetchData();
     } catch (error) {

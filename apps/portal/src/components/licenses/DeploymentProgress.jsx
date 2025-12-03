@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { CheckCircle, XCircle, Loader2, Clock, Server, AlertCircle } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 
 export default function DeploymentProgress({ jobId, onComplete }) {
   const [status, setStatus] = useState(null);
@@ -13,7 +13,7 @@ export default function DeploymentProgress({ jobId, onComplete }) {
 
     const fetchStatus = async () => {
       try {
-        const response = await apiService.getDeploymentStatus(jobId);
+        const response = await portalService.getDeploymentStatus(jobId);
         
         if (response.success && response.deployment) {
           setStatus(response.deployment);

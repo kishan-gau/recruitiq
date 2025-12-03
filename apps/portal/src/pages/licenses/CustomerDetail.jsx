@@ -24,7 +24,7 @@ import Modal from '../../components/licenses/Modal'
 import ConfirmDialog from '../../components/licenses/ConfirmDialog'
 import DeploymentButton from '../../components/licenses/DeploymentButton'
 import DeploymentProgress from '../../components/licenses/DeploymentProgress'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 import { format, formatDistanceToNow } from 'date-fns'
 
 export default function CustomerDetail() {
@@ -53,9 +53,9 @@ export default function CustomerDetail() {
   const loadCustomerData = async () => {
     try {
       const [customerData, usageData, activityData] = await Promise.all([
-        apiService.getCustomer(id),
-        apiService.getCustomerUsage(id, 30),
-        apiService.getCustomerActivity(id, 10)
+        portalService.getCustomer(id),
+        portalService.getCustomerUsage(id, 30),
+        portalService.getCustomerActivity(id, 10)
       ])
       setCustomer(customerData)
       setUsage(usageData)
@@ -77,7 +77,7 @@ export default function CustomerDetail() {
   const handleRenewLicense = async () => {
     setActionLoading(true)
     try {
-      await apiService.renewLicense(id, renewMonths)
+      await portalService.renewLicense(id, renewMonths)
       setShowRenewModal(false)
       await loadCustomerData()
       toast.success(`License renewed for ${renewMonths} months!`)
@@ -93,7 +93,7 @@ export default function CustomerDetail() {
     setActionLoading(true)
     setShowSuspendConfirm(false)
     try {
-      await apiService.suspendLicense(id)
+      await portalService.suspendLicense(id)
       await loadCustomerData()
       toast.success('License suspended successfully')
     } catch (error) {
@@ -107,7 +107,7 @@ export default function CustomerDetail() {
   const handleReactivateLicense = async () => {
     setActionLoading(true)
     try {
-      await apiService.reactivateLicense(id)
+      await portalService.reactivateLicense(id)
       await loadCustomerData()
       toast.success('License reactivated successfully')
     } catch (error) {
@@ -121,7 +121,7 @@ export default function CustomerDetail() {
   const handleEditCustomer = async () => {
     setActionLoading(true)
     try {
-      await apiService.updateCustomer(id, {
+      await portalService.updateCustomer(id, {
         contact_name: editForm.contactName,
         contact_email: editForm.contactEmail,
         instance_url: editForm.instanceUrl
@@ -193,7 +193,7 @@ export default function CustomerDetail() {
         </div>
         <div className="flex items-center space-x-3">
           <button 
-            onClick={() => apiService.downloadLicenseFile(id)}
+            onClick={() => portalService.downloadLicenseFile(id)}
             className="btn btn-secondary flex items-center"
           >
             <Download className="w-4 h-4 mr-2" />
@@ -251,7 +251,7 @@ export default function CustomerDetail() {
             <div>
               <label className="text-sm text-gray-600">License Key</label>
               <p className="mt-1 text-sm font-mono text-gray-900 bg-gray-50 p-2 rounded border border-gray-200">
-                {customer.id}
+                {customer.licenseKey || customer.license_key || 'Not assigned'}
               </p>
             </div>
             <div>
@@ -458,7 +458,7 @@ export default function CustomerDetail() {
             <DeploymentButton
               instance={{
                 id: customer.instanceKey,
-                license_key: customer.id
+                license_key: customer.licenseKey || customer.license_key
               }}
               customer={{
                 id: customer.id,

@@ -8,16 +8,16 @@ class UsageEvent {
       instanceId,
       eventType,
       eventData = {},
-      userCount = null,
-      workspaceCount = null,
-      jobCount = null,
-      candidateCount = null
+      usersCount = null,
+      workspacesCount = null,
+      jobsCount = null,
+      candidatesCount = null
     } = eventPayload
 
     const result = await db.query(
       `INSERT INTO usage_events (
-        customer_id, instance_id, event_type, event_data,
-        user_count, workspace_count, job_count, candidate_count,
+        customer_id, instance_key, event_type, event_data,
+        users_count, workspaces_count, jobs_count, candidates_count,
         timestamp
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
       RETURNING *`,
@@ -26,10 +26,10 @@ class UsageEvent {
         instanceId,
         eventType,
         JSON.stringify(eventData),
-        userCount,
-        workspaceCount,
-        jobCount,
-        candidateCount
+        usersCount,
+        workspacesCount,
+        jobsCount,
+        candidatesCount
       ]
     )
 
@@ -76,7 +76,7 @@ class UsageEvent {
   static async findByInstanceId(instanceId, limit = 100) {
     const result = await db.query(
       `SELECT * FROM usage_events 
-      WHERE instance_id = $1 
+      WHERE instance_key = $1 
       ORDER BY timestamp DESC 
       LIMIT $2`,
       [instanceId, limit]
@@ -89,24 +89,24 @@ class UsageEvent {
   static async getCurrentCounts(customerId) {
     const result = await db.query(
       `SELECT 
-        user_count,
-        workspace_count,
-        job_count,
-        candidate_count,
+        users_count,
+        workspaces_count,
+        jobs_count,
+        candidates_count,
         timestamp
       FROM usage_events
       WHERE customer_id = $1
-        AND user_count IS NOT NULL
+        AND users_count IS NOT NULL
       ORDER BY timestamp DESC
       LIMIT 1`,
       [customerId]
     )
 
     return result.rows[0] || {
-      user_count: 0,
-      workspace_count: 0,
-      job_count: 0,
-      candidate_count: 0
+      users_count: 0,
+      workspaces_count: 0,
+      jobs_count: 0,
+      candidates_count: 0
     }
   }
 
@@ -116,10 +116,10 @@ class UsageEvent {
       `SELECT 
         event_type,
         COUNT(*) as event_count,
-        MAX(user_count) as peak_users,
-        MAX(workspace_count) as peak_workspaces,
-        MAX(job_count) as peak_jobs,
-        MAX(candidate_count) as peak_candidates,
+        MAX(users_count) as peak_users,
+        MAX(workspaces_count) as peak_workspaces,
+        MAX(jobs_count) as peak_jobs,
+        MAX(candidates_count) as peak_candidates,
         MIN(timestamp) as first_event,
         MAX(timestamp) as last_event
       FROM usage_events
@@ -138,15 +138,15 @@ class UsageEvent {
     const result = await db.query(
       `SELECT 
         DATE(timestamp) as date,
-        MAX(user_count) as max_users,
-        MAX(workspace_count) as max_workspaces,
-        MAX(job_count) as max_jobs,
-        MAX(candidate_count) as max_candidates,
+        MAX(users_count) as max_users,
+        MAX(workspaces_count) as max_workspaces,
+        MAX(jobs_count) as max_jobs,
+        MAX(candidates_count) as max_candidates,
         COUNT(*) as total_events
       FROM usage_events
       WHERE customer_id = $1
         AND timestamp > NOW() - INTERVAL '${days} days'
-        AND user_count IS NOT NULL
+        AND users_count IS NOT NULL
       GROUP BY DATE(timestamp)
       ORDER BY date DESC`,
       [customerId]
@@ -161,10 +161,9 @@ class UsageEvent {
       `SELECT 
         e.*,
         c.name as customer_name,
-        i.instance_key
+        e.instance_key
       FROM usage_events e
       JOIN customers c ON e.customer_id = c.id
-      LEFT JOIN instances i ON e.instance_id = i.id
       ORDER BY e.timestamp DESC
       LIMIT $1`,
       [limit]

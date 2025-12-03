@@ -5,7 +5,7 @@ import MetricCard from '../../components/licenses/MetricCard'
 import Card from '../../components/licenses/Card'
 import Table from '../../components/licenses/Table'
 import Badge from '../../components/licenses/Badge'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 import { format } from 'date-fns'
 
 export default function LicenseDashboard() {
@@ -21,8 +21,8 @@ export default function LicenseDashboard() {
   const loadDashboardData = async () => {
     try {
       const [metricsData, renewalsData] = await Promise.all([
-        apiService.getDashboardMetrics(),
-        apiService.getUpcomingRenewals(60)
+        portalService.getDashboardMetrics(),
+        portalService.getUpcomingRenewals(60)
       ])
       setMetrics(metricsData)
       setUpcomingRenewals(renewalsData)

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { TrendingUp, Users, DollarSign, Briefcase } from 'lucide-react'
 import Card from '../../components/licenses/Card'
 import MetricCard from '../../components/licenses/MetricCard'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 
 export default function Analytics() {
   const [period, setPeriod] = useState('30d')
@@ -18,11 +18,11 @@ export default function Analytics() {
     setLoading(true)
     try {
       // Get dashboard metrics for overall stats
-      const metricsData = await apiService.getDashboardMetrics()
+      const metricsData = await portalService.getDashboardMetrics()
       setMetrics(metricsData)
       
       // Get all customers to calculate top customers by revenue
-      const customers = await apiService.getCustomers({})
+      const customers = await portalService.getCustomers({})
       const sorted = customers
         .filter(c => c.status === 'active')
         .sort((a, b) => b.mrr - a.mrr)

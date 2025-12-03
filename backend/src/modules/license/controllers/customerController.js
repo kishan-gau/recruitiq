@@ -2,6 +2,7 @@ import Customer from '../models/Customer.js'
 import License from '../models/License.js'
 import Instance from '../models/Instance.js'
 import UsageEvent from '../models/UsageEvent.js'
+import TierPreset from '../models/TierPreset.js'
 import LicenseGenerator from '../services/LicenseGenerator.js'
 import { addMonths } from 'date-fns'
 
@@ -67,6 +68,23 @@ export const customerController = {
           fields: missing
         })
       }
+
+      // Fetch tier preset to get limits
+      const tierPreset = await TierPreset.getActivePreset(customerData.tier)
+      
+      if (!tierPreset) {
+        return res.status(400).json({ 
+          error: `No active tier preset found for tier: ${customerData.tier}`
+        })
+      }
+
+      // Add tier limits to customer data
+      customerData.maxUsers = tierPreset.max_users
+      customerData.maxWorkspaces = tierPreset.max_workspaces
+      customerData.maxJobs = tierPreset.max_jobs
+      customerData.maxCandidates = tierPreset.max_candidates
+      customerData.features = tierPreset.features || []
+      customerData.tierPresetId = tierPreset.id
 
       // Set contract dates if not provided
       if (!customerData.contractStartDate) {

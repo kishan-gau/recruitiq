@@ -105,6 +105,46 @@ import type {
   YearToDateSummary,
 } from '@recruitiq/types';
 
+// Forfait Rule Types (inline until added to @recruitiq/types)
+interface ForfaitRuleTemplate {
+  id: string;
+  name: string;
+  description: string;
+  taxPercentage: number;
+  grossingUpEnabled: boolean;
+  deductionCode?: string;
+}
+
+interface ForfaitRule {
+  id: string;
+  componentCode: string;
+  taxPercentage: number;
+  grossingUpEnabled: boolean;
+  deductionCode?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SetForfaitRuleRequest {
+  taxPercentage: number;
+  grossingUpEnabled: boolean;
+  deductionCode?: string;
+}
+
+interface ForfaitPreviewRequest {
+  componentCode: string;
+  grossAmount: number;
+  taxPercentage: number;
+  grossingUpEnabled: boolean;
+}
+
+interface ForfaitPreview {
+  grossAmount: number;
+  taxAmount: number;
+  netAmount: number;
+  effectiveRate: number;
+}
+
 /**
  * Paylinq Product API
  * Payroll management system endpoints

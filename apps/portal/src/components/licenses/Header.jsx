@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Bell, User, LogOut } from 'lucide-react'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 
 export default function Header() {
   const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
   const handleLogout = () => {
-    apiService.logout()
+    portalService.logout()
     toast.success('Logged out successfully')
     navigate('/login')
   }

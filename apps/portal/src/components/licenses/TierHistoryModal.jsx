@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Clock, TrendingUp, TrendingDown } from 'lucide-react'
-import apiService from '../../services/api'
+import { portalService } from '../../services'
 import { toast } from 'react-hot-toast'
 
 export default function TierHistoryModal({ tier, onClose }) {
@@ -13,7 +13,7 @@ export default function TierHistoryModal({ tier, onClose }) {
 
   const loadHistory = async () => {
     try {
-      const response = await apiService.getTierHistory(tier.tier_name)
+      const response = await portalService.getTierHistory(tier.tier_name)
       setHistory(response.history || [])
     } catch (error) {
       console.error('Failed to load history:', error)

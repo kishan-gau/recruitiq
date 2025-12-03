@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Trash2, Key, Shield, User, Mail, Calendar, Clock } from 'lucide-react';
-import apiService from '../../services/api';
+import { portalService } from '../../services';
 import toast from 'react-hot-toast';
 
 export default function UserDetail() {
@@ -28,8 +28,8 @@ export default function UserDetail() {
     try {
       setLoading(true);
       const [userData, permissionsData] = await Promise.all([
-        apiService.getUser(id),
-        apiService.getPermissions()
+        portalService.getUser(id),
+        portalService.getPermissions()
       ]);
       
       setUser(userData.user);
@@ -57,7 +57,7 @@ export default function UserDetail() {
       setSaving(true);
       
       // Update user basic info
-      await apiService.updateUser(id, formData);
+      await portalService.updateUser(id, formData);
       
       // Update permissions if changed
       const currentPermIds = user.permissions?.map(p => p.id) || [];
@@ -66,7 +66,7 @@ export default function UserDetail() {
         selectedPermissions.some(id => !currentPermIds.includes(id));
       
       if (hasPermissionChanges) {
-        await apiService.updateUserPermissions(id, selectedPermissions);
+        await portalService.updateUserPermissions(id, selectedPermissions);
       }
       
       toast.success('User updated successfully');
@@ -86,7 +86,7 @@ export default function UserDetail() {
     }
 
     try {
-      await apiService.deleteUser(id);
+      await portalService.deleteUser(id);
       toast.success('User deleted successfully');
       navigate('/users');
     } catch (error) {
