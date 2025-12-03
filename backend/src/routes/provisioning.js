@@ -143,14 +143,15 @@ async function configureSharedTenantAsync(deploymentId, organizationId, slug, vp
  * 
  * @param {string} deploymentId - Deployment ID
  * @param {string} organizationId - Organization UUID
- * @param {string} slug - Organization slug
+ * @param {string} organizationName - Organization display name
+ * @param {string} slug - Organization slug (used for container naming)
  * @param {string} tier - Tier (starter, professional, enterprise)
  * @param {Object} vps - VPS object with connection details
  * @param {string} adminEmail - Admin email
  * @param {string} adminName - Admin name
  * @param {string} tempPassword - Temporary password for admin
  */
-async function deployTenantViaDeploymentService(deploymentId, organizationId, slug, tier, vps, adminEmail, adminName, tempPassword) {
+async function deployTenantViaDeploymentService(deploymentId, organizationId, organizationName, slug, tier, vps, adminEmail, adminName, tempPassword) {
   try {
     logger.info(`🚀 Starting tenant deployment via Deployment Service for ${slug}`);
 
@@ -168,7 +169,7 @@ async function deployTenantViaDeploymentService(deploymentId, organizationId, sl
       vpsId: vps.id,
       vpsIp: vps.ip_address || vps.vps_ip,
       tenantId: organizationId,
-      organizationName: slug, // deployment service uses this for container naming
+      organizationName: organizationName,
       organizationSlug: slug,
       tier,
       adminEmail,
@@ -280,8 +281,14 @@ router.post('/instances',
         // Assign organization to VPS
         await vpsManager.assignOrganizationToVPS(organizationId, selectedVPS.id);
 
-        // Create admin user with secure password
-        const tempPassword = crypto.randomBytes(12).toString('base64').slice(0, 12) + 'A1!';
+        // Create admin user with secure password (16 bytes = strong entropy)
+        // Generate a password that meets complexity requirements naturally
+        const randomChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+        const passwordBytes = crypto.randomBytes(16);
+        let tempPassword = '';
+        for (let i = 0; i < 16; i++) {
+          tempPassword += randomChars[passwordBytes[i] % randomChars.length];
+        }
         const passwordHash = await bcrypt.hash(tempPassword, 10);
         
         // Split admin name into first and last name
@@ -336,7 +343,7 @@ router.post('/instances',
         // Configure subdomain on VPS asynchronously
         if (USE_DEPLOYMENT_SERVICE) {
           // Use deployment-service for container orchestration
-          deployTenantViaDeploymentService(deploymentId, organizationId, slug, tier, selectedVPS, adminEmail, adminName, tempPassword)
+          deployTenantViaDeploymentService(deploymentId, organizationId, organizationName, slug, tier, selectedVPS, adminEmail, adminName, tempPassword)
             .catch(error => {
               logger.error('Deployment service tenant configuration failed:', error);
             });

@@ -151,7 +151,7 @@ class DeploymentServiceClient {
   async getDeploymentLogs(deploymentId) {
     try {
       const client = this.getClient();
-      const response = await client.get(`/tenants/deployments/${deploymentId}/logs`);
+      const response = await client.get(`/deployments/${deploymentId}/logs`);
       return response.data;
     } catch (error) {
       logger.error('[DeploymentServiceClient] Failed to get deployment logs', {
