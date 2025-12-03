@@ -8,6 +8,7 @@
 import TenantDeploymentService from '../services/TenantDeploymentService.js';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 class TenantManagementController {
   constructor(options = {}) {
@@ -53,8 +54,8 @@ class TenantManagementController {
         });
       }
 
-      // Generate deployment ID
-      const deploymentId = `deploy-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Generate deployment ID using crypto for better uniqueness
+      const deploymentId = `deploy-${Date.now()}-${crypto.randomUUID().split('-')[0]}`;
 
       console.log(`[TenantController] Received add-tenant request for ${organizationSlug}`);
 

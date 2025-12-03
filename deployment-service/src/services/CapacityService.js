@@ -182,7 +182,7 @@ class CapacityService {
     const byCpu = Math.floor(available.cpu / req.cpu);
     const byDisk = Math.floor(available.disk / req.disk);
     
-    return Math.min(byRam, byCpu, byDisk, 0);
+    return Math.max(Math.min(byRam, byCpu, byDisk), 0);
   }
 
   /**

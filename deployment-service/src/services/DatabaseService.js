@@ -233,16 +233,21 @@ class DatabaseService {
 
     console.log(`[DatabaseService] Using fallback onboarding for: ${organizationSlug}`);
 
-    // Create organization (minimal seed)
+    // Sanitize inputs - escape single quotes and validate format
+    const sanitizedName = organizationName.replace(/'/g, "''").substring(0, 255);
+    const sanitizedSlug = organizationSlug.replace(/[^a-z0-9_-]/gi, '').substring(0, 63);
+    const sanitizedTier = ['starter', 'professional', 'enterprise'].includes(tier) ? tier : 'starter';
+
+    // Create organization (minimal seed) with escaped values
     const createOrgSQL = `
       INSERT INTO organizations (name, slug, tier, created_at)
-      VALUES ('${organizationName.replace(/'/g, "''")}', '${organizationSlug}', '${tier}', NOW())
+      VALUES ('${sanitizedName}', '${sanitizedSlug}', '${sanitizedTier}', NOW())
       ON CONFLICT (slug) DO NOTHING
       RETURNING id;
     `;
 
     const orgResult = await this.execSSH(vpsIp,
-      `docker exec ${postgresContainer} psql -U ${dbUser} -d tenant_${organizationSlug} -c "${createOrgSQL}" 2>&1`,
+      `docker exec ${postgresContainer} psql -U ${dbUser} -d tenant_${sanitizedSlug} -c "${createOrgSQL}" 2>&1`,
       sshKey);
 
     // This is a minimal fallback - full onboarding should use the script

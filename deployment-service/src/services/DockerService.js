@@ -264,8 +264,7 @@ volumes:
       throw new Error(`Failed to create tenant directory: ${mkdirResult.error}`);
     }
     
-    // Write compose file (escape for shell)
-    const escapedContent = composeContent.replace(/'/g, "'\\''");
+    // Write compose file using heredoc (single-quoted EOF prevents shell expansion)
     const writeResult = await this.execSSH(vpsIp, 
       `cat > ${composePath} << 'EOF'
 ${composeContent}

@@ -29,7 +29,8 @@ class SSLService {
     const sshCmd = `ssh ${this.sshOptions} -i "${sshKey}" root@${vpsIp} "${command}"`;
     
     try {
-      const { stdout, stderr } = await execAsync(sshCmd, { timeout: 120000 }); // 2 min timeout
+      // 5 min timeout for SSL operations (Let's Encrypt can be slow)
+      const { stdout, stderr } = await execAsync(sshCmd, { timeout: 300000 });
       return { success: true, stdout: stdout.trim(), stderr: stderr.trim() };
     } catch (error) {
       return { 

@@ -78,16 +78,31 @@ router.post('/deployments/callback', async (req, res) => {
 
     // Update deployment record in database
     if (status === 'completed') {
-      await pool.query(
+      // Update by deployment ID first, then by organization ID as fallback
+      let updateResult = await pool.query(
         `UPDATE instance_deployments 
          SET status = 'active', 
              access_url = $1,
              status_message = 'Deployment completed successfully',
              completed_at = NOW(),
              updated_at = NOW()
-         WHERE id = $2 OR organization_id = $3`,
-        [endpoints?.web, deploymentId, organizationId]
+         WHERE id = $2`,
+        [endpoints?.web, deploymentId]
       );
+      
+      // If no rows updated by ID, try by organization_id
+      if (updateResult.rowCount === 0 && organizationId) {
+        await pool.query(
+          `UPDATE instance_deployments 
+           SET status = 'active', 
+               access_url = $1,
+               status_message = 'Deployment completed successfully',
+               completed_at = NOW(),
+               updated_at = NOW()
+           WHERE organization_id = $2 AND status != 'active'`,
+          [endpoints?.web, organizationId]
+        );
+      }
 
       // Update license status to active
       if (req.body.licenseId) {
@@ -106,15 +121,29 @@ router.post('/deployments/callback', async (req, res) => {
       });
 
     } else if (status === 'failed') {
-      await pool.query(
+      // Update by deployment ID first, then by organization ID as fallback
+      let failedResult = await pool.query(
         `UPDATE instance_deployments 
          SET status = 'failed', 
              error_message = $1,
              status_message = 'Deployment failed',
              updated_at = NOW()
-         WHERE id = $2 OR organization_id = $3`,
-        [error, deploymentId, organizationId]
+         WHERE id = $2`,
+        [error, deploymentId]
       );
+      
+      // If no rows updated by ID, try by organization_id
+      if (failedResult.rowCount === 0 && organizationId) {
+        await pool.query(
+          `UPDATE instance_deployments 
+           SET status = 'failed', 
+               error_message = $1,
+               status_message = 'Deployment failed',
+               updated_at = NOW()
+           WHERE organization_id = $2 AND status NOT IN ('active', 'failed')`,
+          [error, organizationId]
+        );
+      }
 
       logger.error('Deployment failed', {
         deploymentId,
