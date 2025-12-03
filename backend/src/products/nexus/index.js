@@ -11,14 +11,15 @@ import nexusRoutes from './routes/index.js';
  */
 const config = {
   name: 'Nexus',
-  version: '1.0.0',
-  description: 'Core HRIS Management System',
+  version: '1.1.0',
+  description: 'Core HRIS Management System with VIP Employee Support',
   features: [
     'employee-management',
     'department-management',
     'leave-management',
     'performance-management',
-    'benefits-management'
+    'benefits-management',
+    'vip-employee-tracking'
   ]
 };
 
