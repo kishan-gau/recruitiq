@@ -11,11 +11,338 @@
 import express from 'express';
 import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
 import { queryCentralDb } from '../config/centralDatabase.js';
+import pool from '../config/database.js';
 import logger from '../utils/logger.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-// All portal routes require platform user authentication
+// ============================================================================
+// DEPLOYMENT CALLBACKS (No authentication required - uses service token)
+// ============================================================================
+
+/**
+ * POST /api/portal/deployments/callback
+ * Receive deployment status callbacks from Deployment Service
+ */
+router.post('/deployments/callback', async (req, res) => {
+  try {
+    // Verify deployment service token
+    const authHeader = req.headers.authorization;
+    const serviceHeader = req.headers['x-service'];
+    
+    if (!authHeader?.startsWith('Bearer ') || serviceHeader !== 'deployment-service') {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid service authentication'
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const secret = process.env.DEPLOYMENT_SERVICE_SECRET || 'deployment-service-secret';
+    
+    try {
+      jwt.verify(token, secret);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid service token'
+      });
+    }
+
+    const {
+      deploymentId,
+      status,
+      vpsId,
+      tenantId,
+      organizationId,
+      organizationSlug,
+      endpoints,
+      containers,
+      credentials,
+      resources,
+      health,
+      error,
+      startedAt,
+      completedAt,
+      failedAt,
+      duration,
+      logs
+    } = req.body;
+
+    logger.info('Deployment callback received', {
+      deploymentId,
+      status,
+      organizationSlug
+    });
+
+    // Update deployment record in database
+    if (status === 'completed') {
+      await pool.query(
+        `UPDATE instance_deployments 
+         SET status = 'active', 
+             access_url = $1,
+             status_message = 'Deployment completed successfully',
+             completed_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $2 OR organization_id = $3`,
+        [endpoints?.web, deploymentId, organizationId]
+      );
+
+      // Update license status to active
+      if (req.body.licenseId) {
+        await pool.query(
+          `UPDATE licenses SET status = 'active', activated_at = NOW() WHERE id = $1`,
+          [req.body.licenseId]
+        );
+      }
+
+      // TODO: Send welcome email to admin
+      logger.info('Deployment completed', {
+        deploymentId,
+        organizationSlug,
+        url: endpoints?.web,
+        adminEmail: credentials?.adminEmail
+      });
+
+    } else if (status === 'failed') {
+      await pool.query(
+        `UPDATE instance_deployments 
+         SET status = 'failed', 
+             error_message = $1,
+             status_message = 'Deployment failed',
+             updated_at = NOW()
+         WHERE id = $2 OR organization_id = $3`,
+        [error, deploymentId, organizationId]
+      );
+
+      logger.error('Deployment failed', {
+        deploymentId,
+        organizationSlug,
+        error
+      });
+    }
+
+    // Log security event
+    logger.logSecurityEvent('deployment_callback', {
+      severity: status === 'failed' ? 'warning' : 'info',
+      deploymentId,
+      status,
+      organizationSlug
+    }, req);
+
+    res.json({
+      success: true,
+      message: 'Callback processed'
+    });
+
+  } catch (error) {
+    logger.error('Deployment callback error', { error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/portal/tenant-logs
+ * Receive logs from tenant instances
+ */
+router.post('/tenant-logs', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'] || req.headers.authorization?.substring(7);
+    const tenantId = req.headers['x-tenant-id'];
+
+    if (!apiKey) {
+      return res.status(401).json({
+        success: false,
+        error: 'Missing API key'
+      });
+    }
+
+    // TODO: Validate API key against stored tenant keys
+    // For now, just log the received logs
+
+    const { organizationSlug, logs } = req.body;
+
+    logger.info('Received tenant logs', {
+      tenantId,
+      organizationSlug,
+      count: logs?.length || 0
+    });
+
+    // Store logs in central database
+    if (logs && logs.length > 0) {
+      for (const log of logs) {
+        await queryCentralDb(
+          `INSERT INTO system_logs (tenant_id, level, message, timestamp, metadata)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [tenantId, log.level, log.message, log.timestamp, JSON.stringify(log.context || {})]
+        ).catch(err => {
+          // Don't fail if central DB is not available
+          logger.warn('Failed to store tenant log', { error: err.message });
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      received: logs?.length || 0
+    });
+
+  } catch (error) {
+    logger.error('Tenant logs error', { error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/portal/tenant-events
+ * Receive events from tenant instances
+ */
+router.post('/tenant-events', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'] || req.headers.authorization?.substring(7);
+    const tenantId = req.headers['x-tenant-id'];
+
+    if (!apiKey) {
+      return res.status(401).json({
+        success: false,
+        error: 'Missing API key'
+      });
+    }
+
+    const { organizationSlug, eventType, eventData, timestamp } = req.body;
+
+    logger.info('Received tenant event', {
+      tenantId,
+      organizationSlug,
+      eventType
+    });
+
+    // Handle specific event types
+    if (eventType === 'health_check') {
+      // Update tenant health status
+      await pool.query(
+        `UPDATE instance_deployments 
+         SET last_health_check = NOW(), 
+             health_status = $1
+         WHERE organization_id = $2`,
+        [eventData?.isHealthy ? 'healthy' : 'unhealthy', tenantId]
+      ).catch(() => {});
+    }
+
+    res.json({
+      success: true,
+      eventType
+    });
+
+  } catch (error) {
+    logger.error('Tenant event error', { error: error.message });
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/portal/licenses/validate
+ * Validate a license key (called by tenant instances)
+ */
+router.post('/licenses/validate', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    const { licenseKey, organizationId, feature, action } = req.body;
+
+    if (!licenseKey) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        reason: 'Missing license key'
+      });
+    }
+
+    // Query license from database
+    const licenseResult = await pool.query(
+      `SELECT l.*, 
+              tp.max_users, tp.max_workspaces, tp.max_jobs, tp.max_candidates, tp.features
+       FROM licenses l
+       LEFT JOIN tier_presets tp ON l.tier = tp.tier_name AND tp.is_active = true
+       WHERE l.license_key = $1 AND l.deleted_at IS NULL
+       ORDER BY tp.version DESC
+       LIMIT 1`,
+      [licenseKey]
+    );
+
+    if (licenseResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        valid: false,
+        reason: 'License not found'
+      });
+    }
+
+    const license = licenseResult.rows[0];
+
+    // Check if license is active
+    if (license.status !== 'active') {
+      return res.json({
+        success: true,
+        valid: false,
+        reason: `License is ${license.status}`
+      });
+    }
+
+    // Check expiration
+    if (license.expires_at && new Date(license.expires_at) < new Date()) {
+      return res.json({
+        success: true,
+        valid: false,
+        reason: 'License has expired'
+      });
+    }
+
+    // Check feature access if specified
+    const features = license.features || [];
+    if (feature && !features.includes(feature) && !features.includes('all')) {
+      return res.json({
+        success: true,
+        valid: false,
+        reason: `Feature '${feature}' not included in license`
+      });
+    }
+
+    // License is valid
+    res.json({
+      success: true,
+      valid: true,
+      tier: license.tier,
+      features: features,
+      limits: {
+        maxUsers: license.max_users,
+        maxWorkspaces: license.max_workspaces,
+        maxJobs: license.max_jobs,
+        maxCandidates: license.max_candidates
+      },
+      expiresAt: license.expires_at
+    });
+
+  } catch (error) {
+    logger.error('License validation error', { error: error.message });
+    res.status(500).json({
+      success: false,
+      valid: false,
+      reason: 'Validation service error'
+    });
+  }
+});
+
+// All other portal routes require platform user authentication
 router.use(authenticatePlatform);
 
 // Most routes require portal.view permission
