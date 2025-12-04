@@ -5,44 +5,44 @@
 
 import express from 'express';
 import { productConfigController } from '../controllers/index.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import { requirePlatformPermission } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
 // Config routes
 router.get(
   '/organizations/:organizationId/products/:productId/configs',
-  requirePermission('nexus:config:read'),
+  requirePlatformPermission('config:read'),
   productConfigController.getConfigs.bind(productConfigController)
 );
 
 router.get(
   '/organizations/:organizationId/products/:productId/configs/:configKey',
-  requirePermission('nexus:config:read'),
+  requirePlatformPermission('config:read'),
   productConfigController.getConfig.bind(productConfigController)
 );
 
 router.put(
   '/organizations/:organizationId/products/:productId/configs/:configKey',
-  requirePermission('nexus:config:update'),
+  requirePlatformPermission('config:manage'),
   productConfigController.setConfig.bind(productConfigController)
 );
 
 router.patch(
   '/organizations/:organizationId/products/:productId/configs/:configKey',
-  requirePermission('nexus:config:update'),
+  requirePlatformPermission('config:manage'),
   productConfigController.updateConfig.bind(productConfigController)
 );
 
 router.delete(
   '/organizations/:organizationId/products/:productId/configs/:configKey',
-  requirePermission('nexus:config:delete'),
+  requirePlatformPermission('config:manage'),
   productConfigController.deleteConfig.bind(productConfigController)
 );
 
 router.delete(
   '/organizations/:organizationId/products/:productId/configs',
-  requirePermission('nexus:config:delete'),
+  requirePlatformPermission('config:manage'),
   productConfigController.deleteAllConfigs.bind(productConfigController)
 );
 

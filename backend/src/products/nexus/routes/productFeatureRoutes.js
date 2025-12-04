@@ -5,75 +5,75 @@
 
 import express from 'express';
 import { productFeatureController } from '../controllers/index.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import { requirePlatformPermission } from '../../../middleware/auth.js';
 
 const router = express.Router();
 
 // Feature listing and query routes
 router.get(
   '/products/:productId/features',
-  requirePermission('nexus:features:read'),
+  requirePlatformPermission('features:read'),
   productFeatureController.getProductFeatures.bind(productFeatureController)
 );
 
 router.get(
   '/products/:productId/features/available',
-  requirePermission('nexus:features:read'),
+  requirePlatformPermission('features:read'),
   productFeatureController.getAvailableFeatures.bind(productFeatureController)
 );
 
 router.get(
   '/products/:productId/features/stats',
-  requirePermission('nexus:features:read'),
+  requirePlatformPermission('features:read'),
   productFeatureController.getFeatureStats.bind(productFeatureController)
 );
 
 router.get(
   '/products/:productId/features/:featureKey',
-  requirePermission('nexus:features:read'),
+  requirePlatformPermission('features:read'),
   productFeatureController.getFeature.bind(productFeatureController)
 );
 
 router.get(
   '/products/:productId/features/:featureKey/check',
-  requirePermission('nexus:features:read'),
+  requirePlatformPermission('features:read'),
   productFeatureController.checkFeatureAvailability.bind(productFeatureController)
 );
 
 // Feature management routes (admin)
 router.post(
   '/products/:productId/features',
-  requirePermission('nexus:features:create'),
+  requirePlatformPermission('features:manage'),
   productFeatureController.createFeature.bind(productFeatureController)
 );
 
 router.patch(
   '/products/:productId/features/:featureKey',
-  requirePermission('nexus:features:update'),
+  requirePlatformPermission('features:manage'),
   productFeatureController.updateFeature.bind(productFeatureController)
 );
 
 router.patch(
   '/products/:productId/features/:featureKey/rollout',
-  requirePermission('nexus:features:update'),
+  requirePlatformPermission('features:manage'),
   productFeatureController.updateRollout.bind(productFeatureController)
 );
 
 router.post(
   '/products/:productId/features/:featureKey/enable',
-  requirePermission('nexus:features:update'),
+  requirePlatformPermission('features:manage'),
   productFeatureController.enableFeature.bind(productFeatureController)
 );
 
 router.post(
   '/products/:productId/features/:featureKey/disable',
-  requirePermission('nexus:features:update'),
+  requirePlatformPermission('features:manage'),
   productFeatureController.disableFeature.bind(productFeatureController)
 );
 
 router.delete(
   '/products/:productId/features/:featureKey',
-  requirePermission('nexus:features:delete'),
+  requirePlatformPermission('features:manage'),
   productFeatureController.deleteFeature.bind(productFeatureController)
 );
 

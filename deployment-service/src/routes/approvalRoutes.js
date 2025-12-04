@@ -1,9 +1,10 @@
-const express = require('express');
-const router = express.Router();
+import express from 'express';
 
-const vpsProvisionController = require('../controllers/vpsProvisionController');
-const vpsApproverController = require('../controllers/vpsApproverController');
-const vpsInventoryController = require('../controllers/vpsInventoryController');
+import vpsProvisionController from '../controllers/vpsProvisionController.js';
+import vpsApproverController from '../controllers/vpsApproverController.js';
+import vpsInventoryController from '../controllers/vpsInventoryController.js';
+
+const router = express.Router();
 
 // Middleware (to be implemented - placeholder for now)
 const authenticate = (req, res, next) => {
@@ -111,4 +112,4 @@ router.post('/vps-inventory/:vpsName/sync', authenticate, vpsInventoryController
 // Remove VPS from inventory (soft delete)
 router.delete('/vps-inventory/:vpsName', authenticate, requireApprover, vpsInventoryController.deleteVps);
 
-module.exports = router;
+export default router;

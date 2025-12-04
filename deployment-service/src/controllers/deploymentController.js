@@ -1,10 +1,10 @@
-const {
+import {
   createDeploymentJob,
   getDeploymentJobStatus,
   cancelDeploymentJob,
   getQueueStats,
-} = require('../queue/deploymentQueue');
-const deploymentService = require('../services/transip/deploymentService');
+} from '../queue/deploymentQueue.js';
+import deploymentService from '../services/transip/deploymentService.js';
 
 class DeploymentController {
   /**
@@ -315,4 +315,4 @@ class DeploymentController {
   }
 }
 
-module.exports = new DeploymentController();
+export default new DeploymentController();

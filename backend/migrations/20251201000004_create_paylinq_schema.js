@@ -134,31 +134,102 @@ export async function up(knex) {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.uuid('organization_id').notNullable();
     table.uuid('employee_id').notNullable();
-    table.string('compensation_type', 50).notNullable();
-    table.decimal('amount', 15, 4).notNullable();
-    table.string('currency', 3).defaultTo('SRD');
-    table.string('frequency', 50).notNullable();
+    
+    // Worker and Component References
+    table.uuid('worker_metadata_id');
+    table.uuid('pay_component_id');
+    
+    // Compensation details (legacy fields for backward compatibility)
+    table.string('compensation_type', 20);
+    table.decimal('amount', 15, 2); // Fixed amount (e.g., $5000 monthly salary)
+    table.decimal('overtime_rate', 12, 2); // Overtime rate (e.g., 1.5x)
+    
+    // New fields for component-based compensation
+    table.decimal('rate', 15, 2);    // Hourly/unit rate (e.g., $25/hour)
+    table.decimal('percentage', 5, 2);  // Percentage rate (e.g., 5% commission)
+    
+    // Configuration
+    table.string('calculation_type', 50);
+    table.string('frequency', 50);  // How often this component applies
+    table.boolean('is_active').notNullable().defaultTo(true);
+    
+    // Effective dates
     table.date('effective_from').notNullable();
     table.date('effective_to');
     table.boolean('is_current').defaultTo(true);
-    table.boolean('is_active').defaultTo(true);
-    table.uuid('worker_metadata_id');
-    table.uuid('pay_component_id');
-    table.string('change_reason', 100);
+    table.string('currency', 3).defaultTo('SRD');
+    
+    // Limits and Rules
+    table.decimal('min_value', 15, 2);
+    table.decimal('max_value', 15, 2);
+    table.jsonb('calculation_rules');  // Complex calculation rules
+    
+    // Notes
     table.text('notes');
-    table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
-    table.timestamp('updated_at', { useTz: true });
+    
+    // Audit fields
+    table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
+    table.timestamp('updated_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
     table.timestamp('deleted_at', { useTz: true });
     table.uuid('created_by');
     table.uuid('updated_by');
     table.uuid('deleted_by');
     
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
-    table.foreign('employee_id').references('id').inTable('hris.employee');
+    table.foreign('employee_id').references('id').inTable('hris.employee').onDelete('CASCADE');
+    table.foreign('created_by').references('id').inTable('hris.user_account');
+    table.foreign('updated_by').references('id').inTable('hris.user_account');
+    table.foreign('deleted_by').references('id').inTable('hris.user_account');
     
     // Legacy unique constraint - ensures one compensation record per employee per effective date
     table.unique(['employee_id', 'effective_from']);
   });
+  
+  // Add CHECK constraints for compensation
+  await knex.raw(`
+    ALTER TABLE payroll.compensation
+    ADD CONSTRAINT compensation_type_check
+    CHECK (compensation_type IN ('hourly', 'salary', 'commission', 'bonus'))
+  `);
+  
+  await knex.raw(`
+    ALTER TABLE payroll.compensation
+    ADD CONSTRAINT calculation_type_check
+    CHECK (calculation_type IN ('fixed', 'hourly', 'percentage', 'formula'))
+  `);
+  
+  await knex.raw(`
+    ALTER TABLE payroll.compensation
+    ADD CONSTRAINT check_amount_or_rate
+    CHECK (
+      (calculation_type = 'fixed' AND amount IS NOT NULL) OR
+      (calculation_type = 'hourly' AND rate IS NOT NULL) OR
+      (calculation_type = 'percentage' AND percentage IS NOT NULL) OR
+      (calculation_type = 'formula') OR
+      (calculation_type IS NULL AND compensation_type IS NOT NULL)
+    )
+  `);
+  
+  await knex.raw(`
+    ALTER TABLE payroll.compensation
+    ADD CONSTRAINT check_effective_dates
+    CHECK (effective_to IS NULL OR effective_to >= effective_from)
+  `);
+  
+  await knex.raw(`
+    ALTER TABLE payroll.compensation
+    ADD CONSTRAINT unique_worker_component
+    UNIQUE (organization_id, worker_metadata_id, pay_component_id, effective_from, deleted_at)
+  `);
+  
+  await knex.raw(`COMMENT ON TABLE payroll.compensation IS 'Compensation records - links workers to pay components with specific rates and rules. Supports both legacy (employee-based) and new (component-based) compensation models.'`);
+  await knex.raw(`COMMENT ON COLUMN payroll.compensation.employee_id IS 'References hris.employee(id) - the single source of truth'`);
+  await knex.raw(`COMMENT ON COLUMN payroll.compensation.worker_metadata_id IS 'References worker_metadata - for component-based compensation assignments'`);
+  await knex.raw(`COMMENT ON COLUMN payroll.compensation.pay_component_id IS 'References pay_component - specific compensation component being assigned'`);
+  await knex.raw(`COMMENT ON COLUMN payroll.compensation.amount IS 'Fixed amount per pay period (e.g., $5000/month salary)'`);
+  await knex.raw(`COMMENT ON COLUMN payroll.compensation.rate IS 'Hourly/unit rate (e.g., $25/hour)'`);
+  await knex.raw(`COMMENT ON COLUMN payroll.compensation.percentage IS 'Percentage rate (e.g., 5% commission)'`);
+  await knex.raw(`COMMENT ON COLUMN payroll.compensation.calculation_type IS 'How to calculate compensation: fixed, hourly, percentage, or formula-based'`);
   
   // ================================================================
   // WORKER METADATA
@@ -312,18 +383,35 @@ export async function up(knex) {
     table.uuid('organization_id').notNullable();
     table.uuid('employee_id').notNullable();
     table.uuid('timesheet_id');
+    
+    // Time entry details
     table.date('entry_date').notNullable();
-    table.time('start_time');
-    table.time('end_time');
-    table.decimal('regular_hours', 6, 2).defaultTo(0);
-    table.decimal('overtime_hours', 6, 2).defaultTo(0);
-    table.decimal('double_time_hours', 6, 2).defaultTo(0);
-    table.decimal('total_hours', 6, 2).defaultTo(0);
-    table.decimal('break_duration', 5, 2).defaultTo(0);
+    table.timestamp('clock_in', { useTz: true });
+    table.timestamp('clock_out', { useTz: true });
+    
+    // Hours breakdown
+    table.decimal('worked_hours', 5, 2).notNullable().defaultTo(0);
+    table.decimal('regular_hours', 5, 2).defaultTo(0);
+    table.decimal('overtime_hours', 5, 2).defaultTo(0);
+    table.decimal('break_hours', 5, 2).defaultTo(0);
+    
+    // Shift association
+    table.uuid('shift_type_id');
+    
+    // Entry metadata
+    table.string('entry_type', 20).defaultTo('regular');
     table.string('status', 20).defaultTo('draft');
+    table.text('notes');
+    
+    // Approval tracking
     table.uuid('approved_by');
     table.timestamp('approved_at', { useTz: true });
-    table.text('notes');
+    
+    // Link to clock events
+    table.uuid('clock_in_event_id');
+    table.uuid('clock_out_event_id');
+    
+    // Audit fields
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
     table.timestamp('deleted_at', { useTz: true });
@@ -333,6 +421,9 @@ export async function up(knex) {
     
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('employee_id').references('id').inTable('hris.employee').onDelete('CASCADE');
+    table.foreign('shift_type_id').references('id').inTable('payroll.shift_type');
+    table.foreign('clock_in_event_id').references('id').inTable('payroll.time_attendance_event');
+    table.foreign('clock_out_event_id').references('id').inTable('payroll.time_attendance_event');
   });
   
   // ================================================================
@@ -345,15 +436,16 @@ export async function up(knex) {
     table.uuid('employee_id').notNullable();
     table.date('period_start').notNullable();
     table.date('period_end').notNullable();
-    table.decimal('total_regular_hours', 8, 2).defaultTo(0);
-    table.decimal('total_overtime_hours', 8, 2).defaultTo(0);
-    table.decimal('total_hours', 8, 2).defaultTo(0);
+    table.decimal('regular_hours', 5, 2).defaultTo(0);
+    table.decimal('overtime_hours', 5, 2).defaultTo(0);
+    table.decimal('pto_hours', 5, 2).defaultTo(0);
+    table.decimal('sick_hours', 5, 2).defaultTo(0);
     table.string('status', 20).defaultTo('draft');
-    table.uuid('submitted_by');
-    table.timestamp('submitted_at', { useTz: true });
+    table.text('notes');
     table.uuid('approved_by');
     table.timestamp('approved_at', { useTz: true });
-    table.text('notes');
+    table.uuid('rejected_by');
+    table.timestamp('rejected_at', { useTz: true });
     table.timestamp('created_at', { useTz: true }).defaultTo(knex.fn.now());
     table.timestamp('updated_at', { useTz: true });
     table.timestamp('deleted_at', { useTz: true });
@@ -363,7 +455,9 @@ export async function up(knex) {
     
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('employee_id').references('id').inTable('hris.employee').onDelete('CASCADE');
-    table.unique(['organization_id', 'employee_id', 'period_start', 'period_end']);
+    table.foreign('approved_by').references('id').inTable('hris.user_account');
+    table.foreign('rejected_by').references('id').inTable('hris.user_account');
+    table.unique(['employee_id', 'period_start', 'period_end']);
   });
   
   // Add FK from time_entry to timesheet
@@ -381,7 +475,7 @@ export async function up(knex) {
     table.string('component_code', 50).notNullable();
     table.string('component_name', 100).notNullable();
     table.text('description');
-    table.string('component_type', 20).notNullable();
+    table.string('component_type', 30).notNullable();
     table.string('category', 50);
     table.string('calculation_type', 20).notNullable();
     table.decimal('default_rate', 12, 2);
@@ -414,14 +508,14 @@ export async function up(knex) {
   await knex.raw(`
     ALTER TABLE payroll.pay_component
     ADD CONSTRAINT pay_component_calculation_type_check
-    CHECK (calculation_type IN ('fixed_amount', 'percentage', 'hourly_rate', 'formula'))
+    CHECK (calculation_type IN ('fixed_amount', 'percentage', 'hourly_rate', 'formula', 'rate'))
   `);
   
   // Add CHECK constraint for component_type
   await knex.raw(`
     ALTER TABLE payroll.pay_component
     ADD CONSTRAINT pay_component_type_check
-    CHECK (component_type IN ('earning', 'deduction'))
+    CHECK (component_type IN ('earning', 'deduction', 'employer_contribution'))
   `);
   
   // Add CHECK constraint for status
@@ -1439,16 +1533,18 @@ export async function up(knex) {
     table.uuid('template_id').notNullable();
     table.specificType('resolved_template_ids', 'UUID[]');
     table.jsonb('resolved_components');
+    table.jsonb('resolution_metadata').comment('Metadata about the resolution process (context, options, etc.)');
     table.integer('resolution_depth');
     table.string('cache_key', 255).notNullable();
     table.timestamp('resolved_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
     table.timestamp('expires_at', { useTz: true });
     table.boolean('is_valid').defaultTo(true);
     table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now());
+    table.timestamp('updated_at', { useTz: true }).comment('Last time this cache entry was updated');
     
     table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('template_id').references('id').inTable('payroll.pay_structure_template').onDelete('CASCADE');
-    table.unique(['template_id', 'cache_key']);
+    table.unique(['template_id', 'cache_key', 'organization_id']);
   });
   
   // ================================================================
@@ -1826,39 +1922,21 @@ export async function up(knex) {
 export async function down(knex) {
   console.log('Dropping PayLinQ schema...');
   
-  // Drop all tables in reverse dependency order
-  const tables = [
-    'currency_approval_notification', 'currency_approval_action', 'currency_approval_rule',
-    'currency_approval_request', 'exchange_rate_audit', 'organization_currency_config',
-    'currency_conversion', 'exchange_rate', 'company_holiday', 'pay_period_config',
-    'pay_structure_template_resolution_cache', 'pay_structure_template_inclusion_audit',
-    'pay_structure_template_inclusion', 'pay_structure_template_changelog',
-    'worker_pay_structure_component_override', 'worker_pay_structure',
-    'pay_structure_component', 'schedule_change_request', 'work_schedule',
-    'reconciliation_item', 'reconciliation', 'payment_transaction',
-    'payslip_template_assignment', 'payslip_template', 'payroll_run_component',
-    'paycheck', 'payroll_run', 'payroll_run_type', 'employee_allowance_usage',
-    'deductible_cost_rule', 'loontijdvak', 'allowance', 'tax_bracket', 'tax_rule_set',
-    'employee_deduction', 'rated_time_line', 'formula_execution_log',
-    'employee_pay_component_assignment', 'component_formula', 'pay_component',
-    'timesheet', 'time_entry', 'time_attendance_event', 'shift_type',
-    'worker_type_history', 'worker_type_pay_config', 'worker_metadata',
-    'compensation', 'employee_payroll_config', 'pay_structure_template'
-  ];
-  
-  for (const table of tables) {
+  // Drop schema with CASCADE - this will drop all objects within it
+  // This is simpler and more reliable than dropping tables individually
+  try {
+    await knex.raw('DROP SCHEMA IF EXISTS payroll CASCADE');
+    console.log('✅ PayLinQ schema dropped successfully');
+  } catch (e) {
+    console.log(`Warning: Error dropping schema: ${e.message}`);
+    // If cascade fails, try to drop the extension that might be blocking
     try {
-      await knex.schema.withSchema('payroll').dropTableIfExists(table);
-    } catch (e) {
-      console.log(`Warning: Could not drop ${table}: ${e.message}`);
+      await knex.raw('DROP EXTENSION IF EXISTS btree_gist CASCADE');
+      await knex.raw('DROP SCHEMA IF EXISTS payroll CASCADE');
+      console.log('✅ PayLinQ schema dropped successfully after cleanup');
+    } catch (e2) {
+      console.log(`Error: Could not drop schema: ${e2.message}`);
+      throw e2;
     }
   }
-  
-  // Drop helper function
-  await knex.raw('DROP FUNCTION IF EXISTS payroll.get_current_organization_id() CASCADE');
-  
-  // Drop schema (CASCADE will catch any remaining objects)
-  await knex.raw('DROP SCHEMA IF EXISTS payroll CASCADE');
-  
-  console.log('✅ PayLinQ schema dropped successfully');
 };

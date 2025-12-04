@@ -32,7 +32,7 @@ class PayStructureRepository {
        pay_frequency, currency, is_organization_default,
        effective_from, effective_to, tags, notes, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-      RETURNING *, version_string`,
+      RETURNING *`,
       [
         organizationId,
         templateData.templateCode,
@@ -198,7 +198,7 @@ class PayStructureRepository {
       `UPDATE payroll.pay_structure_template
        SET ${fields.join(', ')}
        WHERE id = $${paramCount - 1} AND organization_id = $${paramCount} AND deleted_at IS NULL
-       RETURNING *, version_string`,
+       RETURNING *`,
       values,
       organizationId,
       { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId }
@@ -219,7 +219,7 @@ class PayStructureRepository {
            updated_at = NOW(),
            updated_by = $3
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
-       RETURNING *, version_string`,
+       RETURNING *`,
       [templateId, organizationId, userId],
       organizationId,
       { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId }
@@ -241,7 +241,7 @@ class PayStructureRepository {
            updated_at = NOW(),
            updated_by = $4
        WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
-       RETURNING *, version_string`,
+       RETURNING *`,
       [templateId, organizationId, reason, userId],
       organizationId,
       { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId }
@@ -261,7 +261,7 @@ class PayStructureRepository {
            updated_at = NOW(),
            updated_by = $3
        WHERE id = $1 AND organization_id = $2 AND status = 'draft' AND deleted_at IS NULL
-       RETURNING *, version_string`,
+       RETURNING *`,
       [templateId, organizationId, userId],
       organizationId,
       { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId }
@@ -298,7 +298,7 @@ class PayStructureRepository {
   async addComponent(componentData, templateId, organizationId, userId) {
     const result = await this.query(
       `INSERT INTO payroll.pay_structure_component
-      (template_id, pay_component_id, component_code, component_name, component_category,
+      (organization_id, template_id, pay_component_id, component_code, component_name, component_category,
        calculation_type, default_amount, default_currency, percentage_of, percentage_rate,
        formula_expression, formula_variables, formula_ast, rate_multiplier, applies_to_hours_type,
        tier_configuration, tier_basis, sequence_order, depends_on_components, is_mandatory,
@@ -309,9 +309,10 @@ class PayStructureRepository {
        conditions, is_conditional, description, notes, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
               $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38,
-              $39, $40, $41, $42, $43)
+              $39, $40, $41, $42, $43, $44)
       RETURNING *`,
       [
+        organizationId,
         templateId,
         componentData.payComponentId || null,
         componentData.componentCode,
@@ -604,7 +605,7 @@ class PayStructureRepository {
               pst.version_major,
               pst.version_minor,
               pst.version_patch,
-              pst.version_string,
+              CONCAT(pst.version_major, '.', pst.version_minor, '.', pst.version_patch) as version_string,
               pst.pay_frequency as template_pay_frequency,
               pst.currency as template_currency,
               jsonb_build_object(
@@ -613,7 +614,7 @@ class PayStructureRepository {
                 'templateCode', pst.template_code,
                 'description', pst.description,
                 'status', pst.status,
-                'version', pst.version_string,
+                'version', CONCAT(pst.version_major, '.', pst.version_minor, '.', pst.version_patch),
                 'payFrequency', pst.pay_frequency,
                 'currency', pst.currency
               ) as template,
@@ -944,14 +945,15 @@ class PayStructureRepository {
   async addChangelogEntry(changelogData, organizationId, userId) {
     const result = await this.query(
       `INSERT INTO payroll.pay_structure_template_changelog
-      (template_id, from_version, to_version, change_type, change_summary,
+      (template_id, organization_id, from_version, to_version, change_type, change_summary,
        changes_detail, breaking_changes, breaking_changes_description,
        affected_worker_count, requires_worker_migration, migration_instructions,
        auto_migrate, changelog_entries, changed_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *`,
       [
         changelogData.templateId,
+        organizationId,
         changelogData.fromVersion,
         changelogData.toVersion,
         changelogData.changeType,
@@ -1087,7 +1089,7 @@ class PayStructureRepository {
     const result = await this.query(
       `SELECT psti.*,
               pst.template_name as included_template_name,
-              pst.version_string as included_version,
+              CONCAT(pst.version_major, '.', pst.version_minor, '.', pst.version_patch) as included_version,
               pst.status as included_status
        FROM payroll.pay_structure_template_inclusion psti
        LEFT JOIN payroll.pay_structure_template pst 

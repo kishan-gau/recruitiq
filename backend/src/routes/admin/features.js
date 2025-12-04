@@ -9,15 +9,15 @@
  */
 
 import express from 'express';
-import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
-import FeatureService from '../services/FeatureService.js';
-import FeatureTierService from '../services/FeatureTierService.js';
-import FeatureAccessService from '../services/FeatureAccessService.js';
-import FeatureRepository from '../repositories/FeatureRepository.js';
-import FeatureGrantRepository from '../repositories/FeatureGrantRepository.js';
-import { query } from '../config/database.js';
-import logger from '../utils/logger.js';
-import { ValidationError, NotFoundError } from '../middleware/errorHandler.js';
+import { authenticatePlatform, requirePlatformPermission } from '../../middleware/auth.js';
+import FeatureService from '../../services/FeatureService.js';
+import FeatureTierService from '../../services/FeatureTierService.js';
+import FeatureAccessService from '../../services/FeatureAccessService.js';
+import FeatureRepository from '../../repositories/FeatureRepository.js';
+import FeatureGrantRepository from '../../repositories/FeatureGrantRepository.js';
+import platformDb from '../../shared/database/licenseManagerDb.js';
+import logger from '../../utils/logger.js';
+import { ValidationError, NotFoundError } from '../../middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -39,7 +39,7 @@ router.use(authenticatePlatform);
  * POST /api/admin/features
  * Create a new feature
  */
-router.post('/features', requirePlatformPermission('features:manage'), async (req, res) => {
+router.post('/', requirePlatformPermission('features:manage'), async (req, res) => {
   try {
     const {
       productId,
@@ -120,7 +120,7 @@ router.post('/features', requirePlatformPermission('features:manage'), async (re
  * GET /api/admin/features
  * List all features with filtering and pagination
  */
-router.get('/features', requirePlatformPermission('features:view'), async (req, res) => {
+router.get('/', requirePlatformPermission('features:view'), async (req, res) => {
   try {
     const {
       productId,
@@ -166,7 +166,7 @@ router.get('/features', requirePlatformPermission('features:view'), async (req, 
  * GET /api/admin/features/:featureId
  * Get feature details
  */
-router.get('/features/:featureId', requirePlatformPermission('features:view'), async (req, res) => {
+router.get('/:featureId', requirePlatformPermission('features:view'), async (req, res) => {
   try {
     const { featureId } = req.params;
 
@@ -203,7 +203,7 @@ router.get('/features/:featureId', requirePlatformPermission('features:view'), a
  * PATCH /api/admin/features/:featureId
  * Update a feature
  */
-router.patch('/features/:featureId', requirePlatformPermission('features:manage'), async (req, res) => {
+router.patch('/:featureId', requirePlatformPermission('features:manage'), async (req, res) => {
   try {
     const { featureId } = req.params;
     const updateData = req.body;
@@ -254,7 +254,7 @@ router.patch('/features/:featureId', requirePlatformPermission('features:manage'
  * POST /api/admin/features/:featureId/deprecate
  * Deprecate a feature
  */
-router.post('/features/:featureId/deprecate', requirePlatformPermission('features:manage'), async (req, res) => {
+router.post('/:featureId/deprecate', requirePlatformPermission('features:manage'), async (req, res) => {
   try {
     const { featureId } = req.params;
     const { message } = req.body;
@@ -313,7 +313,7 @@ router.post('/features/:featureId/deprecate', requirePlatformPermission('feature
  * PATCH /api/admin/features/:featureId/rollout
  * Update feature rollout percentage
  */
-router.patch('/features/:featureId/rollout', requirePlatformPermission('features:manage'), async (req, res) => {
+router.patch('/:featureId/rollout', requirePlatformPermission('features:manage'), async (req, res) => {
   try {
     const { featureId } = req.params;
     const { percentage, targetOrganizations = [] } = req.body;
@@ -664,7 +664,7 @@ router.post('/organizations/:organizationId/features/preview-tier-change', requi
  * GET /api/admin/features/:featureId/analytics
  * Get feature usage analytics
  */
-router.get('/features/:featureId/analytics', requirePlatformPermission('features:view'), async (req, res) => {
+router.get('/:featureId/analytics', requirePlatformPermission('features:view'), async (req, res) => {
   try {
     const { featureId } = req.params;
     const { period = '30d' } = req.query;
@@ -685,7 +685,7 @@ router.get('/features/:featureId/analytics', requirePlatformPermission('features
     }
 
     // Get usage statistics
-    const usageStats = await query(`
+    const usageStats = await platformDb.query(`
       SELECT 
         COUNT(DISTINCT organization_id) as unique_organizations,
         COUNT(DISTINCT user_id) as unique_users,
@@ -700,7 +700,7 @@ router.get('/features/:featureId/analytics', requirePlatformPermission('features
     `, [featureId, startDate]);
 
     // Get active grants count
-    const grantsStats = await query(`
+    const grantsStats = await platformDb.query(`
       SELECT 
         COUNT(*) as active_grants,
         granted_via,
@@ -749,7 +749,7 @@ router.get('/features/:featureId/analytics', requirePlatformPermission('features
  * GET /api/admin/features/adoption-report
  * Get feature adoption report across all organizations
  */
-router.get('/features/adoption-report', requirePlatformPermission('features:view'), async (req, res) => {
+router.get('/adoption-report', requirePlatformPermission('features:view'), async (req, res) => {
   try {
     const { productId } = req.query;
 
@@ -761,7 +761,7 @@ router.get('/features/adoption-report', requirePlatformPermission('features:view
       params.push(productId);
     }
 
-    const report = await query(`
+    const report = await platformDb.query(`
       SELECT 
         f.id,
         f.feature_key,

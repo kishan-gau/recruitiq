@@ -178,8 +178,10 @@ export function mapPayStructureTemplateDbToApi(dbTemplate) {
     description: dbTemplate.description || null,
     
     // Versioning
-    version: dbTemplate.version_number || 1,
-    versionString: dbTemplate.version_string || '1.0',
+    versionMajor: dbTemplate.version_major || 1,
+    versionMinor: dbTemplate.version_minor || 0,
+    versionPatch: dbTemplate.version_patch || 0,
+    versionString: `${dbTemplate.version_major || 1}.${dbTemplate.version_minor || 0}.${dbTemplate.version_patch || 0}`,
     parentVersionId: dbTemplate.parent_version_id || null,
     
     // Status and settings

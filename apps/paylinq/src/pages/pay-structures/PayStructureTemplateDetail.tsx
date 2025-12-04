@@ -14,6 +14,7 @@ import {
   useResolvedPayStructureTemplate,
   type PayStructureComponent,
 } from '@/hooks/usePayStructures';
+import { useForfaitRules } from '@/hooks/useForfaitRules';
 import PayStructureComponentModal from '@/components/modals/PayStructureComponentModal';
 import TemplateVersionHistory from '@/components/pay-structures/TemplateVersionHistory';
 import TemplateInclusionManager from '@/components/pay-structures/TemplateInclusionManager';
@@ -26,6 +27,7 @@ export default function PayStructureTemplateDetail() {
   const { data: template, isLoading: templateLoading } = usePayStructureTemplate(templateId!);
   const { data: components, isLoading: componentsLoading } = usePayStructureComponents(templateId!);
   const { data: resolvedTemplate, isLoading: resolvedLoading } = useResolvedPayStructureTemplate(templateId!);
+  const { data: forfaitRules, isLoading: forfaitRulesLoading } = useForfaitRules();
   
   const addComponentMutation = useAddPayStructureComponent();
   const updateComponentMutation = useUpdatePayStructureComponent();
@@ -317,6 +319,7 @@ export default function PayStructureTemplateDetail() {
         onSubmit={handleComponentSubmit}
         component={selectedComponent}
         existingComponents={components || []}
+        availableForfaitRules={forfaitRules || []}
       />
 
       {/* Publish Confirmation Dialog */}

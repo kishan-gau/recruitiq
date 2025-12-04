@@ -1,11 +1,11 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const config = require('./config');
-const routes = require('./routes');
-const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
-const { shutdown } = require('./queue/deploymentQueue');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import config from './config/index.js';
+import routes from './routes/index.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { shutdown } from './queue/deploymentQueue.js';
 
 const app = express();
 
@@ -72,4 +72,4 @@ process.on('SIGINT', async () => {
   });
 });
 
-module.exports = app;
+export default app;

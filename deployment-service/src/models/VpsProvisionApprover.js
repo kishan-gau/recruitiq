@@ -1,5 +1,5 @@
-const { v4: uuidv4 } = require('uuid');
-const db = require('../database/connection');
+import { v4 as uuidv4 } from 'uuid';
+import db from '../database/connection.js';
 
 /**
  * VpsProvisionApprover Model
@@ -299,4 +299,4 @@ class VpsProvisionApprover {
   }
 }
 
-module.exports = VpsProvisionApprover;
+export default VpsProvisionApprover;

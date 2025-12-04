@@ -3,11 +3,17 @@
  * Export all database models
  */
 
-const VpsProvisionRequest = require('./VpsProvisionRequest');
-const VpsProvisionApprover = require('./VpsProvisionApprover');
-const TransipVpsInventory = require('./TransipVpsInventory');
+import VpsProvisionRequest from './VpsProvisionRequest.js';
+import VpsProvisionApprover from './VpsProvisionApprover.js';
+import TransipVpsInventory from './TransipVpsInventory.js';
 
-module.exports = {
+export {
+  VpsProvisionRequest,
+  VpsProvisionApprover,
+  TransipVpsInventory,
+};
+
+export default {
   VpsProvisionRequest,
   VpsProvisionApprover,
   TransipVpsInventory,

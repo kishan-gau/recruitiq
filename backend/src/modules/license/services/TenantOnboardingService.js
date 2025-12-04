@@ -547,91 +547,329 @@ class TenantOnboardingService {
   /**
    * Seed pay components
    * Based on: 017_seed_forfaitair_components.js
+   * 
+   * Complete set of 32 forfaitair (standard) pay components for Suriname payroll
    */
   async _seedPayComponents(client, orgId, userId) {
     const components = [
-      // Earnings
+      // ==================== EARNINGS (Gross Pay) ====================
+      // Base salary components
       {
         code: 'BASE_SALARY',
         name: 'Basissalaris',
         type: 'earning',
         category: 'gross',
+        description: 'Regular base salary',
         isTaxable: true,
         isStatutory: false,
         displayOrder: 1
       },
       {
-        code: 'OVERTIME',
-        name: 'Overuren',
+        code: 'HOURLY_WAGE',
+        name: 'Uurloon',
         type: 'earning',
         category: 'gross',
+        description: 'Hourly wage for hourly employees',
         isTaxable: true,
         isStatutory: false,
         displayOrder: 2
       },
+
+      // Overtime
       {
-        code: 'BONUS',
-        name: 'Bonus',
+        code: 'OVERTIME_1_5X',
+        name: 'Overuren 1.5x',
         type: 'earning',
         category: 'gross',
+        description: 'Overtime pay at 1.5x rate',
         isTaxable: true,
         isStatutory: false,
         displayOrder: 3
       },
       {
-        code: 'VAKANTIEGELD',
-        name: 'Vakantiegeld',
+        code: 'OVERTIME_2X',
+        name: 'Overuren 2x',
         type: 'earning',
         category: 'gross',
+        description: 'Overtime pay at 2x rate (weekends/holidays)',
         isTaxable: true,
         isStatutory: false,
         displayOrder: 4
       },
-      // Deductions
+
+      // Bonuses and commissions
+      {
+        code: 'BONUS',
+        name: 'Bonus',
+        type: 'earning',
+        category: 'gross',
+        description: 'Performance or discretionary bonus',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 5
+      },
+      {
+        code: 'COMMISSION',
+        name: 'Commissie',
+        type: 'earning',
+        category: 'gross',
+        description: 'Sales commission',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 6
+      },
+      {
+        code: 'MONTH_13',
+        name: '13e Maand',
+        type: 'earning',
+        category: 'gross',
+        description: '13th month salary',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 7
+      },
+      {
+        code: 'GRATUITY',
+        name: 'Gratificatie',
+        type: 'earning',
+        category: 'gross',
+        description: 'End-of-year gratuity',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 8
+      },
+
+      // Allowances (taxable)
+      {
+        code: 'TRANSPORT_ALLOWANCE',
+        name: 'Reiskostenvergoeding',
+        type: 'earning',
+        category: 'allowance',
+        description: 'Transportation allowance',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 9
+      },
+      {
+        code: 'MEAL_ALLOWANCE',
+        name: 'Maaltijdvergoeding',
+        type: 'earning',
+        category: 'allowance',
+        description: 'Meal allowance',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 10
+      },
+      {
+        code: 'HOUSING_ALLOWANCE',
+        name: 'Huisvestingsvergoeding',
+        type: 'earning',
+        category: 'allowance',
+        description: 'Housing allowance',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 11
+      },
+      {
+        code: 'TELEPHONE_ALLOWANCE',
+        name: 'Telefoonvergoeding',
+        type: 'earning',
+        category: 'allowance',
+        description: 'Telephone/mobile allowance',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 12
+      },
+      {
+        code: 'CHILD_ALLOWANCE',
+        name: 'Kinderbijslag',
+        type: 'earning',
+        category: 'allowance',
+        description: 'Child benefit allowance',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 13
+      },
+      {
+        code: 'EXCHANGE_RATE_ALLOWANCE',
+        name: 'Wisselkoersvergoeding',
+        type: 'earning',
+        category: 'allowance',
+        description: 'Exchange rate compensation',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 14
+      },
+
+      // Statutory earning
+      {
+        code: 'VAKANTIEGELD',
+        name: 'Vakantiegeld (8%)',
+        type: 'earning',
+        category: 'statutory',
+        description: 'Annual vacation allowance (8% of gross)',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 15
+      },
+
+      // ==================== DEDUCTIONS ====================
+      // Statutory deductions (Taxes and Social Security)
       {
         code: 'LOONBELASTING',
         name: 'Loonbelasting',
         type: 'deduction',
         category: 'tax',
+        description: 'Wage tax (progressive rates)',
         isTaxable: false,
         isStatutory: true,
-        displayOrder: 10
+        displayOrder: 101
       },
       {
         code: 'AOV',
         name: 'AOV (Ouderdomspensioen)',
         type: 'deduction',
         category: 'social_security',
+        description: 'Old Age Pension (4% of gross)',
         isTaxable: false,
         isStatutory: true,
-        displayOrder: 11
+        displayOrder: 102
       },
       {
         code: 'AWW',
         name: 'AWW (Weduwen en Wezen)',
         type: 'deduction',
         category: 'social_security',
+        description: 'Widow and Orphan Pension (1% of gross)',
         isTaxable: false,
         isStatutory: true,
-        displayOrder: 12
+        displayOrder: 103
       },
+
+      // Voluntary deductions (Pension and Insurance)
       {
-        code: 'PENSIOEN',
-        name: 'Pensioen',
+        code: 'PENSIOEN_EMPLOYEE',
+        name: 'Pensioen (Werknemer)',
         type: 'deduction',
         category: 'pension',
+        description: 'Employee pension contribution',
         isTaxable: false,
         isStatutory: false,
-        displayOrder: 13
+        displayOrder: 104
+      },
+      {
+        code: 'PENSIOEN_EMPLOYER',
+        name: 'Pensioen (Werkgever)',
+        type: 'deduction',
+        category: 'pension',
+        description: 'Employer pension contribution',
+        isTaxable: false,
+        isStatutory: false,
+        displayOrder: 105
       },
       {
         code: 'ZORGVERZEKERING',
         name: 'Zorgverzekering',
         type: 'deduction',
         category: 'insurance',
+        description: 'Health insurance premium',
         isTaxable: false,
         isStatutory: false,
-        displayOrder: 14
+        displayOrder: 106
+      },
+      {
+        code: 'LIFE_INSURANCE',
+        name: 'Levensverzekering',
+        type: 'deduction',
+        category: 'insurance',
+        description: 'Life insurance premium',
+        isTaxable: false,
+        isStatutory: false,
+        displayOrder: 107
+      },
+
+      // Other deductions
+      {
+        code: 'ADVANCE_PAYMENT',
+        name: 'Voorschot',
+        type: 'deduction',
+        category: 'advance',
+        description: 'Salary advance repayment',
+        isTaxable: false,
+        isStatutory: false,
+        displayOrder: 108
+      },
+      {
+        code: 'LOAN_REPAYMENT',
+        name: 'Lening Aflossing',
+        type: 'deduction',
+        category: 'loan',
+        description: 'Company loan repayment',
+        isTaxable: false,
+        isStatutory: false,
+        displayOrder: 109
+      },
+      {
+        code: 'UNION_DUES',
+        name: 'Vakbondsbijdrage',
+        type: 'deduction',
+        category: 'membership',
+        description: 'Union membership dues',
+        isTaxable: false,
+        isStatutory: false,
+        displayOrder: 110
+      },
+      {
+        code: 'GARNISHMENT',
+        name: 'Loonbeslag',
+        type: 'deduction',
+        category: 'legal',
+        description: 'Court-ordered wage garnishment',
+        isTaxable: false,
+        isStatutory: false,
+        displayOrder: 111
+      },
+
+      // ==================== EMPLOYER CONTRIBUTIONS ====================
+      {
+        code: 'EMPLOYER_AOV',
+        name: 'Werkgeversbijdrage AOV',
+        type: 'employer_contribution',
+        category: 'social_security',
+        description: 'Employer AOV contribution (4%)',
+        isTaxable: false,
+        isStatutory: true,
+        displayOrder: 201
+      },
+      {
+        code: 'EMPLOYER_AWW',
+        name: 'Werkgeversbijdrage AWW',
+        type: 'employer_contribution',
+        category: 'social_security',
+        description: 'Employer AWW contribution (1%)',
+        isTaxable: false,
+        isStatutory: true,
+        displayOrder: 202
+      },
+      {
+        code: 'EMPLOYER_PENSION',
+        name: 'Werkgeversbijdrage Pensioen',
+        type: 'employer_contribution',
+        category: 'pension',
+        description: 'Employer pension contribution',
+        isTaxable: false,
+        isStatutory: false,
+        displayOrder: 203
+      },
+      {
+        code: 'EMPLOYER_INSURANCE',
+        name: 'Werkgeversbijdrage Verzekering',
+        type: 'employer_contribution',
+        category: 'insurance',
+        description: 'Employer insurance contribution',
+        isTaxable: false,
+        isStatutory: false,
+        displayOrder: 204
       }
     ]
 
@@ -639,18 +877,20 @@ class TenantOnboardingService {
       await client.query(`
         INSERT INTO payroll.pay_component (
           organization_id, component_code, component_name, component_type,
-          component_category, is_taxable, is_statutory, display_order,
+          category, is_taxable, display_order, calculation_type,
           is_active, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'fixed_amount', true, $8)
         ON CONFLICT (organization_id, component_code) DO NOTHING
       `, [
         orgId, comp.code, comp.name, comp.type,
-        comp.category, comp.isTaxable, comp.isStatutory,
+        comp.category, comp.isTaxable,
         comp.displayOrder, userId
       ])
 
       console.log(`  [+] Component: ${comp.name} (${comp.code})`)
     }
+
+    console.log(`  [OK] Seeded ${components.length} pay components`)
   }
 
   /**
@@ -664,11 +904,10 @@ class TenantOnboardingService {
     // Create 2025 Wage Tax rule set
     const taxRuleResult = await client.query(`
       INSERT INTO payroll.tax_rule_set (
-        organization_id, rule_name, country_code, rule_type,
-        effective_start_date, effective_end_date, calculation_frequency,
-        is_active, created_by
+        organization_id, tax_name, country, tax_type,
+        effective_from, effective_to, created_by
       ) VALUES ($1, 'Suriname Wage Tax 2025', 'SR', 'wage_tax', 
-                '2025-01-01', '2025-12-31', 'annual', true, $2)
+                '2025-01-01', '2025-12-31', $2)
       RETURNING id
     `, [orgId, userId])
 
@@ -683,12 +922,14 @@ class TenantOnboardingService {
       { min: 16666.67, max: null, rate: 0.38 }
     ]
 
-    for (const bracket of brackets) {
+    for (let i = 0; i < brackets.length; i++) {
+      const bracket = brackets[i]
       await client.query(`
         INSERT INTO payroll.tax_bracket (
-          tax_rule_set_id, bracket_min, bracket_max, tax_rate
-        ) VALUES ($1, $2, $3, $4)
-      `, [taxRuleId, bracket.min, bracket.max, bracket.rate])
+          organization_id, tax_rule_set_id, bracket_order, 
+          income_min, income_max, rate_percentage, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [orgId, taxRuleId, i + 1, bracket.min, bracket.max, bracket.rate, userId])
     }
 
     console.log('  [+] Tax brackets created')
@@ -696,21 +937,19 @@ class TenantOnboardingService {
     // Create AOV rule (4% flat rate)
     await client.query(`
       INSERT INTO payroll.tax_rule_set (
-        organization_id, rule_name, country_code, rule_type,
-        effective_start_date, effective_end_date, calculation_frequency,
-        is_active, created_by
+        organization_id, tax_name, country, tax_type,
+        effective_from, effective_to, created_by
       ) VALUES ($1, 'Suriname AOV 2025', 'SR', 'social_security', 
-                '2025-01-01', '2025-12-31', 'annual', true, $2)
+                '2025-01-01', '2025-12-31', $2)
     `, [orgId, userId])
 
     // Create AWW rule (1% flat rate)
     await client.query(`
       INSERT INTO payroll.tax_rule_set (
-        organization_id, rule_name, country_code, rule_type,
-        effective_start_date, effective_end_date, calculation_frequency,
-        is_active, created_by
+        organization_id, tax_name, country, tax_type,
+        effective_from, effective_to, created_by
       ) VALUES ($1, 'Suriname AWW 2025', 'SR', 'social_security', 
-                '2025-01-01', '2025-12-31', 'annual', true, $2)
+                '2025-01-01', '2025-12-31', $2)
     `, [orgId, userId])
 
     console.log('  [+] Social security rules created (AOV, AWW)')
@@ -723,44 +962,56 @@ class TenantOnboardingService {
   async _seedAllowances(client, orgId, userId) {
     const allowances = [
       {
-        code: 'TAX_FREE_ANNUAL',
-        name: 'Tax-Free Sum (Annual)',
-        type: 'tax_free',
-        amount: 30000.00,
-        frequency: 'annual',
-        isActive: true
-      },
-      {
-        code: 'TAX_FREE_MONTHLY',
         name: 'Tax-Free Sum (Monthly)',
-        type: 'tax_free',
+        type: 'tax_free_sum_monthly',
         amount: 2500.00,
-        frequency: 'monthly',
-        isActive: true
+        isPercentage: false,
+        isActive: true,
+        country: 'SR',
+        description: 'Monthly tax-free allowance'
       },
       {
-        code: 'HOLIDAY_ALLOWANCE',
         name: 'Holiday Allowance (8%)',
-        type: 'holiday',
-        amount: 0.08,
-        frequency: 'annual',
-        isActive: true
+        type: 'holiday_allowance',
+        amount: 8.00,
+        isPercentage: true,
+        isActive: true,
+        country: 'SR',
+        description: 'Holiday allowance percentage'
+      },
+      {
+        name: 'Bonus/Gratuity',
+        type: 'bonus_gratuity',
+        amount: 0.00,
+        isPercentage: false,
+        isActive: true,
+        country: 'SR',
+        description: 'Bonus or gratuity payments'
       }
     ]
 
     for (const allowance of allowances) {
-      await client.query(`
-        INSERT INTO payroll.allowance (
-          organization_id, allowance_code, allowance_name, allowance_type,
-          allowance_amount, allowance_frequency, is_active, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT (organization_id, allowance_code) DO NOTHING
-      `, [
-        orgId, allowance.code, allowance.name, allowance.type,
-        allowance.amount, allowance.frequency, allowance.isActive, userId
-      ])
+      // Check if allowance already exists for this organization and type
+      const existing = await client.query(`
+        SELECT id FROM payroll.allowance 
+        WHERE organization_id = $1 AND allowance_type = $2 AND deleted_at IS NULL
+      `, [orgId, allowance.type])
 
-      console.log(`  [+] Allowance: ${allowance.name}`)
+      if (existing.rows.length === 0) {
+        await client.query(`
+          INSERT INTO payroll.allowance (
+            organization_id, allowance_type, allowance_name, amount, is_percentage,
+            effective_from, is_active, country, description, created_by
+          ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9)
+        `, [
+          orgId, allowance.type, allowance.name, allowance.amount, allowance.isPercentage,
+          allowance.isActive, allowance.country, allowance.description, userId
+        ])
+
+        console.log(`  [+] Allowance: ${allowance.name}`)
+      } else {
+        console.log(`  [=] Allowance already exists: ${allowance.name}`)
+      }
     }
   }
 }

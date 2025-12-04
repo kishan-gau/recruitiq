@@ -191,9 +191,10 @@ class TierPreset {
    */
   static async getCustomersUsingPreset(presetId) {
     const result = await db.query(
-      `SELECT c.id, c.name, c.status, l.license_key, l.tier_version
+      `SELECT c.id, c.name, c.status, l.license_key, tp.version as tier_version
        FROM customers c
        JOIN licenses l ON l.customer_id = c.id
+       LEFT JOIN tier_presets tp ON tp.id = l.tier_preset_id
        WHERE l.tier_preset_id = $1
        ORDER BY c.name`,
       [presetId]
@@ -208,7 +209,7 @@ class TierPreset {
     const result = await db.query(
       `SELECT 
         l.tier,
-        l.tier_version,
+        tp.version as tier_version,
         tp.tier_name as preset_tier,
         tp.version as preset_version,
         COUNT(DISTINCT c.id) as customer_count,
@@ -216,8 +217,8 @@ class TierPreset {
        FROM customers c
        JOIN licenses l ON l.customer_id = c.id
        LEFT JOIN tier_presets tp ON tp.id = l.tier_preset_id
-       GROUP BY l.tier, l.tier_version, tp.tier_name, tp.version
-       ORDER BY l.tier, l.tier_version DESC`
+       GROUP BY l.tier, tp.version, tp.tier_name
+       ORDER BY l.tier, tp.version DESC`
     )
     return result.rows
   }

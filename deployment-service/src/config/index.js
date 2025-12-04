@@ -1,6 +1,7 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
-module.exports = {
+export default {
   // TransIP API Configuration
   transip: {
     accountName: process.env.TRANSIP_ACCOUNT_NAME,

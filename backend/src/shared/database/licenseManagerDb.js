@@ -9,12 +9,31 @@ import pkg from 'pg';
 const { Pool } = pkg;
 import logger from '../../utils/logger.js';
 import config from '../../config/index.js';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure environment variables are loaded (in case this module loads before config)
+dotenv.config({ path: path.join(__dirname, '../../../.env') });
+
+// Log platform database configuration for debugging
+logger.info('Platform database configuration:', {
+  PLATFORM_DATABASE_HOST: process.env.PLATFORM_DATABASE_HOST,
+  PLATFORM_DATABASE_PORT: process.env.PLATFORM_DATABASE_PORT,
+  PLATFORM_DATABASE_NAME: process.env.PLATFORM_DATABASE_NAME,
+  PLATFORM_DATABASE_USER: process.env.PLATFORM_DATABASE_USER,
+  fallback_DATABASE_NAME: process.env.DATABASE_NAME,
+  hasPassword: !!process.env.PLATFORM_DATABASE_PASSWORD || !!process.env.DATABASE_PASSWORD
+});
 
 // Create connection pool for Platform/Portal database
 const licensePool = new Pool({
   host: process.env.PLATFORM_DATABASE_HOST || process.env.DATABASE_HOST || 'localhost',
   port: process.env.PLATFORM_DATABASE_PORT || process.env.DATABASE_PORT || 5432,
-  database: process.env.PLATFORM_DATABASE_NAME || process.env.DATABASE_NAME || 'recruitiq_dev',
+  database: process.env.PLATFORM_DATABASE_NAME || process.env.DATABASE_NAME,
   user: process.env.PLATFORM_DATABASE_USER || process.env.DATABASE_USER || 'postgres',
   password: process.env.PLATFORM_DATABASE_PASSWORD || process.env.DATABASE_PASSWORD || config.database.password,
   max: 10, // Maximum pool size

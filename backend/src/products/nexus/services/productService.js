@@ -3,7 +3,7 @@
  * Business logic for managing products in the system
  */
 
-import db from '../../../config/database.js';
+import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class ProductService {
@@ -12,7 +12,7 @@ class ProductService {
    */
   async getActiveProducts() {
     try {
-      const result = await db.query(`
+      const result = await query(`
         SELECT 
           id,
           slug,
@@ -59,7 +59,7 @@ class ProductService {
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-      const result = await db.query(`
+      const result = await query(`
         SELECT 
           id,
           slug,
@@ -90,7 +90,7 @@ class ProductService {
    */
   async getProductById(id) {
     try {
-      const result = await db.query(`
+      const result = await query(`
         SELECT 
           id,
           slug,
@@ -120,7 +120,7 @@ class ProductService {
    */
   async getProductBySlug(slug) {
     try {
-      const result = await db.query(`
+      const result = await query(`
         SELECT 
           id,
           slug,
@@ -169,7 +169,7 @@ class ProductService {
         return null;
       }
 
-      const featuresResult = await db.query(`
+      const featuresResult = await query(`
         SELECT 
           f.id,
           f.code,
@@ -208,7 +208,7 @@ class ProductService {
         config
       } = productData;
 
-      const result = await db.query(`
+      const result = await query(`
         INSERT INTO products (
           slug,
           name,
@@ -273,7 +273,7 @@ class ProductService {
 
       params.push(id);
 
-      const result = await db.query(`
+      const result = await query(`
         UPDATE products
         SET ${fields.join(', ')}
         WHERE id = $${paramCount}
@@ -297,7 +297,7 @@ class ProductService {
    */
   async deleteProduct(id, userId) {
     try {
-      const result = await db.query(`
+      const result = await query(`
         UPDATE products
         SET 
           status = 'inactive',
@@ -322,9 +322,9 @@ class ProductService {
   /**
    * Search products
    */
-  async searchProducts(query) {
+  async searchProducts(searchQuery) {
     try {
-      const result = await db.query(`
+      const result = await query(`
         SELECT 
           id,
           slug,
@@ -344,7 +344,7 @@ class ProductService {
           description ILIKE $1 OR
           slug ILIKE $1
         ORDER BY is_core DESC, name ASC
-      `, [`%${query}%`]);
+      `, [`%${searchQuery}%`]);
 
       return result.rows;
     } catch (error) {

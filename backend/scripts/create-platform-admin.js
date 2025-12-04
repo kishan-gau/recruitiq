@@ -16,11 +16,31 @@
  *   (Uses platform_admin@primecore.app with a generated password)
  */
 
-import pool from '../src/config/database.js'
+import pg from 'pg'
 import bcrypt from 'bcrypt'
 import { v4 as uuidv4 } from 'uuid'
+import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const { Pool } = pg
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, '../.env') })
 
 const SALT_ROUNDS = 12
+
+// Create platform database connection pool
+const platformPool = new Pool({
+  host: process.env.PLATFORM_DATABASE_HOST || 'localhost',
+  port: parseInt(process.env.PLATFORM_DATABASE_PORT, 10) || 5432,
+  database: process.env.PLATFORM_DATABASE_NAME || 'platform_db',
+  user: process.env.PLATFORM_DATABASE_USER || 'postgres',
+  password: process.env.PLATFORM_DATABASE_PASSWORD,
+  ssl: process.env.PLATFORM_DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+})
 
 // Parse command line arguments
 function parseArgs() {
@@ -35,7 +55,7 @@ function parseArgs() {
   args.forEach(arg => {
     const match = arg.match(/^--([^=]+)=(.+)$/)
     if (match) {
-      const [, key, value] = match
+      const [, key, value] = match 
       options[key] = value
     }
   })
@@ -156,6 +176,27 @@ async function main() {
   // Parse options
   const options = parseArgs()
 
+  // Validate platform database configuration
+  if (!process.env.PLATFORM_DATABASE_NAME) {
+    console.error('\n❌ PLATFORM DATABASE NOT CONFIGURED!\n')
+    console.error('This script requires platform database environment variables:')
+    console.error('  PLATFORM_DATABASE_HOST       (e.g., localhost)')
+    console.error('  PLATFORM_DATABASE_PORT       (e.g., 5432)')
+    console.error('  PLATFORM_DATABASE_NAME       (e.g., platform_db)')
+    console.error('  PLATFORM_DATABASE_USER       (e.g., postgres)')
+    console.error('  PLATFORM_DATABASE_PASSWORD   (required)')
+    console.error('')
+    console.error('Please add these variables to your .env file.')
+    console.error('Example:')
+    console.error('  PLATFORM_DATABASE_HOST=localhost')
+    console.error('  PLATFORM_DATABASE_PORT=5432')
+    console.error('  PLATFORM_DATABASE_NAME=platform_db')
+    console.error('  PLATFORM_DATABASE_USER=postgres')
+    console.error('  PLATFORM_DATABASE_PASSWORD=your_password')
+    console.error('')
+    process.exit(1)
+  }
+
   // Generate password if not provided
   if (!options.password) {
     console.log('ℹ️  No password provided, generating secure password...')
@@ -177,14 +218,21 @@ async function main() {
   console.log(`   Name:     ${options.name}`)
   console.log(`   Password: ${options.password.substring(0, 4)}${'*'.repeat(options.password.length - 4)}`)
   console.log('')
+  console.log('🔌 PLATFORM DATABASE:')
+  console.log(`   Host:     ${process.env.PLATFORM_DATABASE_HOST || 'localhost'}`)
+  console.log(`   Port:     ${process.env.PLATFORM_DATABASE_PORT || 5432}`)
+  console.log(`   Database: ${process.env.PLATFORM_DATABASE_NAME || 'platform_db'}`)
+  console.log(`   User:     ${process.env.PLATFORM_DATABASE_USER || 'postgres'}`)
+  console.log('')
 
-  const client = await pool.connect()
+  const client = await platformPool.connect()
 
   try {
     // Verify database connection
     console.log('🔌 Verifying database connection...')
-    await client.query('SELECT 1')
-    console.log('✅ Database connection established')
+    const dbCheck = await client.query('SELECT current_database(), current_schema()')
+    console.log(`✅ Connected to database: ${dbCheck.rows[0].current_database}`)
+    console.log(`   Current schema: ${dbCheck.rows[0].current_schema}`)
     console.log('')
 
     await client.query('BEGIN')
@@ -215,9 +263,24 @@ async function main() {
 
     // Get super_admin role
     console.log('🔍 Finding super_admin platform role...')
+    
+    // First, let's see what platform roles exist
+    const allPlatformRoles = await client.query(`
+      SELECT id, name, display_name, role_type, organization_id 
+      FROM public.roles 
+      WHERE role_type = 'platform'
+      ORDER BY name
+    `)
+    
+    console.log(`Found ${allPlatformRoles.rows.length} platform roles:`)
+    allPlatformRoles.rows.forEach(role => {
+      console.log(`  - ${role.name} (${role.display_name}) [org_id: ${role.organization_id}]`)
+    })
+    console.log('')
+    
     const roleResult = await client.query(`
       SELECT id, name, display_name 
-      FROM roles 
+      FROM public.roles 
       WHERE name = 'super_admin' 
         AND organization_id IS NULL 
         AND role_type = 'platform'
@@ -351,7 +414,7 @@ async function main() {
     process.exit(1)
   } finally {
     client.release()
-    await pool.end()
+    await platformPool.end()
   }
 }
 

@@ -6,7 +6,7 @@
 
 import Joi from 'joi';
 import bcrypt from 'bcryptjs';
-import { query } from '../config/database.js';
+import platformDb from '../shared/database/licenseManagerDb.js';
 import logger from '../utils/logger.js';
 
 // Validation schemas
@@ -51,7 +51,7 @@ export const createPlatformUser = async (req, res) => {
     const { email, password, name, role, phone, timezone } = value;
 
     // Check if email already exists in users table
-    const existingUser = await query(
+    const existingUser = await platformDb.query(
       'SELECT id FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
@@ -67,7 +67,7 @@ export const createPlatformUser = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Create platform user
-    const result = await query(
+    const result = await platformDb.query(
       `INSERT INTO users 
        (email, password_hash, name, role, user_type, phone, timezone, is_active)
        VALUES ($1, $2, $3, $4, 'platform', $5, $6, true)
@@ -146,10 +146,10 @@ export const listPlatformUsers = async (req, res) => {
     sql += ` ORDER BY created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
     params.push(parseInt(limit), parseInt(offset));
 
-    const result = await query(sql, params);
+    const result = await platformDb.query(sql, params);
 
     // Get total count
-    const countResult = await query(
+    const countResult = await platformDb.query(
       `SELECT COUNT(*) as total FROM users WHERE user_type = 'platform'`,
       []
     );
@@ -192,7 +192,7 @@ export const getPlatformUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await query(
+    const result = await platformDb.query(
       `SELECT id, email, name, role, user_type, phone, timezone, is_active, 
               last_login_at, created_at, updated_at
        FROM users
@@ -273,7 +273,7 @@ export const updatePlatformUser = async (req, res) => {
     }
 
     params.push(id);
-    const result = await query(
+    const result = await platformDb.query(
       `UPDATE users
        SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
        WHERE id = $${params.length} AND user_type = 'platform'
@@ -348,7 +348,7 @@ export const changePassword = async (req, res) => {
     }
 
     // Get current password hash
-    const userResult = await query(
+    const userResult = await platformDb.query(
       'SELECT password_hash FROM users WHERE id = $1 AND user_type = $2',
       [id, 'platform']
     );
@@ -373,7 +373,7 @@ export const changePassword = async (req, res) => {
     const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
     // Update password
-    await query(
+    await platformDb.query(
       'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPasswordHash, id]
     );
@@ -412,7 +412,7 @@ export const deactivatePlatformUser = async (req, res) => {
       });
     }
 
-    const result = await query(
+    const result = await platformDb.query(
       `UPDATE users
        SET is_active = false, updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND user_type = 'platform'
@@ -453,7 +453,7 @@ export const reactivatePlatformUser = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await query(
+    const result = await platformDb.query(
       `UPDATE users
        SET is_active = true, updated_at = CURRENT_TIMESTAMP
        WHERE id = $1 AND user_type = 'platform'

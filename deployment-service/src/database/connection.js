@@ -1,5 +1,7 @@
-const { Pool } = require('pg');
-const config = require('../config');
+import pg from 'pg';
+import config from '../config/index.js';
+
+const { Pool } = pg;
 
 // Create PostgreSQL connection pool
 const pool = new Pool({
@@ -26,7 +28,7 @@ pool.on('error', (err) => {
 });
 
 // Helper to execute queries
-const query = async (text, params) => {
+export const query = async (text, params) => {
   const start = Date.now();
   try {
     const result = await pool.query(text, params);
@@ -40,7 +42,7 @@ const query = async (text, params) => {
 };
 
 // Transaction helper
-const transaction = async (callback) => {
+export const transaction = async (callback) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -56,13 +58,15 @@ const transaction = async (callback) => {
 };
 
 // Graceful shutdown
-const shutdown = async () => {
+export const shutdown = async () => {
   console.log('Closing database pool...');
   await pool.end();
   console.log('Database pool closed');
 };
 
-module.exports = {
+export { pool };
+
+export default {
   query,
   transaction,
   pool,

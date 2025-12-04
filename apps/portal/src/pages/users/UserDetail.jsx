@@ -15,8 +15,7 @@ export default function UserDetail() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    user_type: 'tenant',
-    legacy_role: 'member'
+    role: 'member'
   });
   const [selectedPermissions, setSelectedPermissions] = useState([]);
 
@@ -28,7 +27,7 @@ export default function UserDetail() {
     try {
       setLoading(true);
       const [userData, permissionsData] = await Promise.all([
-        portalService.getUser(id),
+        portalService.getPortalUser(id),
         portalService.getPermissions()
       ]);
       
@@ -37,8 +36,7 @@ export default function UserDetail() {
       setFormData({
         name: userData.user.name,
         email: userData.user.email,
-        user_type: userData.user.user_type,
-        legacy_role: userData.user.legacy_role || 'member'
+        role: userData.user.role || 'member'
       });
       
       // Set currently assigned permissions
@@ -57,7 +55,7 @@ export default function UserDetail() {
       setSaving(true);
       
       // Update user basic info
-      await portalService.updateUser(id, formData);
+      await portalService.updatePortalUser(id, formData);
       
       // Update permissions if changed
       const currentPermIds = user.permissions?.map(p => p.id) || [];
@@ -86,7 +84,7 @@ export default function UserDetail() {
     }
 
     try {
-      await portalService.deleteUser(id);
+      await portalService.deletePortalUser(id);
       toast.success('User deleted successfully');
       navigate('/users');
     } catch (error) {
@@ -101,14 +99,6 @@ export default function UserDetail() {
     } else {
       setSelectedPermissions([...selectedPermissions, permissionId]);
     }
-  };
-
-  const getUserTypeBadge = (type) => {
-    const colors = {
-      platform: 'bg-purple-100 text-purple-800',
-      tenant: 'bg-blue-100 text-blue-800'
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800';
   };
 
   const getCategoryColor = (category) => {
@@ -171,8 +161,7 @@ export default function UserDetail() {
                   setFormData({
                     name: user.name,
                     email: user.email,
-                    user_type: user.user_type,
-                    legacy_role: user.legacy_role || 'member'
+                    role: user.role || 'member'
                   });
                   setSelectedPermissions(user.permissions?.map(p => p.id) || []);
                 }}
@@ -235,36 +224,18 @@ export default function UserDetail() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">User Type</label>
-                <select
-                  value={formData.user_type}
-                  onChange={(e) => setFormData({ ...formData, user_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="tenant">Tenant User</option>
-                  <option value="platform">Platform User</option>
-                </select>
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
                 <select
-                  value={formData.legacy_role}
-                  onChange={(e) => setFormData({ ...formData, legacy_role: e.target.value })}
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 >
-                  {formData.user_type === 'platform' ? (
-                    <>
-                      <option value="platform_admin">Platform Admin</option>
-                      <option value="security_admin">Security Admin</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="admin">Admin</option>
-                      <option value="owner">Owner</option>
-                      <option value="recruiter">Recruiter</option>
-                      <option value="member">Member</option>
-                    </>
-                  )}
+                  <option value="platform_admin">Platform Admin</option>
+                  <option value="security_admin">Security Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="owner">Owner</option>
+                  <option value="recruiter">Recruiter</option>
+                  <option value="member">Member</option>
                 </select>
               </div>
             </div>
@@ -272,25 +243,13 @@ export default function UserDetail() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <User className="text-blue-600" size={20} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">User Type</p>
-                <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${getUserTypeBadge(user.user_type)}`}>
-                  {user.user_type}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 <Shield className="text-purple-600" size={20} />
               </div>
               <div>
                 <p className="text-xs text-gray-500">Role</p>
                 <p className="text-sm font-medium text-gray-900 capitalize">
-                  {user.legacy_role?.replace('_', ' ') || 'No Role'}
+                  {user.role?.replace('_', ' ') || 'No Role'}
                 </p>
               </div>
             </div>
@@ -367,12 +326,12 @@ export default function UserDetail() {
           <div>
             {user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {user.permissions.map((perm) => (
+                {user.permissions.map((perm, index) => (
                   <span
-                    key={perm.id}
-                    className={`px-3 py-1 text-sm font-medium rounded-full ${getCategoryColor(perm.category)}`}
+                    key={typeof perm === 'string' ? perm : perm.id || `perm-${index}`}
+                    className="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-800"
                   >
-                    {perm.name}
+                    {typeof perm === 'string' ? perm : perm.name}
                   </span>
                 ))}
               </div>

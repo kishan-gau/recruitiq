@@ -1,7 +1,7 @@
-const vpsClient = require('./transip/vpsClient');
-const cloudInitService = require('./transip/cloudInit');
-const { VpsProvisionRequest, TransipVpsInventory } = require('../models');
-const { createDeploymentJob } = require('../queue/deploymentQueue');
+import vpsClient from './transip/vpsClient.js';
+import cloudInitService from './transip/cloudInit.js';
+import { VpsProvisionRequest, TransipVpsInventory } from '../models/index.js';
+import { createDeploymentJob } from '../queue/deploymentQueue.js';
 
 /**
  * VPS Provisioning Service
@@ -371,4 +371,4 @@ final_message: "VPS provisioning completed at $TIMESTAMP"
   }
 }
 
-module.exports = new VpsProvisioningService();
+export default new VpsProvisioningService();
