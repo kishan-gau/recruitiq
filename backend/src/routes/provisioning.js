@@ -30,7 +30,7 @@ const USE_DEPLOYMENT_SERVICE = process.env.USE_DEPLOYMENT_SERVICE === 'true';
 const licenseManagerPool = new pg.Pool({
   host: process.env.PLATFORM_DATABASE_HOST || process.env.DATABASE_HOST || 'localhost',
   port: process.env.PLATFORM_DATABASE_PORT || process.env.DATABASE_PORT || 5432,
-  database: process.env.PLATFORM_DATABASE_NAME || process.env.DATABASE_NAME || 'recruitiq_dev',
+  database: process.env.PLATFORM_DATABASE_NAME || process.env.DATABASE_NAME,
   user: process.env.PLATFORM_DATABASE_USER || process.env.DATABASE_USER || 'postgres',
   password: process.env.PLATFORM_DATABASE_PASSWORD || process.env.DATABASE_PASSWORD || config.database.password,
   max: 5, // Smaller pool since we query infrequently

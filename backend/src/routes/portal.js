@@ -11,7 +11,7 @@
 import express from 'express';
 import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
 import { queryCentralDb } from '../config/centralDatabase.js';
-import pool from '../config/database.js';
+import platformDb from '../shared/database/licenseManagerDb.js';
 import logger from '../utils/logger.js';
 import jwt from 'jsonwebtoken';
 
@@ -79,7 +79,7 @@ router.post('/deployments/callback', async (req, res) => {
     // Update deployment record in database
     if (status === 'completed') {
       // Update by deployment ID first, then by organization ID as fallback
-      let updateResult = await pool.query(
+      let updateResult = await platformDb.query(
         `UPDATE instance_deployments 
          SET status = 'active', 
              access_url = $1,
@@ -92,7 +92,7 @@ router.post('/deployments/callback', async (req, res) => {
       
       // If no rows updated by ID, try by organization_id
       if (updateResult.rowCount === 0 && organizationId) {
-        await pool.query(
+        await platformDb.query(
           `UPDATE instance_deployments 
            SET status = 'active', 
                access_url = $1,
@@ -106,7 +106,7 @@ router.post('/deployments/callback', async (req, res) => {
 
       // Update license status to active
       if (req.body.licenseId) {
-        await pool.query(
+        await platformDb.query(
           `UPDATE licenses SET status = 'active', activated_at = NOW() WHERE id = $1`,
           [req.body.licenseId]
         );
@@ -122,7 +122,7 @@ router.post('/deployments/callback', async (req, res) => {
 
     } else if (status === 'failed') {
       // Update by deployment ID first, then by organization ID as fallback
-      let failedResult = await pool.query(
+      let failedResult = await platformDb.query(
         `UPDATE instance_deployments 
          SET status = 'failed', 
              error_message = $1,
@@ -134,7 +134,7 @@ router.post('/deployments/callback', async (req, res) => {
       
       // If no rows updated by ID, try by organization_id
       if (failedResult.rowCount === 0 && organizationId) {
-        await pool.query(
+        await platformDb.query(
           `UPDATE instance_deployments 
            SET status = 'failed', 
                error_message = $1,
@@ -256,7 +256,7 @@ router.post('/tenant-events', async (req, res) => {
     // Handle specific event types
     if (eventType === 'health_check') {
       // Update tenant health status
-      await pool.query(
+      await platformDb.query(
         `UPDATE instance_deployments 
          SET last_health_check = NOW(), 
              health_status = $1
@@ -297,7 +297,7 @@ router.post('/licenses/validate', async (req, res) => {
     }
 
     // Query license from database
-    const licenseResult = await pool.query(
+    const licenseResult = await platformDb.query(
       `SELECT l.*, 
               tp.max_users, tp.max_workspaces, tp.max_jobs, tp.max_candidates, tp.features
        FROM licenses l

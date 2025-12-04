@@ -54,34 +54,60 @@ export default function LicenseCreate() {
     }
 
     setIsSubmitting(true);
-    const loadingToast = toast.loading('Creating customer...');
     
     try {
-      const customer = await portalService.createCustomer({
-        name: formData.name,
-        contactEmail: formData.contactEmail,
-        contactName: formData.contactName,
-        deploymentType: formData.deploymentType,
-        instanceUrl: formData.instanceUrl,
-        tier: formData.tier,
-        maxUsers: formData.maxUsers,
-        maxWorkspaces: formData.maxWorkspaces,
-        maxJobs: formData.maxJobs,
-        maxCandidates: formData.maxCandidates,
-        features: formData.features,
-        contractMonths: formData.durationMonths,
-        sessionPolicy: formData.sessionPolicy,
-        maxSessionsPerUser: formData.maxSessionsPerUser,
-        concurrentLoginDetection: formData.concurrentLoginDetection,
-        mfaRequired: formData.mfaRequired || formData.deploymentType === 'cloud-shared'
-      });
+      let customerId = formData.customerId;
       
-      toast.success('Customer created successfully!', { id: loadingToast });
-      navigate(`/licenses/customers/${customer.id}`);
+      // If selecting existing customer, create license only
+      if (customerId) {
+        const loadingToast = toast.loading('Creating license for existing customer...');
+        
+        const license = await portalService.createLicense(customerId, {
+          tier: formData.tier,
+          maxUsers: formData.maxUsers,
+          maxWorkspaces: formData.maxWorkspaces,
+          maxJobs: formData.maxJobs,
+          maxCandidates: formData.maxCandidates,
+          features: formData.features,
+          contractMonths: formData.durationMonths,
+          sessionPolicy: formData.sessionPolicy,
+          maxSessionsPerUser: formData.maxSessionsPerUser,
+          concurrentLoginDetection: formData.concurrentLoginDetection,
+          mfaRequired: formData.mfaRequired || formData.deploymentType === 'cloud-shared'
+        });
+        
+        toast.success('License created successfully!', { id: loadingToast });
+        navigate(`/licenses/customers/${customerId}`);
+      } else {
+        // Create new customer with license
+        const loadingToast = toast.loading('Creating customer and license...');
+        
+        const customer = await portalService.createCustomer({
+          name: formData.name,
+          contactEmail: formData.contactEmail,
+          contactName: formData.contactName,
+          deploymentType: formData.deploymentType,
+          instanceUrl: formData.instanceUrl,
+          tier: formData.tier,
+          maxUsers: formData.maxUsers,
+          maxWorkspaces: formData.maxWorkspaces,
+          maxJobs: formData.maxJobs,
+          maxCandidates: formData.maxCandidates,
+          features: formData.features,
+          contractMonths: formData.durationMonths,
+          sessionPolicy: formData.sessionPolicy,
+          maxSessionsPerUser: formData.maxSessionsPerUser,
+          concurrentLoginDetection: formData.concurrentLoginDetection,
+          mfaRequired: formData.mfaRequired || formData.deploymentType === 'cloud-shared'
+        });
+        
+        toast.success('Customer and license created successfully!', { id: loadingToast });
+        navigate(`/licenses/customers/${customer.id}`);
+      }
     } catch (error) {
-      console.error('Failed to create customer:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to create customer';
-      toast.error(errorMsg, { id: loadingToast });
+      console.error('Failed to create license:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to create license';
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }

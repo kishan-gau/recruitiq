@@ -13,7 +13,7 @@ import { authenticate } from '../middleware/auth.js';
 import FeatureAccessService from '../services/FeatureAccessService.js';
 import FeatureRepository from '../repositories/FeatureRepository.js';
 import FeatureGrantRepository from '../repositories/FeatureGrantRepository.js';
-import { query } from '../config/database.js';
+import platformDb from '../shared/database/licenseManagerDb.js';
 import logger from '../utils/logger.js';
 import { ValidationError } from '../middleware/errorHandler.js';
 
@@ -32,11 +32,9 @@ router.use(authenticate);
  */
 async function getProductId(productSlug) {
   try {
-    const result = await query(
+    const result = await platformDb.query(
       'SELECT id FROM products WHERE slug = $1',
-      [productSlug],
-      null,
-      { operation: 'getProductId' }
+      [productSlug]
     );
     return result.rows[0]?.id || null;
   } catch (error) {

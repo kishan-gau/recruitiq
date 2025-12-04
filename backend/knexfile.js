@@ -47,6 +47,33 @@ const config = {
     },
   },
 
+  // Platform database (for portal/license management)
+  platform: {
+    client: 'pg',
+    connection: {
+      host: process.env.PLATFORM_DATABASE_HOST || 'localhost',
+      port: parseInt(process.env.PLATFORM_DATABASE_PORT, 10) || 5432,
+      database: process.env.PLATFORM_DATABASE_NAME || 'platform_db',
+      user: process.env.PLATFORM_DATABASE_USER || 'postgres',
+      password: process.env.PLATFORM_DATABASE_PASSWORD || 'postgres',
+      ssl: process.env.PLATFORM_DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    },
+    pool: {
+      min: 2,
+      max: 10,
+    },
+    migrations: {
+      directory: './migrations',
+      tableName: 'knex_migrations',
+      extension: 'js',
+      loadExtensions: ['.js'],
+    },
+    seeds: {
+      directory: './seeds/production',
+      loadExtensions: ['.js'],
+    },
+  },
+
   // Test environment
   test: {
     client: 'pg',

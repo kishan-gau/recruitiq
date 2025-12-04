@@ -29,30 +29,34 @@ router.get('/roles', requirePlatformPermission('portal.view'), async (req, res) 
         r.display_name,
         r.description,
         r.role_type,
-        r.level,
+        r.is_active,
         r.created_at,
         r.updated_at,
         0 as user_count,
         COUNT(DISTINCT rp.permission_id) as permission_count,
         array_agg(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL) as permissions
       FROM roles r
-      LEFT JOIN role_permissions rp ON r.id = rp.role_id
+      LEFT JOIN role_permissions rp ON r.id = rp.role_id AND rp.deleted_at IS NULL
       LEFT JOIN permissions p ON rp.permission_id = p.id
-      GROUP BY r.id
-      ORDER BY r.level DESC, r.name
+      WHERE r.deleted_at IS NULL
+        AND r.role_type = 'platform'
+        AND r.organization_id IS NULL
+      GROUP BY r.id, r.name, r.display_name, r.description, r.role_type, r.is_active, r.created_at, r.updated_at
+      ORDER BY r.name
     `;
     
     const result = await pool.query(query);
     
     res.json({
       success: true,
-      roles: result.rows
+      roles: result.rows || []
     });
   } catch (error) {
-    logger.error('Failed to fetch roles', { error: error.message });
+    logger.error('Failed to fetch roles', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch roles'
+      error: 'Failed to fetch roles',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -314,11 +318,12 @@ router.get('/permissions', requirePlatformPermission('portal.view'), async (req,
     const query = `
       SELECT 
         p.*,
-        COUNT(DISTINCT rp.role_id) as role_count,
-        array_agg(DISTINCT r.name) FILTER (WHERE r.name IS NOT NULL) as roles
+        COUNT(DISTINCT rp.role_id) FILTER (WHERE r.role_type = 'platform' AND r.organization_id IS NULL) as role_count,
+        array_agg(DISTINCT r.name) FILTER (WHERE r.name IS NOT NULL AND r.role_type = 'platform' AND r.organization_id IS NULL) as roles
       FROM permissions p
-      LEFT JOIN role_permissions rp ON p.id = rp.permission_id
-      LEFT JOIN roles r ON rp.role_id = r.id
+      LEFT JOIN role_permissions rp ON p.id = rp.permission_id AND rp.deleted_at IS NULL
+      LEFT JOIN roles r ON rp.role_id = r.id AND r.deleted_at IS NULL
+      WHERE p.product = 'portal' OR p.category IN ('portal', 'platform', 'license', 'security', 'system')
       GROUP BY p.id
       ORDER BY p.category, p.name
     `;
@@ -327,13 +332,14 @@ router.get('/permissions', requirePlatformPermission('portal.view'), async (req,
     
     res.json({
       success: true,
-      permissions: result.rows
+      permissions: result.rows || []
     });
   } catch (error) {
-    logger.error('Failed to fetch permissions', { error: error.message });
+    logger.error('Failed to fetch permissions', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch permissions'
+      error: 'Failed to fetch permissions',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

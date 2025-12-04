@@ -27,7 +27,7 @@ const config = {
     url: process.env.DATABASE_URL,
     host: process.env.DATABASE_HOST || 'localhost',
     port: parseInt(process.env.DATABASE_PORT, 10) || 5432,
-    name: process.env.DATABASE_NAME || 'recruitiq_dev',
+    name: process.env.DATABASE_NAME,
     user: process.env.DATABASE_USER || 'postgres',
     password: secrets.DATABASE_PASSWORD || process.env.DATABASE_PASSWORD, // Validated secret
     ssl: process.env.DATABASE_SSL === 'true',
@@ -260,6 +260,11 @@ const config = {
 // Basic config validation (non-secret)
 if (!config.database.url && !config.database.host) {
   console.error('❌ Database configuration is missing');
+  process.exit(1);
+}
+
+if (!config.database.name) {
+  console.error('❌ DATABASE_NAME environment variable is required');
   process.exit(1);
 }
 

@@ -12,9 +12,7 @@ export default function UserCreate() {
     email: '',
     password: '',
     confirmPassword: '',
-    user_type: 'tenant',
-    legacy_role: 'member',
-    workspace_id: null
+    role: 'member'
   });
 
   const handleSubmit = async (e) => {
@@ -37,7 +35,7 @@ export default function UserCreate() {
       // Remove confirmPassword before sending
       const { confirmPassword, ...userData } = formData;
       
-      await portalService.createUser(userData);
+      await portalService.createPortalUser(userData);
       toast.success('User created successfully');
       navigate('/users');
     } catch (error) {
@@ -138,74 +136,30 @@ export default function UserCreate() {
             </div>
           </div>
 
-          {/* Role & Type */}
+          {/* Role */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Role & Access</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  User Type *
-                </label>
-                <select
-                  value={formData.user_type}
-                  onChange={(e) => setFormData({ ...formData, user_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  required
-                >
-                  <option value="tenant">Tenant User</option>
-                  <option value="platform">Platform User</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Platform users have access to Portal features
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Role *
                 </label>
                 <select
-                  value={formData.legacy_role}
-                  onChange={(e) => setFormData({ ...formData, legacy_role: e.target.value })}
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   required
                 >
-                  {formData.user_type === 'platform' ? (
-                    <>
-                      <option value="platform_admin">Platform Admin</option>
-                      <option value="security_admin">Security Admin</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="admin">Admin</option>
-                      <option value="owner">Owner</option>
-                      <option value="recruiter">Recruiter</option>
-                      <option value="member">Member</option>
-                    </>
-                  )}
+                  <option value="platform_admin">Platform Admin</option>
+                  <option value="security_admin">Security Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="owner">Owner</option>
+                  <option value="recruiter">Recruiter</option>
+                  <option value="member">Member</option>
                 </select>
               </div>
             </div>
           </div>
-
-          {/* Workspace ID (for tenant users) */}
-          {formData.user_type === 'tenant' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Workspace ID
-              </label>
-              <input
-                type="text"
-                value={formData.workspace_id || ''}
-                onChange={(e) => setFormData({ ...formData, workspace_id: e.target.value || null })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Optional workspace UUID"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Leave empty for users without workspace assignment
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Actions */}

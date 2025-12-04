@@ -172,7 +172,7 @@ async function main() {
   console.log(`   Email:       ${options.customerEmail}`)
   console.log(`   Name:        ${options.customerName}`)
   console.log(`   Tier:        ${options.tier}`)
-  console.log(`   Products:    ${options.products.join(', ')}`)
+  console.log(`   Products:    ${options.products ? options.products.join(', ') : 'Auto-detect from tier'}`)
   console.log(`   Country:     ${options.country}`)
   console.log('')
 

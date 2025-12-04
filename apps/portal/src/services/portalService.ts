@@ -390,7 +390,7 @@ export const portalService = {
   },
 
   // ============================================================================
-  // User Management
+  // User Management (Platform Users Only)
   // ============================================================================
 
   async getPortalUsers(filters: Record<string, any> = {}) {
@@ -401,7 +401,7 @@ export const portalService = {
     return portalAPI.getPortalUser(userId);
   },
 
-  async createUser(userData: any) {
+  async createPortalUser(userData: any) {
     return portalAPI.createUser(userData);
   },
 
@@ -467,7 +467,11 @@ export const portalService = {
 
   async getFeatures(filters: Record<string, any> = {}) {
     const response = await featuresAPI.listFeatures(filters);
-    return { features: response.features || [], total: response.total };
+    // Backend returns { success, features, pagination: { total, page, limit, pages } }
+    return { 
+      features: response.features || [], 
+      total: response.pagination?.total || 0 
+    };
   },
 
   async getFeature(id: string) {

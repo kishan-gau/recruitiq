@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import PlatformUser from '../../models/PlatformUser.js';
-import db from '../../config/database.js';
+import platformDb from '../../shared/database/licenseManagerDb.js'; // Platform database connection
 import { v4 as uuidv4 } from 'uuid';
 import { getPlatformAccessCookieConfig, getPlatformRefreshCookieConfig, getClearCookieConfig } from '../../config/cookie.js';
 
@@ -89,7 +89,7 @@ export const login = async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + (rememberMe ? 30 : 7));
 
-    await db.query(
+    await platformDb.query(
       `INSERT INTO platform_refresh_tokens 
        (id, user_id, token, expires_at, ip_address, user_agent)
        VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -164,7 +164,7 @@ export const refresh = async (req, res) => {
     }
 
     // Check if refresh token exists in database and is not revoked
-    const tokenResult = await db.query(
+    const tokenResult = await platformDb.query(
       `SELECT id, user_id, revoked_at 
        FROM platform_refresh_tokens 
        WHERE id = $1 AND token = $2`,
@@ -233,7 +233,7 @@ export const logout = async (req, res) => {
 
     if (refreshToken) {
       // Revoke the refresh token
-      await db.query(
+      await platformDb.query(
         `UPDATE platform_refresh_tokens 
          SET revoked_at = NOW() 
          WHERE token = $1`,
@@ -323,7 +323,7 @@ export const revokeAllSessions = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    await db.query(
+    await platformDb.query(
       `UPDATE platform_refresh_tokens 
        SET revoked_at = NOW() 
        WHERE user_id = $1 AND revoked_at IS NULL`,

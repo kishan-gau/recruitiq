@@ -18,7 +18,7 @@ router.use(authenticatePlatform);
  * GET /api/portal/users
  * Get all platform users
  */
-router.get('/users', requirePlatformPermission('portal.view'), async (req, res) => {
+router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
     const { role, search } = req.query;
     
@@ -78,7 +78,7 @@ router.get('/users', requirePlatformPermission('portal.view'), async (req, res) 
  * GET /api/portal/users/:id
  * Get user details with permissions
  */
-router.get('/users/:id', requirePlatformPermission('portal.view'), async (req, res) => {
+router.get('/:id', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -87,9 +87,9 @@ router.get('/users/:id', requirePlatformPermission('portal.view'), async (req, r
         u.id,
         u.email,
         u.name,
-        u.user_type,
-        u.legacy_role,
-        u.role_id,
+        u.first_name,
+        u.last_name,
+        u.role,
         u.phone,
         u.avatar_url,
         u.timezone,
@@ -97,22 +97,32 @@ router.get('/users/:id', requirePlatformPermission('portal.view'), async (req, r
         u.last_login_ip,
         u.email_verified,
         u.mfa_enabled,
+        u.permissions as direct_permissions,
+        u.is_active,
         u.created_at,
         u.updated_at,
-        u.organization_id,
-        u.additional_permissions,
-        o.name as organization_name,
-        r.name as role_name,
-        r.display_name as role_display_name,
-        array(
-          SELECT p.name 
-          FROM permissions p 
-          WHERE p.id = ANY(u.additional_permissions)
-        ) as permissions
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', r.id,
+              'name', r.name,
+              'display_name', r.display_name,
+              'role_type', r.role_type
+            )
+          ) FILTER (WHERE r.id IS NOT NULL),
+          '[]'::json
+        ) as roles,
+        COALESCE(
+          array_agg(DISTINCT p.name) FILTER (WHERE p.name IS NOT NULL),
+          ARRAY[]::varchar[]
+        ) as role_permissions
       FROM platform_users u
-      LEFT JOIN organizations o ON u.organization_id = o.id
-      LEFT JOIN roles r ON u.role_id = r.id
+      LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.deleted_at IS NULL
+      LEFT JOIN roles r ON ur.role_id = r.id AND r.deleted_at IS NULL AND r.role_type = 'platform'
+      LEFT JOIN role_permissions rp ON r.id = rp.role_id AND rp.deleted_at IS NULL
+      LEFT JOIN permissions p ON rp.permission_id = p.id
       WHERE u.id = $1 AND u.deleted_at IS NULL
+      GROUP BY u.id
     `;
     
     const result = await pool.query(query, [id]);
@@ -124,34 +134,56 @@ router.get('/users/:id', requirePlatformPermission('portal.view'), async (req, r
       });
     }
     
+    const user = result.rows[0];
+    
+    // Combine direct permissions and role-based permissions
+    const directPerms = user.direct_permissions || [];
+    const rolePerms = user.role_permissions || [];
+    const allPermissions = [...new Set([...directPerms, ...rolePerms])];
+    
     res.json({
       success: true,
-      user: result.rows[0]
+      user: {
+        ...user,
+        permissions: allPermissions,
+        direct_permissions: directPerms,
+        role_permissions: rolePerms
+      }
     });
   } catch (error) {
-    logger.error('Failed to fetch user', { error: error.message, userId: req.params.id });
+    logger.error('Failed to fetch user', { error: error.message, stack: error.stack, userId: req.params.id });
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch user'
+      error: 'Failed to fetch user',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
 /**
  * POST /api/portal/users
- * Create a new user
+ * Create a new platform user
  */
-router.post('/users', requirePlatformPermission('portal.manage'), async (req, res) => {
+router.post('/', requirePlatformPermission('portal.manage'), async (req, res) => {
   const client = await pool.connect();
   
   try {
-    const { email, name, password, user_type, legacy_role, organization_id, permissions } = req.body;
+    const { email, name, password, role, permissions, phone, timezone } = req.body;
     
     // Validation
-    if (!email || !name || !password || !user_type) {
+    if (!email || !name || !password || !role) {
       return res.status(400).json({
         success: false,
-        error: 'Email, name, password, and user_type are required'
+        error: 'Email, name, password, and role are required'
+      });
+    }
+    
+    // Validate role
+    const validRoles = ['super_admin', 'admin', 'support', 'viewer'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: `Role must be one of: ${validRoles.join(', ')}`
       });
     }
     
@@ -174,39 +206,31 @@ router.post('/users', requirePlatformPermission('portal.manage'), async (req, re
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
     
-    // Get permission IDs if permission names provided
-    let permissionIds = [];
-    if (permissions && permissions.length > 0) {
-      const permResult = await client.query(
-        'SELECT id FROM permissions WHERE name = ANY($1)',
-        [permissions]
-      );
-      permissionIds = permResult.rows.map(r => r.id);
-    }
-    
     // Split name into first and last name
     const nameParts = name.trim().split(/\s+/);
     const firstName = nameParts[0] || 'User';
     const lastName = nameParts.slice(1).join(' ') || '';
     
-    // Create user
+    // Create user (platform_users stores permissions as JSONB array, not IDs)
     const result = await client.query(
       `INSERT INTO platform_users (
-        email, name, first_name, last_name, password_hash, user_type, legacy_role, 
-        organization_id, additional_permissions, email_verified
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING id, email, name, first_name, last_name, user_type, legacy_role`,
+        email, name, first_name, last_name, password_hash, role, 
+        permissions, phone, timezone, email_verified, is_active, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING id, email, name, first_name, last_name, role, permissions, phone, timezone, email_verified, is_active, created_at`,
       [
         email.toLowerCase(),
         name,
         firstName,
         lastName,
         passwordHash,
-        user_type,
-        legacy_role || null,
-        organization_id || null,
-        permissionIds,
-        true // Email verified for admin-created users
+        role,
+        JSON.stringify(permissions || []), // Store as JSONB
+        phone || null,
+        timezone || 'UTC',
+        true, // Email verified for admin-created users
+        true, // Active by default
+        req.user.id
       ]
     );
     
@@ -238,10 +262,10 @@ router.post('/users', requirePlatformPermission('portal.manage'), async (req, re
  * PUT /api/portal/users/:id
  * Update user details
  */
-router.put('/users/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
+router.put('/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, timezone, legacy_role } = req.body;
+    const { name, first_name, last_name, phone, timezone, role, is_active } = req.body;
     
     const updates = [];
     const values = [];
@@ -250,6 +274,18 @@ router.put('/users/:id', requirePlatformPermission('portal.manage'), async (req,
     if (name) {
       updates.push(`name = $${paramIndex}`);
       values.push(name);
+      paramIndex++;
+    }
+    
+    if (first_name !== undefined) {
+      updates.push(`first_name = $${paramIndex}`);
+      values.push(first_name);
+      paramIndex++;
+    }
+    
+    if (last_name !== undefined) {
+      updates.push(`last_name = $${paramIndex}`);
+      values.push(last_name);
       paramIndex++;
     }
     
@@ -265,9 +301,15 @@ router.put('/users/:id', requirePlatformPermission('portal.manage'), async (req,
       paramIndex++;
     }
     
-    if (legacy_role) {
-      updates.push(`legacy_role = $${paramIndex}`);
-      values.push(legacy_role);
+    if (role) {
+      updates.push(`role = $${paramIndex}`);
+      values.push(role);
+      paramIndex++;
+    }
+    
+    if (is_active !== undefined) {
+      updates.push(`is_active = $${paramIndex}`);
+      values.push(is_active);
       paramIndex++;
     }
     
@@ -285,7 +327,7 @@ router.put('/users/:id', requirePlatformPermission('portal.manage'), async (req,
       UPDATE platform_users 
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex} AND deleted_at IS NULL
-      RETURNING id, email, name, user_type, legacy_role
+      RETURNING id, email, name, first_name, last_name, role, phone, timezone, is_active, permissions, mfa_enabled, created_at, updated_at
     `;
     
     const result = await pool.query(query, values);
@@ -317,9 +359,9 @@ router.put('/users/:id', requirePlatformPermission('portal.manage'), async (req,
 
 /**
  * PUT /api/portal/users/:id/permissions
- * Update user permissions
+ * Update user permissions (stores as JSONB array of permission strings)
  */
-router.put('/users/:id/permissions', requirePlatformPermission('portal.manage'), async (req, res) => {
+router.put('/:id/permissions', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     const { permissions } = req.body;
@@ -331,19 +373,13 @@ router.put('/users/:id/permissions', requirePlatformPermission('portal.manage'),
       });
     }
     
-    // Get permission IDs from names
-    const permResult = await pool.query(
-      'SELECT id FROM permissions WHERE name = ANY($1)',
-      [permissions]
-    );
-    const permissionIds = permResult.rows.map(r => r.id);
-    
+    // Store permissions as JSONB array (platform_users.permissions is JSONB)
     const result = await pool.query(
       `UPDATE platform_users 
-       SET additional_permissions = $1, updated_at = NOW()
+       SET permissions = $1, updated_at = NOW()
        WHERE id = $2 AND deleted_at IS NULL
-       RETURNING id, email, name`,
-      [permissionIds, id]
+       RETURNING id, email, name, role, permissions`,
+      [JSON.stringify(permissions), id]
     );
     
     if (result.rows.length === 0) {
@@ -376,7 +412,7 @@ router.put('/users/:id/permissions', requirePlatformPermission('portal.manage'),
  * DELETE /api/portal/users/:id
  * Soft delete a user
  */
-router.delete('/users/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
+router.delete('/:id', requirePlatformPermission('portal.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     

@@ -40,7 +40,7 @@ import rolesPermissionsRoutes from './routes/rolesPermissions.js';
 import securityRoutes from './routes/security.js';
 import provisioningRoutes from './routes/provisioning.js';
 import emailSettingsRoutes from './routes/emailSettings.js';
-import adminFeaturesRoutes from './routes/adminFeatures.js';
+import adminRouter from './routes/admin/index.js';
 import featuresRoutes from './routes/features.js';
 import licenseAdminRoutes from './modules/license/routes/admin.js';
 import licenseValidationRoutes from './modules/license/routes/validation.js';
@@ -280,10 +280,9 @@ export function createApp(options = {}) {
   apiRouter.use('/public', publicRoutes);
   apiRouter.use('/auth/mfa', mfaRoutes);
 
-  // Protected routes
+  // Protected routes - Core Platform
   apiRouter.use('/organizations', authenticate, organizationRoutes);
   apiRouter.use('/users', authenticate, userRoutes);
-  apiRouter.use('/platform-users', platformUserRoutes);
   apiRouter.use('/workspaces', authenticate, workspaceRoutes);
   apiRouter.use('/jobs', jobRoutes);
   apiRouter.use('/candidates', authenticate, candidateRoutes);
@@ -291,20 +290,29 @@ export function createApp(options = {}) {
   apiRouter.use('/interviews', authenticate, interviewRoutes);
   apiRouter.use('/flow-templates', authenticate, flowTemplateRoutes);
   apiRouter.use('/communications', communicationRoutes);
+  apiRouter.use('/settings/email', emailSettingsRoutes);
+  apiRouter.use('/features', authenticate, featuresRoutes);
+
+  // Portal/Platform Admin Routes (all under /api/portal)
   apiRouter.use('/portal', portalRoutes);
   apiRouter.use('/portal', provisioningRoutes);
-  apiRouter.use('/portal', userManagementRoutes);
-  apiRouter.use('/portal', rolesPermissionsRoutes);
+  apiRouter.use('/portal/users', userManagementRoutes);
+  apiRouter.use('/portal/platform-users', platformUserRoutes);
+  apiRouter.use('/portal', rolesPermissionsRoutes); // Handles /roles and /permissions
   apiRouter.use('/portal/vps', vpsRoutes);
-  apiRouter.use('/security', securityRoutes);
-  apiRouter.use('/settings/email', emailSettingsRoutes);
-  apiRouter.use('/admin', licenseAdminRoutes);
+  apiRouter.use('/portal/security', securityRoutes);
+
+  // Admin Routes (all under /api/admin)
+  apiRouter.use('/admin', adminRouter);
+  apiRouter.use('/admin/licenses', licenseAdminRoutes);
+  apiRouter.use('/admin/products', productManagementRoutes);
+
+  // License Routes
   apiRouter.use('/validate', licenseValidationRoutes);
   apiRouter.use('/telemetry', licenseTelemetryRoutes);
   apiRouter.use('/tiers', licenseTierRoutes);
-  apiRouter.use('/admin/features', adminFeaturesRoutes);
-  apiRouter.use('/features', authenticate, featuresRoutes);
-  apiRouter.use('/admin', productManagementRoutes);
+
+  // System Routes
   apiRouter.use('/system/products', systemRoutes);
 
   // RBAC Routes

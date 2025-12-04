@@ -8,7 +8,6 @@ export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
 
   useEffect(() => {
@@ -18,7 +17,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const data = await portalService.getUsers();
+      const data = await portalService.getPortalUsers();
       setUsers(data.users || []);
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -31,18 +30,9 @@ export default function UserManagement() {
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'all' || user.user_type === filterType;
-    const matchesRole = filterRole === 'all' || user.legacy_role === filterRole;
-    return matchesSearch && matchesType && matchesRole;
+    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    return matchesSearch && matchesRole;
   });
-
-  const getUserTypeBadge = (type) => {
-    const colors = {
-      platform: 'bg-purple-100 text-purple-800',
-      tenant: 'bg-blue-100 text-blue-800'
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800';
-  };
 
   const getRoleBadge = (role) => {
     const colors = {
@@ -61,8 +51,8 @@ export default function UserManagement() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600 mt-1">Manage platform and tenant users</p>
+          <h1 className="text-2xl font-bold text-gray-900">Platform User Management</h1>
+          <p className="text-gray-600 mt-1">Manage platform administrators and users</p>
         </div>
         <Link
           to="/users/create"
@@ -95,7 +85,7 @@ export default function UserManagement() {
             <div>
               <p className="text-sm text-gray-600">Platform Admins</p>
               <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => u.user_type === 'platform').length}
+                {users.filter(u => u.role === 'platform_admin').length}
               </p>
             </div>
           </div>
@@ -118,7 +108,7 @@ export default function UserManagement() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -129,20 +119,6 @@ export default function UserManagement() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
-          </div>
-
-          {/* User Type Filter */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none"
-            >
-              <option value="all">All Types</option>
-              <option value="platform">Platform Users</option>
-              <option value="tenant">Tenant Users</option>
-            </select>
           </div>
 
           {/* Role Filter */}
@@ -180,9 +156,6 @@ export default function UserManagement() {
                     User
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Role
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -211,13 +184,8 @@ export default function UserManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getUserTypeBadge(user.user_type)}`}>
-                        {user.user_type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadge(user.legacy_role || user.role)}`}>
-                        {user.legacy_role || user.role || 'No Role'}
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadge(user.role)}`}>
+                        {user.role || 'No Role'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

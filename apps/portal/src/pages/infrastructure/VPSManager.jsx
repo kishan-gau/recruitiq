@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Server, Plus, Activity, AlertCircle, CheckCircle, Cloud, CloudOff } from 'lucide-react';
+import { Server, Plus, Activity, AlertCircle, CheckCircle, Cloud, CloudOff, X } from 'lucide-react';
 import axios from 'axios';
 
 export default function VPSManager() {
@@ -315,6 +315,258 @@ export default function VPSManager() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Add VPS Modal */}
+      {showAddModal && (
+        <AddVPSModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            setShowAddModal(false);
+            fetchVPSList();
+            fetchStats();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Add VPS Modal Component
+function AddVPSModal({ onClose, onSuccess }) {
+  const [formData, setFormData] = useState({
+    vps_name: '',
+    vps_ip: '',
+    deployment_type: 'shared',
+    max_tenants: 10,
+    cpu_cores: 4,
+    memory_mb: 8192,
+    disk_gb: 100,
+    location: '',
+    status: 'active'
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      await axios.post('/api/portal/vps', formData);
+      onSuccess();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add VPS');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'max_tenants' || name === 'cpu_cores' || name === 'memory_mb' || name === 'disk_gb'
+        ? parseInt(value) || 0
+        : value
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Add New VPS</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* VPS Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                VPS Name *
+              </label>
+              <input
+                type="text"
+                name="vps_name"
+                value={formData.vps_name}
+                onChange={handleChange}
+                required
+                placeholder="e.g., vps-nl-01"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* VPS IP */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                VPS IP Address *
+              </label>
+              <input
+                type="text"
+                name="vps_ip"
+                value={formData.vps_ip}
+                onChange={handleChange}
+                required
+                placeholder="e.g., 192.168.1.100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Deployment Type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Deployment Type *
+            </label>
+            <select
+              name="deployment_type"
+              value={formData.deployment_type}
+              onChange={handleChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="shared">Shared (Multi-tenant)</option>
+              <option value="dedicated">Dedicated (Single-tenant)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Shared VPS can host multiple tenants. Dedicated VPS hosts only one tenant.
+            </p>
+          </div>
+
+          {/* Max Tenants (only for shared) */}
+          {formData.deployment_type === 'shared' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Maximum Tenants
+              </label>
+              <input
+                type="number"
+                name="max_tenants"
+                value={formData.max_tenants}
+                onChange={handleChange}
+                min="1"
+                max="50"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-4">
+            {/* CPU Cores */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                CPU Cores
+              </label>
+              <input
+                type="number"
+                name="cpu_cores"
+                value={formData.cpu_cores}
+                onChange={handleChange}
+                min="1"
+                max="64"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Memory */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Memory (MB)
+              </label>
+              <input
+                type="number"
+                name="memory_mb"
+                value={formData.memory_mb}
+                onChange={handleChange}
+                min="1024"
+                step="1024"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Disk */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Disk (GB)
+              </label>
+              <input
+                type="number"
+                name="disk_gb"
+                value={formData.disk_gb}
+                onChange={handleChange}
+                min="10"
+                step="10"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Location
+            </label>
+            <input
+              type="text"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="e.g., Amsterdam, Netherlands"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Initial Status
+            </label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="active">Active</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="offline">Offline</option>
+            </select>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Adding...' : 'Add VPS'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -160,11 +160,11 @@ class PayStructureService {
 
       const template = await this.repository.createTemplate(value, organizationId, userId);
 
-      // Add changelog entry
+      // Add changelog entry for template creation
       await this.repository.addChangelogEntry({
         templateId: template.id,
         fromVersion: null,
-        toVersion: template.version,
+        toVersion: template.versionString,
         changeType: 'created',
         changeSummary: 'Initial template creation',
         changelogEntries: [{ type: 'created', description: 'Template created' }]
@@ -173,7 +173,7 @@ class PayStructureService {
       logger.info('Pay structure template created', {
         templateId: template.id,
         templateCode: template.templateCode,
-        version: template.version,
+        version: template.versionString,
         organizationId,
         userId
       });

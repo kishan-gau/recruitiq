@@ -935,7 +935,7 @@ export const PAY_STRUCTURE_TEMPLATE_DB_TO_API = {
   version_major: 'versionMajor',
   version_minor: 'versionMinor',
   version_patch: 'versionPatch',
-  version_string: 'version',
+  // versionString is constructed in the mapper function from version components
   status: 'status',
   applicable_to_worker_types: 'applicableToWorkerTypes',
   applicable_to_jurisdictions: 'applicableToJurisdictions',
@@ -974,18 +974,16 @@ export function mapPayStructureTemplateDbToApi(dbData) {
   
   const mapped = mapDbToApi(dbData, PAY_STRUCTURE_TEMPLATE_DB_TO_API);
   
+  // Construct versionString from version components (Semantic Versioning)
+  if (mapped.versionMajor !== undefined && mapped.versionMinor !== undefined && mapped.versionPatch !== undefined) {
+    mapped.versionString = `${mapped.versionMajor}.${mapped.versionMinor}.${mapped.versionPatch}`;
+  }
+  
   // Convert count fields from strings to numbers
   if (mapped.componentCount) mapped.componentCount = parseInt(mapped.componentCount, 10);
   if (mapped.componentsCount) mapped.componentsCount = parseInt(mapped.componentsCount, 10);
   if (mapped.assignedWorkerCount) mapped.assignedWorkerCount = parseInt(mapped.assignedWorkerCount, 10);
   if (mapped.activeWorkersCount) mapped.activeWorkersCount = parseInt(mapped.activeWorkersCount, 10);
-  
-  console.log('After parseInt conversion:', {
-    componentsCount: mapped.componentsCount,
-    activeWorkersCount: mapped.activeWorkersCount,
-    componentCount: mapped.componentCount,
-    assignedWorkerCount: mapped.assignedWorkerCount
-  });
   
   return mapped;
 }
