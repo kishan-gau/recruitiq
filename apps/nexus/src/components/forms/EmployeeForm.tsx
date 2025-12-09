@@ -5,6 +5,52 @@ import { z } from 'zod';
 import { Save, X } from 'lucide-react';
 import { Employee, CreateEmployeeDTO } from '@/types/employee.types';
 
+// Helper function to convert empty strings to undefined for optional fields
+const preprocessFormData = (data: any) => {
+  const processed = { ...data };
+  
+  // List of optional fields that should be undefined when empty
+  const optionalFields = [
+    'middleName', 'preferredName', 'dateOfBirth', 'gender', 'nationality', 'residenceStatus',
+    'phone', 'mobilePhone', 'addressLine1', 'addressLine2', 'city', 'stateProvince',
+    'postalCode', 'country', 'emergencyContactName', 'emergencyContactRelationship',
+    'emergencyContactPhone', 'jobTitle', 'workSchedule', 'bio', 'terminationDate'
+  ];
+  
+  // Handle UUID fields specially - they need to be undefined if empty to avoid validation errors
+  const uuidFields = ['departmentId', 'locationId', 'managerId'];
+  
+  // Handle URL fields specially
+  const urlFields = ['profilePhotoUrl'];
+  
+  optionalFields.forEach(field => {
+    if (processed[field] === '') {
+      processed[field] = undefined;
+    }
+  });
+  
+  // Convert empty strings and placeholder values to undefined for UUID fields to prevent validation errors
+  uuidFields.forEach(field => {
+    if (processed[field] === '' || processed[field] === null || processed[field] === '__none__') {
+      processed[field] = undefined;
+    }
+  });
+  
+  // Convert empty strings to undefined for URL fields to prevent validation errors
+  urlFields.forEach(field => {
+    if (processed[field] === '' || processed[field] === null) {
+      processed[field] = undefined;
+    }
+  });
+  
+  // Handle ftePercentage specially (number field)
+  if (processed.ftePercentage === '' || processed.ftePercentage === null || isNaN(processed.ftePercentage)) {
+    processed.ftePercentage = undefined;
+  }
+  
+  return processed;
+};
+
 // Zod validation schema
 const employeeSchema = z.object({
   // Required fields
@@ -17,43 +63,49 @@ const employeeSchema = z.object({
   employmentType: z.enum(['full_time', 'part_time', 'contract', 'temporary', 'intern']),
   
   // Optional fields - Personal
-  middleName: z.string().max(100).optional().or(z.literal('')),
-  preferredName: z.string().max(100).optional().or(z.literal('')),
-  dateOfBirth: z.string().optional().or(z.literal('')),
-  gender: z.enum(['male', 'female', 'non_binary', 'prefer_not_to_say', 'other']).optional().or(z.literal('')),
-  nationality: z.string().max(100).optional().or(z.literal('')),
-  residenceStatus: z.enum(['resident', 'non_resident', 'partial_year_resident']).optional().or(z.literal('')),
+  middleName: z.string().max(100).optional(),
+  preferredName: z.string().max(100).optional(),
+  dateOfBirth: z.string().optional(),
+  gender: z.preprocess(
+    (val) => val === '' ? undefined : val,
+    z.enum(['male', 'female', 'non_binary', 'prefer_not_to_say', 'other']).optional()
+  ),
+  nationality: z.string().max(100).optional(),
+  residenceStatus: z.preprocess(
+    (val) => val === '' ? undefined : val,
+    z.enum(['resident', 'non_resident', 'partial_year_resident']).optional()
+  ),
   
   // Contact
-  phone: z.string().max(20).optional().or(z.literal('')),
-  mobilePhone: z.string().max(20).optional().or(z.literal('')),
+  phone: z.string().max(20).optional(),
+  mobilePhone: z.string().max(20).optional(),
   
   // Address
-  addressLine1: z.string().max(255).optional().or(z.literal('')),
-  addressLine2: z.string().max(255).optional().or(z.literal('')),
-  city: z.string().max(100).optional().or(z.literal('')),
-  stateProvince: z.string().max(100).optional().or(z.literal('')),
-  postalCode: z.string().max(20).optional().or(z.literal('')),
-  country: z.string().max(100).optional().or(z.literal('')),
+  addressLine1: z.string().max(255).optional(),
+  addressLine2: z.string().max(255).optional(),
+  city: z.string().max(100).optional(),
+  stateProvince: z.string().max(100).optional(),
+  postalCode: z.string().max(20).optional(),
+  country: z.string().max(100).optional(),
   
   // Emergency Contact
-  emergencyContactName: z.string().max(200).optional().or(z.literal('')),
-  emergencyContactRelationship: z.string().max(100).optional().or(z.literal('')),
-  emergencyContactPhone: z.string().max(20).optional().or(z.literal('')),
+  emergencyContactName: z.string().max(200).optional(),
+  emergencyContactRelationship: z.string().max(100).optional(),
+  emergencyContactPhone: z.string().max(20).optional(),
   
   // Employment Details
-  departmentId: z.string().uuid().optional().or(z.literal('')),
-  locationId: z.string().uuid().optional().or(z.literal('')),
-  managerId: z.string().uuid().optional().or(z.literal('')),
-  jobTitle: z.string().max(200).optional().or(z.literal('')),
-  workSchedule: z.string().max(100).optional().or(z.literal('')),
-  ftePercentage: z.number().min(0).max(100).optional().or(z.literal('')),
+  departmentId: z.union([z.string().uuid(), z.literal('__none__'), z.literal('')]).transform(val => val === '__none__' || val === '' ? undefined : val).optional(),
+  locationId: z.union([z.string().uuid(), z.literal('__none__'), z.literal('')]).transform(val => val === '__none__' || val === '' ? undefined : val).optional(),
+  managerId: z.union([z.string().uuid(), z.literal('__none__'), z.literal('')]).transform(val => val === '__none__' || val === '' ? undefined : val).optional(),
+  jobTitle: z.string().max(200).optional(),
+  workSchedule: z.string().max(100).optional(),
+  ftePercentage: z.union([z.number().min(0).max(100), z.nan()]).transform(val => isNaN(val) ? undefined : val).optional(),
   
   // Additional
-  bio: z.string().optional().or(z.literal('')),
-  profilePhotoUrl: z.string().url().optional().or(z.literal('')),
+  bio: z.string().optional(),
+  profilePhotoUrl: z.union([z.string().url(), z.literal('')]).transform(val => val === '' ? undefined : val).optional(),
   skills: z.array(z.string()).optional(),
-  terminationDate: z.string().optional().or(z.literal('')),
+  terminationDate: z.string().optional(),
 });
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -68,6 +120,44 @@ interface EmployeeFormProps {
   managers?: Array<{ id: string; firstName: string; lastName: string }>;
 }
 
+// Create consistent default values factory
+const createDefaultValues = (): EmployeeFormData => ({
+  id: '',
+  organizationId: '',
+  employeeNumber: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  preferredName: '',
+  email: '',
+  phone: '',
+  mobilePhone: '',
+  dateOfBirth: '',
+  gender: '',
+  nationality: '',
+  residenceStatus: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  stateProvince: '',
+  postalCode: '',
+  country: '',
+  emergencyContactName: '',
+  emergencyContactRelationship: '',
+  emergencyContactPhone: '',
+  hireDate: '',
+  jobTitle: '',
+  employmentStatus: 'active' as const,
+  employmentType: 'full_time' as const,
+  departmentId: '__none__',
+  locationId: '__none__',
+  managerId: '__none__',
+  workSchedule: '',
+  terminationDate: '',
+  bio: '',
+  profilePhotoUrl: '',
+});
+
 export default function EmployeeForm({
   initialData,
   onSubmit,
@@ -77,68 +167,114 @@ export default function EmployeeForm({
   locations = [],
   managers = [],
 }: EmployeeFormProps) {
+  const form = useForm<EmployeeFormData>({
+    resolver: zodResolver(employeeSchema),
+    mode: 'onSubmit',
+    shouldFocusError: true,
+    defaultValues: createDefaultValues(), // Always start with clean defaults
+  });
+
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isValid, isSubmitting, isDirty },
     reset,
-  } = useForm<EmployeeFormData>({
-    resolver: zodResolver(employeeSchema),
-    defaultValues: initialData
-      ? {
-          ...initialData,
-          departmentId: initialData.departmentId || '',
-          locationId: initialData.locationId || '',
-          managerId: initialData.managerId || '',
-          dateOfBirth: initialData.dateOfBirth || '',
-          gender: initialData.gender || '',
-          nationality: initialData.nationality || '',
-          residenceStatus: initialData.residenceStatus || '',
-          phone: initialData.phone || '',
-          mobilePhone: initialData.mobilePhone || '',
-          addressLine1: initialData.addressLine1 || '',
-          addressLine2: initialData.addressLine2 || '',
-          city: initialData.city || '',
-          stateProvince: initialData.stateProvince || '',
-          postalCode: initialData.postalCode || '',
-          country: initialData.country || '',
-          emergencyContactName: initialData.emergencyContactName || '',
-          emergencyContactRelationship: initialData.emergencyContactRelationship || '',
-          emergencyContactPhone: initialData.emergencyContactPhone || '',
-          jobTitle: initialData.jobTitle || '',
-          workSchedule: initialData.workSchedule || '',
-          bio: initialData.bio || '',
-          profilePhotoUrl: initialData.profilePhotoUrl || '',
-          terminationDate: initialData.terminationDate || '',
-          middleName: initialData.middleName || '',
-          preferredName: initialData.preferredName || '',
-        }
-      : {
-          employmentStatus: 'active',
-          employmentType: 'full_time',
-        },
+    getValues,
+  } = form;
+
+  // Comprehensive debugging
+  console.log('🔍 EmployeeForm render:', {
+    hasInitialData: !!initialData,
+    initialDataKeys: initialData ? Object.keys(initialData) : [],
+    initialDataSample: initialData ? {
+      id: initialData.id,
+      firstName: initialData.firstName,
+      dateOfBirth: initialData.dateOfBirth,
+      gender: initialData.gender,
+      phone: initialData.phone
+    } : null,
+    formState: {
+      isDirty,
+      isValid,
+      touchedFields: Object.keys(form.formState.touchedFields),
+      dirtyFields: Object.keys(form.formState.dirtyFields)
+    }
   });
 
+  // Reset form when initialData changes (proper pattern)
   useEffect(() => {
     if (initialData) {
-      reset(initialData as any);
+      console.log('🔄 Resetting form with initialData');
+      
+      // Create clean values from initialData
+      const resetValues: EmployeeFormData = {
+        ...createDefaultValues(),
+        ...Object.fromEntries(
+          Object.entries(initialData).map(([key, value]) => [
+            key,
+            value === null || value === undefined ? '' : String(value)
+          ])
+        ),
+        // Ensure proper enum values
+        employmentStatus: (initialData.employmentStatus as any) || 'active',
+        employmentType: (initialData.employmentType as any) || 'full_time',
+        departmentId: initialData.departmentId || '__none__',
+        locationId: initialData.locationId || '__none__',
+        managerId: initialData.managerId || '__none__',
+      };
+      
+      console.log('🎯 Reset values:', resetValues);
+      reset(resetValues);
+      
+      // Debug form state after reset
+      setTimeout(() => {
+        console.log('📊 Form state after reset:', {
+          isDirty: form.formState.isDirty,
+          values: getValues(),
+        });
+      }, 0);
     }
-  }, [initialData, reset]);
+  }, [initialData, reset, form, getValues]);
+
+  // Debug isDirty state changes
+  useEffect(() => {
+    console.log('🚨 isDirty changed:', { 
+      isDirty, 
+      timestamp: new Date().toISOString(),
+      hasInitialData: !!initialData 
+    });
+  }, [isDirty, initialData]);
 
   const handleFormSubmit = (data: EmployeeFormData) => {
-    // Clean up empty strings to undefined for optional fields
-    const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
-      if (value === '') {
-        return acc;
-      }
-      return { ...acc, [key]: value };
-    }, {} as CreateEmployeeDTO);
+    console.log('📤 Submitting form data:', data);
+    // Preprocess form data to handle empty strings properly
+    const processedData = preprocessFormData(data);
 
-    onSubmit(cleanedData);
+    onSubmit(processedData as CreateEmployeeDTO);
+  };  // Custom submit handler that prevents automatic focus on errors
+  const handleFormSubmitWithoutFocus = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSubmit(handleFormSubmit)(e);
+    // Blur any focused element to prevent focus jumping
+    (document.activeElement as HTMLElement)?.blur();
+  };
+
+
+
+
+
+  // Error display component
+  const FieldError = ({ error }: { error?: { message?: string } }) => {
+    if (!error?.message) return null;
+    return (
+      <p className="mt-1 text-sm text-red-600" role="alert">
+        {error.message}
+      </p>
+    );
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
+    <form onSubmit={handleFormSubmitWithoutFocus} className="space-y-6">
       {/* Personal Information */}
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6">
@@ -225,6 +361,7 @@ export default function EmployeeForm({
               <option value="prefer_not_to_say">Prefer not to say</option>
               <option value="other">Other</option>
             </select>
+            <FieldError error={errors.gender} />
           </div>
 
           <div>
@@ -251,6 +388,7 @@ export default function EmployeeForm({
               <option value="non_resident">Non-Resident (Limited tax obligations)</option>
               <option value="partial_year_resident">Partial Year Resident</option>
             </select>
+            <FieldError error={errors.residenceStatus} />
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Determines Dutch payroll tax calculations. Default: Resident
             </p>
@@ -458,7 +596,7 @@ export default function EmployeeForm({
               {...register('departmentId')}
               className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
-              <option value="">Select department</option>
+              <option value="__none__">Select department</option>
               {departments.map((dept) => (
                 <option key={dept.id} value={dept.id}>
                   {dept.departmentName}
@@ -475,7 +613,7 @@ export default function EmployeeForm({
               {...register('locationId')}
               className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
-              <option value="">Select location</option>
+              <option value="__none__">Select location</option>
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.locationName}
@@ -492,7 +630,7 @@ export default function EmployeeForm({
               {...register('managerId')}
               className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
-              <option value="">Select manager</option>
+              <option value="__none__">Select manager</option>
               {managers.map((mgr) => (
                 <option key={mgr.id} value={mgr.id}>
                   {mgr.firstName} {mgr.lastName}
@@ -530,6 +668,7 @@ export default function EmployeeForm({
               <option value="suspended">Suspended</option>
               <option value="terminated">Terminated</option>
             </select>
+            <FieldError error={errors.employmentStatus} />
           </div>
 
           <div>
@@ -546,6 +685,7 @@ export default function EmployeeForm({
               <option value="temporary">Temporary</option>
               <option value="intern">Intern</option>
             </select>
+            <FieldError error={errors.employmentType} />
           </div>
 
           <div>
@@ -620,7 +760,7 @@ export default function EmployeeForm({
         </button>
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || (initialData && !isDirty)}
           className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:from-emerald-600 hover:to-emerald-700 transition-colors disabled:opacity-50"
         >
           <Save className="w-5 h-5 mr-2" />

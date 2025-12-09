@@ -54,6 +54,7 @@ router.get('/workers/:id/shifts', requirePermission('scheduling:workers:read'), 
 // ============================================================================
 
 router.post('/schedules', requirePermission('scheduling:schedules:create'), scheduleController.createSchedule);
+router.post('/schedules/auto-generate', requirePermission('scheduling:schedules:create'), scheduleController.autoGenerateSchedule);
 router.get('/schedules', requirePermission('scheduling:schedules:read'), scheduleController.listSchedules);
 router.get('/schedules/:id', requirePermission('scheduling:schedules:read'), scheduleController.getScheduleById);
 router.post('/schedules/:scheduleId/shifts', requirePermission('scheduling:shifts:create'), scheduleController.createShift);
@@ -139,5 +140,10 @@ router.get('/stations/:id/requirements', requirePermission('scheduling:stations:
 router.post('/stations/:stationId/requirements', requirePermission('scheduling:stations:update'), stationController.addRequirement);
 router.patch('/stations/:stationId/requirements/:roleId', requirePermission('scheduling:stations:update'), stationController.updateRequirement);
 router.delete('/stations/:stationId/requirements/:roleId', requirePermission('scheduling:stations:update'), stationController.removeRequirement);
+
+// Assignment routes
+router.get('/stations/:id/assignments', requirePermission('scheduling:assignments:read'), stationController.getStationAssignments);
+router.post('/stations/:id/assignments', requirePermission('scheduling:assignments:create'), stationController.assignEmployee);
+router.delete('/stations/:stationId/assignments/:assignmentId', requirePermission('scheduling:assignments:delete'), stationController.unassignEmployee);
 
 export default router;

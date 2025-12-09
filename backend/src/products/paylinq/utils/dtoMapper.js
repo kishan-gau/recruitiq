@@ -520,6 +520,7 @@ export const EMPLOYEE_RECORD_DB_TO_API = {
   first_name: 'firstName',
   last_name: 'lastName',
   email: 'email',
+  national_id: 'nationalId',
   phone: 'phone',
   employment_status: 'employmentStatus',
   employment_type: 'employmentType',

@@ -7,6 +7,8 @@ import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import Joi from 'joi';
 import { dateOnlyRequired } from '../../../validators/dateValidators.js';
+import { mapScheduleDbToApi, mapSchedulesDbToApi, mapScheduleApiToDb } from '../dto/scheduleDto.js';
+import { mapShiftsDbToApi } from '../dto/shiftDto.js';
 
 class ScheduleService {
   constructor() {
@@ -20,6 +22,46 @@ class ScheduleService {
     startDate: dateOnlyRequired,
     endDate: dateOnlyRequired.messages({
       'any.ref': 'End date must be after start date'
+    }),
+    status: Joi.string().valid('draft', 'published').default('draft'),
+    shifts: Joi.array().items(Joi.object({
+      dayOfWeek: Joi.number().integer().min(0).max(6).required(),
+      startTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
+      endTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
+      roleId: Joi.string().uuid().required(),
+      stationId: Joi.string().uuid().allow(null),
+      workersNeeded: Joi.number().integer().min(1).required()
+    })).default([])
+  }).custom((value, helpers) => {
+    const start = new Date(value.startDate);
+    const end = new Date(value.endDate);
+    
+    if (end <= start) {
+      return helpers.error('date.range', { message: 'End date must be after start date' });
+    }
+    
+    return value;
+  });
+
+  // Validation schema for auto-generation
+  autoGenerateScheduleSchema = Joi.object({
+    scheduleName: Joi.string().max(100).required(),
+    description: Joi.string().allow(null, ''),
+    startDate: dateOnlyRequired,
+    endDate: dateOnlyRequired.messages({
+      'any.ref': 'End date must be after start date'
+    }),
+    status: Joi.string().valid('draft', 'published').default('draft'),
+    shiftTemplates: Joi.array().items(Joi.object({
+      dayOfWeek: Joi.number().integer().min(0).max(6).required(),
+      startTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
+      endTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
+      roleId: Joi.string().uuid().required(),
+      stationId: Joi.string().uuid().allow(null),
+      workersNeeded: Joi.number().integer().min(1).required()
+    })).min(1).required().messages({
+      'array.min': 'At least one shift template is required',
+      'any.required': 'Shift templates are required'
     })
   }).custom((value, helpers) => {
     const start = new Date(value.startDate);
@@ -88,7 +130,7 @@ class ScheduleService {
           value.description || null,
           value.startDate,
           value.endDate,
-          'draft',
+          value.status,
           userId,
           userId
         ]
@@ -101,10 +143,7 @@ class ScheduleService {
         organizationId
       });
 
-      return {
-        success: true,
-        data: result.rows[0]
-      };
+      return mapScheduleDbToApi(result.rows[0]);
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -128,8 +167,8 @@ class ScheduleService {
           (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id) as total_shifts,
           (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id AND employee_id IS NULL) as unassigned_shifts
         FROM scheduling.schedules s
-        LEFT JOIN users u1 ON s.created_by = u1.id
-        LEFT JOIN users u2 ON s.updated_by = u2.id
+        LEFT JOIN hris.user_account u1 ON s.created_by = u1.id
+        LEFT JOIN hris.user_account u2 ON s.updated_by = u2.id
         WHERE s.id = $1 AND s.organization_id = $2`,
         [scheduleId, organizationId]
       );
@@ -142,7 +181,7 @@ class ScheduleService {
       const shiftsResult = await pool.query(
         `SELECT s.*,
           w.first_name || ' ' || w.last_name as worker_name,
-          w.worker_number,
+          w.employee_number as worker_number,
           r.role_name,
           r.color as role_color,
           st.station_name
@@ -158,8 +197,8 @@ class ScheduleService {
       return {
         success: true,
         data: {
-          schedule: scheduleResult.rows[0],
-          shifts: shiftsResult.rows
+          schedule: mapScheduleDbToApi(scheduleResult.rows[0]),
+          shifts: mapShiftsDbToApi(shiftsResult.rows)
         }
       };
 
@@ -226,7 +265,7 @@ class ScheduleService {
 
       return {
         success: true,
-        data: result.rows,
+        data: mapSchedulesDbToApi(result.rows),
         pagination: {
           page,
           limit,
@@ -701,6 +740,262 @@ class ScheduleService {
       this.logger.error('Error fetching worker shifts:', error);
       throw error;
     }
+  }
+
+  /**
+   * Auto-generate schedule based on shift templates and worker availability
+   */
+  async autoGenerateSchedule(scheduleData, organizationId, userId) {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      // Validate input (using auto-generation schema)
+      const { error, value } = this.autoGenerateScheduleSchema.validate(scheduleData);
+      if (error) {
+        throw new Error(`Validation error: ${error.details[0].message}`);
+      }
+
+      // Create the schedule first
+      const scheduleResult = await client.query(
+        `INSERT INTO scheduling.schedules (
+          organization_id, schedule_name, description, 
+          start_date, end_date, status, created_by, updated_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *`,
+        [
+          organizationId,
+          value.scheduleName,
+          value.description || null,
+          value.startDate,
+          value.endDate,
+          value.status,
+          userId,
+          userId
+        ]
+      );
+
+      const schedule = scheduleResult.rows[0];
+      const scheduleId = schedule.id;
+
+      // Generate shifts from templates
+      const generationSummary = {
+        totalShiftsRequested: 0,
+        shiftsGenerated: 0,
+        partialCoverage: 0,
+        noCoverage: 0,
+        warnings: []
+      };
+
+      // Process each shift template
+      for (const template of value.shiftTemplates) {
+        const templateShifts = await this.generateShiftsFromTemplate(
+          client, 
+          scheduleId, 
+          template, 
+          value.startDate, 
+          value.endDate, 
+          organizationId, 
+          userId
+        );
+        
+        generationSummary.totalShiftsRequested += templateShifts.requested;
+        generationSummary.shiftsGenerated += templateShifts.generated;
+        generationSummary.partialCoverage += templateShifts.partial;
+        generationSummary.noCoverage += templateShifts.uncovered;
+        generationSummary.warnings.push(...templateShifts.warnings);
+      }
+
+      await client.query('COMMIT');
+
+      this.logger.info('Schedule auto-generated successfully', {
+        scheduleId: schedule.id,
+        organizationId,
+        summary: generationSummary
+      });
+
+      return {
+        schedule: mapScheduleDbToApi(schedule),
+        generationSummary
+      };
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      this.logger.error('Error auto-generating schedule:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Generate shifts from a single template across the date range
+   */
+  async generateShiftsFromTemplate(client, scheduleId, template, startDate, endDate, organizationId, userId) {
+    const summary = {
+      requested: 0,
+      generated: 0,
+      partial: 0,
+      uncovered: 0,
+      warnings: []
+    };
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Find all dates that match the day of week
+    const dates = [];
+    const current = new Date(start);
+    
+    while (current <= end) {
+      if (current.getDay() === template.dayOfWeek) {
+        dates.push(new Date(current));
+      }
+      current.setDate(current.getDate() + 1);
+    }
+
+    // For each date, try to assign workers
+    for (const shiftDate of dates) {
+      summary.requested += template.workersNeeded;
+      
+      // Find available workers for this role, date, and time
+      const availableWorkers = await this.findAvailableWorkers(
+        client,
+        template.roleId,
+        template.stationId,
+        shiftDate,
+        template.startTime,
+        template.endTime,
+        organizationId
+      );
+
+      if (availableWorkers.length === 0) {
+        // No workers available - log warning
+        summary.uncovered++;
+        summary.warnings.push(
+          `No workers available for ${template.roleId} on ${shiftDate.toDateString()} ${template.startTime}-${template.endTime}`
+        );
+        continue;
+      }
+
+      // Assign workers (take first available up to workersNeeded)
+      const workersToAssign = availableWorkers.slice(0, template.workersNeeded);
+      
+      for (const worker of workersToAssign) {
+        // Create shift with assigned worker
+        await client.query(
+          `INSERT INTO scheduling.shifts (
+            organization_id, schedule_id, shift_date, start_time, end_time,
+            employee_id, role_id, station_id, break_duration_minutes, break_paid,
+            shift_type, status, notes, created_by, updated_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          [
+            organizationId,
+            scheduleId,
+            shiftDate,
+            template.startTime,
+            template.endTime,
+            worker.id,
+            template.roleId,
+            template.stationId || null,
+            0, // default break duration
+            true, // default break paid
+            'regular', // default shift type
+            'scheduled',
+            'Auto-generated shift',
+            userId,
+            userId
+          ]
+        );
+        
+        summary.generated++;
+      }
+
+      // Check if we have partial coverage
+      if (workersToAssign.length < template.workersNeeded) {
+        const shortage = template.workersNeeded - workersToAssign.length;
+        summary.partial++;
+        summary.warnings.push(
+          `Partial coverage on ${shiftDate.toDateString()}: ${workersToAssign.length}/${template.workersNeeded} workers assigned`
+        );
+      }
+    }
+
+    return summary;
+  }
+
+  /**
+   * Find workers available for a specific role, date, and time
+   */
+  async findAvailableWorkers(client, roleId, stationId, shiftDate, startTime, endTime, organizationId) {
+    const dayOfWeek = shiftDate.getDay();
+    
+    // Find workers who:
+    // 1. Have the required role
+    // 2. Are available (recurring or specific date availability)
+    // 3. Don't have conflicting shifts
+    // 4. Are schedulable
+    
+    const query = `
+      SELECT DISTINCT e.id, e.first_name, e.last_name, e.employee_number
+      FROM hris.employee e
+      JOIN scheduling.worker_roles wr ON e.id = wr.employee_id 
+      LEFT JOIN scheduling.worker_scheduling_config wsc ON e.id = wsc.employee_id
+      WHERE e.organization_id = $1 
+        AND wr.role_id = $2
+        AND wr.removed_date IS NULL
+        AND (wsc.is_schedulable IS NULL OR wsc.is_schedulable = true)
+        AND (wsc.scheduling_status IS NULL OR wsc.scheduling_status = 'active')
+        AND e.employment_status = 'active'
+        -- Check availability
+        AND EXISTS (
+          SELECT 1 FROM scheduling.worker_availability wa
+          WHERE wa.employee_id = e.id
+            AND wa.organization_id = e.organization_id
+            AND (
+              -- Recurring availability for this day of week
+              (wa.availability_type = 'recurring' 
+               AND wa.day_of_week = $3
+               AND wa.start_time <= $4
+               AND wa.end_time >= $5)
+              OR
+              -- Specific date availability
+              (wa.availability_type = 'one_time'
+               AND wa.specific_date = $6
+               AND wa.start_time <= $4
+               AND wa.end_time >= $5)
+            )
+            AND (wa.effective_from IS NULL OR wa.effective_from <= $6)
+            AND (wa.effective_to IS NULL OR wa.effective_to >= $6)
+            AND wa.priority != 'unavailable'
+        )
+        -- Check no conflicting shifts
+        AND NOT EXISTS (
+          SELECT 1 FROM scheduling.shifts s
+          WHERE s.employee_id = e.id
+            AND s.shift_date = $6
+            AND s.status != 'cancelled'
+            AND (
+              (s.start_time <= $4 AND s.end_time > $4) OR
+              (s.start_time < $5 AND s.end_time >= $5) OR
+              (s.start_time >= $4 AND s.end_time <= $5)
+            )
+        )
+      ORDER BY e.last_name, e.first_name
+      LIMIT 50
+    `;
+
+    const result = await client.query(query, [
+      organizationId,
+      roleId,
+      dayOfWeek,
+      startTime,
+      endTime,
+      shiftDate.toISOString().split('T')[0] // Date only in YYYY-MM-DD format
+    ]);
+
+    return result.rows;
   }
 }
 

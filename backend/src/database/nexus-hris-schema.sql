@@ -247,6 +247,7 @@ CREATE TABLE hris.employee (
     date_of_birth DATE,
     gender VARCHAR(50),
     nationality VARCHAR(100),
+    national_id VARCHAR(50),  -- National identification number (SSN, National ID Card, etc.)
     
     -- Contact Information
     email VARCHAR(255),
@@ -314,6 +315,7 @@ CREATE INDEX idx_employee_worker_type ON hris.employee(worker_type_id) WHERE del
 CREATE INDEX idx_employee_status ON hris.employee(employment_status) WHERE deleted_at IS NULL;
 CREATE INDEX idx_employee_email ON hris.employee(email);
 CREATE INDEX idx_employee_resident_status ON hris.employee(is_suriname_resident) WHERE deleted_at IS NULL;
+CREATE INDEX idx_employee_national_id ON hris.employee(national_id) WHERE national_id IS NOT NULL AND deleted_at IS NULL;
 
 -- Composite indexes for PayLinQ organizational queries (Phase 2 Migration)
 CREATE INDEX idx_employee_org_dept ON hris.employee(organization_id, department_id) WHERE deleted_at IS NULL;

@@ -10,38 +10,32 @@ import type {
   LocationFilters,
 } from '@/types/location.types';
 
-// API response wrapper type
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-}
-
 export const locationsService = {
   list: async (filters?: LocationFilters): Promise<Location[]> => {
-    const { data } = await apiClient.get<ApiResponse<Location[]>>('/locations', {
+    const response = await apiClient.get('/locations', {
       params: filters,
     });
-    return data.data;
+    return response || [];
   },
 
   get: async (id: string): Promise<Location> => {
-    const { data } = await apiClient.get<ApiResponse<Location>>(`/locations/${id}`);
-    return data.data;
+    const response = await apiClient.get(`/locations/${id}`);
+    return response.location;
   },
 
   getByCode: async (code: string): Promise<Location> => {
-    const { data } = await apiClient.get<ApiResponse<Location>>(`/locations/code/${code}`);
-    return data.data;
+    const response = await apiClient.get(`/locations/code/${code}`);
+    return response.location;
   },
 
   create: async (location: CreateLocationDTO): Promise<Location> => {
-    const { data } = await apiClient.post<ApiResponse<Location>>('/locations', location);
-    return data.data;
+    const response = await apiClient.post('/locations', location);
+    return response.location;
   },
 
   update: async (id: string, updates: UpdateLocationDTO): Promise<Location> => {
-    const { data } = await apiClient.patch<ApiResponse<Location>>(`/locations/${id}`, updates);
-    return data.data;
+    const response = await apiClient.patch(`/locations/${id}`, updates);
+    return response.location;
   },
 
   delete: async (id: string): Promise<void> => {
@@ -49,22 +43,22 @@ export const locationsService = {
   },
 
   getStatistics: async (id: string): Promise<any> => {
-    const { data } = await apiClient.get<ApiResponse<any>>(`/locations/${id}/statistics`);
-    return data.data;
+    const response = await apiClient.get(`/locations/${id}/stats`);
+    return response.stats;
   },
 
   getAllStatistics: async (): Promise<any[]> => {
-    const { data } = await apiClient.get<ApiResponse<any[]>>('/locations/statistics');
-    return data.data;
+    const response = await apiClient.get('/locations/stats/all');
+    return response.stats || [];
   },
 
   getStats: async (id: string): Promise<unknown> => {
-    const { data } = await apiClient.get<ApiResponse<unknown>>(`/locations/${id}/stats`);
-    return data.data;
+    const response = await apiClient.get(`/locations/${id}/stats`);
+    return response.stats;
   },
 
   getAllStats: async (): Promise<unknown> => {
-    const { data } = await apiClient.get<ApiResponse<unknown>>('/locations/stats/all');
-    return data.data;
+    const response = await apiClient.get('/locations/stats/all');
+    return response.stats;
   },
 };

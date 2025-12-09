@@ -234,7 +234,7 @@ export default function StationsList() {
 
         {stations.length === 0 && (
           <div className="col-span-full text-center py-12">
-            <Building2 className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <Building2 className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
             <p className="text-slate-600 dark:text-slate-400">No stations found</p>
             <button
               onClick={() => handleOpenModal()}
@@ -303,7 +303,7 @@ export default function StationsList() {
                   ))}
                 </select>
                 {isLoadingLocations && (
-                  <p className="text-xs text-slate-500 mt-1">Loading locations...</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Loading locations...</p>
                 )}
               </div>
 
@@ -338,7 +338,7 @@ export default function StationsList() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? 'Saving...'

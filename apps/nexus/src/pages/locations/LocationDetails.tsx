@@ -10,6 +10,18 @@ export default function LocationDetails() {
   const deleteMutation = useDeleteLocation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Debug logging for frontend state
+  console.log('🎯 LocationDetails Debug:', {
+    locationId: id,
+    location: location,
+    isLoading: isLoading,
+    error: error,
+    hasError: !!error,
+    hasLocation: !!location,
+    conditionResult: !!(error || !location),
+    errorDetails: error ? { message: error.message, stack: error.stack } : null
+  });
+
   const handleDelete = async () => {
     if (!id) return;
     

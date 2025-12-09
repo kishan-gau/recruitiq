@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Plus, X, Check, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@recruitiq/ui';
 import { useEmployees } from '@/hooks/nexus/useEmployees';
 import { useAssignStationMutation, useUnassignStationMutation } from '@/hooks/schedulehub/useStations';
 import { useToast } from '@/contexts/ToastContext';

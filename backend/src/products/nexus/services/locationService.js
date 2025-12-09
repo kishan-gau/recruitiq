@@ -95,7 +95,12 @@ class LocationService {
    */
   async getLocation(id, organizationId) {
     try {
-      this.logger.debug('Getting location', { id, organizationId });
+      this.logger.info('Getting location - DEBUG', { 
+        id, 
+        organizationId,
+        expectedOrgId: '808d7b06-2011-4e9a-9ce0-2eebf27d8680',
+        orgIdMatch: organizationId === '808d7b06-2011-4e9a-9ce0-2eebf27d8680'
+      });
 
       const sql = `
         SELECT l.*,
@@ -113,7 +118,32 @@ class LocationService {
         table: 'hris.location'
       });
       
+      this.logger.info('Location query result - DEBUG', {
+        id,
+        organizationId,
+        rowCount: result.rows.length,
+        foundLocation: result.rows.length > 0 ? result.rows[0].id : null
+      });
+      
       if (result.rows.length === 0) {
+        // Let's also check if the location exists with any organization
+        const checkSql = `
+          SELECT l.id, l.organization_id, l.location_name, l.deleted_at
+          FROM hris.location l
+          WHERE l.id = $1
+        `;
+        const checkResult = await query(checkSql, [id], null, {
+          operation: 'findById',
+          table: 'hris.location'
+        });
+        
+        this.logger.error('Location not found - additional info', {
+          id,
+          requestedOrgId: organizationId,
+          locationExists: checkResult.rows.length > 0,
+          actualLocation: checkResult.rows.length > 0 ? checkResult.rows[0] : null
+        });
+        
         throw new Error('Location not found');
       }
 

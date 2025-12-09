@@ -16,9 +16,20 @@ export function useRoles(params?: any) {
  * Hook for fetching a single role
  */
 export function useRole(id: string) {
+  console.log('🔍 useRole - Fetching role with ID:', id);
   return useQuery({
     queryKey: ['roles', id],
-    queryFn: () => schedulehubApi.roles.get(id),
+    queryFn: async () => {
+      console.log('🌐 Making API call to get role:', id);
+      try {
+        const result = await schedulehubApi.roles.get(id);
+        console.log('✅ Role API call successful:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ Role API call failed:', error);
+        throw error;
+      }
+    },
     enabled: !!id,
   });
 }

@@ -96,6 +96,17 @@ export function useCreateSchedule() {
   });
 }
 
+export function useAutoGenerateSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: schedulehubApi.schedules.autoGenerate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedulehub', 'schedules'] });
+    },
+  });
+}
+
 export function usePublishSchedule() {
   const queryClient = useQueryClient();
 

@@ -292,8 +292,86 @@ async function deleteWorkerType(req, res) {
 }
 
 /**
- * Assign employees to a worker type
- * POST /api/paylinq/worker-types/:id/assign-employees
+ * Assign worker type to employee
+ * POST /api/products/paylinq/worker-types/assign
+ * 
+ * Body:
+ * {
+ *   employeeRecordId: 'uuid',
+ *   workerTypeTemplateId: 'uuid',
+ *   effectiveFrom: 'date',
+ *   effectiveTo: 'date' (optional),
+ *   payFrequency: 'weekly|bi-weekly|semi-monthly|monthly' (optional),
+ *   paymentMethod: 'ach|check|wire|cash' (optional),
+ *   notes: 'string' (optional)
+ * }
+ */
+async function assignWorkerType(req, res) {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+
+    const assignment = await workerTypeService.assignWorkerType(
+      req.body,
+      organizationId,
+      userId
+    );
+
+    logger.info('Worker type assigned to employee', {
+      organizationId,
+      assignmentId: assignment.id,
+      employeeRecordId: req.body.employeeRecordId,
+      workerTypeTemplateId: req.body.workerTypeTemplateId,
+      userId,
+    });
+
+    res.status(201).json({
+      success: true,
+      assignment,
+      message: 'Worker type assigned successfully',
+    });
+  } catch (error) {
+    logger.error('Error assigning worker type', {
+      error: error.message,
+      body: req.body,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: error.message,
+        errorCode: 'NOT_FOUND',
+      });
+    }
+
+    if (error.message.includes('overlap')) {
+      return res.status(409).json({
+        success: false,
+        error: error.message,
+        errorCode: 'ASSIGNMENT_OVERLAP',
+      });
+    }
+
+    if (error.message.includes('Effective to date')) {
+      return res.status(400).json({
+        success: false,
+        error: error.message,
+        errorCode: 'INVALID_DATE_RANGE',
+      });
+    }
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+      errorCode: 'VALIDATION_ERROR',
+    });
+  }
+}
+
+/**
+ * Assign employees to worker type
+ * POST /api/products/paylinq/worker-types/:id/assign-employees
  */
 async function assignEmployees(req, res) {
   try {
@@ -746,6 +824,7 @@ export default {
   getWorkerTypeById,
   updateWorkerType,
   deleteWorkerType,
+  assignWorkerType,
   assignEmployees,
   getWorkerTypeEmployees,
   getTemplateInclusions,

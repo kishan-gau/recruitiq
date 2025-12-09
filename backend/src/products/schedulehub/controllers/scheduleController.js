@@ -20,15 +20,44 @@ class ScheduleController {
       const organizationId = req.user.organization_id;
       const userId = req.user.id;
 
-      const result = await this.scheduleService.createSchedule(
+      const schedule = await this.scheduleService.createSchedule(
         req.body,
         organizationId,
         userId
       );
 
-      res.status(201).json(result);
+      res.status(201).json({
+        success: true,
+        schedule
+      });
     } catch (error) {
       logger.error('Error in createSchedule controller:', error);
+      next(error);
+    }
+  };
+
+  /**
+   * Auto-generate schedule with shifts based on availability and templates
+   * POST /api/schedulehub/schedules/auto-generate
+   */
+  autoGenerateSchedule = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const userId = req.user.id;
+
+      const result = await this.scheduleService.autoGenerateSchedule(
+        req.body,
+        organizationId,
+        userId
+      );
+
+      res.status(201).json({
+        success: true,
+        schedule: result.schedule,
+        generationSummary: result.generationSummary
+      });
+    } catch (error) {
+      logger.error('Error in autoGenerateSchedule controller:', error);
       next(error);
     }
   };
@@ -50,10 +79,18 @@ class ScheduleController {
       );
 
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(404).json({
+          success: false,
+          error: 'Schedule not found'
+        });
       }
 
-      res.json(result);
+      // Return consistent API response format
+      res.json({
+        success: true,
+        schedule: result.data.schedule,
+        shifts: includeShifts ? result.data.shifts : undefined
+      });
     } catch (error) {
       logger.error('Error in getScheduleById controller:', error);
       next(error);

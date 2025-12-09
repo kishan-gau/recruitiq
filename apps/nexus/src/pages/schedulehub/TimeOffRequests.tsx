@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Clock, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Clock, CheckCircle, XCircle, Calendar, ArrowLeft } from 'lucide-react';
 import {
   useTimeOffRequests,
   useReviewTimeOff,
@@ -50,6 +51,15 @@ export default function TimeOffRequests() {
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <Link
+        to="/schedulehub"
+        className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to ScheduleHub
+      </Link>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -159,7 +169,7 @@ export default function TimeOffRequests() {
             type="checkbox"
             checked={showPending}
             onChange={(e) => setShowPending(e.target.checked)}
-            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded"
           />
           <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
             Show only pending requests

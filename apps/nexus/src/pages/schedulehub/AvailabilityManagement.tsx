@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@recruitiq/auth';
-import { Plus, Download, Upload, Filter } from 'lucide-react';
+import { Plus, Download, Upload, Filter, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { Modal } from '@recruitiq/ui';
 import AvailabilityCalendar from '../../components/schedulehub/availability/AvailabilityCalendar';
@@ -258,11 +259,20 @@ const AvailabilityManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <Link
+        to="/schedulehub"
+        className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to ScheduleHub
+      </Link>
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Availability Management</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Availability Management</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage employee availability for scheduling
           </p>
         </div>
@@ -271,7 +281,7 @@ const AvailabilityManagement = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={handleFilter}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <Filter className="w-4 h-4" />
             Filter
@@ -279,7 +289,7 @@ const AvailabilityManagement = () => {
           
           <button
             onClick={handleImport}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <Upload className="w-4 h-4" />
             Import
@@ -287,7 +297,7 @@ const AvailabilityManagement = () => {
           
           <button
             onClick={handleExport}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <Download className="w-4 h-4" />
             Export

@@ -5,7 +5,7 @@
 
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
-import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
+import { mapDepartmentDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.js';
 
 class DepartmentRepository {
   constructor(database = null) {
@@ -31,7 +31,7 @@ class DepartmentRepository {
       `;
 
       const result = await this.query(sql, [id, organizationId], organizationId);
-      return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
+      return result.rows[0] ? mapDepartmentDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding department by ID', { id, organizationId, error: error.message });
       throw error;
@@ -73,7 +73,7 @@ class DepartmentRepository {
       params.push(limit, offset);
 
       const result = await this.query(sql, params, organizationId);
-      return result.rows.map(row => mapDbToApi(row));
+      return result.rows.map(row => mapDepartmentDbToApi(row));
     } catch (error) {
       this.logger.error('Error finding all departments', { filters, organizationId, error: error.message });
       throw error;
@@ -93,7 +93,7 @@ class DepartmentRepository {
       `;
 
       const result = await this.query(sql, [departmentCode, organizationId], organizationId);
-      return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
+      return result.rows[0] ? mapDepartmentDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error finding department by code', { departmentCode, organizationId, error: error.message });
       throw error;
@@ -105,7 +105,7 @@ class DepartmentRepository {
    */
   async create(departmentData, organizationId, userId) {
     try {
-      const dbData = mapApiToDb(departmentData);
+      const dbData = mapDepartmentApiToDb(departmentData);
 
       const sql = `
         INSERT INTO ${this.tableName} (
@@ -127,7 +127,7 @@ class DepartmentRepository {
       ];
 
       const result = await this.query(sql, params, organizationId);
-      return mapDbToApi(result.rows[0]);
+      return mapDepartmentDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating department', { departmentData, organizationId, error: error.message });
       throw error;
@@ -139,7 +139,7 @@ class DepartmentRepository {
    */
   async update(id, departmentData, organizationId, userId) {
     try {
-      const dbData = mapApiToDb(departmentData);
+      const dbData = mapDepartmentApiToDb(departmentData);
 
       const sql = `
         UPDATE ${this.tableName}
@@ -167,7 +167,7 @@ class DepartmentRepository {
       ];
 
       const result = await this.query(sql, params, organizationId);
-      return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
+      return result.rows[0] ? mapDepartmentDbToApi(result.rows[0]) : null;
     } catch (error) {
       this.logger.error('Error updating department', { id, departmentData, organizationId, error: error.message });
       throw error;
@@ -230,7 +230,7 @@ class DepartmentRepository {
       `;
 
       const result = await this.query(sql, [organizationId], organizationId);
-      return result.rows.map(row => mapDbToApi(row));
+      return result.rows.map(row => mapDepartmentDbToApi(row));
     } catch (error) {
       this.logger.error('Error getting department hierarchy', { organizationId, error: error.message });
       throw error;

@@ -47,12 +47,18 @@ export default function CompensationManagementPage({ employeeId: propEmployeeId 
   const [showAllHistory, setShowAllHistory] = useState(false);
 
   // Fetch data
-  const { data: currentCompensation, isLoading: isLoadingCurrent, error: currentError } = 
+  const { data: currentCompensationResponse, isLoading: isLoadingCurrent, error: currentError } = 
     useCurrentCompensation(employeeId);
   const { data: history = [], isLoading: isLoadingHistory } = 
     useCompensationHistory(employeeId);
   const { data: summary, isLoading: isLoadingSummary } = 
     useCompensationSummary(employeeId);
+
+  // Extract compensation data and context from the response
+  const currentCompensation = currentCompensationResponse?.compensation || null;
+  const compensationMessage = currentCompensationResponse?.message;
+  const hasCompensationHistory = currentCompensationResponse?.hasHistory;
+  const availableRecords = currentCompensationResponse?.availableRecords || 0;
 
   const handleChangeCompensation = () => {
     navigate(`/compensation/create?employeeId=${employeeId}`);
@@ -92,7 +98,8 @@ export default function CompensationManagementPage({ employeeId: propEmployeeId 
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-2" />
-          <p className="text-red-700">Failed to load compensation information</p>
+          <p className="text-red-700 font-medium mb-2">Unable to load compensation data</p>
+          <p className="text-red-600 text-sm">Please try again or contact support if the problem persists.</p>
         </div>
       </div>
     );
@@ -232,18 +239,57 @@ export default function CompensationManagementPage({ employeeId: propEmployeeId 
           </div>
         ) : (
           <div className="text-center py-8">
-            <DollarSign className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-2" />
-            <p className="text-gray-600 dark:text-gray-400 mb-1">No formal compensation record</p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
-              Create a compensation record to track changes and history
-            </p>
-            <button
-              onClick={handleChangeCompensation}
-              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Change Compensation
-            </button>
+            <DollarSign className="w-12 h-12 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+            
+            {/* Display user-friendly message from backend */}
+            {compensationMessage ? (
+              <div className="mb-6">
+                <p className="text-gray-700 dark:text-gray-300 font-medium mb-2">
+                  {hasCompensationHistory ? 'No Current Compensation Set' : 'No Compensation Records'}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 max-w-md mx-auto">
+                  {compensationMessage}
+                </p>
+                
+                {hasCompensationHistory && availableRecords > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 max-w-md mx-auto">
+                    <p className="text-blue-800 dark:text-blue-200 text-sm font-medium">
+                      {availableRecords} existing compensation record{availableRecords !== 1 ? 's' : ''} found
+                    </p>
+                    <p className="text-blue-700 dark:text-blue-300 text-xs mt-1">
+                      You can set one as current or create a new record
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mb-6">
+                <p className="text-gray-600 dark:text-gray-400 mb-1">No formal compensation record</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
+                  Create a compensation record to track changes and history
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={handleChangeCompensation}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {hasCompensationHistory ? 'Create New Record' : 'Create Compensation Record'}
+              </button>
+              
+              {hasCompensationHistory && (
+                <button
+                  onClick={() => navigate(`/compensation/history?employeeId=${employeeId}`)}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <History className="w-4 h-4 mr-2" />
+                  View History ({availableRecords})
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

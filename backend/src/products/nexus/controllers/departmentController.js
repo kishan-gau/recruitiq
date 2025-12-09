@@ -5,6 +5,7 @@
 
 import DepartmentService from '../services/departmentService.js';
 import logger from '../../../utils/logger.js';
+import { mapDepartmentDbToApi, mapDepartmentsDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.js';
 
 class DepartmentController {
   constructor() {
@@ -19,8 +20,14 @@ class DepartmentController {
   createDepartment = async (req, res) => {
     try {
       const { organizationId, userId } = req.user;
-      const department = await this.service.createDepartment(req.body, organizationId, userId);
-      res.status(201).json({ success: true, data: department });
+      
+      // Transform API format to DB format using DTO
+      const departmentData = mapDepartmentApiToDb(req.body);
+      
+      const department = await this.service.createDepartment(departmentData, organizationId, userId);
+      
+      // Service now handles DTO transformation, no need to transform again
+      res.status(201).json({ success: true, department });
     } catch (error) {
       this.logger.error('Error in createDepartment controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
@@ -36,7 +43,9 @@ class DepartmentController {
       const { organizationId } = req.user;
       const { id } = req.params;
       const department = await this.service.getDepartment(id, organizationId);
-      res.json({ success: true, data: department });
+      
+      // Service now handles DTO transformation, no need to transform again
+      res.json({ success: true, department });
     } catch (error) {
       this.logger.error('Error in getDepartment controller', { error: error.message });
       const status = error.message === 'Department not found' ? 404 : 500;
@@ -52,8 +61,14 @@ class DepartmentController {
     try {
       const { organizationId, userId } = req.user;
       const { id } = req.params;
-      const department = await this.service.updateDepartment(id, req.body, organizationId, userId);
-      res.json({ success: true, data: department });
+      
+      // Transform API format to DB format using DTO
+      const departmentUpdates = mapDepartmentApiToDb(req.body);
+      
+      const department = await this.service.updateDepartment(id, departmentUpdates, organizationId, userId);
+      
+      // Service already transforms data using DTO
+      res.json({ success: true, department });
     } catch (error) {
       this.logger.error('Error in updateDepartment controller', { error: error.message });
       const status = error.message === 'Department not found' ? 404 : 400;
@@ -91,12 +106,24 @@ class DepartmentController {
       if (locationId) filters.locationId = locationId;
       if (managerId) filters.managerId = managerId;
 
-      const departments = await this.service.listDepartments(
+      const result = await this.service.listDepartments(
         filters,
         organizationId,
         { limit: parseInt(limit), offset: parseInt(offset) }
       );
-      res.json({ success: true, data: departments });
+      
+      // Extract departments array from service response object
+      // Service returns: { departments: [...], total, limit, offset }
+      // Frontend expects: { success: true, departments: [...] }
+      res.json({ 
+        success: true, 
+        departments: result.departments,  // Extract the array
+        pagination: {
+          total: result.total,
+          limit: result.limit,
+          offset: result.offset
+        }
+      });
     } catch (error) {
       this.logger.error('Error in getDepartments controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
@@ -110,9 +137,10 @@ class DepartmentController {
   getDepartmentHierarchy = async (req, res) => {
     try {
       const { organizationId } = req.user;
-      const { id } = req.params;
-      const hierarchy = await this.service.getDepartmentHierarchy(id, organizationId);
-      res.json({ success: true, data: hierarchy });
+      const hierarchy = await this.service.getDepartmentHierarchy(organizationId);
+      
+      // Service already transforms data using DTO
+      res.json({ success: true, departments: hierarchy });
     } catch (error) {
       this.logger.error('Error in getDepartmentHierarchy controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
@@ -126,8 +154,10 @@ class DepartmentController {
   getOrganizationStructure = async (req, res) => {
     try {
       const { organizationId } = req.user;
-      const structure = await this.service.getOrganizationStructure(organizationId);
-      res.json({ success: true, data: structure });
+      const structure = await this.service.getDepartmentHierarchy(organizationId);
+      
+      // Service already transforms data using DTO
+      res.json({ success: true, departments: structure });
     } catch (error) {
       this.logger.error('Error in getOrganizationStructure controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
@@ -149,7 +179,7 @@ class DepartmentController {
         organizationId,
         includeSubdepartments === 'true'
       );
-      res.json({ success: true, data: employees });
+      res.json({ success: true, employees: employees });
     } catch (error) {
       this.logger.error('Error in getDepartmentEmployees controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });

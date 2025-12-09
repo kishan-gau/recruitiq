@@ -5,6 +5,8 @@
  */
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useShiftSwaps } from '../../../hooks/schedulehub/useShiftSwaps';
 import { useToast } from '../../../contexts/ToastContext';
 import { formatDate, formatTime } from '../../../utils/dateUtils';
@@ -61,6 +63,15 @@ const SwapRequestInbox: React.FC = () => {
 
   return (
     <div className="p-6">
+      {/* Back to ScheduleHub */}
+      <Link
+        to="/schedulehub"
+        className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors mb-4"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to ScheduleHub
+      </Link>
+      
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Shift Swap Requests</h1>
         <p className="text-gray-600 mt-2">

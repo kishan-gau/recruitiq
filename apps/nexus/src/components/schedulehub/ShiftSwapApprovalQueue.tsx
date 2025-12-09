@@ -20,7 +20,7 @@ import {
   useApproveSwap,
   useRejectSwap,
 } from '@/hooks/schedulehub/useShiftSwaps';
-import Button from '@/components/ui/Button';
+import { Button } from '@recruitiq/ui';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Input from '@/components/ui/Input';

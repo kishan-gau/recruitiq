@@ -12,6 +12,7 @@ export interface Department extends AuditFields {
   description?: string;
   parentDepartmentId?: string;
   parentDepartment?: Department;
+  costCenter?: string;
   isActive: boolean;
 }
 
@@ -20,6 +21,7 @@ export interface CreateDepartmentDTO {
   departmentName: string;
   description?: string;
   parentDepartmentId?: string;
+  costCenter?: string;
   isActive?: boolean;
 }
 

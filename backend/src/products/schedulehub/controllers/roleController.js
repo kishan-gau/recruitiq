@@ -20,6 +20,12 @@ class RoleController {
       const organizationId = req.user.organization_id;
       const userId = req.user.id;
 
+      // Debug logging to see actual request data
+      logger.info('Controller received request body:', {
+        bodyKeys: Object.keys(req.body),
+        bodyData: req.body
+      });
+
       const result = await this.roleService.createRole(
         req.body,
         organizationId,
@@ -72,7 +78,11 @@ class RoleController {
         departmentId
       );
 
-      res.json(result);
+      // Return consistent format expected by frontend: { roles: Role[] }
+      res.json({ 
+        success: true, 
+        roles: result.data || result  // Handle both old and new service formats
+      });
     } catch (error) {
       logger.error('Error in listRoles controller:', error);
       next(error);
@@ -136,8 +146,8 @@ class RoleController {
       const { workerId, proficiencyLevel, certificationDate, notes } = req.body;
 
       const result = await this.roleService.assignWorkerToRole(
-        roleId,
         workerId,
+        roleId,
         organizationId,
         proficiencyLevel,
         certificationDate,
@@ -162,8 +172,8 @@ class RoleController {
       const { roleId, workerId } = req.params;
 
       const result = await this.roleService.removeWorkerFromRole(
-        roleId,
         workerId,
+        roleId,
         organizationId
       );
 
@@ -209,11 +219,11 @@ class RoleController {
       const { proficiencyLevel, certificationDate, notes } = req.body;
 
       // First remove, then re-assign with new details
-      await this.roleService.removeWorkerFromRole(roleId, workerId, organizationId);
+      await this.roleService.removeWorkerFromRole(workerId, roleId, organizationId);
       
       const result = await this.roleService.assignWorkerToRole(
-        roleId,
         workerId,
+        roleId,
         organizationId,
         proficiencyLevel,
         certificationDate,

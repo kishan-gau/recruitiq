@@ -89,12 +89,16 @@ const BulkUserAccessManagement = lazy(() => import('@/pages/settings/BulkUserAcc
 const ScheduleHubDashboard = lazy(() => import('@/pages/schedulehub/ScheduleHubDashboard'));
 const WorkersList = lazy(() => import('@/pages/schedulehub/WorkersList'));
 const SchedulesList = lazy(() => import('@/pages/schedulehub/SchedulesList'));
+const ScheduleDetails = lazy(() => import('@/pages/schedulehub/ScheduleDetails'));
 const ScheduleBuilder = lazy(() => import('@/pages/schedulehub/ScheduleBuilder'));
 const ScheduleHubTimeOff = lazy(() => import('@/pages/schedulehub/TimeOffRequests'));
 const ShiftSwapMarketplace = lazy(() => import('@/pages/schedulehub/ShiftSwapMarketplace'));
 const StationManagement = lazy(() => import('@/pages/schedulehub/stations/StationManagement'));
 const StationDetails = lazy(() => import('@/pages/schedulehub/stations/StationDetails'));
+const StationAssignments = lazy(() => import('@/pages/schedulehub/stations/StationAssignments'));
+const StationRequirements = lazy(() => import('@/pages/schedulehub/stations/StationRequirements'));
 const RolesList = lazy(() => import('@/pages/schedulehub/RolesList'));
+const RoleDetails = lazy(() => import('@/components/schedulehub/RoleDetails'));
 const ShiftSwapApprovalQueue = lazy(() => import('@/pages/schedulehub/shift-swaps/ShiftSwapApprovalQueue'));
 const SwapRequestInbox = lazy(() => import('@/pages/schedulehub/shift-swaps/SwapRequestInbox'));
 const AvailabilityManagement = lazy(() => import('@/pages/schedulehub/AvailabilityManagement'));
@@ -220,14 +224,22 @@ function App() {
                   <Route path="schedulehub">
                     <Route index element={<ScheduleHubDashboard />} />
                     <Route path="workers" element={<WorkersList />} />
-                    <Route path="schedules" element={<SchedulesList />} />
-                    <Route path="schedules/builder" element={<ScheduleBuilder />} />
-                    <Route path="schedules/create" element={<ScheduleBuilder />} />
+                    <Route path="schedules">
+                      <Route index element={<SchedulesList />} />
+                      <Route path=":id" element={<ScheduleDetails />} />
+                      <Route path="builder" element={<ScheduleBuilder />} />
+                      <Route path="create" element={<ScheduleBuilder />} />
+                    </Route>
                     <Route path="stations">
                       <Route index element={<StationManagement />} />
                       <Route path=":id" element={<StationDetails />} />
+                      <Route path=":id/assignments" element={<StationAssignments />} />
+                      <Route path=":id/requirements" element={<StationRequirements />} />
                     </Route>
-                    <Route path="roles" element={<RolesList />} />
+                    <Route path="roles">
+                      <Route index element={<RolesList />} />
+                      <Route path=":roleId" element={<RoleDetails />} />
+                    </Route>
                     <Route path="time-off" element={<ScheduleHubTimeOff />} />
                     <Route path="shift-swaps">
                       <Route index element={<ShiftSwapMarketplace />} />

@@ -83,7 +83,7 @@ class StatsController {
            WHERE sh.organization_id = $1 
              AND sh.employee_id IS NULL 
              AND sh.status = 'scheduled'
-             AND sh.start_time >= NOW()`,
+             AND sh.start_timestamp >= NOW()`,
           [organizationId],
           organizationId,
           { operation: 'SELECT', table: 'scheduling.shifts' }
@@ -96,12 +96,13 @@ class StatsController {
       try {
         // Get upcoming shifts (next 7 days)
         const upcomingShiftsResult = await query(
-          `SELECT sh.id, sh.start_time, sh.end_time, sh.employee_id
+          `SELECT sh.id, sh.shift_date, sh.start_time, sh.end_time, 
+                  sh.start_timestamp, sh.end_timestamp, sh.employee_id
            FROM scheduling.shifts sh
            WHERE sh.organization_id = $1 
-             AND sh.start_time >= NOW()
-             AND sh.start_time <= NOW() + INTERVAL '7 days'
-           ORDER BY sh.start_time
+             AND sh.start_timestamp >= NOW()
+             AND sh.start_timestamp <= NOW() + INTERVAL '7 days'
+           ORDER BY sh.start_timestamp
            LIMIT 10`,
           [organizationId],
           organizationId,

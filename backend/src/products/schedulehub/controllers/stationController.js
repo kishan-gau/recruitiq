@@ -72,6 +72,7 @@ class StationController {
         locationId
       );
 
+      // Return consistent format expected by frontend: { stations: Station[] }
       res.json({ success: true, stations });
     } catch (error) {
       logger.error('Error in listStations controller:', error);
@@ -207,6 +208,91 @@ class StationController {
       res.json(result);
     } catch (error) {
       logger.error('Error in removeRequirement controller:', error);
+      next(error);
+    }
+  };
+
+  // ============================================================================
+  // STATION ASSIGNMENT METHODS
+  // ============================================================================
+
+  /**
+   * Get all assignments for a station
+   * GET /api/schedulehub/stations/:id/assignments
+   */
+  getStationAssignments = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const { id: stationId } = req.params;
+
+      const assignments = await this.stationService.getStationAssignments(
+        stationId,
+        organizationId
+      );
+
+      res.json({ 
+        success: true, 
+        assignments 
+      });
+    } catch (error) {
+      logger.error('Error in getStationAssignments controller:', error);
+      next(error);
+    }
+  };
+
+  /**
+   * Assign employee to station
+   * POST /api/schedulehub/stations/:id/assignments
+   */
+  assignEmployee = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const userId = req.user.id;
+      const { id: stationId } = req.params;
+      const { employeeId, notes } = req.body;
+
+      const assignment = await this.stationService.assignEmployeeToStation(
+        stationId,
+        employeeId,
+        organizationId,
+        userId,
+        notes
+      );
+
+      res.status(201).json({
+        success: true,
+        assignment,
+        message: 'Employee assigned to station successfully'
+      });
+    } catch (error) {
+      logger.error('Error in assignEmployee controller:', error);
+      next(error);
+    }
+  };
+
+  /**
+   * Remove employee assignment from station
+   * DELETE /api/schedulehub/stations/:stationId/assignments/:assignmentId
+   */
+  unassignEmployee = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const userId = req.user.id;
+      const { stationId, assignmentId } = req.params;
+
+      await this.stationService.removeEmployeeAssignment(
+        stationId,
+        assignmentId,
+        organizationId,
+        userId
+      );
+
+      res.json({
+        success: true,
+        message: 'Employee unassigned from station successfully'
+      });
+    } catch (error) {
+      logger.error('Error in unassignEmployee controller:', error);
       next(error);
     }
   };

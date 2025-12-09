@@ -85,6 +85,14 @@ export default function EmployeeEdit() {
       lastName: emp.lastName,
     })) || [];
 
+  // Transform employee data for form - convert null/undefined UUID fields to __none__
+  const formInitialData = {
+    ...employee,
+    departmentId: employee.departmentId ?? '__none__',
+    locationId: employee.locationId ?? '__none__',
+    managerId: employee.managerId ?? '__none__',
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -105,7 +113,7 @@ export default function EmployeeEdit() {
 
       {/* Form */}
       <EmployeeForm
-        initialData={employee}
+        initialData={formInitialData}
         onSubmit={handleSubmit}
         onCancel={handleCancel}
         isLoading={isPending}

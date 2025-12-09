@@ -56,6 +56,16 @@ const assignEmployeesSchema = Joi.object({
   employeeIds: Joi.array().items(Joi.string().uuid()).min(1).required(),
 });
 
+const assignWorkerTypeSchema = Joi.object({
+  employeeRecordId: Joi.string().uuid().required(),
+  workerTypeTemplateId: Joi.string().uuid().required(),
+  effectiveFrom: Joi.date().required(),
+  effectiveTo: Joi.date().allow(null),
+  payFrequency: Joi.string().valid('weekly', 'bi-weekly', 'semi-monthly', 'monthly').allow(null),
+  paymentMethod: Joi.string().valid('ach', 'check', 'wire', 'cash').allow(null),
+  notes: Joi.string().max(500).allow(null, '')
+});
+
 const uuidParamSchema = Joi.object({
   id: Joi.string().uuid().required(),
 });
@@ -123,6 +133,14 @@ router.delete(
   requirePermission('worker-types:delete'),
   validate(uuidParamSchema, 'params'),
   workerTypeController.deleteWorkerType
+);
+
+// POST /api/paylinq/worker-types/assign - Assign worker type to employee
+router.post(
+  '/assign',
+  requirePermission('worker-types:update'),
+  validate(assignWorkerTypeSchema, 'body'),
+  workerTypeController.assignWorkerType
 );
 
 // POST /api/paylinq/worker-types/:id/assign-employees - Assign employees

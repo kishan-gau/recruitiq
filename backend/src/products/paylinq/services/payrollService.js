@@ -422,12 +422,9 @@ class PayrollService {
 
       // DTO Pattern: Enrich response with frontend-expected fields
       // Note: firstName, lastName, email are not in payroll table
-      // In production, these would be fetched from users table or HRIS
+      // Employee data already includes firstName, lastName, email from hris.employee table
       const enrichedRecord = {
         ...employee,
-        firstName: null,
-        lastName: null,
-        email: null,
         hrisEmployeeId: employee.employee_number || null
       };
 

@@ -548,7 +548,7 @@ class TenantOnboardingService {
    * Seed pay components
    * Based on: 017_seed_forfaitair_components.js
    * 
-   * Complete set of 32 forfaitair (standard) pay components for Suriname payroll
+   * Complete set of 37 standard pay components including forfaitair components for Suriname payroll
    */
   async _seedPayComponents(client, orgId, userId) {
     const components = [
@@ -870,6 +870,293 @@ class TenantOnboardingService {
         isTaxable: false,
         isStatutory: false,
         displayOrder: 204
+      },
+
+      // ==================== BENEFIT COMPONENTS ====================
+      // These components represent actual benefits provided to employees
+      // They trigger forfait taxation calculations per Wet Loonbelasting Art. 10-11
+      {
+        code: 'CAR_BENEFIT',
+        name: 'Autovoordeel',
+        type: 'benefit',
+        category: 'transport',
+        description: 'Company car benefit - triggers forfait taxation per Wet Loonbelasting Art. 11',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 250,
+        requiresConfiguration: true,
+        configurationFields: {
+          catalogValue: { type: 'number', required: true, min: 0, label: 'Car Catalog Value (SRD)' },
+          registrationDate: { type: 'date', required: true, label: 'Registration Date' },
+          businessUsePercentage: { type: 'number', required: false, min: 0, max: 100, default: 100, label: 'Business Use %' }
+        },
+        calculationMetadata: {
+          forfaitRule: {
+            enabled: true,
+            benefitType: 'company_car',
+            forfaitComponentCode: 'CAR_FORFAIT_2PCT',
+            calculationType: 'percentage_of_catalog_value',
+            rate: 2.0,
+            valueMapping: {
+              catalogValue: {
+                sourceField: 'catalogValue',
+                targetField: 'catalogValue',
+                required: true
+              }
+            },
+            description: '2% of catalog value per year (Article 11 Wet Loonbelasting)',
+            legalReference: 'Article 11, Wet Loonbelasting (Suriname)'
+          }
+        }
+      },
+      {
+        code: 'HOUSING_BENEFIT',
+        name: 'Huisvestingsvoordeel',
+        type: 'benefit',
+        category: 'housing',
+        description: 'Housing benefit provided by employer - subject to forfait taxation at 7.5%',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 251,
+        requiresConfiguration: true,
+        configurationFields: {
+          rentalValue: { type: 'number', required: true, min: 0, label: 'Monthly Rental Value (SRD)' },
+          propertyType: { type: 'select', options: ['apartment', 'house', 'room'], required: true, label: 'Property Type' }
+        },
+        calculationMetadata: {
+          forfaitRule: {
+            enabled: true,
+            benefitType: 'housing',
+            forfaitComponentCode: 'HOUSING_FORFAIT_7_5PCT',
+            calculationType: 'percentage_of_rental_value',
+            rate: 7.5,
+            valueMapping: {
+              rentalValue: {
+                sourceField: 'rentalValue',
+                targetField: 'rentalValue',
+                required: true
+              }
+            },
+            description: '7.5% of monthly rental value (Article 10 Wet Loonbelasting)',
+            legalReference: 'Article 10, Wet Loonbelasting (Suriname)'
+          }
+        }
+      },
+      {
+        code: 'MEAL_BENEFIT',
+        name: 'Maaltijdvoordeel',
+        type: 'benefit',
+        category: 'meal',
+        description: 'Meal benefit - hot meals subject to forfait taxation per Wet Loonbelasting',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 252,
+        requiresConfiguration: true,
+        configurationFields: {
+          mealsPerMonth: { type: 'number', required: true, min: 1, max: 31, label: 'Meals Per Month' },
+          mealType: { type: 'select', options: ['hot_meal', 'cold_meal', 'voucher'], required: true, label: 'Meal Type' }
+        },
+        calculationMetadata: {
+          forfaitRule: {
+            enabled: true,
+            benefitType: 'hot_meals',
+            forfaitComponentCode: 'MEAL_FORFAIT_1_50',
+            calculationType: 'fixed_per_meal',
+            fixedAmount: 1.50,
+            valueMapping: {
+              mealsPerMonth: {
+                sourceField: 'mealsPerMonth',
+                targetField: 'mealsPerMonth',
+                required: true
+              }
+            },
+            description: 'SRD 1.50 per hot meal (Article 10 Wet Loonbelasting)',
+            legalReference: 'Article 10, Wet Loonbelasting (Suriname)'
+          }
+        }
+      },
+      {
+        code: 'FUEL_BENEFIT',
+        name: 'Brandstofvoordeel',
+        type: 'benefit',
+        category: 'transport',
+        description: 'Fuel allowance benefit - subject to forfait taxation',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 253,
+        requiresConfiguration: true,
+        configurationFields: {
+          monthlyAmount: { type: 'number', required: true, min: 0, label: 'Monthly Fuel Amount (SRD)' },
+          fuelType: { type: 'select', options: ['gasoline', 'diesel', 'electric'], required: true, label: 'Fuel Type' }
+        },
+        calculationMetadata: {
+          forfaitRule: {
+            enabled: true,
+            benefitType: 'fuel_allowance',
+            forfaitComponentCode: 'FUEL_FORFAIT_20PCT',
+            calculationType: 'percentage_of_amount',
+            rate: 20.0,
+            valueMapping: {
+              monthlyAmount: {
+                sourceField: 'monthlyAmount',
+                targetField: 'allowanceAmount',
+                required: true
+              }
+            },
+            description: '20% of monthly fuel allowance (Article 10 Wet Loonbelasting)',
+            legalReference: 'Article 10, Wet Loonbelasting (Suriname)'
+          }
+        }
+      },
+      {
+        code: 'PHONE_BENEFIT',
+        name: 'Telefoonvoordeel',
+        type: 'benefit',
+        category: 'communication',
+        description: 'Company phone benefit - taxable benefit per employer policy',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 254,
+        requiresConfiguration: true,
+        configurationFields: {
+          monthlyValue: { type: 'number', required: true, min: 0 },
+          phoneType: { type: 'select', options: ['mobile', 'landline', 'both'], required: true }
+        },
+        calculationMetadata: {
+          forfaitRule: {
+            enabled: true,
+            benefitType: 'communication_allowance',
+            forfaitComponentCode: 'PHONE_FORFAIT_10PCT',
+            calculationType: 'percentage_of_amount',
+            rate: 10.0,
+            valueMapping: {
+              monthlyValue: {
+                sourceField: 'monthlyValue',
+                targetField: 'allowanceAmount',
+                required: true
+              }
+            },
+            description: '10% of monthly communication allowance (Article 10 Wet Loonbelasting)',
+            legalReference: 'Article 10, Wet Loonbelasting (Suriname)'
+          }
+        }
+      },
+      {
+        code: 'MEDICAL_BENEFIT',
+        name: 'Medisch Voordeel',
+        type: 'benefit',
+        category: 'medical',
+        description: 'Medical/health insurance benefit - progressive forfait taxation',
+        isTaxable: true,
+        isStatutory: false,
+        displayOrder: 255,
+        requiresConfiguration: true,
+        configurationFields: {
+          monthlyPremium: { type: 'number', required: true, min: 0 },
+          coverageType: { type: 'select', options: ['basic', 'extended', 'family'], required: true }
+        },
+        calculationMetadata: {
+          forfaitRule: {
+            enabled: true,
+            benefitType: 'medical_insurance',
+            forfaitComponentCode: 'MEDICAL_FORFAIT_15PCT',
+            calculationType: 'percentage_of_amount',
+            rate: 15.0,
+            valueMapping: {
+              monthlyPremium: {
+                sourceField: 'monthlyPremium',
+                targetField: 'premiumAmount',
+                required: true
+              }
+            },
+            description: '15% of monthly medical premium (Article 10 Wet Loonbelasting)',
+            legalReference: 'Article 10, Wet Loonbelasting (Suriname)'
+          }
+        }
+      },
+
+      // ==================== FORFAITAIR COMPONENTS (BENEFIT TAXATION) ====================
+      // These are the forfait components referenced by ForfaitRuleService
+      // All tenants need these for proper forfait calculation
+      {
+        code: 'CAR_FORFAIT_2PCT',
+        name: 'Auto Forfait (2%)',
+        type: 'deduction',
+        category: 'benefit',
+        description: 'Forfait car benefit taxation at 2% of gross salary (Wet Loonbelasting Art. 11)',
+        isTaxable: true,
+        isStatutory: true,
+        displayOrder: 300
+      },
+      {
+        code: 'CAR_FORFAIT_3PCT',
+        name: 'Auto Forfait (3%)',
+        type: 'deduction',
+        category: 'benefit',
+        description: 'Forfait car benefit taxation at 3% of gross salary (Wet Loonbelasting Art. 11)',
+        isTaxable: true,
+        isStatutory: true,
+        displayOrder: 301
+      },
+      {
+        code: 'HOUSING_FORFAIT_7_5PCT',
+        name: 'Huisvesting Forfait (7.5%)',
+        type: 'deduction',
+        category: 'benefit',
+        description: 'Forfait housing benefit taxation at 7.5% of gross salary (Wet Loonbelasting Art. 11)',
+        isTaxable: true,
+        isStatutory: true,
+        displayOrder: 302
+      },
+      {
+        code: 'MEAL_FORFAIT_HOT',
+        name: 'Warme Maaltijd Forfait',
+        type: 'deduction',
+        category: 'benefit',
+        description: 'Forfait hot meal benefit taxation (Wet Loonbelasting Art. 11)',
+        isTaxable: true,
+        isStatutory: true,
+        displayOrder: 303
+      },
+      {
+        code: 'MEDICAL_FORFAIT_PROGRESSIVE',
+        name: 'Medische Forfait (Progressief)',
+        type: 'deduction',
+        category: 'benefit',
+        description: 'Progressive medical forfait benefit taxation (Wet Loonbelasting Art. 11)',
+        isTaxable: true,
+        isStatutory: true,
+        displayOrder: 304
+      },
+      {
+        code: 'PHONE_FORFAIT_10PCT',
+        name: 'Telefoon Forfait (10%)',
+        type: 'deduction',
+        category: 'benefit',
+        description: 'Forfait communication benefit taxation at 10% of allowance (Wet Loonbelasting Art. 10)',
+        isTaxable: true,
+        isStatutory: true,
+        displayOrder: 305
+      },
+      {
+        code: 'MEDICAL_FORFAIT_15PCT',
+        name: 'Medische Forfait (15%)',
+        type: 'deduction',
+        category: 'benefit',
+        description: 'Forfait medical insurance benefit taxation at 15% of premium (Wet Loonbelasting Art. 10)',
+        isTaxable: true,
+        isStatutory: true,
+        displayOrder: 306
+      },
+      {
+        code: 'FUEL_FORFAIT_20PCT',
+        name: 'Brandstof Forfait (20%)',
+        type: 'deduction',
+        category: 'benefit',
+        description: 'Forfait fuel allowance benefit taxation at 20% of allowance (Wet Loonbelasting Art. 10)',
+        isTaxable: true,
+        isStatutory: true,
+        displayOrder: 307
       }
     ]
 

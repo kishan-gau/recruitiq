@@ -5,7 +5,10 @@
 
 import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import { mapRoleWorkersDbToApi } from '../dto/roleDto.js';
 import Joi from 'joi';
+import { ConflictError } from '../../../utils/errors.js';
+import { mapRoleDbToApi, mapRolesDbToApi, mapRoleApiToDb } from '../dto/roleDto.js';
 
 class RoleService {
   constructor() {
@@ -28,8 +31,84 @@ class RoleService {
     
     try {
       await client.query('BEGIN');
-      const { error, value } = this.createRoleSchema.validate(roleData);
+      
+      // Log the incoming data format for debugging
+      console.log('=== ROLE SERVICE DEBUG ===');
+      console.log('Incoming roleData keys:', Object.keys(roleData));
+      console.log('Full roleData:', roleData);
+      logger.info('Service received roleData:', { keys: Object.keys(roleData), data: roleData });
+      
+      // Handle multiple frontend formats
+      let normalizedData = roleData;
+      
+      if (roleData.role_code && !roleData.roleCode) {
+        // Data is in snake_case, convert to camelCase for validation
+        normalizedData = {
+          roleCode: roleData.role_code,
+          roleName: roleData.role_name,
+          description: roleData.description,
+          color: roleData.color,
+          requiresCertification: roleData.requires_certification,
+          certificationTypes: roleData.certification_types,
+          skillLevel: roleData.skill_level,
+          hourlyRate: roleData.hourly_rate
+        };
+        console.log('Converted snake_case to camelCase for validation');
+        logger.info('Converted snake_case to camelCase for validation');
+      } else if (roleData.name && !roleData.roleCode) {
+        // Frontend format: { name, description, colorCode/color } -> Backend format: { roleCode, roleName }
+        const generatedRoleCode = roleData.name
+          .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars except spaces
+          .trim()
+          .replace(/\s+/g, '_') // Replace spaces with underscores
+          .toUpperCase(); // Convert to uppercase
+          
+        normalizedData = {
+          roleCode: generatedRoleCode || 'ROLE_' + Date.now(),
+          roleName: roleData.name,
+          description: roleData.description || null,
+          color: roleData.colorCode || roleData.color || null,
+          requiresCertification: roleData.requiresCertification || false,
+          certificationTypes: roleData.certificationTypes || null,
+          skillLevel: roleData.skillLevel || null,
+          hourlyRate: roleData.hourlyRate || null
+        };
+        
+        console.log('Converted frontend name format to backend roleCode format:', {
+          original: roleData,
+          converted: normalizedData
+        });
+        logger.info('Converted frontend name format to backend roleCode format', {
+          original: roleData,
+          converted: normalizedData
+        });
+      }
+      
+      // Validate API data (expects camelCase)
+      const { error, value } = this.createRoleSchema.validate(normalizedData);
       if (error) throw new Error(`Validation error: ${error.details[0].message}`);
+
+      // Transform validated API data to database format
+      const dbData = mapRoleApiToDb(value);
+      dbData.organization_id = organizationId;
+
+      // Check if role with same organization_id and role_code already exists
+      const existingRole = await client.query(
+        `SELECT id, role_code FROM scheduling.roles 
+         WHERE organization_id = $1 AND role_code = $2 AND deleted_at IS NULL`,
+        [dbData.organization_id, dbData.role_code]
+      );
+
+      if (existingRole.rows.length > 0) {
+        throw new ConflictError(
+          `Role with code '${dbData.role_code}' already exists for this organization`,
+          {
+            field: 'roleCode',
+            value: dbData.role_code,
+            constraint: 'unique_role_code_per_organization'
+          }
+        );
+      }
 
       const result = await client.query(
         `INSERT INTO scheduling.roles (
@@ -37,14 +116,24 @@ class RoleService {
           requires_certification, certification_types, skill_level, hourly_rate
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *`,
-        [organizationId, value.roleCode, value.roleName, value.description || null,
-         value.color || null, value.requiresCertification, value.certificationTypes || null,
-         value.skillLevel || null, value.hourlyRate || null]
+        [
+          dbData.organization_id,
+          dbData.role_code,
+          dbData.role_name,
+          dbData.description,
+          dbData.color,
+          dbData.requires_certification,
+          dbData.certification_types,
+          dbData.skill_level,
+          dbData.hourly_rate
+        ]
       );
 
       await client.query('COMMIT');
       this.logger.info('Role created', { roleId: result.rows[0].id, organizationId });
-      return { success: true, data: result.rows[0] };
+      
+      // Transform database result back to API format
+      return { success: true, data: mapRoleDbToApi(result.rows[0]) };
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating role:', error);
@@ -71,7 +160,9 @@ class RoleService {
 
       query += ` ORDER BY r.role_name`;
       const result = await pool.query(query, params);
-      return { success: true, data: result.rows };
+      
+      // Transform database results to API format
+      return { success: true, data: mapRolesDbToApi(result.rows) };
     } catch (error) {
       this.logger.error('Error listing roles:', error);
       throw error;
@@ -89,7 +180,9 @@ class RoleService {
       );
 
       if (result.rows.length === 0) return { success: false, error: 'Role not found' };
-      return { success: true, data: result.rows[0] };
+      
+      // Transform database result to API format
+      return { success: true, data: mapRoleDbToApi(result.rows[0]) };
     } catch (error) {
       this.logger.error('Error fetching role:', error);
       throw error;
@@ -102,22 +195,33 @@ class RoleService {
     try {
       await client.query('BEGIN');
 
-      const allowedFields = ['roleName', 'description', 'color', 'requiresCertification', 
-                             'certificationTypes', 'skillLevel', 'hourlyRate', 'isActive'];
+      // Transform API data to database format for update
+      const dbUpdateData = mapRoleApiToDb(updateData);
+      
+      const allowedFields = ['role_name', 'description', 'color', 'requires_certification', 
+                             'certification_types', 'skill_level', 'hourly_rate', 'is_active'];
       const updates = [];
       const params = [];
       let paramCount = 0;
 
       allowedFields.forEach(field => {
-        if (updateData[field] !== undefined) {
+        if (dbUpdateData[field] !== undefined) {
           paramCount++;
-          const snakeKey = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-          updates.push(`${snakeKey} = $${paramCount}`);
-          params.push(updateData[field]);
+          updates.push(`${field} = $${paramCount}`);
+          params.push(dbUpdateData[field]);
         }
       });
 
       if (updates.length === 0) throw new Error('No valid fields to update');
+
+      // Add updated_at and updated_by
+      paramCount++;
+      updates.push(`updated_at = $${paramCount}`);
+      params.push(new Date());
+      
+      paramCount++;
+      updates.push(`updated_by = $${paramCount}`);
+      params.push(userId);
 
       paramCount++;
       params.push(roleId);
@@ -135,7 +239,9 @@ class RoleService {
       if (result.rows.length === 0) throw new Error('Role not found');
 
       await client.query('COMMIT');
-      return { success: true, data: result.rows[0] };
+      
+      // Transform database result to API format
+      return { success: true, data: mapRoleDbToApi(result.rows[0]) };
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error updating role:', error);
@@ -220,7 +326,7 @@ class RoleService {
   async getRoleWorkers(roleId, organizationId) {
     try {
       const result = await pool.query(
-        `SELECT wr.*, e.first_name, e.last_name, e.employee_number as worker_number, e.employment_status as status
+        `SELECT wr.*, e.id, e.first_name, e.last_name, e.employee_number as worker_number, e.employment_status as status
          FROM scheduling.worker_roles wr
          JOIN hris.employee e ON wr.employee_id = e.id
          WHERE wr.role_id = $1 AND wr.organization_id = $2 AND wr.removed_date IS NULL
@@ -228,7 +334,8 @@ class RoleService {
          ORDER BY e.last_name, e.first_name`,
         [roleId, organizationId]
       );
-      return { success: true, data: result.rows };
+      const workers = mapRoleWorkersDbToApi(result.rows);
+      return { success: true, workers };
     } catch (error) {
       this.logger.error('Error fetching role workers:', error);
       throw error;

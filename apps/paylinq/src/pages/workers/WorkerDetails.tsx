@@ -14,7 +14,6 @@ import SystemAccessPanel from '@/components/worker/SystemAccessPanel';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
-import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
 import { lazy, Suspense } from 'react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import EmployeeComponentsList from '@/components/employees/EmployeeComponentsList';
@@ -25,8 +24,8 @@ export default function WorkerDetails() {
   const { workerId } = useParams();
   const navigate = useNavigate();
   const { paylinq } = usePaylinqAPI();
+  const toast = useToast();
   const { error: showError } = useToast();
-  const { data: workerTypes = [] } = useWorkerTypeTemplates({ status: 'active' });
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +88,7 @@ export default function WorkerDetails() {
             gender: w.gender || metadata.gender,
             nationality: w.nationality || metadata.nationality,
             address: w.address || metadata.address,
-            phoneNumber: w.phone_number || w.phoneNumber || metadata.phone,
+            phoneNumber: w.phone || w.phone_number || w.phoneNumber || metadata.phone,
             // Additional metadata fields
             department: metadata.department,
             position: metadata.position,

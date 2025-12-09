@@ -308,13 +308,13 @@ export default function EmployeeDetails() {
                 <div>
                   <dt className="text-sm text-slate-600 dark:text-slate-400">Department</dt>
                   <dd className="text-slate-900 dark:text-white font-medium">
-                    {employee.department?.departmentName || '-'}
+                    {employee.departmentName || '-'}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm text-slate-600 dark:text-slate-400">Location</dt>
                   <dd className="text-slate-900 dark:text-white font-medium">
-                    {employee.location?.locationName || '-'}
+                    {employee.locationName || '-'}
                   </dd>
                 </div>
                 <div>

@@ -71,6 +71,7 @@ export function useEmployeeCompensation(employeeId: string) {
 
 /**
  * Hook to fetch current compensation for an employee
+ * Returns the full response including compensation data, messages, and context
  */
 export function useCurrentCompensation(employeeId: string) {
   const { paylinq } = usePaylinqAPI();
@@ -79,7 +80,13 @@ export function useCurrentCompensation(employeeId: string) {
     queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'current'],
     queryFn: async () => {
       const response = await paylinq.getCurrentCompensation(employeeId);
-      return response.data || null;
+      // Return the full response data to access compensation, message, hasHistory, etc.
+      return response.data || { 
+        compensation: null, 
+        hasHistory: false, 
+        message: null, 
+        availableRecords: 0 
+      };
     },
     enabled: !!employeeId,
     staleTime: 5 * 60 * 1000, // 5 minutes - current compensation doesn't change often

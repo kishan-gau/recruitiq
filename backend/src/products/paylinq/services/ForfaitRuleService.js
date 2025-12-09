@@ -124,14 +124,14 @@ class ForfaitRuleService {
       });
 
       // Get component
-      const component = await this.repository.findByCode(componentCode, organizationId);
+      const component = await this.repository.findPayComponentByCode(componentCode, organizationId);
       if (!component) {
         throw new NotFoundError(`Component '${componentCode}' not found`);
       }
 
       // If enabled, verify forfait component exists
       if (validated.enabled) {
-        const forfaitComponent = await this.repository.findByCode(
+        const forfaitComponent = await this.repository.findPayComponentByCode(
           validated.forfaitComponentCode,
           organizationId
         );
@@ -168,7 +168,7 @@ class ForfaitRuleService {
       };
 
       // Update component
-      await this.repository.update(
+      await this.repository.updatePayComponent(
         component.id,
         { calculation_metadata: updatedMetadata },
         organizationId,
@@ -205,7 +205,7 @@ class ForfaitRuleService {
    */
   async getForfaitRule(componentCode, organizationId) {
     try {
-      const component = await this.repository.findByCode(componentCode, organizationId);
+      const component = await this.repository.findPayComponentByCode(componentCode, organizationId);
       
       if (!component) {
         throw new NotFoundError(`Component '${componentCode}' not found`);
@@ -239,7 +239,7 @@ class ForfaitRuleService {
    */
   async removeForfaitRule(componentCode, organizationId, userId) {
     try {
-      const component = await this.repository.findByCode(componentCode, organizationId);
+      const component = await this.repository.findPayComponentByCode(componentCode, organizationId);
       
       if (!component) {
         throw new NotFoundError(`Component '${componentCode}' not found`);
@@ -251,7 +251,7 @@ class ForfaitRuleService {
         forfaitRule: { enabled: false }
       };
 
-      await this.repository.update(
+      await this.repository.updatePayComponent(
         component.id,
         { calculation_metadata: updatedMetadata },
         organizationId,
@@ -303,7 +303,7 @@ class ForfaitRuleService {
       });
 
       // Get forfait component
-      const forfaitComponent = await this.repository.findByCode(
+      const forfaitComponent = await this.repository.findPayComponentByCode(
         forfaitRule.forfaitComponentCode,
         organizationId
       );
@@ -465,7 +465,7 @@ class ForfaitRuleService {
       }
 
       // Get forfait rule
-      const benefitAssignment = await this.repository.findAssignmentById(
+      const benefitAssignment = await this.repository.findEmployeeComponentAssignmentById(
         benefitAssignmentId,
         organizationId
       );
@@ -486,11 +486,10 @@ class ForfaitRuleService {
       );
 
       // Update forfait assignment
-      await this.repository.updateAssignment(
+      await this.repository.updateEmployeeComponentAssignment(
         forfaitAssignment.id,
         { configuration: updatedForfaitConfig },
-        organizationId,
-        userId
+        organizationId
       );
 
       logger.info('Linked forfait assignment updated', {
@@ -529,7 +528,7 @@ class ForfaitRuleService {
       );
 
       if (forfaitAssignment) {
-        await this.repository.softDeleteAssignment(
+        await this.repository.removeEmployeeComponentAssignment(
           forfaitAssignment.id,
           organizationId,
           userId
@@ -550,6 +549,265 @@ class ForfaitRuleService {
       
       // Don't throw - log but continue
     }
+  }
+
+  // ==================== PAYROLL CALCULATION INTEGRATION ====================
+
+  /**
+   * Calculate forfait amounts for a payroll run
+   * 
+   * This method calculates the taxable benefit-in-kind (bijtelling) amounts
+   * for all employees in a payroll run. It finds all forfait component 
+   * assignments and calculates amounts based on the associated rules.
+   * 
+   * @param {string} payrollRunId - Payroll run ID
+   * @param {Array<string>} employeeIds - Array of employee IDs in the run
+   * @param {Date} payPeriodStart - Pay period start date
+   * @param {Date} payPeriodEnd - Pay period end date
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array<Object>>} Forfait calculation results per employee
+   */
+  async calculateForfaitForPayroll(
+    payrollRunId,
+    employeeIds,
+    payPeriodStart,
+    payPeriodEnd,
+    organizationId
+  ) {
+    try {
+      logger.info('Calculating forfait for payroll run', {
+        payrollRunId,
+        employeeCount: employeeIds.length,
+        payPeriodStart,
+        payPeriodEnd,
+        organizationId
+      });
+
+      const results = [];
+
+      for (const employeeId of employeeIds) {
+        const employeeForfaits = await this._calculateForfaitForEmployee(
+          employeeId,
+          payPeriodStart,
+          payPeriodEnd,
+          organizationId
+        );
+        
+        if (employeeForfaits.length > 0) {
+          results.push({
+            employeeId,
+            forfaitItems: employeeForfaits,
+            totalForfaitAmount: employeeForfaits.reduce(
+              (sum, item) => sum + (item.amount || 0),
+              0
+            )
+          });
+        }
+      }
+
+      logger.info('Forfait calculation completed', {
+        payrollRunId,
+        employeesWithForfait: results.length,
+        totalEmployees: employeeIds.length
+      });
+
+      return results;
+
+    } catch (error) {
+      logger.error('Error calculating forfait for payroll', {
+        error: error.message,
+        payrollRunId,
+        organizationId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate forfait amounts for a single employee
+   * 
+   * @param {string} employeeId - Employee ID
+   * @param {Date} payPeriodStart - Pay period start date
+   * @param {Date} payPeriodEnd - Pay period end date
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array<Object>>} Forfait items for the employee
+   * @private
+   */
+  async _calculateForfaitForEmployee(employeeId, payPeriodStart, payPeriodEnd, organizationId) {
+    const forfaitItems = [];
+
+    // Get all active forfait component assignments for this employee
+    // Forfait components have 'forfait' in their component_type
+    const assignments = await this.repository.findEmployeeComponentAssignments(
+      employeeId,
+      organizationId,
+      { componentType: 'taxable_benefit' }  // Forfait components are taxable benefits
+    );
+
+    for (const assignment of assignments) {
+      // Check if assignment is active for this pay period
+      if (!this._isAssignmentActive(assignment, payPeriodStart, payPeriodEnd)) {
+        continue;
+      }
+
+      // Get the component to check for forfait rules
+      const component = await this.repository.findPayComponentById(
+        assignment.component_id,
+        organizationId
+      );
+
+      if (!component) continue;
+
+      // Check if this is a forfait component (has forfait configuration in metadata)
+      const forfaitConfig = component.calculation_metadata?.forfaitCalculation;
+      if (!forfaitConfig) continue;
+
+      // Calculate the forfait amount
+      const amount = await this._calculateForfaitAmount(
+        assignment,
+        component,
+        forfaitConfig,
+        payPeriodStart,
+        payPeriodEnd
+      );
+
+      if (amount > 0) {
+        forfaitItems.push({
+          componentId: component.id,
+          componentCode: component.component_code,
+          componentName: component.component_name,
+          assignmentId: assignment.id,
+          amount,
+          calculation: forfaitConfig.calculationType,
+          taxable: true,  // Forfait is always taxable income
+          metadata: {
+            baseValue: assignment.configuration?.catalogValue || 
+                      assignment.configuration?.rentalValue || 
+                      assignment.configuration?.packageValue,
+            rate: forfaitConfig.rate,
+            payPeriod: { start: payPeriodStart, end: payPeriodEnd }
+          }
+        });
+      }
+    }
+
+    return forfaitItems;
+  }
+
+  /**
+   * Check if an assignment is active for a pay period
+   * @private
+   */
+  _isAssignmentActive(assignment, payPeriodStart, payPeriodEnd) {
+    const effectiveFrom = new Date(assignment.effective_from);
+    const effectiveTo = assignment.effective_to ? new Date(assignment.effective_to) : null;
+
+    // Assignment must have started before pay period ends
+    if (effectiveFrom > payPeriodEnd) return false;
+
+    // If assignment has end date, it must end after pay period starts
+    if (effectiveTo && effectiveTo < payPeriodStart) return false;
+
+    return true;
+  }
+
+  /**
+   * Calculate the forfait amount based on configuration
+   * @private
+   */
+  async _calculateForfaitAmount(assignment, component, forfaitConfig, payPeriodStart, payPeriodEnd) {
+    const config = assignment.configuration || {};
+    
+    // If there's an override amount, use it
+    if (assignment.override_amount) {
+      return parseFloat(assignment.override_amount);
+    }
+
+    switch (forfaitConfig.calculationType) {
+      case 'percentage_of_catalog_value':
+        // Car forfait: percentage of catalog value per year, prorated
+        const catalogValue = parseFloat(config.catalogValue || 0);
+        const yearlyAmount = catalogValue * (forfaitConfig.rate / 100);
+        return this._prorateForPayPeriod(yearlyAmount, 'yearly', payPeriodStart, payPeriodEnd);
+
+      case 'percentage_of_rental_value':
+        // Housing forfait: percentage of monthly rental value
+        const rentalValue = parseFloat(config.rentalValue || 0);
+        return rentalValue * (forfaitConfig.rate / 100);
+
+      case 'fixed_per_meal':
+        // Meal forfait: fixed amount per meal
+        const mealsPerMonth = parseInt(config.mealsPerMonth || 0);
+        return mealsPerMonth * forfaitConfig.fixedAmount;
+
+      case 'progressive_scale':
+        // Progressive forfait based on value brackets
+        const baseValue = parseFloat(config.packageValue || config.baseValue || 0);
+        return this._calculateProgressiveAmount(baseValue, forfaitConfig.brackets);
+
+      case 'fixed_monthly':
+        // Fixed monthly amount
+        return parseFloat(forfaitConfig.fixedAmount || 0);
+
+      default:
+        logger.warn('Unknown forfait calculation type', {
+          calculationType: forfaitConfig.calculationType,
+          componentCode: component.component_code
+        });
+        return 0;
+    }
+  }
+
+  /**
+   * Prorate an amount for a pay period
+   * @private
+   */
+  _prorateForPayPeriod(amount, basis, payPeriodStart, payPeriodEnd) {
+    const periodDays = Math.ceil(
+      (payPeriodEnd - payPeriodStart) / (1000 * 60 * 60 * 24)
+    ) + 1;
+
+    switch (basis) {
+      case 'yearly':
+        // Assume 365 days per year
+        return (amount / 365) * periodDays;
+      case 'monthly':
+        // Assume 30 days per month
+        return (amount / 30) * periodDays;
+      default:
+        return amount;
+    }
+  }
+
+  /**
+   * Calculate progressive amount based on brackets
+   * @private
+   */
+  _calculateProgressiveAmount(value, brackets) {
+    if (!brackets || brackets.length === 0) return 0;
+
+    // Sort brackets by minValue
+    const sortedBrackets = [...brackets].sort((a, b) => a.minValue - b.minValue);
+
+    let amount = 0;
+    let remainingValue = value;
+
+    for (const bracket of sortedBrackets) {
+      if (remainingValue <= 0) break;
+
+      const bracketRange = (bracket.maxValue || Infinity) - bracket.minValue;
+      const valueInBracket = Math.min(remainingValue, bracketRange);
+
+      if (bracket.rate) {
+        amount += valueInBracket * (bracket.rate / 100);
+      } else if (bracket.fixedAmount) {
+        amount += bracket.fixedAmount;
+      }
+
+      remainingValue -= valueInBracket;
+    }
+
+    return amount;
   }
 
   // ==================== PREDEFINED FORFAIT RULE TEMPLATES ====================

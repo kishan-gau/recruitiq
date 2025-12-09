@@ -22,19 +22,19 @@ export default function StationDetails({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              {station.code}
+              {station.stationCode}
             </h2>
             <p className="text-sm text-gray-500 mt-1">{station.name}</p>
           </div>
           <div className="flex items-center gap-2">
             <span
               className={`px-3 py-1 rounded-full text-xs font-medium ${
-                station.is_active
+                station.isActive
                   ? 'bg-green-100 text-green-800'
                   : 'bg-gray-100 text-gray-800'
-              }
+              }`}
             >
-              {station.is_active ? 'Active' : 'Inactive'}
+              {station.isActive ? 'Active' : 'Inactive'}
             </span>
           </div>
         </div>
@@ -49,7 +49,7 @@ export default function StationDetails({
               Station Type
             </h3>
             <p className="text-base text-gray-900 capitalize">
-              {station.location_type}
+              {station.zone}
             </p>
           </div>
 
@@ -61,7 +61,7 @@ export default function StationDetails({
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-gray-400" />
                 <p className="text-base text-gray-900">
-                  {station.location?.name || 'N/A'}
+                  {station.locationName || 'N/A'}
                 </p>
               </div>
             </div>
@@ -72,9 +72,9 @@ export default function StationDetails({
               <h3 className="text-sm font-medium text-gray-500 mb-2">
                 Department
               </h3>
-              <p className="text-base text-gray-900">
-                {station.department?.name || 'N/A'}
-              </p>
+            <p className="text-base text-gray-900">
+                {station.floorLevel || 'N/A'}
+            </p>
             </div>
           )}
 

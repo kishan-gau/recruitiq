@@ -112,11 +112,12 @@ export default function LocationsList() {
       {/* Bulk Actions */}
       {filteredLocations && filteredLocations.length > 0 && (
         <BulkActions
-          selectedItems={selectedLocations}
-          allItems={filteredLocations}
+          items={filteredLocations}
+          selectedIds={selectedLocations}
           onSelectionChange={setSelectedLocations}
           actions={[
             {
+              id: 'delete',
               label: 'Delete Selected',
               variant: 'danger',
               action: async (ids: string[]) => {

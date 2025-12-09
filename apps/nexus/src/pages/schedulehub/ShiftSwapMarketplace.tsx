@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeftRight, Clock, CheckCircle, User, Calendar } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeftRight, Clock, CheckCircle, User, Calendar, ArrowLeft } from 'lucide-react';
 import {
   useShiftSwaps,
   useRequestSwap,
@@ -53,6 +54,15 @@ export default function ShiftSwapMarketplace() {
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <Link
+        to="/schedulehub"
+        className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to ScheduleHub
+      </Link>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

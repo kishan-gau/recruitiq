@@ -15,6 +15,9 @@ const departmentSchema = z.object({
     .max(100, 'Department name must not exceed 100 characters'),
   description: z.string().optional(),
   parentDepartmentId: z.string().optional(),
+  costCenter: z.string()
+    .max(50, 'Cost center must not exceed 50 characters')
+    .optional(),
   isActive: z.boolean(),
 });
 
@@ -51,16 +54,18 @@ export default function DepartmentForm({ department, mode }: DepartmentFormProps
       departmentName: department?.departmentName || '',
       description: department?.description || '',
       parentDepartmentId: department?.parentDepartmentId || '',
+      costCenter: department?.costCenter || '',
       isActive: department?.isActive ?? true,
     },
   });
 
   const onSubmit = async (data: DepartmentFormData) => {
     try {
-      // Convert empty string to undefined for parentDepartmentId
+      // Convert empty strings to undefined for optional fields
       const submitData = {
         ...data,
         parentDepartmentId: data.parentDepartmentId || undefined,
+        costCenter: data.costCenter || undefined,
       };
       
       if (mode === 'create') {
@@ -176,6 +181,28 @@ export default function DepartmentForm({ department, mode }: DepartmentFormProps
                 {errors.description.message}
               </p>
             )}
+          </div>
+
+          {/* Cost Center */}
+          <div>
+            <label htmlFor="costCenter" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Cost Center
+            </label>
+            <input
+              id="costCenter"
+              type="text"
+              {...register('costCenter')}
+              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="e.g., CC001, ENG-001, HR-ADMIN"
+            />
+            {errors.costCenter && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                {errors.costCenter.message}
+              </p>
+            )}
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Optional identifier for financial tracking and budgeting
+            </p>
           </div>
 
           {/* Parent Department */}

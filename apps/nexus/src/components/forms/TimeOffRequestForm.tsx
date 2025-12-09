@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { Calendar, Save, X } from 'lucide-react';
 import { useCreateTimeOffRequest, useUpdateTimeOffRequest } from '@/hooks/useTimeOff';
 import type { TimeOffRequest, TimeOffType } from '@/types/timeOff.types';
-import { apiClient } from '@/services/api';
+import { employeesService } from '@/services/employees.service';
 
 const TIME_OFF_TYPE_OPTIONS: Array<{ value: TimeOffType; label: string }> = [
   { value: 'vacation', label: 'Vacation' },
@@ -85,8 +85,10 @@ export default function TimeOffRequestForm({ request, onSuccess }: TimeOffReques
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await apiClient.get<{ success: boolean; data: Employee[] }>('/employees');
-        setEmployees(Array.isArray(response.data.data) ? response.data.data : []);
+        // Use service layer per FRONTEND_STANDARDS.md
+        // Service returns EmployeeListItem[] directly (APIClient unwraps response.data)
+        const employees = await employeesService.list();
+        setEmployees(Array.isArray(employees) ? employees : []);
       } catch (error) {
         // Handle validation errors from API
         const apiError = error as any;

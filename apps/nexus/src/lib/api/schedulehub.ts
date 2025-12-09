@@ -73,6 +73,7 @@ export const schedulehubApi = {
     get: (id: string, includeShifts = true) =>
       api.get(`/schedules/${id}`, { params: { includeShifts } }).then((res) => res.data),
     create: (data: any) => api.post('/schedules', data).then((res) => res.data),
+    autoGenerate: (data: any) => api.post('/schedules/auto-generate', data).then((res) => res.data),
     update: (id: string, data: any) =>
       api.patch(`/schedules/${id}`, data).then((res) => res.data),
     publish: (id: string) => api.post(`/schedules/${id}/publish`).then((res) => res.data),
@@ -190,5 +191,16 @@ export const schedulehubApi = {
         .then((res) => res.data),
     removeRequirement: (stationId: string, roleId: string) =>
       api.delete(`/stations/${stationId}/requirements/${roleId}`).then((res) => res.data),
+    
+    // Assignment operations
+    getAssignments: (stationId: string) =>
+      api.get(`/stations/${stationId}/assignments`).then((res) => res.data),
+    assignEmployee: (data: { stationId: string; employeeId: string; notes?: string }) =>
+      api.post(`/stations/${data.stationId}/assignments`, { 
+        employeeId: data.employeeId,
+        notes: data.notes 
+      }).then((res) => res.data),
+    unassignEmployee: (stationId: string, assignmentId: string) =>
+      api.delete(`/stations/${stationId}/assignments/${assignmentId}`).then((res) => res.data),
   },
 };

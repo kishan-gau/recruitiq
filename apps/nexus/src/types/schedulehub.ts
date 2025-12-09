@@ -20,7 +20,7 @@ export interface Role {
   name: string;
   description?: string;
   color_code?: string;
-  is_active: boolean;
+  isActive: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -83,20 +83,39 @@ export interface Schedule {
 
 export interface Shift {
   id: string;
-  schedule_id: string;
-  assigned_worker_id?: string;
-  role_id?: string;
-  station_id?: string;
-  shift_date: string;
-  start_time: string;
-  end_time: string;
-  break_duration_minutes?: number;
+  scheduleId: string;
+  employeeId?: string;
+  roleId?: string;
+  stationId?: string;
+  shiftDate: string;
+  startTime: string;
+  endTime: string;
+  breakDurationMinutes?: number;
+  breakPaid?: boolean;
+  shiftType?: string;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
-  actual_start_time?: string;
-  actual_end_time?: string;
   notes?: string;
-  created_at: string;
-  updated_at: string;
+  actualStartTime?: string;
+  actualEndTime?: string;
+  createdAt: string;
+  updatedAt: string;
+  
+  // Nested objects from JOINs (DTO transformed)
+  worker?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    employeeNumber?: string;
+  };
+  role?: {
+    id: string;
+    name: string;
+    color?: string;
+  };
+  station?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface Availability {

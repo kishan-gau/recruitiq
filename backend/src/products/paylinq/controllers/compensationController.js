@@ -96,11 +96,28 @@ async function getEmployeeCompensation(req, res) {
     const compensation = await payrollService.getCurrentCompensation(employeeId, organizationId);
 
     if (!compensation) {
-      return res.status(404).json({
-        success: false,
-        error: 'Not Found',
-        message: 'Compensation record not found',
-      });
+      // Check if there are any compensation records at all for this employee
+      const history = await payrollService.getCompensationHistory(employeeId, organizationId);
+      
+      if (history && history.length > 0) {
+        // There are compensation records, but none are current
+        return res.status(200).json({
+          success: true,
+          compensation: null,
+          hasHistory: true,
+          message: 'No current compensation record found. Please set one of the existing compensation records as current or create a new one.',
+          availableRecords: history.length
+        });
+      } else {
+        // No compensation records at all
+        return res.status(200).json({
+          success: true,
+          compensation: null,
+          hasHistory: false,
+          message: 'No compensation records found for this employee. Please create a compensation record.',
+          availableRecords: 0
+        });
+      }
     }
 
     res.status(200).json({

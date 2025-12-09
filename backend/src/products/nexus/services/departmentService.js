@@ -5,6 +5,8 @@
 
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import { mapDepartmentDbToApi, mapDepartmentsDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.js';
+import EmployeeService from './employeeService.js';
 
 class DepartmentService {
   constructor() {
@@ -43,9 +45,9 @@ class DepartmentService {
         INSERT INTO hris.department (
           organization_id, department_name, department_code,
           description, parent_department_id,
-          cost_center, is_active, created_by, updated_by
+          cost_center, is_active, created_by, updated_by, created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP
         )
         RETURNING *
       `;
@@ -72,7 +74,7 @@ class DepartmentService {
         organizationId 
       });
 
-      return result.rows[0];
+      return mapDepartmentDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error creating department', { 
         error: error.message,
@@ -112,7 +114,7 @@ class DepartmentService {
         throw new Error('Department not found');
       }
 
-      return result.rows[0];
+      return mapDepartmentDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error getting department', { 
         error: error.message,
@@ -218,7 +220,7 @@ class DepartmentService {
       });
 
       return {
-        departments: result.rows,
+        departments: mapDepartmentsDbToApi(result.rows),
         total: parseInt(countResult.rows[0].count),
         limit,
         offset
@@ -293,7 +295,7 @@ class DepartmentService {
       });
 
       if (updates.length === 0) {
-        return existingDepartment;
+        return mapDepartmentDbToApi(existingDepartment);
       }
 
       updates.push(`updated_by = $${paramIndex}`);
@@ -321,7 +323,7 @@ class DepartmentService {
         organizationId 
       });
 
-      return result.rows[0];
+      return mapDepartmentDbToApi(result.rows[0]);
     } catch (error) {
       this.logger.error('Error updating department', { 
         error: error.message,
@@ -452,7 +454,7 @@ class DepartmentService {
         table: 'hris.department'
       });
 
-      return result.rows;
+      return mapDepartmentsDbToApi(result.rows);
     } catch (error) {
       this.logger.error('Error getting department hierarchy', { 
         error: error.message,
@@ -460,6 +462,65 @@ class DepartmentService {
       });
       throw error;
     }
+  }
+
+  /**
+   * Get employees for a department
+   */
+  async getDepartmentEmployees(departmentId, organizationId, includeSubdepartments = false) {
+    try {
+      this.logger.info('Getting department employees', {
+        departmentId,
+        organizationId,
+        includeSubdepartments
+      });
+
+      const employeeService = new EmployeeService();
+      
+      if (includeSubdepartments) {
+        // Get all subdepartment IDs
+        const hierarchy = await this.getDepartmentHierarchy(organizationId);
+        const departmentIds = this.getSubdepartmentIds(hierarchy, departmentId);
+        
+        // Get employees for all departments
+        const allEmployees = [];
+        for (const deptId of departmentIds) {
+          const employees = await employeeService.listEmployees(organizationId, { departmentId: deptId });
+          allEmployees.push(...employees);
+        }
+        
+        return allEmployees;
+      } else {
+        // Get employees for just this department
+        return await employeeService.listEmployees(organizationId, { departmentId });
+      }
+    } catch (error) {
+      this.logger.error('Error getting department employees', {
+        error: error.message,
+        departmentId,
+        organizationId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to get all subdepartment IDs
+   */
+  getSubdepartmentIds(hierarchy, parentId) {
+    const ids = [parentId];
+    
+    function findChildren(departments, currentParentId) {
+      departments.forEach(dept => {
+        if (dept.parentDepartmentId === currentParentId) {
+          ids.push(dept.id);
+          findChildren(departments, dept.id);
+        }
+      });
+    }
+    
+    findChildren(hierarchy, parentId);
+    return ids;
   }
 }
 

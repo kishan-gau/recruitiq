@@ -46,7 +46,7 @@ export default function StationForm() {
   // Fetch locations for dropdown
   const { data: locations } = useQuery({
     queryKey: ['locations'],
-    queryFn: () => locationsService.listLocations(),
+    queryFn: () => locationsService.list(),
   });
 
   // Fetch departments for dropdown

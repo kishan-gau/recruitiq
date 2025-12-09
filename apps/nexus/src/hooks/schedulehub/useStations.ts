@@ -9,6 +9,31 @@ import { schedulehubApi } from '@/lib/api/schedulehub';
 import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
 
+// Helper function to transform station data from API format (snake_case) to UI format (camelCase)
+function transformStationFromApi(station: any) {
+  if (!station) return null;
+  
+  return {
+    ...station,
+    isActive: station.is_active, // Transform snake_case to camelCase
+  };
+}
+
+// Helper function to transform station data from UI format (camelCase) to API format (snake_case)
+function transformStationToApi(data: any) {
+  if (!data) return null;
+  
+  const transformed = { ...data };
+  
+  // Transform camelCase to snake_case for API
+  if (data.isActive !== undefined) {
+    transformed.is_active = data.isActive;
+    delete transformed.isActive; // Remove camelCase version
+  }
+  
+  return transformed;
+}
+
 // Query keys factory
 export const stationKeys = {
   all: ['schedulehub', 'stations'] as const,
@@ -17,6 +42,7 @@ export const stationKeys = {
   details: () => [...stationKeys.all, 'detail'] as const,
   detail: (id: string) => [...stationKeys.details(), id] as const,
   requirements: (id: string) => [...stationKeys.detail(id), 'requirements'] as const,
+  assignments: (id: string) => [...stationKeys.detail(id), 'assignments'] as const,
 };
 
 /**
@@ -27,20 +53,28 @@ export function useStations(filters?: any) {
     queryKey: stationKeys.list(filters),
     queryFn: async () => {
       const response = await schedulehubApi.stations.list(filters);
-      return response.stations || response;
+      const stations = response.stations || response;
+      
+      // Transform array of stations
+      if (Array.isArray(stations)) {
+        return stations.map(transformStationFromApi);
+      }
+      
+      return stations;
     },
   });
 }
 
 /**
- * Hook to fetch a single station by ID
+ * Get a single station by ID
  */
 export function useStation(id: string, enabled = true) {
   return useQuery({
     queryKey: stationKeys.detail(id),
     queryFn: async () => {
       const response = await schedulehubApi.stations.get(id);
-      return response.station || response;
+      const station = response.station || response;
+      return transformStationFromApi(station);
     },
     enabled: enabled && !!id,
   });
@@ -70,8 +104,10 @@ export function useCreateStation() {
 
   return useMutation({
     mutationFn: async (data: any) => {
-      const response = await schedulehubApi.stations.create(data);
-      return response.station || response;
+      const apiData = transformStationToApi(data);
+      const response = await schedulehubApi.stations.create(apiData);
+      const station = response.station || response;
+      return transformStationFromApi(station);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: stationKeys.lists() });
@@ -95,8 +131,10 @@ export function useUpdateStation() {
 
   return useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
-      const response = await schedulehubApi.stations.update(id, updates);
-      return response.station || response;
+      const apiUpdates = transformStationToApi(updates);
+      const response = await schedulehubApi.stations.update(id, apiUpdates);
+      const station = response.station || response;
+      return transformStationFromApi(station);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: stationKeys.detail(variables.id) });
@@ -121,7 +159,8 @@ export function useDeleteStation() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await schedulehubApi.stations.update(id, { isActive: false });
+      const apiUpdates = transformStationToApi({ isActive: false });
+      await schedulehubApi.stations.update(id, apiUpdates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: stationKeys.lists() });
@@ -208,6 +247,65 @@ export function useRemoveStationRequirement() {
       handleApiError(error, {
         toast,
         defaultMessage: 'Failed to remove station requirement',
+      });
+    },
+  });
+}
+
+/**
+ * Hook to fetch station assignments
+ */
+export function useStationAssignments(stationId: string) {
+  return useQuery({
+    queryKey: stationKeys.assignments(stationId),
+    queryFn: () => schedulehubApi.stations.getAssignments(stationId),
+    enabled: !!stationId,
+  });
+}
+
+/**
+ * Hook to assign an employee to a station
+ */
+export function useAssignEmployee() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: (data: { stationId: string; employeeId: string; notes?: string }) =>
+      schedulehubApi.stations.assignEmployee(data),
+    onSuccess: (_, { stationId }) => {
+      queryClient.invalidateQueries({ queryKey: stationKeys.assignments(stationId) });
+      queryClient.invalidateQueries({ queryKey: stationKeys.detail(stationId) });
+      toast.success('Employee assigned to station successfully');
+    },
+    onError: (error) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to assign employee to station',
+      });
+    },
+  });
+}
+
+/**
+ * Hook to unassign an employee from a station
+ */
+export function useUnassignEmployee() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: ({ stationId, assignmentId }: { stationId: string; assignmentId: string }) =>
+      schedulehubApi.stations.unassignEmployee(stationId, assignmentId),
+    onSuccess: (_, { stationId }) => {
+      queryClient.invalidateQueries({ queryKey: stationKeys.assignments(stationId) });
+      queryClient.invalidateQueries({ queryKey: stationKeys.detail(stationId) });
+      toast.success('Employee unassigned from station successfully');
+    },
+    onError: (error) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to unassign employee from station',
       });
     },
   });

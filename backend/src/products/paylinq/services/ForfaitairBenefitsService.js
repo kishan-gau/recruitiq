@@ -82,35 +82,55 @@ class ForfaitairBenefitsService {
     }).options({ stripUnknown: true });
   }
 
-  // ==================== GLOBAL COMPONENT LIBRARY ====================
+  // ==================== TENANT COMPONENT LIBRARY ====================
 
   /**
-   * Get all global forfaitair benefit components (Tier 1)
-   * These are system-managed templates available to ALL organizations
+   * Get all forfaitair benefit components for a specific tenant (organization)
+   * All components are tenant-specific - no global components exist
    * 
+   * @param {string} organizationId - Organization UUID
    * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Global benefit components
+   * @returns {Promise<Array>} Tenant-specific benefit components
    */
-  async getGlobalBenefitLibrary(filters = {}) {
+  async getTenantBenefitLibrary(organizationId, filters = {}) {
     try {
-      logger.info('Fetching global forfaitair benefit library', { filters });
-
-      const components = await this.repository.findGlobalComponents({
-        category: 'benefit',
-        benefitType: filters.benefitType, // car, housing, meal, medical, etc.
-        status: 'active'
+      logger.info('Fetching tenant forfaitair benefit library', { 
+        organizationId, 
+        filters 
       });
 
-      logger.info('Global benefit library fetched', { count: components.length });
+      // Find forfait components for this specific organization
+      const components = await this.repository.findAll({
+        organizationId,
+        category: 'benefit',
+        benefitType: filters.benefitType,
+        status: 'active',
+        codes: ['CAR_FORFAIT_2PCT', 'CAR_FORFAIT_3PCT', 'HOUSING_FORFAIT_7_5PCT', 
+                'MEAL_FORFAIT_HOT', 'MEDICAL_FORFAIT_PROGRESSIVE']
+      });
+
+      logger.info('Tenant benefit library fetched', { 
+        organizationId, 
+        count: components.length 
+      });
 
       return components;
     } catch (error) {
-      logger.error('Error fetching global benefit library', {
+      logger.error('Error fetching tenant benefit library', {
         error: error.message,
+        organizationId,
         filters
       });
       throw error;
     }
+  }
+
+  /**
+   * @deprecated Use getTenantBenefitLibrary(organizationId) instead
+   * Global components are no longer supported - all components are tenant-specific
+   */
+  async getGlobalBenefitLibrary(filters = {}) {
+    throw new Error('Global benefit components are deprecated. Use getTenantBenefitLibrary(organizationId) instead.');
   }
 
   /**
@@ -269,11 +289,12 @@ class ForfaitairBenefitsService {
   }
 
   /**
-   * Get all available benefits for organization (global + org-specific)
+   * Get all available benefits for organization (tenant-specific only)
+   * Note: No global components exist - all components are tenant-specific
    * 
    * @param {string} organizationId - Organization UUID
    * @param {Object} filters - Optional filters
-   * @returns {Promise<Object>} { globalComponents, orgComponents }
+   * @returns {Promise<Object>} { tenantComponents }
    */
   async getAvailableBenefits(organizationId, filters = {}) {
     try {
@@ -282,26 +303,24 @@ class ForfaitairBenefitsService {
         filters
       });
 
-      // Get global components
-      const globalComponents = await this.getGlobalBenefitLibrary(filters);
-
-      // Get organization-specific components
-      const orgComponents = await this.repository.findAll(organizationId, {
-        componentType: 'earning',
+      // Get all tenant-specific benefit components (including forfait components)
+      const tenantComponents = await this.repository.findAll(organizationId, {
+        componentType: ['earning', 'deduction'], // Include both types
         category: 'benefit',
         ...filters
       });
 
       logger.info('Available benefits fetched', {
         organizationId,
-        globalCount: globalComponents.length,
-        orgCount: orgComponents.length
+        tenantCount: tenantComponents.length
       });
 
       return {
-        globalComponents,
-        orgComponents,
-        totalAvailable: globalComponents.length + orgComponents.length
+        tenantComponents,
+        totalAvailable: tenantComponents.length,
+        // Legacy fields for backward compatibility (deprecated)
+        globalComponents: [], // Always empty - no global components exist
+        orgComponents: tenantComponents // Alias to tenant components
       };
     } catch (error) {
       logger.error('Error fetching available benefits', {

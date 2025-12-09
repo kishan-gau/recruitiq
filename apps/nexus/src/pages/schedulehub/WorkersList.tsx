@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, UserCheck, UserX, Users } from 'lucide-react';
+import { Plus, Search, Filter, UserCheck, UserX, Users, ArrowLeft } from 'lucide-react';
 import { useWorkers } from '@/hooks/schedulehub/useScheduleStats';
 import type { Worker } from '@/types/schedulehub';
 
@@ -37,6 +37,15 @@ export default function WorkersList() {
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <Link
+        to="/schedulehub"
+        className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to ScheduleHub
+      </Link>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -226,14 +235,14 @@ export default function WorkersList() {
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setPage(Math.min(pagination.totalPages, page + 1))}
                   disabled={page === pagination.totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50"
                 >
                   Next
                 </button>

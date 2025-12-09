@@ -632,7 +632,7 @@ class TaxCalculationService {
   async _getEmployeeResidenceStatus(employeeRecordId, organizationId) {
     try {
       const result = await query(
-        `SELECT e.is_suriname_resident
+        `SELECT e.is_suriname_resident, e.national_id
          FROM hris.employee e
          INNER JOIN payroll.worker_metadata wm ON e.id = wm.employee_id
          WHERE wm.id = $1
@@ -654,10 +654,13 @@ class TaxCalculationService {
           organizationId
         });
         // Default to resident if employee not found (safer default for tax calculation)
-        return true;
+        return { isSurinameResident: true, nationalId: null };
       }
 
-      return result.rows[0].is_suriname_resident;
+      return {
+        isSurinameResident: result.rows[0].is_suriname_resident,
+        nationalId: result.rows[0].national_id
+      };
     } catch (error) {
       logger.error('Error fetching employee residence status', {
         error: error.message,

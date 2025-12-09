@@ -22,12 +22,14 @@ import {
   setHours,
   setMinutes,
 } from 'date-fns';
+import { Link } from 'react-router-dom';
 import {
   Calendar,
   ChevronLeft,
   ChevronRight,
   Clock,
   Plus,
+  ArrowLeft,
   Users,
   Filter,
   Download,
@@ -253,6 +255,17 @@ export default function AvailabilityCalendar() {
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
+      {/* Back to ScheduleHub */}
+      <div className="bg-white px-6 pt-4">
+        <Link
+          to="/schedulehub"
+          className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to ScheduleHub
+        </Link>
+      </div>
+      
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">

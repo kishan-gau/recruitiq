@@ -194,6 +194,7 @@ class PayrollRepository {
               e.first_name,
               e.last_name,
               e.email,
+              e.national_id,
               e.phone,
               e.hire_date,
               e.employment_status,

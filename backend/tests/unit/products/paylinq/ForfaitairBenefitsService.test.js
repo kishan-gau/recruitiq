@@ -1,25 +1,27 @@
 /**
  * Unit Tests: ForfaitairBenefitsService
  * 
- * Tests the three-tier forfaitair benefits system:
- * - Tier 1: Global component library access
- * - Tier 2: Organization custom components
- * - Tier 3: Employee-level overrides
+ * Tests the tenant-specific forfaitair benefits system:
+ * - Tenant component library access (organization-specific components)
+ * - Employee-level benefit assignments
+ * - Benefit calculations with employee overrides
  * 
  * Test Coverage:
- * - Global benefit library retrieval
- * - Custom benefit creation
- * - Component cloning and customization
- * - Employee benefit assignment
- * - Benefit calculation with overrides
- * - Assignment removal
+ * - Tenant benefit library retrieval (getTenantBenefitLibrary)
+ * - Employee benefit assignment and management
+ * - Benefit calculation with employee-specific values
+ * - Assignment removal and deactivation
  * - Statistics and reporting
+ * 
+ * Architecture Note: All forfait components are tenant-specific.
+ * No global components (organization_id IS NULL) are allowed.
  * 
  * Industry Standard: AAA pattern (Arrange, Act, Assert)
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import ForfaitairBenefitsService from '../../../../src/products/paylinq/services/ForfaitairBenefitsService.js';
+import { ValidationError } from '../../../../src/utils/errors.js';
 
 describe('ForfaitairBenefitsService', () => {
   let service;
@@ -54,57 +56,82 @@ describe('ForfaitairBenefitsService', () => {
     service = new ForfaitairBenefitsService(mockRepository, mockFormulaEngine);
   });
 
-  // ==================== TIER 1: GLOBAL COMPONENT LIBRARY ====================
+  // ==================== TENANT BENEFIT LIBRARY TESTS ====================
 
-  describe('getGlobalBenefitLibrary', () => {
-    it('should fetch all global forfaitair benefit components', async () => {
+  describe('getTenantBenefitLibrary', () => {
+    it('should fetch all forfaitair benefit components for specific tenant', async () => {
       // Arrange
-      const mockGlobalBenefits = [
+      const organizationId = 'org-123e4567-e89b-12d3-a456-426614174000';
+      const mockTenantBenefits = [
         {
-          id: 'global-1',
-          componentCode: 'FORFAITAIR_CAR_2PCT',
-          componentName: 'Company Car Benefit (2% Standard)',
+          id: 'tenant-1',
+          componentCode: 'CAR_FORFAIT_2PCT',
+          componentName: 'Auto Forfait (2%)',
           category: 'benefit',
-          formula: '{car_catalog_value} * 0.02 / 12',
+          organizationId,
           isTaxable: true
         },
         {
-          id: 'global-2',
-          componentCode: 'FORFAITAIR_HOUSING_7_5PCT',
-          componentName: 'Housing Benefit (7.5% Standard)',
+          id: 'tenant-2',
+          componentCode: 'HOUSING_FORFAIT_7_5PCT',
+          componentName: 'Huisvesting Forfait (7.5%)',
           category: 'benefit',
           formula: '{annual_salary} * 0.075 / 12',
           isTaxable: true
         }
       ];
 
-      mockRepository.findGlobalComponents.mockResolvedValue(mockGlobalBenefits);
+      mockRepository.findAll.mockResolvedValue(mockTenantBenefits);
 
       // Act
-      const result = await service.getGlobalBenefitLibrary();
+      const result = await service.getTenantBenefitLibrary(organizationId);
 
       // Assert
-      expect(result).toEqual(mockGlobalBenefits);
-      expect(mockRepository.findGlobalComponents).toHaveBeenCalledWith({
-        category: 'benefit',
-        benefitType: undefined,
-        status: 'active'
-      });
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('tenantComponents');
+      expect(result.tenantComponents).toHaveLength(2);
+      expect(result.tenantComponents[0]).toHaveProperty('componentCode', 'CAR_FORFAIT_2PCT');
+      expect(result.tenantComponents[1]).toHaveProperty('componentCode', 'HOUSING_FORFAIT_7_5PCT');
+
+      // Verify repository was called correctly with tenant filtering
+      expect(mockRepository.findAll).toHaveBeenCalledWith(
+        organizationId,
+        {
+          category: 'benefit',
+          type: 'deduction'
+        }
+      );
     });
 
-    it('should filter global benefits by benefit type', async () => {
+    it('should return empty array when no tenant benefits exist', async () => {
       // Arrange
-      mockRepository.findGlobalComponents.mockResolvedValue([]);
+      const organizationId = 'org-123e4567-e89b-12d3-a456-426614174000';
+      mockRepository.findAll.mockResolvedValue([]);
 
       // Act
-      await service.getGlobalBenefitLibrary({ benefitType: 'company_car' });
+      const result = await service.getTenantBenefitLibrary(organizationId);
 
       // Assert
-      expect(mockRepository.findGlobalComponents).toHaveBeenCalledWith({
-        category: 'benefit',
-        benefitType: 'company_car',
-        status: 'active'
-      });
+      expect(result).toHaveProperty('success', true);
+      expect(result).toHaveProperty('tenantComponents');
+      expect(result.tenantComponents).toHaveLength(0);
+    });
+
+    it('should validate organizationId parameter', async () => {
+      // Act & Assert
+      await expect(service.getTenantBenefitLibrary()).rejects.toThrow(ValidationError);
+      await expect(service.getTenantBenefitLibrary(null)).rejects.toThrow(ValidationError);
+      await expect(service.getTenantBenefitLibrary('')).rejects.toThrow(ValidationError);
+      await expect(service.getTenantBenefitLibrary('invalid-uuid')).rejects.toThrow(ValidationError);
+    });
+
+    it('should handle repository errors gracefully', async () => {
+      // Arrange
+      const organizationId = 'org-123e4567-e89b-12d3-a456-426614174000';
+      mockRepository.findAll.mockRejectedValue(new Error('Database connection failed'));
+
+      // Act & Assert
+      await expect(service.getTenantBenefitLibrary(organizationId)).rejects.toThrow('Database connection failed');
     });
   });
 

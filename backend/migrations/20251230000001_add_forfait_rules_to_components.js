@@ -4,14 +4,14 @@
  */
 
 export async function up(knex) {
-  // Add forfait rule columns to pay_components
-  await knex.schema.table('pay_components', (table) => {
+  // Add forfait rule columns to payroll.pay_component
+  await knex.schema.withSchema('payroll').table('pay_component', (table) => {
     table.boolean('has_forfait_rule').defaultTo(false).notNullable()
       .comment('Whether this component triggers forfait creation');
     
     table.uuid('forfait_component_id')
       .references('id')
-      .inTable('pay_components')
+      .inTable('payroll.pay_component')
       .onDelete('SET NULL')
       .comment('The forfait component to create when this component is used');
     
@@ -25,23 +25,23 @@ export async function up(knex) {
 
   // Add comment to table
   await knex.raw(`
-    COMMENT ON COLUMN pay_components.has_forfait_rule IS 
+    COMMENT ON COLUMN payroll.pay_component.has_forfait_rule IS
     'Indicates that using this component should automatically create a forfait component in the payroll run'
   `);
   
   await knex.raw(`
-    COMMENT ON COLUMN pay_components.forfait_component_id IS 
+    COMMENT ON COLUMN payroll.pay_component.forfait_component_id IS 
     'References the forfait pay component that should be automatically created (e.g., Forfaitaire bijtelling)'
   `);
   
   await knex.raw(`
-    COMMENT ON COLUMN pay_components.forfait_catalog_value IS 
+    COMMENT ON COLUMN payroll.pay_component.forfait_catalog_value IS 
     'The catalog value used to calculate forfait percentage (e.g., mobiliteit_13_cents_per_km, lease_5_percent)'
   `);
 }
 
 export async function down(knex) {
-  await knex.schema.table('pay_components', (table) => {
+  await knex.schema.withSchema('payroll').table('pay_component', (table) => {
     table.dropColumn('has_forfait_rule');
     table.dropColumn('forfait_component_id');
     table.dropColumn('forfait_catalog_value');

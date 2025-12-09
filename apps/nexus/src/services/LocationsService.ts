@@ -28,23 +28,37 @@ export const locationKeys = {
  * API Functions - Using @recruitiq/api-client
  */
 async function fetchLocations(filters?: LocationFilters): Promise<Location[]> {
+  console.log('🔍 fetchLocations called with filters:', filters);
   const response = await nexusClient.getLocations(filters);
-  return response.data || []; // Extract data array from ApiResponse
+  console.log('📦 Raw nexusClient response:', response);
+  console.log('📦 Response.data:', response.data);
+  console.log('📦 Response.data.locations:', response.data?.locations);
+  const result = response.data.locations || response.data || [];
+  console.log('✅ Final result returned from fetchLocations:', result);
+  return result; // Handle apiClient response format
 }
 
 async function fetchLocationById(id: string): Promise<Location> {
-  const response = await nexusClient.getLocation(id);
-  return response.data; // Extract data from ApiResponse
+  try {
+    const response = await nexusClient.getLocation(id);
+    
+    // The APIClient.get() method returns response.data, which should be ApiResponse<Location>
+    // Extract the location from the API response format
+    return response?.location || response?.data?.location || response;
+  } catch (error) {
+    console.error('Error fetching location:', error);
+    throw error;
+  }
 }
 
 async function createLocation(data: CreateLocationDTO): Promise<Location> {
   const response = await nexusClient.createLocation(data);
-  return response.data; // Extract data from ApiResponse
+  return response.data.location || response.data; // Handle apiClient response format
 }
 
 async function updateLocation(id: string, data: UpdateLocationDTO): Promise<Location> {
   const response = await nexusClient.updateLocation(id, data);
-  return response.data; // Extract data from ApiResponse
+  return response.data.location || response.data; // Handle apiClient response format
 }
 
 async function deleteLocation(id: string): Promise<void> {
@@ -59,9 +73,19 @@ async function deleteLocation(id: string): Promise<void> {
  * Fetch all locations with optional filters
  */
 export function useLocations(filters?: LocationFilters) {
+  console.log('🎣 useLocations hook called with filters:', filters);
   return useQuery({
     queryKey: locationKeys.list(filters),
-    queryFn: () => fetchLocations(filters),
+    queryFn: () => {
+      console.log('🎣 React Query executing fetchLocations...');
+      return fetchLocations(filters);
+    },
+    onSuccess: (data) => {
+      console.log('🎣 React Query onSuccess - data received:', data);
+    },
+    onError: (error) => {
+      console.error('🎣 React Query onError:', error);
+    },
   });
 }
 

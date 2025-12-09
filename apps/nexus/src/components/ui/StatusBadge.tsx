@@ -1,5 +1,5 @@
 interface StatusBadgeProps {
-  status: string;
+  status?: string | null;
   variant?: 'default' | 'dot' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   customColors?: {
@@ -125,7 +125,7 @@ export default function StatusBadge({
   size = 'md',
   customColors,
 }: StatusBadgeProps) {
-  const normalizedStatus = status.toLowerCase().replace(/\s+/g, '_');
+  const normalizedStatus = (status || '').toLowerCase().replace(/\s+/g, '_');
   const colors = customColors || statusColors[normalizedStatus] || statusColors.default;
   
   const baseClasses = `inline-flex items-center font-medium rounded-full ${sizeClasses[size]}`;
@@ -134,7 +134,7 @@ export default function StatusBadge({
     return (
       <span className={`${baseClasses} ${colors.bg} ${colors.text}`}>
         <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${colors.text.replace('text-', 'bg-')}`} />
-        {status.replace(/_/g, ' ')}
+        {(status || '').replace(/_/g, ' ')}
       </span>
     );
   }
@@ -142,14 +142,14 @@ export default function StatusBadge({
   if (variant === 'outline') {
     return (
       <span className={`${baseClasses} border ${colors.border} ${colors.text} bg-transparent`}>
-        {status.replace(/_/g, ' ')}
+        {(status || '').replace(/_/g, ' ')}
       </span>
     );
   }
   
   return (
     <span className={`${baseClasses} ${colors.bg} ${colors.text}`}>
-      {status.replace(/_/g, ' ')}
+      {(status || '').replace(/_/g, ' ')}
     </span>
   );
 }

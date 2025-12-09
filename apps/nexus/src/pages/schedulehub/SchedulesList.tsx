@@ -1,11 +1,32 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Calendar, Eye, FileText, Archive } from 'lucide-react';
+import { Plus, Calendar, Eye, FileText, Archive, ArrowLeft } from 'lucide-react';
 import { useSchedules, usePublishSchedule } from '@/hooks/schedulehub/useScheduleStats';
 import { useToast } from '@/contexts/ToastContext';
 import { handleApiError } from '@/utils/errorHandler';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import type { Schedule } from '@/types/schedulehub';
+
+// Helper function to safely format date ranges
+function formatDateRange(startDate: string | null | undefined, endDate: string | null | undefined): string {
+  const formatDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return 'No date set';
+    
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    
+    return date.toLocaleDateString();
+  };
+
+  const formattedStart = formatDate(startDate);
+  const formattedEnd = formatDate(endDate);
+
+  if (formattedStart === formattedEnd) {
+    return formattedStart;
+  }
+
+  return `${formattedStart} - ${formattedEnd}`;
+}
 
 export default function SchedulesList() {
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -63,6 +84,15 @@ export default function SchedulesList() {
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <Link
+        to="/schedulehub"
+        className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to ScheduleHub
+      </Link>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -190,8 +220,7 @@ export default function SchedulesList() {
               <div className="space-y-2 mb-4">
                 <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
                   <Calendar className="h-4 w-4 mr-2" />
-                  {new Date(schedule.start_date).toLocaleDateString()} -{' '}
-                  {new Date(schedule.end_date).toLocaleDateString()}
+                  {formatDateRange(schedule.start_date, schedule.end_date)}
                 </div>
                 {schedule.notes && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">

@@ -432,8 +432,28 @@ class EmployeeService {
         organizationId 
       });
 
-      // Transform DB employee to API format
-      return mapEmployeeDbToApi(result.rows[0]);
+      // Fetch the complete employee data with relationships (like getEmployee)
+      const fetchSql = `
+        SELECT e.*, 
+               d.department_name,
+               l.location_name,
+               m.first_name || ' ' || m.last_name as manager_name
+        FROM hris.employee e
+        LEFT JOIN hris.department d ON e.department_id = d.id AND d.deleted_at IS NULL
+        LEFT JOIN hris.location l ON e.location_id = l.id AND l.deleted_at IS NULL
+        LEFT JOIN hris.employee m ON e.manager_id = m.id AND m.deleted_at IS NULL
+        WHERE e.id = $1 
+          AND e.organization_id = $2
+          AND e.deleted_at IS NULL
+      `;
+
+      const fetchResult = await query(fetchSql, [id, organizationId], organizationId, {
+        operation: 'findById',
+        table: 'hris.employee'
+      });
+
+      // Transform complete employee data (with relationships) to API format
+      return mapEmployeeDbToApi(fetchResult.rows[0]);
     } catch (error) {
       this.logger.error('Error updating employee', { 
         error: error.message,
