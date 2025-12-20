@@ -168,3 +168,65 @@ export const useDeleteTaxRule = () => {
     },
   });
 };
+
+/**
+ * Calculate taxes for an employee
+ * 
+ * @example
+ * ```tsx
+ * const calculateMutation = useCalculateTaxes();
+ * 
+ * await calculateMutation.mutateAsync({
+ *   employeeId: 'emp-123',
+ *   grossPay: 50000,
+ *   payPeriodStart: '2025-01-01',
+ *   payPeriodEnd: '2025-01-31'
+ * });
+ * ```
+ */
+export const useCalculateTaxes = () => {
+  const { paylinq } = usePaylinqAPI();
+
+  return useMutation({
+    mutationFn: async (data: {
+      employeeId: string;
+      grossPay: number;
+      payPeriodStart: string;
+      payPeriodEnd: string;
+    }) => {
+      const response = await paylinq.calculateTaxes(data);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to calculate taxes');
+      }
+      return response.taxCalculations;
+    },
+  });
+};
+
+/**
+ * Setup default Suriname tax rules
+ * 
+ * @example
+ * ```tsx
+ * const setupMutation = useSetupSurinameTaxRules();
+ * 
+ * await setupMutation.mutateAsync();
+ * ```
+ */
+export const useSetupSurinameTaxRules = () => {
+  const { paylinq } = usePaylinqAPI();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await paylinq.setupSurinameTaxRules();
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to setup Suriname tax rules');
+      }
+      return response.result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taxRuleKeys.lists() });
+    },
+  });
+};

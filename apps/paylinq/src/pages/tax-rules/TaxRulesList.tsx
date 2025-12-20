@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, AlertCircle, Trash2, X, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, AlertCircle, Trash2, X, ArrowLeft, Download, Calculator } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
-import { useTaxRules, useCreateTaxRule, useUpdateTaxRule, useDeleteTaxRule } from '@/hooks/useTaxRules';
+import { useTaxRules, useCreateTaxRule, useUpdateTaxRule, useDeleteTaxRule, useSetupSurinameTaxRules } from '@/hooks/useTaxRules';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorAlert } from '@/components/ui/ErrorDisplay';
 import { useToast } from '@/contexts/ToastContext';
+import TaxCalculator from '@/components/tax/TaxCalculator';
 
 interface TaxRule {
   id: string;
@@ -48,6 +49,7 @@ interface TaxRuleFormData {
 
 export default function TaxRulesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
   const [editingRule, setEditingRule] = useState<TaxRule | null>(null);
   const [formData, setFormData] = useState<TaxRuleFormData>({
     name: '',
@@ -62,6 +64,7 @@ export default function TaxRulesList() {
   const createMutation = useCreateTaxRule();
   const updateMutation = useUpdateTaxRule(editingRule?.id || '');
   const deleteMutation = useDeleteTaxRule();
+  const setupSurinameMutation = useSetupSurinameTaxRules();
   const { success, error: errorToast } = useToast();
 
   const handleEdit = (rule: TaxRule) => {
@@ -92,6 +95,20 @@ export default function TaxRulesList() {
       effectiveDate: new Date().toISOString().split('T')[0],
     });
     setIsModalOpen(true);
+  };
+
+  const handleSetupSuriname = async () => {
+    if (!confirm('This will setup default Surinamese tax rules (Wage Tax, AOV, AWW). Continue?')) {
+      return;
+    }
+
+    try {
+      await setupSurinameMutation.mutateAsync();
+      success('Suriname tax rules setup successfully');
+      refetch();
+    } catch (err) {
+      errorToast(err instanceof Error ? err.message : 'Failed to setup Suriname tax rules');
+    }
   };
 
   const handleDelete = async (rule: TaxRule) => {
@@ -178,15 +195,37 @@ export default function TaxRulesList() {
               Manage Surinamese tax rules and social security contributions
             </p>
           </div>
-        <button
-          onClick={handleAdd}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Tax Rule
-        </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowCalculator(!showCalculator)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <Calculator className="w-4 h-4" />
+              {showCalculator ? 'Hide Calculator' : 'Tax Calculator'}
+            </button>
+            <button
+              onClick={handleSetupSuriname}
+              disabled={setupSurinameMutation.isPending}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="w-4 h-4" />
+              {setupSurinameMutation.isPending ? 'Setting up...' : 'Setup Suriname Rules'}
+            </button>
+            <button
+              onClick={handleAdd}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Tax Rule
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Tax Calculator */}
+      {showCalculator && (
+        <TaxCalculator onClose={() => setShowCalculator(false)} />
+      )}
 
       {/* Loading State */}
       {isLoading && (

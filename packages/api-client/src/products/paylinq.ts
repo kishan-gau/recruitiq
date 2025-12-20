@@ -1546,6 +1546,27 @@ export class PaylinqClient {
     return this.client.delete(`${this.basePath}/settings/tax-rules/${id}`);
   }
 
+  /**
+   * Calculate taxes for an employee
+   * POST /api/products/paylinq/tax-rules/calculations/calculate
+   */
+  async calculateTaxes(data: {
+    employeeId: string;
+    grossPay: number;
+    payPeriodStart: string;
+    payPeriodEnd: string;
+  }) {
+    return this.client.post(`${this.basePath}/tax-rules/calculations/calculate`, data);
+  }
+
+  /**
+   * Setup default Suriname tax rules
+   * POST /api/products/paylinq/tax-rules/setup-suriname
+   */
+  async setupSurinameTaxRules() {
+    return this.client.post(`${this.basePath}/tax-rules/setup-suriname`, {});
+  }
+
   // ============================================================================
   // Pay Period Configuration
   // ============================================================================
