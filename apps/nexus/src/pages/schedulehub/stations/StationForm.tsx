@@ -60,6 +60,10 @@ export default function StationForm({ station, onClose, onSuccess }: StationForm
       newErrors.stationName = 'Station name is required';
     }
 
+    if (!formData.locationId.trim()) {
+      newErrors.locationId = 'Location is required';
+    }
+
     if (formData.capacity && isNaN(Number(formData.capacity))) {
       newErrors.capacity = 'Capacity must be a number';
     }
@@ -67,8 +71,6 @@ export default function StationForm({ station, onClose, onSuccess }: StationForm
     if (formData.capacity && Number(formData.capacity) < 0) {
       newErrors.capacity = 'Capacity cannot be negative';
     }
-
-    // No need to validate locationId format - it comes from dropdown selection
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -85,7 +87,7 @@ export default function StationForm({ station, onClose, onSuccess }: StationForm
       stationCode: formData.stationCode.trim(),
       stationName: formData.stationName.trim(),
       description: formData.description.trim() || null,
-      locationId: formData.locationId.trim() === '' ? null : formData.locationId.trim(),
+      locationId: formData.locationId.trim(),
       floorLevel: formData.floorLevel.trim() || null,
       zone: formData.zone.trim() || null,
       capacity: formData.capacity ? parseInt(formData.capacity) : null,
@@ -187,16 +189,19 @@ export default function StationForm({ station, onClose, onSuccess }: StationForm
           {/* Location */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Location
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(optional)</span>
+              Location <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.locationId}
               onChange={(e) => handleChange('locationId', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white ${
+                errors.locationId 
+                  ? 'border-red-500 dark:border-red-500' 
+                  : 'border-gray-300 dark:border-slate-600'
+              }`}
               disabled={locationsLoading}
             >
-              <option value="">No specific location</option>
+              <option value="">Select a location</option>
               {locations?.map((location: Location) => (
                 <option key={location.id} value={location.id}>
                   {location.locationName} ({location.locationCode})
@@ -210,7 +215,12 @@ export default function StationForm({ station, onClose, onSuccess }: StationForm
             )}
             {locationsError && (
               <p className="mt-1 text-xs text-red-500">
-                Error loading locations. You can still create the station.
+                Error loading locations. Please refresh to try again.
+              </p>
+            )}
+            {errors.locationId && (
+              <p className="mt-1 text-xs text-red-500">
+                {errors.locationId}
               </p>
             )}
           </div>

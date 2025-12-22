@@ -6,9 +6,11 @@
  * - Suriname-specific tax settings (wage tax, AOV, AWW)
  * - Tax brackets and rates
  * - Tax calculation preview
+ * 
+ * Integrated with backend API for real-time tax management
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DollarSign,
@@ -18,17 +20,42 @@ import {
   CheckCircle,
   Info,
   ArrowLeft,
+  Loader2,
+  AlertCircle,
+  Save,
+  RefreshCw,
+  Zap,
 } from 'lucide-react';
 import { FormSection, FormGrid, FormField } from '@/components/form/FormField';
 import { CurrencyInput } from '@/components/form/CurrencyInput';
+import { useTaxRules, useCreateTaxRule, useUpdateTaxRule, useDeleteTaxRule } from '@/hooks/useTaxRules';
+import { useToast } from '@/contexts/ToastContext';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ErrorAlert } from '@/components/ui/ErrorDisplay';
 
 type Currency = 'SRD' | 'USD' | 'EUR';
 
 interface TaxBracket {
-  id: string;
-  minIncome: number;
-  maxIncome: number | null; // null for unlimited
+  id?: string;
+  min: number;
+  max: number | null; // null for unlimited
   rate: number; // percentage
+  deduction: number; // Standard deduction for bracket
+}
+
+interface TaxRule {
+  id: string;
+  name: string;
+  type: 'wage-tax' | 'aov' | 'aww';
+  description: string;
+  rate?: number;
+  brackets?: TaxBracket[];
+  employerContribution?: number;
+  employeeContribution?: number;
+  calculationMode?: 'aggregated' | 'component_based' | 'proportional_distribution';
+  status: 'active' | 'inactive';
+  effectiveDate: string;
+  lastUpdated: string;
 }
 
 interface TaxJurisdiction {
@@ -47,33 +74,155 @@ interface TaxCalculationPreview {
   awwContribution: number;
   totalTax: number;
   netIncome: number;
+  breakdown?: {
+    bracket: TaxBracket;
+    taxableIncome: number;
+    tax: number;
+  }[];
 }
 
 const TaxSettingsPage = () => {
-  // Tax jurisdictions
+  // API hooks
+  const { data: wageRules, isLoading: wageLoading, error: wageError, refetch: refetchWage } = useTaxRules({ type: 'wage-tax' });
+  const { data: aovRules, isLoading: aovLoading, error: aovError, refetch: refetchAov } = useTaxRules({ type: 'aov' });
+  const { data: awwRules, isLoading: awwLoading, error: awwError, refetch: refetchAww } = useTaxRules({ type: 'aww' });
+  
+  const createMutation = useCreateTaxRule();
+  const updateMutation = useUpdateTaxRule('');
+  const deleteMutation = useDeleteTaxRule();
+  const { success, error: errorToast } = useToast();
+
+  // Local state
+  const [editingRule, setEditingRule] = useState<TaxRule | null>(null);
+  const [isAddingBracket, setIsAddingBracket] = useState(false);
+  const [selectedRuleType, setSelectedRuleType] = useState<'wage-tax' | 'aov' | 'aww'>('wage-tax');
+  
+  // Tax jurisdictions (local UI state)
   const [jurisdictions, setJurisdictions] = useState<TaxJurisdiction[]>([
     { id: '1', name: 'Suriname Federal Tax', type: 'federal', enabled: true },
     { id: '2', name: 'Paramaribo Municipal Tax', type: 'local', enabled: false },
   ]);
 
-  // Tax brackets for federal tax
-  const [taxBrackets, setTaxBrackets] = useState<TaxBracket[]>([
-    { id: '1', minIncome: 0, maxIncome: 10000, rate: 8 },
-    { id: '2', minIncome: 10001, maxIncome: 25000, rate: 18 },
-    { id: '3', minIncome: 25001, maxIncome: 50000, rate: 28 },
-    { id: '4', minIncome: 50001, maxIncome: null, rate: 38 },
-  ]);
-
-  // Suriname-specific contributions
-  const [aovRate, setAovRate] = useState(4.0); // AOV (pension) rate %
-  const [awwRate, setAwwRate] = useState(1.5); // AWW (disability) rate %
-  const [maxAovBase, setMaxAovBase] = useState(60000); // Max income for AOV calculation
+  // Get current rules based on selection
+  const currentRules = selectedRuleType === 'wage-tax' ? wageRules : 
+                      selectedRuleType === 'aov' ? aovRules : awwRules;
+  const isLoading = wageLoading || aovLoading || awwLoading;
+  const hasError = wageError || aovError || awwError;
+  
+  // Extract brackets from current wage tax rule
+  const taxBrackets = currentRules?.find(rule => rule.status === 'active')?.brackets || [];
+  
+  // Suriname-specific contributions from API data
+  const aovRule = aovRules?.find(rule => rule.status === 'active');
+  const awwRule = awwRules?.find(rule => rule.status === 'active');
+  const [aovRate, setAovRate] = useState(aovRule?.employeeContribution || 4.0);
+  const [awwRate, setAwwRate] = useState(awwRule?.employeeContribution || 1.5);
+  const [maxAovBase, setMaxAovBase] = useState(60000);
+  
+  // Update local rates when API data changes
+  useEffect(() => {
+    if (aovRule?.employeeContribution) setAovRate(aovRule.employeeContribution);
+    if (awwRule?.employeeContribution) setAwwRate(awwRule.employeeContribution);
+  }, [aovRule, awwRule]);
 
   // Add new bracket form
   const [showAddBracket, setShowAddBracket] = useState(false);
   const [newBracketMin, setNewBracketMin] = useState<number | null>(null);
   const [newBracketMax, setNewBracketMax] = useState<number | null>(null);
   const [newBracketRate, setNewBracketRate] = useState<number | null>(null);
+  const [newBracketDeduction, setNewBracketDeduction] = useState<number | null>(null);
+
+  // CRUD handlers
+  const handleCreateTaxRule = async (type: 'wage-tax' | 'aov' | 'aww', data: any) => {
+    try {
+      await createMutation.mutateAsync({
+        name: `${type.toUpperCase()} Tax Rule`,
+        type,
+        description: `${type} tax configuration`,
+        status: 'active',
+        effectiveDate: new Date().toISOString().split('T')[0],
+        ...data
+      });
+      success(`${type} tax rule created successfully`);
+      await refetchData();
+    } catch (error: any) {
+      errorToast(error.message || `Failed to create ${type} rule`);
+    }
+  };
+
+  const handleUpdateTaxRule = async (ruleId: string, updates: any) => {
+    try {
+      const updateMutationWithId = useUpdateTaxRule(ruleId);
+      await updateMutationWithId.mutateAsync(updates);
+      success('Tax rule updated successfully');
+      await refetchData();
+    } catch (error: any) {
+      errorToast(error.message || 'Failed to update tax rule');
+    }
+  };
+
+  const handleDeleteTaxRule = async (ruleId: string, ruleName: string) => {
+    if (!confirm(`Are you sure you want to delete "${ruleName}"?`)) return;
+    
+    try {
+      await deleteMutation.mutateAsync(ruleId);
+      success('Tax rule deleted successfully');
+      await refetchData();
+    } catch (error: any) {
+      errorToast(error.message || 'Failed to delete tax rule');
+    }
+  };
+
+  const refetchData = async () => {
+    await Promise.all([refetchWage(), refetchAov(), refetchAww()]);
+  };
+
+  // Auto-setup Surinamese tax rules if they don't exist
+  const setupSurinameseTaxRules = async () => {
+    const hasExistingRules = wageRules?.length || aovRules?.length || awwRules?.length;
+    
+    if (hasExistingRules) {
+      const confirmed = confirm(
+        'This will set up standard Surinamese tax rules. Existing rules will be preserved but you may need to review them. Continue?'
+      );
+      if (!confirmed) return;
+    }
+    
+    try {
+      // Create wage tax rule with progressive brackets
+      if (!wageRules?.length) {
+        await handleCreateTaxRule('wage-tax', {
+          brackets: [
+            { min: 0, max: 73031, rate: 36.93, deduction: 6150 },
+            { min: 73031, max: null, rate: 49.5, deduction: 15316 }
+          ],
+          calculationMode: 'proportional_distribution'
+        });
+      }
+      
+      // Create AOV rule
+      if (!aovRules?.length) {
+        await handleCreateTaxRule('aov', {
+          employeeContribution: 4.0,
+          employerContribution: 4.0,
+          rate: 8.0 // Combined rate
+        });
+      }
+      
+      // Create AWW rule  
+      if (!awwRules?.length) {
+        await handleCreateTaxRule('aww', {
+          employeeContribution: 1.5,
+          employerContribution: 1.5,
+          rate: 3.0 // Combined rate
+        });
+      }
+      
+      success('Surinamese tax rules setup completed');
+    } catch (error: any) {
+      errorToast(error.message || 'Failed to setup Surinamese tax rules');
+    }
+  };
 
   // Tax calculator
   const [calculatorIncome, setCalculatorIncome] = useState(30000);
@@ -85,31 +234,49 @@ const TaxSettingsPage = () => {
   // Currency for display
   const currency: Currency = 'SRD';
 
-  // Calculate tax based on brackets
-  const calculateTax = (income: number, brackets: TaxBracket[]): number => {
+  // Calculate tax based on brackets (matches backend logic)
+  const calculateTax = (income: number, brackets: TaxBracket[]): { totalTax: number; breakdown: any[] } => {
     let totalTax = 0;
     let remainingIncome = income;
+    const breakdown: any[] = [];
 
-    for (const bracket of brackets.sort((a, b) => a.minIncome - b.minIncome)) {
+    const sortedBrackets = [...brackets].sort((a, b) => a.min - b.min);
+
+    for (const bracket of sortedBrackets) {
       if (remainingIncome <= 0) break;
 
-      const bracketMin = bracket.minIncome;
-      const bracketMax = bracket.maxIncome ?? Infinity;
-      const bracketRange = bracketMax - bracketMin;
-
+      const bracketMin = bracket.min;
+      const bracketMax = bracket.max ?? Infinity;
+      
       if (income > bracketMin) {
-        const taxableInBracket = Math.min(remainingIncome, bracketRange);
-        totalTax += (taxableInBracket * bracket.rate) / 100;
-        remainingIncome -= taxableInBracket;
+        const taxableInThisBracket = Math.min(
+          remainingIncome,
+          (bracketMax === Infinity ? income : Math.min(bracketMax, income)) - bracketMin
+        );
+        
+        if (taxableInThisBracket > 0) {
+          const bracketTax = (taxableInThisBracket * bracket.rate) / 100 - (bracket.deduction || 0);
+          const actualTax = Math.max(0, bracketTax);
+          
+          totalTax += actualTax;
+          remainingIncome -= taxableInThisBracket;
+          
+          breakdown.push({
+            bracket,
+            taxableIncome: taxableInThisBracket,
+            tax: actualTax
+          });
+        }
       }
     }
 
-    return totalTax;
+    return { totalTax, breakdown };
   };
 
   // Calculate full tax preview
   const calculateFullTaxPreview = (grossIncome: number): TaxCalculationPreview => {
-    const federalTax = calculateTax(grossIncome, taxBrackets);
+    const federalTaxResult = calculateTax(grossIncome, taxBrackets);
+    const federalTax = federalTaxResult.totalTax;
     const stateTax = 0; // Not implemented
     const localTax = jurisdictions.find(j => j.type === 'local' && j.enabled)
       ? grossIncome * 0.02
@@ -134,6 +301,7 @@ const TaxSettingsPage = () => {
       awwContribution,
       totalTax,
       netIncome,
+      breakdown: federalTaxResult.breakdown
     };
   };
 
@@ -150,26 +318,50 @@ const TaxSettingsPage = () => {
     ));
   };
 
-  // Add tax bracket
-  const handleAddBracket = () => {
+  // Add tax bracket to existing wage tax rule
+  const handleAddBracket = async () => {
     if (newBracketMin !== null && newBracketRate !== null) {
-      const newBracket: TaxBracket = {
-        id: Date.now().toString(),
-        minIncome: newBracketMin,
-        maxIncome: newBracketMax,
-        rate: newBracketRate,
-      };
-      setTaxBrackets([...taxBrackets, newBracket].sort((a, b) => a.minIncome - b.minIncome));
+      const activeWageRule = wageRules?.find(rule => rule.status === 'active');
+      if (activeWageRule) {
+        const newBracket: TaxBracket = {
+          min: newBracketMin,
+          max: newBracketMax,
+          rate: newBracketRate,
+          deduction: newBracketDeduction || 0,
+        };
+        
+        const updatedBrackets = [...(activeWageRule.brackets || []), newBracket]
+          .sort((a, b) => a.min - b.min);
+        
+        await handleUpdateTaxRule(activeWageRule.id, {
+          brackets: updatedBrackets
+        });
+      }
+      
       setShowAddBracket(false);
       setNewBracketMin(null);
       setNewBracketMax(null);
       setNewBracketRate(null);
+      setNewBracketDeduction(null);
     }
   };
 
-  // Delete tax bracket
-  const handleDeleteBracket = (id: string) => {
-    setTaxBrackets(taxBrackets.filter(b => b.id !== id));
+  // Delete tax bracket from existing wage tax rule
+  const handleDeleteBracket = async (bracketIndex: number) => {
+    const activeWageRule = wageRules?.find(rule => rule.status === 'active');
+    if (activeWageRule && activeWageRule.brackets) {
+      const bracket = activeWageRule.brackets[bracketIndex];
+      const bracketText = bracket ? 
+        `bracket for income above ${formatCurrency(bracket.minIncome)}` : 
+        'this tax bracket';
+      
+      if (!confirm(`Are you sure you want to delete ${bracketText}?`)) return;
+      
+      const updatedBrackets = activeWageRule.brackets.filter((_, index) => index !== bracketIndex);
+      await handleUpdateTaxRule(activeWageRule.id, {
+        brackets: updatedBrackets
+      });
+    }
   };
 
   // Format currency
@@ -178,17 +370,31 @@ const TaxSettingsPage = () => {
     return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  // Handle save
-  const handleSave = () => {
-    console.log('Saving tax settings:', {
-      jurisdictions,
-      taxBrackets,
-      aovRate,
-      awwRate,
-      maxAovBase,
-    });
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+  // Handle save - save AOV/AWW rates
+  const handleSave = async () => {
+    try {
+      // Update AOV rule if rates changed
+      if (aovRule && aovRule.employeeContribution !== aovRate) {
+        await handleUpdateTaxRule(aovRule.id, {
+          employeeContribution: aovRate,
+          rate: aovRate * 2 // Combined employer + employee
+        });
+      }
+      
+      // Update AWW rule if rates changed
+      if (awwRule && awwRule.employeeContribution !== awwRate) {
+        await handleUpdateTaxRule(awwRule.id, {
+          employeeContribution: awwRate,
+          rate: awwRate * 2 // Combined employer + employee
+        });
+      }
+      
+      success('Tax settings saved successfully');
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (error: any) {
+      errorToast(error.message || 'Failed to save tax settings');
+    }
   };
 
   return (
@@ -209,13 +415,40 @@ const TaxSettingsPage = () => {
               Configure tax jurisdictions, brackets, and calculation settings
             </p>
           </div>
-          <button
-            onClick={handleSave}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Save Settings
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={setupSurinameseTaxRules}
+              disabled={createTaxRuleMutation.isPending}
+              className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                createTaxRuleMutation.isPending
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+            >
+              {createTaxRuleMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4 mr-2" />
+              )}
+              {createTaxRuleMutation.isPending ? 'Setting up...' : 'Quick Setup'}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={updateTaxRuleMutation.isPending}
+              className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                updateTaxRuleMutation.isPending
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
+            >
+              {updateTaxRuleMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              {updateTaxRuleMutation.isPending ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -315,9 +548,15 @@ const TaxSettingsPage = () => {
                         <td className="px-4 py-3 text-sm text-right">
                           <button
                             onClick={() => handleDeleteBracket(bracket.id)}
-                            className="text-red-600 hover:text-red-900"
+                            disabled={deleteTaxRuleMutation.isPending}
+                            className={`${deleteTaxRuleMutation.isPending ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:text-red-900'}`}
+                            title={deleteTaxRuleMutation.isPending ? 'Deleting...' : 'Delete bracket'}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {deleteTaxRuleMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </button>
                         </td>
                       </tr>
@@ -369,9 +608,21 @@ const TaxSettingsPage = () => {
                   <div className="flex space-x-2">
                     <button
                       onClick={handleAddBracket}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                      disabled={createTaxRuleMutation.isPending}
+                      className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                        createTaxRuleMutation.isPending
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-emerald-600 hover:bg-emerald-700'
+                      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
                     >
-                      Add Bracket
+                      {createTaxRuleMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        'Add Bracket'
+                      )}
                     </button>
                     <button
                       onClick={() => {

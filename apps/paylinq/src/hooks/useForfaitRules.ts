@@ -92,7 +92,7 @@ export function useForfaitRules(options?: {
       }
       
       // Transform pay components to ForfaitRule format for backward compatibility
-      const components = response.data?.components || response.data || [];
+      const components = response.components || [];
       return (Array.isArray(components) ? components : []).map((component: any) => ({
         id: component.id,
         organizationId: component.organizationId,
@@ -140,7 +140,7 @@ export function useForfaitRule(id: string, options?: { enabled?: boolean }) {
       if (!response) {
         throw new Error('No data received from server');
       }
-      return (response.data?.forfaitRule || response.data) as ForfaitRule;
+      return response.forfaitRule as ForfaitRule;
     },
     enabled,
     staleTime: 5 * 60 * 1000,

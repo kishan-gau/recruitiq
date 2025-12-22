@@ -377,23 +377,22 @@ class PayrollRepository {
    * @returns {Promise<Object>} Created compensation record
    */
   async createCompensation(compensationData, organizationId, userId) {
-    // Set previous compensation to non-current
-    if (compensationData.isCurrent) {
-      await this.query(
-        `UPDATE payroll.compensation 
-         SET is_current = false, effective_to = $1, updated_at = NOW()
-         WHERE employee_id = $2 AND organization_id = $3 AND is_current = true`,
-        [compensationData.effectiveFrom, compensationData.employeeId, organizationId],
-        organizationId,
-        { operation: 'UPDATE', table: 'payroll.compensation', userId }
-      );
-    }
-    
+    // Use UPSERT to handle unique constraint on (employee_id, effective_from)
+    // This will either insert a new record or update an existing one with the same effective_from date
     const result = await this.query(
       `INSERT INTO payroll.compensation 
       (organization_id, employee_id, compensation_type, amount,
-       overtime_rate, effective_from, is_current, currency, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       overtime_rate, effective_from, is_current, currency, created_by, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      ON CONFLICT (employee_id, effective_from)
+      DO UPDATE SET
+        compensation_type = EXCLUDED.compensation_type,
+        amount = EXCLUDED.amount,
+        overtime_rate = EXCLUDED.overtime_rate,
+        is_current = EXCLUDED.is_current,
+        currency = EXCLUDED.currency,
+        updated_at = NOW(),
+        updated_by = $9
       RETURNING *`,
       [
         organizationId,
@@ -407,8 +406,21 @@ class PayrollRepository {
         userId
       ],
       organizationId,
-      { operation: 'INSERT', table: 'payroll.compensation', userId }
+      { operation: 'UPSERT', table: 'payroll.compensation', userId }
     );
+    
+    // Set previous compensation records to non-current (only if this is the current record)
+    if (compensationData.isCurrent !== false) {
+      await this.query(
+        `UPDATE payroll.compensation 
+         SET is_current = false, effective_to = $1, updated_at = NOW(), updated_by = $4
+         WHERE employee_id = $2 AND organization_id = $3 AND is_current = true 
+           AND effective_from != $1`,
+        [compensationData.effectiveFrom, compensationData.employeeId, organizationId, userId],
+        organizationId,
+        { operation: 'UPDATE', table: 'payroll.compensation', userId }
+      );
+    }
     
     return result.rows[0];
   }

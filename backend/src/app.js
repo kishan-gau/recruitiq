@@ -147,6 +147,38 @@ export function createApp(options = {}) {
   app.use(cookieParser(config.security.sessionSecret));
 
   // ============================================================================
+  // JSON PARSING ERROR HANDLER
+  // ============================================================================
+  // Catch JSON parsing errors from express.json() middleware
+  app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+      const errorId = `ERR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      logger.warn('JSON parsing error', {
+        errorId,
+        error: err.message,
+        path: req.path,
+        method: req.method,
+        contentType: req.get('content-type'),
+        ip: req.ip,
+      });
+
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid JSON format in request body',
+        errorCode: 'INVALID_JSON',
+        errorId,
+        timestamp: new Date().toISOString(),
+        details: {
+          message: 'The request body contains malformed JSON. Please ensure your request body is valid JSON format.',
+          hint: 'Common issues: trailing commas, unquoted keys, single quotes instead of double quotes, or sending literal "null" as a string.',
+        },
+      });
+    }
+    next(err);
+  });
+
+  // ============================================================================
   // INPUT VALIDATION & SANITIZATION
   // ============================================================================
 

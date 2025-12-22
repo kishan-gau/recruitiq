@@ -12,7 +12,8 @@ import {
 } from '../dto/availabilityDto.js';
 
 class AvailabilityService {
-  constructor() {
+  constructor(poolInstance = null) {
+    this.pool = poolInstance || pool;
     this.logger = logger;
   }
 
@@ -38,20 +39,29 @@ class AvailabilityService {
     reason: Joi.string().allow(null, '')
   });
 
+  // Update validation schema
+  updateAvailabilitySchema = Joi.object({
+    startTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+    endTime: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+    effectiveTo: Joi.date().optional(),
+    priority: Joi.string().valid('required', 'preferred', 'available', 'unavailable').optional(),
+    reason: Joi.string().allow(null, '').optional()
+  }).min(1); // At least one field must be provided
+
   /**
    * Create worker availability
    */
   async createAvailability(availabilityData, organizationId, userId) {
-    const client = await pool.connect();
+    // Validate input FIRST (fail fast principle)
+    const { error, value } = this.createAvailabilitySchema.validate(availabilityData);
+    if (error) {
+      throw new Error(`Validation error: ${error.details[0].message}`);
+    }
+
+    const client = await this.pool.connect();
     
     try {
       await client.query('BEGIN');
-
-      // Validate input
-      const { error, value } = this.createAvailabilitySchema.validate(availabilityData);
-      if (error) {
-        throw new Error(`Validation error: ${error.details[0].message}`);
-      }
 
       // Verify worker exists in hris.employee
       const workerCheck = await client.query(
@@ -95,10 +105,8 @@ class AvailabilityService {
       });
 
       // Transform DB format to API format
-      return {
-        success: true,
-        data: mapAvailabilityDbToApi(result.rows[0])
-      };
+      const availability = mapAvailabilityDbToApi(result.rows[0]);
+      return { success: true, availability };
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -110,12 +118,59 @@ class AvailabilityService {
   }
 
   /**
-   * List all availability records with employee details
+   * List all availability records with employee details and pagination
    */
   async listAvailability(organizationId, filters = {}) {
     try {
-      const { workerId, availabilityType, startDate, endDate, dayOfWeek } = filters;
+      const { workerId, availabilityType, startDate, endDate, dayOfWeek, page = 1, limit = 20 } = filters;
 
+      // Calculate pagination
+      const offset = (page - 1) * limit;
+
+      // Build base query for counting total records
+      let countQuery = `
+        SELECT COUNT(*) as total_count
+        FROM scheduling.worker_availability wa
+        INNER JOIN hris.employee e ON wa.employee_id = e.id
+        WHERE wa.organization_id = $1
+      `;
+      const countParams = [organizationId];
+      let paramCount = 1;
+
+      // Add filters to count query
+      if (workerId) {
+        paramCount++;
+        countQuery += ` AND wa.employee_id = $${paramCount}`;
+        countParams.push(workerId);
+      }
+
+      if (availabilityType) {
+        paramCount++;
+        countQuery += ` AND wa.availability_type = $${paramCount}`;
+        countParams.push(availabilityType);
+      }
+
+      if (dayOfWeek !== undefined) {
+        paramCount++;
+        countQuery += ` AND wa.day_of_week = $${paramCount}`;
+        countParams.push(dayOfWeek);
+      }
+
+      if (startDate && endDate) {
+        paramCount++;
+        countQuery += ` AND (
+          (wa.availability_type = 'recurring' AND (wa.effective_to IS NULL OR wa.effective_to >= $${paramCount}))
+          OR
+          (wa.availability_type IN ('one_time', 'unavailable') AND wa.specific_date BETWEEN $${paramCount} AND $${paramCount + 1})
+        )`;
+        countParams.push(startDate, endDate);
+      }
+
+      // Get total count
+      const countResult = await pool.query(countQuery, countParams);
+      const total = parseInt(countResult.rows[0].total_count);
+
+      // Build main query with same filters
       let query = `
         SELECT 
           wa.*,
@@ -127,8 +182,9 @@ class AvailabilityService {
         WHERE wa.organization_id = $1
       `;
       const params = [organizationId];
-      let paramCount = 1;
+      paramCount = 1;
 
+      // Add filters to main query (same as count query)
       if (workerId) {
         paramCount++;
         query += ` AND wa.employee_id = $${paramCount}`;
@@ -167,12 +223,32 @@ class AvailabilityService {
         wa.specific_date,
         wa.start_time`;
 
+      // Add pagination
+      paramCount++;
+      query += ` LIMIT $${paramCount}`;
+      params.push(limit);
+
+      paramCount++;
+      query += ` OFFSET $${paramCount}`;
+      params.push(offset);
+
       const result = await pool.query(query, params);
 
-      // Transform DB format to API format
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(total / limit);
+
+      // Transform DB format to API format and return with pagination
       return {
         success: true,
-        data: mapAvailabilitiesDbToApi(result.rows)
+        availabilities: mapAvailabilitiesDbToApi(result.rows),
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
       };
 
     } catch (error) {
@@ -186,7 +262,7 @@ class AvailabilityService {
    */
   async getWorkerAvailability(workerId, organizationId, filters = {}) {
     try {
-      const { availabilityType, startDate, endDate } = filters;
+      const { availabilityType, startDate, endDate, dayOfWeek } = filters;
 
       let query = `
         SELECT * FROM scheduling.worker_availability
@@ -199,6 +275,12 @@ class AvailabilityService {
         paramCount++;
         query += ` AND availability_type = $${paramCount}`;
         params.push(availabilityType);
+      }
+
+      if (dayOfWeek !== undefined) {
+        paramCount++;
+        query += ` AND day_of_week = $${paramCount}`;
+        params.push(dayOfWeek);
       }
 
       if (startDate && endDate) {
@@ -221,10 +303,10 @@ class AvailabilityService {
 
       const result = await pool.query(query, params);
 
-      // Transform DB format to API format
+      // Transform DB format to API format and return consistent format
       return {
         success: true,
-        data: mapAvailabilitiesDbToApi(result.rows)
+        availability: mapAvailabilitiesDbToApi(result.rows)
       };
 
     } catch (error) {
@@ -237,6 +319,12 @@ class AvailabilityService {
    * Update availability
    */
   async updateAvailability(availabilityId, updateData, organizationId, userId) {
+    // Validate input
+    const { error, value } = this.updateAvailabilitySchema.validate(updateData);
+    if (error) {
+      throw new Error(`Validation error: ${error.details[0].message}`);
+    }
+
     const client = await pool.connect();
     
     try {
@@ -260,11 +348,11 @@ class AvailabilityService {
       const allowedFields = ['startTime', 'endTime', 'effectiveTo', 'priority', 'reason'];
       
       allowedFields.forEach(field => {
-        if (updateData[field] !== undefined) {
+        if (value[field] !== undefined) {
           paramCount++;
           const snakeKey = field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
           updates.push(`${snakeKey} = $${paramCount}`);
-          params.push(updateData[field]);
+          params.push(value[field]);
         }
       });
 
@@ -294,10 +382,8 @@ class AvailabilityService {
       });
 
       // Transform DB format to API format
-      return {
-        success: true,
-        data: mapAvailabilityDbToApi(result.rows[0])
-      };
+      const availability = mapAvailabilityDbToApi(result.rows[0]);
+      return { success: true, availability };
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -336,10 +422,8 @@ class AvailabilityService {
       });
 
       // Transform DB format to API format
-      return {
-        success: true,
-        data: mapAvailabilityDbToApi(result.rows[0])
-      };
+      const availability = mapAvailabilityDbToApi(result.rows[0]);
+      return { success: true, availability };
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -418,7 +502,8 @@ class AvailabilityService {
    */
   async checkWorkerAvailable(workerId, organizationId, date, startTime, endTime) {
     try {
-      const dayOfWeek = new Date(date).getDay();
+      // Use getUTCDay() to prevent timezone conversion issues
+      const dayOfWeek = new Date(date).getUTCDay();
 
       // Check for specific unavailability on this date
       const unavailableCheck = await pool.query(
@@ -504,10 +589,11 @@ class AvailabilityService {
    */
   async getAvailableWorkers(organizationId, date, startTime, endTime, roleId = null) {
     try {
-      const dayOfWeek = new Date(date).getDay();
+      // Use getUTCDay() to prevent timezone conversion issues
+      const dayOfWeek = new Date(date).getUTCDay();
 
       let query = `
-        SELECT DISTINCT 
+        SELECT 
           e.id,
           e.employee_number as worker_number,
           e.first_name,
@@ -516,8 +602,13 @@ class AvailabilityService {
           e.phone,
           e.employment_type,
           e.employment_status as status,
-          wa.priority,
-          wa.availability_type
+          MIN(CASE wa.priority
+            WHEN 'required' THEN 1
+            WHEN 'preferred' THEN 2
+            WHEN 'available' THEN 3
+            ELSE 4
+          END) as priority_order,
+          STRING_AGG(DISTINCT wa.availability_type, ', ') as availability_types
         FROM hris.employee e
         INNER JOIN scheduling.worker_availability wa ON e.id = wa.employee_id
         WHERE e.organization_id = $1
@@ -541,8 +632,8 @@ class AvailabilityService {
           AND ua.specific_date = $2
           AND ua.start_time < $4
           AND ua.end_time > $3
-        )
-      `;
+        )`;
+
       const params = [organizationId, date, startTime, endTime, dayOfWeek];
       let paramCount = 5;
 
@@ -551,21 +642,19 @@ class AvailabilityService {
         paramCount++;
         query += ` AND EXISTS (
           SELECT 1 FROM scheduling.worker_roles wr
-          WHERE wr.employee_id = w.id 
+          WHERE wr.employee_id = e.id 
           AND wr.role_id = $${paramCount}
           AND wr.removed_date IS NULL
         )`;
         params.push(roleId);
       }
 
+      query += `
+        GROUP BY e.id, e.employee_number, e.first_name, e.last_name, e.email, e.phone, e.employment_type, e.employment_status`;
+
       query += ` ORDER BY 
-        CASE wa.priority
-          WHEN 'required' THEN 1
-          WHEN 'preferred' THEN 2
-          WHEN 'available' THEN 3
-          ELSE 4
-        END,
-        w.last_name, w.first_name`;
+        priority_order,
+        e.last_name, e.first_name`;
 
       const result = await pool.query(query, params);
 

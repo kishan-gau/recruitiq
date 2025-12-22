@@ -51,6 +51,9 @@ importers:
       '@recruitiq/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@recruitiq/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@tanstack/react-query':
         specifier: ^5.64.4
         version: 5.90.6(react@18.3.1)
@@ -163,6 +166,9 @@ importers:
       '@recruitiq/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@recruitiq/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@tanstack/react-query':
         specifier: ^5.64.4
         version: 5.90.6(react@18.3.1)

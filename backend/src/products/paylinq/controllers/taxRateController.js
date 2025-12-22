@@ -465,6 +465,315 @@ async function setupSurinameTaxRules(req, res) {
   }
 }
 
+/**
+ * Create a new version of a tax rule
+ * POST /api/products/paylinq/tax-rules/:id/versions
+ */
+async function createTaxRuleVersion(req, res) {
+  try {
+    const { id } = req.params;
+    const { organization_id: organizationId, id: userId } = req.user;
+    const versionData = req.body;
+
+    // Validate required fields
+    if (!versionData.versionType || !['major', 'minor', 'patch'].includes(versionData.versionType)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid version type',
+        message: 'Version type must be major, minor, or patch'
+      });
+    }
+
+    if (!versionData.changeSummary || versionData.changeSummary.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Change summary is required',
+        message: 'Please provide a summary of changes for this version'
+      });
+    }
+
+    // Create the new version
+    const newVersion = await taxCalculationService.createNewTaxRuleVersion(
+      id,
+      versionData,
+      organizationId,
+      userId
+    );
+
+    logger.info('Tax rule version created', {
+      originalRuleId: id,
+      newVersionId: newVersion.id,
+      versionType: versionData.versionType,
+      organizationId,
+      userId
+    });
+
+    return res.status(201).json({
+      success: true,
+      version: newVersion,
+      message: `${versionData.versionType.charAt(0).toUpperCase() + versionData.versionType.slice(1)} version created successfully`
+    });
+  } catch (error) {
+    logger.error('Error creating tax rule version', {
+      error: error.message,
+      ruleId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tax rule not found',
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Get version history for a tax rule
+ * GET /api/products/paylinq/tax-rules/:ruleSetCode/versions
+ */
+async function getTaxRuleVersionHistory(req, res) {
+  try {
+    const { ruleSetCode } = req.params;
+    const { organization_id: organizationId } = req.user;
+    const { includeArchived = false } = req.query;
+
+    const versionHistory = await taxCalculationService.getTaxRuleVersionHistory(
+      ruleSetCode,
+      organizationId,
+      { includeArchived: includeArchived === 'true' }
+    );
+
+    logger.info('Tax rule version history retrieved', {
+      ruleSetCode,
+      versionCount: versionHistory.length,
+      organizationId
+    });
+
+    return res.status(200).json({
+      success: true,
+      versions: versionHistory,
+      ruleSetCode
+    });
+  } catch (error) {
+    logger.error('Error retrieving tax rule version history', {
+      error: error.message,
+      ruleSetCode: req.params.ruleSetCode,
+      organizationId: req.user?.organization_id
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tax rule set not found',
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Publish a tax rule version
+ * PUT /api/products/paylinq/tax-rules/:id/publish
+ */
+async function publishTaxRuleVersion(req, res) {
+  try {
+    const { id } = req.params;
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { effectiveDate } = req.body;
+
+    // Validate effective date format if provided
+    if (effectiveDate && !/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format',
+        message: 'Effective date must be in YYYY-MM-DD format'
+      });
+    }
+
+    const publishedVersion = await taxCalculationService.publishTaxRuleVersion(
+      id,
+      organizationId,
+      userId,
+      effectiveDate
+    );
+
+    logger.info('Tax rule version published', {
+      versionId: id,
+      effectiveDate,
+      organizationId,
+      userId
+    });
+
+    return res.status(200).json({
+      success: true,
+      version: publishedVersion,
+      message: 'Tax rule version published successfully'
+    });
+  } catch (error) {
+    logger.error('Error publishing tax rule version', {
+      error: error.message,
+      versionId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tax rule version not found',
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('already published')) {
+      return res.status(409).json({
+        success: false,
+        error: 'Version already published',
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Archive a tax rule version
+ * PUT /api/products/paylinq/tax-rules/:id/archive
+ */
+async function archiveTaxRuleVersion(req, res) {
+  try {
+    const { id } = req.params;
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { reason } = req.body;
+
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Archive reason is required',
+        message: 'Please provide a reason for archiving this version'
+      });
+    }
+
+    const archivedVersion = await taxCalculationService.archiveTaxRuleVersion(
+      id,
+      reason.trim(),
+      organizationId,
+      userId
+    );
+
+    logger.info('Tax rule version archived', {
+      versionId: id,
+      reason: reason.trim(),
+      organizationId,
+      userId
+    });
+
+    return res.status(200).json({
+      success: true,
+      version: archivedVersion,
+      message: 'Tax rule version archived successfully'
+    });
+  } catch (error) {
+    logger.error('Error archiving tax rule version', {
+      error: error.message,
+      versionId: req.params.id,
+      organizationId: req.user?.organization_id
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tax rule version not found',
+        message: error.message
+      });
+    }
+
+    if (error.message.includes('already archived')) {
+      return res.status(409).json({
+        success: false,
+        error: 'Version already archived',
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error.message
+    });
+  }
+}
+
+/**
+ * Compare two tax rule versions
+ * GET /api/products/paylinq/tax-rules/:fromId/compare/:toId
+ */
+async function compareTaxRuleVersions(req, res) {
+  try {
+    const { fromId, toId } = req.params;
+    const { organization_id: organizationId } = req.user;
+
+    const comparison = await taxCalculationService.compareTaxRuleVersions(
+      fromId,
+      toId,
+      organizationId
+    );
+
+    logger.info('Tax rule versions compared', {
+      fromId,
+      toId,
+      organizationId,
+      changesCount: comparison.changes?.length || 0
+    });
+
+    return res.status(200).json({
+      success: true,
+      comparison,
+      message: 'Version comparison completed successfully'
+    });
+  } catch (error) {
+    logger.error('Error comparing tax rule versions', {
+      error: error.message,
+      fromId: req.params.fromId,
+      toId: req.params.toId,
+      organizationId: req.user?.organization_id
+    });
+
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        success: false,
+        error: 'One or both tax rule versions not found',
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error.message
+    });
+  }
+}
+
 export default {
   createTaxRule,
   getTaxRules,
@@ -477,4 +786,10 @@ export default {
   deleteTaxBracket,
   calculateTaxes,
   setupSurinameTaxRules,
+  // Versioning methods
+  createTaxRuleVersion,
+  getTaxRuleVersionHistory,
+  publishTaxRuleVersion,
+  archiveTaxRuleVersion,
+  compareTaxRuleVersions,
 };

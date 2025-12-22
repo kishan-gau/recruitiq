@@ -88,6 +88,7 @@ const BulkUserAccessManagement = lazy(() => import('@/pages/settings/BulkUserAcc
 // ScheduleHub
 const ScheduleHubDashboard = lazy(() => import('@/pages/schedulehub/ScheduleHubDashboard'));
 const WorkersList = lazy(() => import('@/pages/schedulehub/WorkersList'));
+const WorkerDetails = lazy(() => import('@/pages/schedulehub/workers/WorkerDetails'));
 const SchedulesList = lazy(() => import('@/pages/schedulehub/SchedulesList'));
 const ScheduleDetails = lazy(() => import('@/pages/schedulehub/ScheduleDetails'));
 const ScheduleBuilder = lazy(() => import('@/pages/schedulehub/ScheduleBuilder'));
@@ -95,6 +96,7 @@ const ScheduleHubTimeOff = lazy(() => import('@/pages/schedulehub/TimeOffRequest
 const ShiftSwapMarketplace = lazy(() => import('@/pages/schedulehub/ShiftSwapMarketplace'));
 const StationManagement = lazy(() => import('@/pages/schedulehub/stations/StationManagement'));
 const StationDetails = lazy(() => import('@/pages/schedulehub/stations/StationDetails'));
+const StationForm = lazy(() => import('@/components/schedulehub/stations/StationForm'));
 const StationAssignments = lazy(() => import('@/pages/schedulehub/stations/StationAssignments'));
 const StationRequirements = lazy(() => import('@/pages/schedulehub/stations/StationRequirements'));
 const RolesList = lazy(() => import('@/pages/schedulehub/RolesList'));
@@ -102,6 +104,9 @@ const RoleDetails = lazy(() => import('@/components/schedulehub/RoleDetails'));
 const ShiftSwapApprovalQueue = lazy(() => import('@/pages/schedulehub/shift-swaps/ShiftSwapApprovalQueue'));
 const SwapRequestInbox = lazy(() => import('@/pages/schedulehub/shift-swaps/SwapRequestInbox'));
 const AvailabilityManagement = lazy(() => import('@/pages/schedulehub/AvailabilityManagement'));
+
+// Shift Templates
+const ShiftTemplateManagement = lazy(() => import('@/pages/ShiftTemplates/ShiftTemplateManagement'));
 
 function App() {
   return (
@@ -223,22 +228,34 @@ function App() {
                   {/* ScheduleHub */}
                   <Route path="schedulehub">
                     <Route index element={<ScheduleHubDashboard />} />
-                    <Route path="workers" element={<WorkersList />} />
+                    <Route path="workers">
+                      <Route index element={<WorkersList />} />
+                      <Route path=":workerId" element={<WorkerDetails />} />
+                    </Route>
                     <Route path="schedules">
                       <Route index element={<SchedulesList />} />
                       <Route path=":id" element={<ScheduleDetails />} />
+                      <Route path=":id/edit" element={<ScheduleBuilder />} />
                       <Route path="builder" element={<ScheduleBuilder />} />
                       <Route path="create" element={<ScheduleBuilder />} />
                     </Route>
                     <Route path="stations">
                       <Route index element={<StationManagement />} />
+                      <Route path="new" element={<StationForm />} />
                       <Route path=":id" element={<StationDetails />} />
+                      <Route path=":id/edit" element={<StationForm />} />
                       <Route path=":id/assignments" element={<StationAssignments />} />
                       <Route path=":id/requirements" element={<StationRequirements />} />
                     </Route>
                     <Route path="roles">
                       <Route index element={<RolesList />} />
                       <Route path=":roleId" element={<RoleDetails />} />
+                    </Route>
+                    <Route path="shift-templates">
+                      <Route index element={<ShiftTemplateManagement />} />
+                      <Route path="new" element={<ShiftTemplateManagement />} />
+                      <Route path=":id" element={<ShiftTemplateManagement />} />
+                      <Route path=":id/edit" element={<ShiftTemplateManagement />} />
                     </Route>
                     <Route path="time-off" element={<ScheduleHubTimeOff />} />
                     <Route path="shift-swaps">

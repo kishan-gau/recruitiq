@@ -53,19 +53,19 @@ export const schedulehubApi = {
   },
 
   workers: {
-    list: (params?: any) => api.get('/workers', { params }).then((res) => res.data),
-    get: (id: string) => api.get(`/workers/${id}`).then((res) => res.data),
+    list: (params?: any) => api.get('/workers', { params }).then((res) => res.data.workers || res.data),
+    get: (id: string) => api.get(`/workers/${id}`).then((res) => res.data.worker || res.data),
     getByEmployee: (employeeId: string) =>
-      api.get(`/workers/employee/${employeeId}`).then((res) => res.data),
-    create: (data: any) => api.post('/workers', data).then((res) => res.data),
+      api.get(`/workers/employee/${employeeId}`).then((res) => res.data.data || res.data),
+    create: (data: any) => api.post('/workers', data).then((res) => res.data.data || res.data),
     update: (id: string, data: any) =>
-      api.patch(`/workers/${id}`, data).then((res) => res.data),
+      api.patch(`/workers/${id}`, data).then((res) => res.data.data || res.data),
     terminate: (id: string, terminationDate: string) =>
-      api.post(`/workers/${id}/terminate`, { terminationDate }).then((res) => res.data),
+      api.post(`/workers/${id}/terminate`, { terminationDate }).then((res) => res.data.data || res.data),
     getAvailability: (id: string, params?: any) =>
-      api.get(`/workers/${id}/availability`, { params }).then((res) => res.data),
+      api.get(`/workers/${id}/availability`, { params }).then((res) => res.data.data || res.data),
     getShifts: (id: string, params?: any) =>
-      api.get(`/workers/${id}/shifts`, { params }).then((res) => res.data),
+      api.get(`/workers/${id}/shifts`, { params }).then((res) => res.data.data || res.data),
   },
 
   schedules: {
@@ -74,6 +74,7 @@ export const schedulehubApi = {
       api.get(`/schedules/${id}`, { params: { includeShifts } }).then((res) => res.data),
     create: (data: any) => api.post('/schedules', data).then((res) => res.data),
     autoGenerate: (data: any) => api.post('/schedules/auto-generate', data).then((res) => res.data),
+    regenerate: (id: string, data: any) => api.put(`/schedules/${id}/regenerate`, data).then((res) => res.data),
     update: (id: string, data: any) =>
       api.patch(`/schedules/${id}`, data).then((res) => res.data),
     publish: (id: string) => api.post(`/schedules/${id}/publish`).then((res) => res.data),
@@ -180,6 +181,7 @@ export const schedulehubApi = {
   stations: {
     list: (params?: any) => api.get('/stations', { params }).then((res) => res.data),
     get: (id: string) => api.get(`/stations/${id}`).then((res) => res.data),
+    getRequirements: (id: string) => api.get(`/stations/${id}/requirements`).then((res) => res.data),
     create: (data: any) => api.post('/stations', data).then((res) => res.data),
     update: (id: string, data: any) =>
       api.patch(`/stations/${id}`, data).then((res) => res.data),
@@ -202,5 +204,20 @@ export const schedulehubApi = {
       }).then((res) => res.data),
     unassignEmployee: (stationId: string, assignmentId: string) =>
       api.delete(`/stations/${stationId}/assignments/${assignmentId}`).then((res) => res.data),
+  },
+
+  shiftTemplates: {
+    getAll: (params?: any) => api.get('/shift-templates', { params }).then((res) => res.data),
+    getSummaries: (params?: any) => api.get('/shift-templates/summaries', { params }).then((res) => res.data),
+    getById: (id: string) => api.get(`/shift-templates/${id}`).then((res) => res.data),
+    create: (data: any) => api.post('/shift-templates', data).then((res) => res.data),
+    update: (id: string, data: any) =>
+      api.patch(`/shift-templates/${id}`, data).then((res) => res.data),
+    delete: (id: string) => api.delete(`/shift-templates/${id}`).then((res) => res.data),
+    duplicate: (id: string, data?: { name?: string }) =>
+      api.post(`/shift-templates/${id}/duplicate`, data).then((res) => res.data),
+    validate: (data: any) => api.post('/shift-templates/validate', data).then((res) => res.data),
+    bulkUpdate: (data: any) => api.post('/shift-templates/bulk', data).then((res) => res.data),
+    getUsageStats: (id: string) => api.get(`/shift-templates/${id}/usage`).then((res) => res.data),
   },
 };

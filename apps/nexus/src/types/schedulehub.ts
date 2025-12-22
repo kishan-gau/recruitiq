@@ -1,17 +1,95 @@
+// =============================================================================
+// SCHEDULE PUBLICATION & CONFLICT RESOLUTION TYPES
+// =============================================================================
+
+/**
+ * Result of schedule publication attempt
+ */
+export interface PublishResult {
+  success: boolean;
+  message: string;
+  schedule?: any;
+  hasConflicts?: boolean;
+  conflicts?: ProcessedConflict[];
+  resolutionOptions?: ResolutionOption[];
+}
+
+/**
+ * Processed conflict data for UX display
+ */
+export interface ProcessedConflict {
+  employeeId: string;
+  employeeName: string;
+  conflictType: 'overlap' | 'double_booking' | 'availability';
+  severity: 'warning' | 'error';
+  description: string;
+  affectedShifts: ConflictShift[];
+  suggestedActions: string[];
+}
+
+/**
+ * Shift information in conflict context
+ */
+export interface ConflictShift {
+  id: string;
+  startTime: string;
+  endTime: string;
+  stationName: string;
+  roleName: string;
+  scheduleId: string;
+  scheduleName: string;
+  isPublished: boolean;
+}
+
+/**
+ * Resolution option provided by backend
+ */
+export interface ResolutionOption {
+  type: 'modify_shifts' | 'reassign_workers' | 'unpublish_conflicts';
+  label: string;
+  description: string;
+  canAutoResolve: boolean;
+}
+
+// =============================================================================
+// CORE SCHEDULEHUB ENTITY TYPES
+// =============================================================================
+
 export interface Worker {
   id: string;
-  organization_id: string;
-  employee_id: string;
+  organizationId: string;
+  employeeId: string;
+  workerNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  employmentType: string;
   status: 'active' | 'inactive' | 'terminated';
-  hire_date: string;
-  termination_date?: string;
-  base_hourly_rate?: number;
-  overtime_rate?: number;
-  weekly_hours_limit?: number;
-  max_consecutive_days?: number;
-  min_rest_hours?: number;
-  created_at: string;
-  updated_at: string;
+  departmentId?: string;
+  locationId?: string;
+  hireDate: string;
+  terminationDate?: string;
+  
+  // Scheduling configuration fields
+  maxHoursPerWeek?: number;
+  minHoursPerWeek?: number;
+  maxConsecutiveDays?: number;
+  minRestHoursBetweenShifts?: number;
+  isSchedulable: boolean;
+  schedulingStatus: string;
+  preferredShiftTypes?: string[];
+  blockedDays?: string[];
+  schedulingNotes?: string;
+  
+  // Additional computed fields
+  totalShifts?: number;
+  
+  // Audit fields
+  createdBy?: string;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
 }
 
 export interface Role {
@@ -76,6 +154,8 @@ export interface Schedule {
   published_at?: string;
   published_by?: string;
   notes?: string;
+  version: number;
+  parent_schedule_id?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -87,6 +167,7 @@ export interface Shift {
   employeeId?: string;
   roleId?: string;
   stationId?: string;
+  templateId?: string;
   shiftDate: string;
   startTime: string;
   endTime: string;
@@ -115,6 +196,12 @@ export interface Shift {
   station?: {
     id: string;
     name: string;
+  };
+  template?: {
+    id: string;
+    templateName: string;
+    startTime: string;
+    endTime: string;
   };
 }
 
@@ -280,6 +367,58 @@ export interface WorkerWithRoles extends Worker {
 export interface AvailabilityCheckResult {
   available: boolean;
   conflicts?: Availability[];
+}
+
+// Shift Template types are now managed in a dedicated file
+export type {
+  ShiftTemplate,
+  ShiftTemplateDetails,
+  ShiftTemplateSummary,
+  ShiftTemplateRole,
+  ShiftTemplateUsage,
+  CreateShiftTemplateRequest,
+  UpdateShiftTemplateRequest,
+  ShiftTemplateFormData,
+  ShiftTemplateFilters,
+  ValidationResult
+} from './shift-templates';
+
+export interface StationCoverageGap {
+  stationId: string;
+  stationName: string;
+  timeSlot: {
+    start: string;
+    end: string;
+  };
+  requiredStaffing: number;
+  currentStaffing: number;
+  gap: number;
+}
+
+export interface LocationWithStations {
+  id: string;
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  locationType?: 'headquarters' | 'branch' | 'remote' | 'warehouse' | 'store';
+  isActive: boolean;
+  stations: Station[];
+}
+
+export interface DragDropShiftData {
+  shiftId: string;
+  sourceStationId?: string;
+  sourceDate: string;
+  sourceTimeSlot: string;
+}
+
+export interface CalendarTimeSlot {
+  hour: number;
+  label: string;
+  time24: string;
 }
 
 export interface DashboardStats {

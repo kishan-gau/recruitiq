@@ -26,13 +26,15 @@ class PayslipPdfService {
           e.first_name,
           e.last_name,
           e.email,
-          wps.template_id as pay_structure_template_id,
+          wps.template_version_id as pay_structure_template_version_id,
           e.worker_type_id
          FROM payroll.paycheck pc
          INNER JOIN hris.employee e ON e.id = pc.employee_id
          LEFT JOIN payroll.worker_pay_structure wps ON wps.employee_id = e.id AND wps.is_current = true
          WHERE pc.id = $1 AND pc.organization_id = $2`,
-        [paycheckId, organizationId]
+        [paycheckId, organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'payroll.paycheck' }
       );
 
       if (paycheckResult.rows.length === 0) {
@@ -89,9 +91,11 @@ class PayslipPdfService {
         [
           organizationId,
           paycheck.employee_id,
-          paycheck.pay_structure_template_id,
+          paycheck.pay_structure_template_version_id,
           paycheck.worker_type_id
-        ]
+        ],
+        organizationId,
+        { operation: 'SELECT', table: 'payroll.payslip_template' }
       );
 
       if (templateResult.rows.length === 0) {

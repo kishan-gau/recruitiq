@@ -360,16 +360,36 @@ export class APIClient {
 
   /**
    * Make a PUT request
+   * 
+   * SECURITY: Validates data before sending to prevent malformed requests.
+   * Axios converts null to literal string "null" which breaks JSON parsing.
+   * 
+   * @throws Error if data is null or undefined
    */
   public async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    // SECURITY: Prevent sending null/undefined which axios converts to "null" string
+    if (data === null || data === undefined) {
+      throw new Error(`PUT request to ${url} requires valid data. Received: ${data}`);
+    }
+    
     const response = await this.client.put<T>(url, data, config);
     return response.data;
   }
 
   /**
    * Make a PATCH request
+   * 
+   * SECURITY: Validates data before sending to prevent malformed requests.
+   * Axios converts null to literal string "null" which breaks JSON parsing.
+   * 
+   * @throws Error if data is null or undefined
    */
   public async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    // SECURITY: Prevent sending null/undefined which axios converts to "null" string
+    if (data === null || data === undefined) {
+      throw new Error(`PATCH request to ${url} requires valid data. Received: ${data}`);
+    }
+    
     const response = await this.client.patch<T>(url, data, config);
     return response.data;
   }

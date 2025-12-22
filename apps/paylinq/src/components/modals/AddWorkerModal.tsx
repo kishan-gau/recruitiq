@@ -146,14 +146,52 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
         if (formData.workerType) {
           try {
             await paylinq.assignWorkerType({
-              employeeId: response.employee.employeeId,
+              employeeRecordId: response.employee.employeeId,
               workerTypeTemplateId: formData.workerType,
               effectiveFrom: formData.startDate,
+              payFrequency: formData.payFrequency || null,
             });
           } catch (wtError: any) {
             console.error('Failed to assign worker type:', wtError);
-            // Don't fail the whole operation, just warn
-            error('Worker created but failed to assign worker type. Please assign manually.');
+            
+            // Handle validation errors for worker type assignment
+            if (wtError.response?.status === 400 && wtError.response?.data?.details) {
+              const apiErrors = wtError.response.data.details;
+              const fieldErrors: Record<string, string> = {};
+              
+              // Map backend field names to frontend form field names
+              const fieldMapping: Record<string, string> = {
+                effectiveFrom: 'startDate',
+                employeeRecordId: 'employeeNumber',
+                workerTypeTemplateId: 'workerType',
+                payFrequency: 'payFrequency',
+              };
+              
+              // Map field names to user-friendly labels
+              const fieldLabels: Record<string, string> = {
+                startDate: 'Start Date',
+                employeeNumber: 'Employee Number',
+                workerType: 'Worker Type',
+                payFrequency: 'Pay Frequency',
+              };
+              
+              apiErrors.forEach((apiError: any) => {
+                const backendField = apiError.path?.[0] || apiError.field;
+                const frontendField = fieldMapping[backendField] || backendField;
+                const fieldLabel = fieldLabels[frontendField] || frontendField;
+                fieldErrors[frontendField] = `${fieldLabel}: ${apiError.message}`;
+              });
+              
+              setErrors(fieldErrors);
+              
+              // Also show a general error message
+              error('Please correct the worker type assignment fields and try again.');
+            } else {
+              // For other errors, show generic message
+              error('Worker created but failed to assign worker type. Please assign manually.');
+            }
+            
+            return; // Don't close the modal so user can fix the errors
           }
         }
         
@@ -196,6 +234,8 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
           lastName: 'fullName',
           hireDate: 'startDate',
           bankAccountNumber: 'bankAccount',
+          effectiveFrom: 'startDate',
+          employeeRecordId: 'employeeNumber',
         };
         
         // Map field names to user-friendly labels

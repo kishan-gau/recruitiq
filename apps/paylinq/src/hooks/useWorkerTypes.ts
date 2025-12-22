@@ -34,14 +34,8 @@ export function useWorkerTypeTemplates(params?: PaginationParams & { status?: st
   return useQuery({
     queryKey: [...WORKER_TYPE_TEMPLATES_KEY, 'list', params],
     queryFn: async () => {
-      // APIClient.get() returns response.data directly, not the full axios response
-      // So 'response' here is already { success: true, workerTypes: [...], pagination: {...} }
-      const apiResponse = await paylinq.getWorkerTypeTemplates(params);
-      
-      // Extract resource-specific key from API response
-      const templates = (apiResponse as any)?.workerTypes || [];
-      
-      return templates;
+      const response = await paylinq.getWorkerTypeTemplates(params);
+      return response.workerTypes;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false, // Prevent refetch on window focus that overwrites cache updates

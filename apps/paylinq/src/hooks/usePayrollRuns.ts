@@ -37,7 +37,7 @@ export function usePayrollRuns(params?: PayrollRunFilters & PaginationParams) {
     queryKey: [...PAYROLL_RUNS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getPayrollRuns(params);
-      return response.data || [];
+      return response.payrollRuns || [];
     },
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -77,7 +77,7 @@ export function usePayrollRunSummary(id: string) {
     queryKey: [...PAYROLL_RUNS_KEY, id, 'summary'],
     queryFn: async () => {
       const response = await paylinq.getPayrollRunSummary(id);
-      return response.data;
+      return response.summary;
     },
     enabled: !!id,
   });
@@ -98,7 +98,7 @@ export function useCreatePayrollRun() {
   return useMutation({
     mutationFn: async (data: CreatePayrollRunRequest) => {
       const response = await paylinq.createPayrollRun(data);
-      return response.data;
+      return response.payrollRun;
     },
     onSuccess: async (data) => {
       // Use refetchQueries to immediately refetch instead of just invalidating
@@ -122,7 +122,7 @@ export function useUpdatePayrollRun() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdatePayrollRunRequest }) => {
       const response = await paylinq.updatePayrollRun(id, data);
-      return response.data;
+      return response.payrollRun;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [...PAYROLL_RUNS_KEY, data?.id] });
@@ -277,7 +277,7 @@ export function usePaychecks(params?: PaycheckFilters & PaginationParams) {
     queryKey: [...PAYCHECKS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getPaychecks(params);
-      return response.data || [];
+      return response.paychecks || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -293,7 +293,7 @@ export function usePaycheck(id: string) {
     queryKey: [...PAYCHECKS_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getPaycheck(id);
-      return response.data;
+      return response.paycheck;
     },
     enabled: !!id,
   });
@@ -325,7 +325,7 @@ export function usePaycheckHistory(employeeId: string) {
     queryKey: [...PAYCHECKS_KEY, 'employee', employeeId, 'history'],
     queryFn: async () => {
       const response = await paylinq.getPaycheckHistory(employeeId);
-      return response.data || [];
+      return response.paychecks || [];
     },
     enabled: !!employeeId,
   });
@@ -341,7 +341,7 @@ export function usePaycheckComponents(paycheckId: string) {
     queryKey: [...PAYCHECKS_KEY, paycheckId, 'components'],
     queryFn: async () => {
       const response = await paylinq.getPaycheckComponents(paycheckId);
-      return response.data || [];
+      return response.components || [];
     },
     enabled: !!paycheckId,
   });

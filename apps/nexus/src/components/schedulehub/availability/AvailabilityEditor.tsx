@@ -5,10 +5,12 @@
  * Features drag-and-drop time selection and visual feedback
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { format, addMinutes } from 'date-fns';
 import { Clock, Plus, Trash2, Copy, Save, AlertCircle } from 'lucide-react';
 import type { EmployeeListItem } from '../../../types/employee.types';
+import { useShiftTemplates } from '@/hooks/schedulehub/useShiftTemplates';
+import { useTemplateBasedTimeSlots, TimeSlotPresets } from '@/utils/time-slot-generator';
 
 interface AvailabilityRule {
   id?: string;
@@ -43,11 +45,8 @@ const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday', short: 'Sun' },
 ];
 
-const TIME_SLOTS = Array.from({ length: 24 * 4 }, (_, i) => {
-  const hour = Math.floor(i / 4);
-  const minute = (i % 4) * 15;
-  return format(addMinutes(new Date(2000, 0, 1, 0, 0), hour * 60 + minute), 'HH:mm');
-});
+// Template-driven time slots for availability editing (1-hour precision)
+// Replaced hardcoded TIME_SLOTS array with dynamic generation based on shift templates
 
 export default function AvailabilityEditor({
   workerId,
@@ -63,7 +62,15 @@ export default function AvailabilityEditor({
       ? existingRules
       : [{ dayOfWeek: 1, startTime: '09:00', endTime: '17:00', availabilityType: 'recurring' as const, priority: 'preferred' as const }]
   );
-  const [selectedDay, setSelectedDay] = useState<number>(1);
+  // Auto-select the day of the first existing rule when editing
+  const [selectedDay, setSelectedDay] = useState<number>(
+    existingRules.length > 0 ? (existingRules[0].dayOfWeek ?? 1) : 1
+  );
+  
+  // Debug logging to track selectedDay initialization and changes
+  useEffect(() => {
+    console.log('[DEBUG] SelectedDay initialized/changed to:', selectedDay);
+  }, [selectedDay]);
   const [errors, setErrors] = useState<string[]>([]);
   const [selectedWorkerIds, setSelectedWorkerIds] = useState<string[]>(
     workerId ? [workerId] : []
@@ -72,15 +79,53 @@ export default function AvailabilityEditor({
 
   const isEditMode = !!workerId; // Edit mode if workerId is provided
 
+  // Migrate existing rules to 24-hour format on component mount
+  useEffect(() => {
+    if (existingRules.length > 0) {
+      const migratedRules = existingRules.map(rule => ({
+        ...rule,
+        startTime: convertTo24Hour(rule.startTime),
+        endTime: convertTo24Hour(rule.endTime)
+      }));
+      
+      // Only update if there were any format changes
+      const hasChanges = migratedRules.some((rule, index) => 
+        rule.startTime !== existingRules[index].startTime || 
+        rule.endTime !== existingRules[index].endTime
+      );
+      
+      if (hasChanges) {
+        setRules(migratedRules);
+        console.log('Migrated rules to 24-hour format:', { original: existingRules, migrated: migratedRules });
+      }
+    }
+  }, []); // Run only once on mount
+
+  // Template-based time slots with 1-hour intervals for availability editing
+  const { data: templates, isLoading: templatesLoading } = useShiftTemplates();
+  const { timeSlots } = useTemplateBasedTimeSlots({
+    templates: templates || [],
+    config: {
+      intervalMinutes: 60, // 1-hour intervals for better usability
+      preBuffer: 0, // No buffer needed for availability rules
+      postBuffer: 0, // No buffer needed for availability rules
+      fallbackStart: '00:00', // 24-hour coverage for availability
+      fallbackEnd: '23:59' // 24-hour coverage for availability
+    }
+  });
+
   // Validation
   const validateRules = useCallback((rulesToValidate: AvailabilityRule[]): string[] => {
     const validationErrors: string[] = [];
 
     rulesToValidate.forEach((rule, index) => {
       // Check if end time is after start time
-      if (rule.startTime >= rule.endTime) {
+      const startMinutes = timeToMinutes(rule.startTime);
+      const endMinutes = timeToMinutes(rule.endTime);
+      
+      if (startMinutes >= endMinutes) {
         validationErrors.push(
-          `Rule ${index + 1}: End time must be after start time`
+          `Rule ${index + 1}: End time must be after start time (Start: ${rule.startTime} = ${startMinutes}min, End: ${rule.endTime} = ${endMinutes}min)`
         );
       }
 
@@ -119,19 +164,87 @@ export default function AvailabilityEditor({
   }, []);
 
   const timeToMinutes = (time: string): number => {
+    console.log(`[DEBUG] Converting time: "${time}"`);
+    
+    // Handle 12-hour format (e.g., "8 AM", "10 PM")
+    if (time.includes('AM') || time.includes('PM')) {
+      const isPM = time.includes('PM');
+      const timeWithoutPeriod = time.replace(/\s*(AM|PM)$/i, '');
+      const [hourStr, minuteStr = '0'] = timeWithoutPeriod.split(':');
+      let hours = parseInt(hourStr, 10);
+      const minutes = parseInt(minuteStr, 10);
+      
+      console.log(`[DEBUG] 12-hour format: ${hourStr}:${minuteStr} ${isPM ? 'PM' : 'AM'}, parsed: ${hours}:${minutes}`);
+      
+      // Convert to 24-hour format
+      if (isPM && hours !== 12) {
+        hours += 12;
+      } else if (!isPM && hours === 12) {
+        hours = 0;
+      }
+      
+      const result = hours * 60 + minutes;
+      console.log(`[DEBUG] 12-hour result: ${hours}:${minutes} = ${result} minutes`);
+      return result;
+    }
+    
+    // Handle 24-hour format (e.g., "08:00", "22:00")
     const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
+    // Validate the parsed numbers to prevent NaN
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.log(`[DEBUG] Invalid 24-hour format, returning 0`);
+      return 0;
+    }
+    
+    const result = hours * 60 + minutes;
+    console.log(`[DEBUG] 24-hour result: ${hours}:${minutes} = ${result} minutes`);
+    return result;
+  };
+
+  // Convert 12-hour format to 24-hour format
+  const convertTo24Hour = (time: string): string => {
+    console.log(`[DEBUG] convertTo24Hour input: "${time}"`);
+    
+    // If already in 24-hour format, return as is
+    if (!time.includes('AM') && !time.includes('PM')) {
+      console.log(`[DEBUG] Already in 24-hour format, returning as-is: "${time}"`);
+      return time;
+    }
+    
+    const isPM = time.includes('PM');
+    const timeWithoutPeriod = time.replace(/\s*(AM|PM)$/i, '');
+    const [hourStr, minuteStr = '0'] = timeWithoutPeriod.split(':');
+    let hours = parseInt(hourStr, 10);
+    const minutes = parseInt(minuteStr, 10);
+    
+    console.log(`[DEBUG] Parsed: ${hourStr}:${minuteStr} ${isPM ? 'PM' : 'AM'}, hours=${hours}, minutes=${minutes}`);
+    
+    // Convert to 24-hour format
+    if (isPM && hours !== 12) {
+      hours += 12;
+    } else if (!isPM && hours === 12) {
+      hours = 0;
+    }
+    
+    const result = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+    console.log(`[DEBUG] convertTo24Hour result: "${result}"`);
+    return result;
   };
 
   // Add new rule
   const handleAddRule = () => {
+    // Debug logging to track selectedDay value
+    console.log('[DEBUG] Adding rule with selectedDay:', selectedDay);
+    
     const newRule: AvailabilityRule = {
-      dayOfWeek: selectedDay,
+      dayOfWeek: selectedDay ?? 1, // Default to Monday if selectedDay is null/undefined
       startTime: '09:00',
       endTime: '17:00',
       availabilityType: 'recurring',
       priority: 'preferred',
     };
+    
+    console.log('[DEBUG] New rule created:', newRule);
     setRules([...rules, newRule]);
   };
 
@@ -234,7 +347,16 @@ export default function AvailabilityEditor({
     }
 
     try {
-      await onSave(rules, selectedWorkerIds);
+      // Convert all rules to 24-hour format before sending to backend
+      const rulesFor24HourFormat = rules.map(rule => ({
+        ...rule,
+        startTime: convertTo24Hour(rule.startTime),
+        endTime: convertTo24Hour(rule.endTime)
+      }));
+      
+      console.log('[DEBUG] Sending rules to backend:', rulesFor24HourFormat);
+      
+      await onSave(rulesFor24HourFormat, selectedWorkerIds);
     } catch (error) {
       setErrors([error instanceof Error ? error.message : 'Failed to save availability']);
     }
@@ -398,7 +520,10 @@ export default function AvailabilityEditor({
               return (
                 <button
                   key={day.value}
-                  onClick={() => setSelectedDay(day.value)}
+                  onClick={() => {
+                    console.log('[DEBUG] Day button clicked:', day.name, 'value:', day.value);
+                    setSelectedDay(day.value);
+                  }}
                   className={`p-3 text-center rounded-lg border-2 transition-all ${
                     selectedDay === day.value
                       ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/30'
@@ -474,9 +599,9 @@ export default function AvailabilityEditor({
                             onChange={(e) => handleUpdateRule(index, 'startTime', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           >
-                            {TIME_SLOTS.map(time => (
-                              <option key={time} value={time}>
-                                {time}
+                            {timeSlots.map(slot => (
+                              <option key={slot.hour} value={slot.time24}>
+                                {slot.label}
                               </option>
                             ))}
                           </select>
@@ -491,9 +616,9 @@ export default function AvailabilityEditor({
                             onChange={(e) => handleUpdateRule(index, 'endTime', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                           >
-                            {TIME_SLOTS.map(time => (
-                              <option key={time} value={time}>
-                                {time}
+                            {timeSlots.map(slot => (
+                              <option key={slot.hour} value={slot.time24}>
+                                {slot.label}
                               </option>
                             ))}
                           </select>
@@ -609,18 +734,18 @@ export default function AvailabilityEditor({
                   availabilityType: newRecurring ? 'recurring' : 'one_time'
                 })));
               }}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              className="w-4 h-4 text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             />
             <div>
-              <span className="text-sm font-medium text-gray-900">Recurring Weekly</span>
-              <p className="text-xs text-gray-500">This schedule repeats every week (uncheck for one-time availability)</p>
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Recurring Weekly</span>
+              <p className="text-xs text-gray-500 dark:text-gray-400">This schedule repeats every week (uncheck for one-time availability)</p>
             </div>
           </label>
 
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Effective Date (Optional)
               </label>
               <input
@@ -630,14 +755,14 @@ export default function AvailabilityEditor({
                   const newDate = e.target.value;
                   setRules(rules.map(rule => ({ ...rule, effectiveDate: newDate })));
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 placeholder="Start date"
               />
-              <p className="mt-1 text-xs text-gray-500">When this availability starts</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">When this availability starts</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Expiration Date (Optional)
               </label>
               <input
@@ -648,25 +773,25 @@ export default function AvailabilityEditor({
                   setRules(rules.map(rule => ({ ...rule, expirationDate: newDate })));
                 }}
                 min={rules.length > 0 ? rules[0].effectiveDate : undefined}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 placeholder="End date"
               />
-              <p className="mt-1 text-xs text-gray-500">When this availability ends</p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">When this availability ends</p>
             </div>
           </div>
         </div>
 
         {/* Summary */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Summary</h4>
+        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Summary</h4>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Total rules:</span>
-              <span className="ml-2 font-medium text-gray-900">{rules.length}</span>
+              <span className="text-gray-600 dark:text-gray-400">Total rules:</span>
+              <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{rules.length}</span>
             </div>
             <div>
-              <span className="text-gray-600">Days with availability:</span>
-              <span className="ml-2 font-medium text-gray-900">
+              <span className="text-gray-600 dark:text-gray-400">Days with availability:</span>
+              <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
                 {new Set(rules.map(r => r.dayOfWeek)).size} / 7
               </span>
             </div>

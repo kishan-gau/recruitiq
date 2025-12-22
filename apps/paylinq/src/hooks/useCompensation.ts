@@ -103,7 +103,21 @@ export function useCompensationHistory(employeeId: string) {
     queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'history'],
     queryFn: async () => {
       const response = await paylinq.getCompensationHistory(employeeId);
-      return response.data || [];
+      console.log('DEBUG useCompensationHistory - API Response:', {
+        employeeId,
+        response: response,
+        responseData: response.data,
+        historyArray: response.data?.compensationHistory,
+        historyCount: response.data?.count
+      });
+      // Extract history array from the response object
+      const historyData = response.data?.compensationHistory || [];
+      console.log('DEBUG useCompensationHistory - Returning:', {
+        historyData,
+        isArray: Array.isArray(historyData),
+        length: historyData?.length
+      });
+      return historyData;
     },
     enabled: !!employeeId,
   });
@@ -144,9 +158,28 @@ export function useCreateCompensation() {
     },
     onSuccess: (data: any) => {
       // Invalidate all compensation queries for this employee
-      queryClient.invalidateQueries({ 
-        queryKey: [...COMPENSATION_KEY, 'employee', data.employeeId] 
-      });
+      // Handle both camelCase (employeeId) and snake_case (employee_id) formats
+      const employeeId = data?.compensation?.employeeId || 
+                         data?.compensation?.employee_id || 
+                         data?.employeeId;
+      
+      if (employeeId) {
+        // Invalidate specific employee compensation queries
+        queryClient.invalidateQueries({ 
+          queryKey: [...COMPENSATION_KEY, 'employee', employeeId] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'current'] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'history'] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'summary'] 
+        });
+      }
+      
+      // Invalidate general list queries
       queryClient.invalidateQueries({ queryKey: [...COMPENSATION_KEY, 'list'] });
       success('Compensation record created successfully');
     },
@@ -172,10 +205,26 @@ export function useUpdateCompensation() {
     onSuccess: (data: any) => {
       // Invalidate specific compensation record
       queryClient.invalidateQueries({ queryKey: [...COMPENSATION_KEY, data.id] });
-      // Invalidate employee compensation queries
-      queryClient.invalidateQueries({ 
-        queryKey: [...COMPENSATION_KEY, 'employee', data.employeeId] 
-      });
+      
+      // Handle both camelCase (employeeId) and snake_case (employee_id) formats
+      const employeeId = data?.employeeId || data?.employee_id;
+      
+      if (employeeId) {
+        // Invalidate specific employee compensation queries
+        queryClient.invalidateQueries({ 
+          queryKey: [...COMPENSATION_KEY, 'employee', employeeId] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'current'] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'history'] 
+        });
+        queryClient.invalidateQueries({ 
+          queryKey: [...COMPENSATION_KEY, 'employee', employeeId, 'summary'] 
+        });
+      }
+      
       success('Compensation record updated successfully');
     },
     onError: (err: any) => {

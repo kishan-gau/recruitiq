@@ -135,3 +135,160 @@ export interface TaxCalculationResult {
   componentTaxes: ComponentTaxDetail[];
   calculatedAt: string;
 }
+
+/**
+ * Tax rule status
+ */
+export type TaxRuleStatus = 'draft' | 'published' | 'archived' | 'superseded';
+
+/**
+ * Tax rule versioning status
+ */
+export type TaxRuleVersionStatus = 'draft' | 'published' | 'archived';
+
+/**
+ * Tax rule (main interface with versioning support)
+ */
+export interface TaxRule {
+  id: string;
+  organizationId: string;
+  taxType: string;
+  taxName: string;
+  country: string;
+  state?: string;
+  locality?: string;
+  status: TaxRuleStatus;
+  version: number;
+  isCurrentVersion: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  annualCap?: number;
+  calculationMethod: TaxCalculationMethod;
+  calculationMode: TaxCalculationMode;
+  description?: string;
+  brackets: TaxBracket[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy?: string;
+  publishedAt?: string;
+  publishedBy?: string;
+}
+
+/**
+ * Tax rule version (for version history)
+ */
+export interface TaxRuleVersion {
+  id: string;
+  taxRuleId: string;
+  organizationId: string;
+  version: number;
+  status: TaxRuleVersionStatus;
+  taxType: string;
+  taxName: string;
+  country: string;
+  state?: string;
+  locality?: string;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  annualCap?: number;
+  calculationMethod: TaxCalculationMethod;
+  calculationMode: TaxCalculationMode;
+  description?: string;
+  brackets: TaxBracket[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy?: string;
+  publishedAt?: string;
+  publishedBy?: string;
+  changeReason?: string;
+  changeDescription?: string;
+}
+
+/**
+ * Tax rule version comparison
+ */
+export interface TaxRuleVersionComparison {
+  versionA: TaxRuleVersion;
+  versionB: TaxRuleVersion;
+  differences: {
+    field: string;
+    oldValue: any;
+    newValue: any;
+    type: 'added' | 'removed' | 'modified';
+  }[];
+  bracketsComparison?: {
+    added: TaxBracket[];
+    removed: TaxBracket[];
+    modified: {
+      bracket: TaxBracket;
+      changes: {
+        field: string;
+        oldValue: any;
+        newValue: any;
+      }[];
+    }[];
+  };
+}
+
+/**
+ * Tax rule list item (for table display)
+ */
+export interface TaxRuleListItem {
+  id: string;
+  taxType: string;
+  taxName: string;
+  country: string;
+  state?: string;
+  locality?: string;
+  status: TaxRuleStatus;
+  version: number;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  calculationMethod: TaxCalculationMethod;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+/**
+ * Tax rule creation request
+ */
+export interface CreateTaxRuleRequest {
+  taxType: string;
+  taxName: string;
+  country: string;
+  state?: string;
+  locality?: string;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  annualCap?: number;
+  calculationMethod: TaxCalculationMethod;
+  calculationMode: TaxCalculationMode;
+  description?: string;
+  brackets: Omit<TaxBracket, 'id' | 'organizationId' | 'taxRuleSetId' | 'createdAt' | 'updatedAt' | 'deletedAt'>[];
+}
+
+/**
+ * Tax rule update request
+ */
+export interface UpdateTaxRuleRequest {
+  taxName?: string;
+  effectiveFrom?: string;
+  effectiveTo?: string;
+  annualCap?: number;
+  calculationMethod?: TaxCalculationMethod;
+  calculationMode?: TaxCalculationMode;
+  description?: string;
+  brackets?: Omit<TaxBracket, 'id' | 'organizationId' | 'taxRuleSetId' | 'createdAt' | 'updatedAt' | 'deletedAt'>[];
+}
+
+/**
+ * Create version request
+ */
+export interface CreateVersionRequest {
+  changeReason?: string;
+  changeDescription?: string;
+  updates: UpdateTaxRuleRequest;
+}

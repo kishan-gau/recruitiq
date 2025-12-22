@@ -32,7 +32,7 @@ export function useAvailability(filters?: {
     queryKey: availabilityKeys.list(filters || {}),
     queryFn: async () => {
       const response = await nexusClient.listAvailability(filters);
-      return response.data.availability || response.data;
+      return response.availabilities || [];
     },
   });
 }
@@ -45,7 +45,7 @@ export function useAvailabilityRecord(id: string) {
     queryKey: availabilityKeys.detail(id),
     queryFn: async () => {
       const response = await nexusClient.getAvailability(id);
-      return response.data.availability || response.data;
+      return response.data?.availability || response.data || null;
     },
     enabled: !!id,
   });
@@ -63,7 +63,7 @@ export function useAvailabilityExceptions(filters?: {
     queryKey: availabilityKeys.exceptions(filters || {}),
     queryFn: async () => {
       const response = await nexusClient.listAvailabilityExceptions(filters);
-      return response.data.exceptions || response.data;
+      return response.data?.exceptions || response.data || [];
     },
   });
 }
@@ -81,7 +81,7 @@ export function useCheckWorkerAvailability(
     queryKey: availabilityKeys.check(workerId, { startDate, endDate }),
     queryFn: async () => {
       const response = await nexusClient.checkWorkerAvailability(workerId, startDate, endDate);
-      return response.data;
+      return response.data || { isAvailable: false };
     },
     enabled: enabled && !!workerId && !!startDate && !!endDate,
   });
@@ -97,18 +97,30 @@ export function useCreateAvailability() {
   const toast = useToast();
 
   return useMutation({
-    mutationFn: async (data: {
-      workerId: string;
-      availabilityType: 'recurring' | 'one_time' | 'unavailable';
-      dayOfWeek: number;
-      startTime: string;
-      endTime: string;
-      effectiveFrom?: string;
-      effectiveTo?: string;
-      priority?: 'preferred' | 'required' | 'unavailable';
-    }) => {
+    mutationFn: async (data: 
+      | {
+          workerId: string;
+          availabilityType: 'recurring';
+          dayOfWeek: number; // Required for recurring
+          startTime: string;
+          endTime: string;
+          effectiveFrom?: string;
+          effectiveTo?: string;
+          priority?: 'preferred' | 'required' | 'unavailable';
+        }
+      | {
+          workerId: string;
+          availabilityType: 'one_time' | 'unavailable';
+          specificDate: string; // Required for one_time/unavailable
+          startTime: string;
+          endTime: string;
+          effectiveFrom?: string;
+          effectiveTo?: string;
+          priority?: 'preferred' | 'required' | 'unavailable';
+        }
+    ) => {
       const response = await nexusClient.createAvailability(data);
-      return response.data.availability || response.data;
+      return response.data?.availability || response.data || null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: availabilityKeys.lists() });
@@ -141,7 +153,7 @@ export function useUpdateAvailability() {
       } 
     }) => {
       const response = await nexusClient.updateAvailability(id, updates);
-      return response.data.availability || response.data;
+      return response.data?.availability || response.data || null;
     },
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: availabilityKeys.detail(id) });
@@ -192,7 +204,7 @@ export function useCreateAvailabilityException() {
       reason?: string;
     }) => {
       const response = await nexusClient.createAvailabilityException(data);
-      return response.data.exception || response.data;
+      return response.data?.exception || response.data || null;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: availabilityKeys.all });

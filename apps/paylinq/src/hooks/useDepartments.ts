@@ -26,7 +26,7 @@ export function useDepartments(options: UseDepartmentsOptions = {}) {
         isActive: options.isActive,
         search: options.search,
       });
-      return response.data.departments || response.data || [];
+      return response.departments || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -41,7 +41,7 @@ export function useDepartment(id: string | null) {
     queryFn: async () => {
       if (!id) return null;
       const response = await nexusClient.getDepartment(id);
-      return response.data.department || response.data;
+      return response.department;
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000,

@@ -96,7 +96,7 @@ export function useExchangeRates() {
     queryKey: currencyKeys.rates(),
     queryFn: async () => {
       const response = await paylinq.getExchangeRates();
-      return (response.data.data || []) as ExchangeRate[];
+      return (response.exchangeRates || []) as ExchangeRate[];
     },
   });
 }
@@ -115,7 +115,7 @@ export function useCurrentExchangeRate(
       const params: any = { fromCurrency, toCurrency };
       if (date) params.date = date;
       const response = await paylinq.getExchangeRates(params);
-      return response.data.data as ExchangeRate;
+      return response.exchangeRate as ExchangeRate;
     },
     enabled: !!fromCurrency && !!toCurrency,
   });
@@ -143,7 +143,7 @@ export function useHistoricalExchangeRates(
         ...options,
       };
       const response = await paylinq.getExchangeRateHistory(params);
-      return response.data.data as ExchangeRate[];
+      return response.exchangeRates as ExchangeRate[];
     },
     enabled: !!fromCurrency && !!toCurrency,
   });
@@ -157,7 +157,7 @@ export function useCreateExchangeRate() {
   return useMutation({
     mutationFn: async (data: Partial<ExchangeRate>) => {
       const response = await paylinq.createExchangeRate(data);
-      return response.data.data as ExchangeRate;
+      return response.exchangeRate as ExchangeRate;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: currencyKeys.rates() });
@@ -173,7 +173,7 @@ export function useUpdateExchangeRate() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: Partial<ExchangeRate> }) => {
       const response = await paylinq.updateExchangeRate(id.toString(), data);
-      return response.data.data as ExchangeRate;
+      return response.exchangeRate as ExchangeRate;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: currencyKeys.rates() });
@@ -189,7 +189,7 @@ export function useDeleteExchangeRate() {
   return useMutation({
     mutationFn: async (id: number) => {
       const response = await paylinq.deleteExchangeRate(id.toString());
-      return response.data.data;
+      return response.success;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: currencyKeys.rates() });
@@ -205,7 +205,7 @@ export function useBulkImportRates() {
   return useMutation({
     mutationFn: async (rates: Partial<ExchangeRate>[]) => {
       const response = await paylinq.bulkImportExchangeRates(rates);
-      return response.data.data as ExchangeRate[];
+      return response.exchangeRates as ExchangeRate[];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: currencyKeys.rates() });
@@ -227,7 +227,7 @@ export function useCurrencyConversion() {
         referenceType: data.referenceType,
         referenceId: data.referenceId,
       });
-      return response.data.data as ConversionResult;
+      return response.conversionResult as ConversionResult;
     },
   });
 }
@@ -243,7 +243,7 @@ export function useConversionHistory(referenceType?: string, referenceId?: strin
       if (referenceType) params.referenceType = referenceType;
       if (referenceId) params.referenceId = referenceId;
       const response = await paylinq.getConversionHistory(params);
-      return response.data.data as CurrencyConversion[];
+      return response.conversions as CurrencyConversion[];
     },
     enabled: !!referenceType && !!referenceId,
   });
@@ -257,7 +257,7 @@ export function useCurrencyConfig() {
     queryKey: currencyKeys.config(),
     queryFn: async () => {
       const response = await paylinq.getCurrencyConfig();
-      return (response.data.data || {}) as OrganizationCurrencyConfig;
+      return (response.currencyConfig || {}) as OrganizationCurrencyConfig;
     },
   });
 }
@@ -270,7 +270,7 @@ export function useUpdateCurrencyConfig() {
   return useMutation({
     mutationFn: async (data: Partial<OrganizationCurrencyConfig>) => {
       const response = await paylinq.updateCurrencyConfig(data);
-      return response.data.data as OrganizationCurrencyConfig;
+      return response.currencyConfig as OrganizationCurrencyConfig;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: currencyKeys.config() });
@@ -286,7 +286,7 @@ export function useCacheStats() {
     queryKey: currencyKeys.cacheStats(),
     queryFn: async () => {
       const response = await paylinq.getCacheStats();
-      return response.data.data || {};
+      return response.cacheStats || {};
     },
     enabled: false, // Disabled by default since it requires admin permission
   });
@@ -300,7 +300,7 @@ export function useClearCache() {
   return useMutation({
     mutationFn: async () => {
       const response = await paylinq.clearCurrencyCache();
-      return response.data;
+      return response.success;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: currencyKeys.all });

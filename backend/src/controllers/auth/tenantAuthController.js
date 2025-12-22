@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import TenantUser from '../../models/TenantUser.js';
+import UserRole from '../../modules/rbac/models/UserRole.js';
 import db from '../../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getTenantAccessCookieConfig, getTenantRefreshCookieConfig } from '../../config/cookie.js';
@@ -382,6 +383,15 @@ export const getProfile = async (req, res) => {
       });
     }
 
+    // Fetch user permissions from RBAC system
+    const permissionsData = await UserRole.getUserPermissions(
+      req.user.id, 
+      req.user.organizationId
+    );
+    
+    // Extract permission codes (names) from the results
+    const permissions = permissionsData.map(p => p.code || p.name);
+
     res.json({
       success: true,
       user: {
@@ -395,6 +405,7 @@ export const getProfile = async (req, res) => {
         employeeNumber: user.employee_number,
         enabledProducts: user.enabled_products,
         productRoles: user.product_roles,
+        permissions: permissions, // Add permissions to response
         preferences: user.preferences,
         emailVerified: user.email_verified,
         mfaEnabled: user.mfa_enabled,

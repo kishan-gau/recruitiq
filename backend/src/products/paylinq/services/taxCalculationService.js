@@ -1464,6 +1464,447 @@ class TaxCalculationService {
       throw err;
     }
   }
+
+  // ==================== TAX RULE VERSIONING ====================
+
+  /**
+   * Joi validation schema for creating new tax rule version
+   */
+  static get createVersionSchema() {
+    return Joi.object({
+      versionType: Joi.string()
+        .valid('major', 'minor', 'patch')
+        .required()
+        .messages({
+          'any.only': 'Version type must be major, minor, or patch'
+        }),
+      changeSummary: Joi.string()
+        .required()
+        .trim()
+        .min(10)
+        .max(500)
+        .messages({
+          'string.min': 'Change summary must be at least 10 characters',
+          'string.max': 'Change summary cannot exceed 500 characters'
+        }),
+      effectiveFrom: Joi.date()
+        .min('now')
+        .required()
+        .messages({
+          'date.min': 'Effective date must be in the future'
+        }),
+      breakingChanges: Joi.boolean().default(false),
+      migrationNotes: Joi.string().allow('', null).max(1000)
+    });
+  }
+
+  /**
+   * Create new version of tax rule set
+   * @param {string} ruleSetId - Tax rule set UUID
+   * @param {Object} versionData - Version creation data
+   * @param {string} versionData.versionType - Type: 'major', 'minor', 'patch'
+   * @param {string} versionData.changeSummary - Summary of changes
+   * @param {Date} versionData.effectiveFrom - When version becomes effective
+   * @param {boolean} versionData.breakingChanges - Whether contains breaking changes
+   * @param {string} versionData.migrationNotes - Optional migration notes
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User UUID
+   * @returns {Promise<Object>} New versioned tax rule set
+   */
+  async createNewTaxRuleVersion(ruleSetId, versionData, organizationId, userId) {
+    try {
+      // Validate input
+      const { error, value } = TaxCalculationService.createVersionSchema.validate(versionData);
+      if (error) {
+        throw new ValidationError(error.details[0].message);
+      }
+
+      // Get source rule set with all rules and brackets
+      const sourceRuleSet = await this.taxEngineRepository.findTaxRuleSetByIdWithDetails(ruleSetId, organizationId);
+      if (!sourceRuleSet) {
+        throw new NotFoundError('Source tax rule set not found');
+      }
+
+      // Only published rule sets can be versioned
+      if (!sourceRuleSet.is_published) {
+        throw new ValidationError('Only published tax rule sets can be versioned');
+      }
+
+      // Calculate new version numbers
+      const { versionType } = value;
+      let newMajor = sourceRuleSet.version_major;
+      let newMinor = sourceRuleSet.version_minor;
+      let newPatch = sourceRuleSet.version_patch;
+
+      if (versionType === 'major') {
+        newMajor += 1;
+        newMinor = 0;
+        newPatch = 0;
+      } else if (versionType === 'minor') {
+        newMinor += 1;
+        newPatch = 0;
+      } else {
+        newPatch += 1;
+      }
+
+      // Create new rule set version
+      const newRuleSetData = {
+        ruleSetCode: sourceRuleSet.rule_set_code,
+        ruleSetName: sourceRuleSet.rule_set_name,
+        description: sourceRuleSet.description,
+        taxType: sourceRuleSet.tax_type,
+        jurisdiction: sourceRuleSet.jurisdiction,
+        versionMajor: newMajor,
+        versionMinor: newMinor,
+        versionPatch: newPatch,
+        isDraft: true,  // New version starts as draft
+        isPublished: false,
+        isArchived: false,
+        effectiveFrom: value.effectiveFrom,
+        effectiveTo: null,
+        priority: sourceRuleSet.priority,
+        metadata: {
+          ...sourceRuleSet.metadata,
+          versionNotes: value.changeSummary,
+          migrationNotes: value.migrationNotes,
+          breakingChanges: value.breakingChanges,
+          sourceVersion: `${sourceRuleSet.version_major}.${sourceRuleSet.version_minor}.${sourceRuleSet.version_patch}`,
+          createdFromRuleSetId: sourceRuleSet.id
+        }
+      };
+
+      const newRuleSet = await this.taxEngineRepository.createTaxRuleSet(newRuleSetData, organizationId, userId);
+
+      // Copy all tax rules from source
+      if (sourceRuleSet.taxRules) {
+        for (const rule of sourceRuleSet.taxRules) {
+          const ruleData = {
+            ruleSetId: newRuleSet.id,
+            ruleCode: rule.rule_code,
+            ruleName: rule.rule_name,
+            description: rule.description,
+            ruleType: rule.rule_type,
+            conditions: rule.conditions,
+            priority: rule.priority,
+            isActive: rule.is_active
+          };
+
+          const newRule = await this.taxEngineRepository.createTaxRule(ruleData, organizationId, userId);
+
+          // Copy tax brackets for this rule
+          if (rule.taxBrackets) {
+            for (const bracket of rule.taxBrackets) {
+              const bracketData = {
+                taxRuleId: newRule.id,
+                bracketOrder: bracket.bracket_order,
+                incomeMin: bracket.income_min,
+                incomeMax: bracket.income_max,
+                taxRate: bracket.tax_rate,
+                flatAmount: bracket.flat_amount,
+                calculationMethod: bracket.calculation_method,
+                isActive: bracket.is_active
+              };
+
+              await this.taxEngineRepository.createTaxBracket(bracketData, organizationId, userId);
+            }
+          }
+        }
+      }
+
+      // Add version history entry
+      await this.taxEngineRepository.addVersionHistoryEntry({
+        ruleSetId: newRuleSet.id,
+        fromVersion: `${sourceRuleSet.version_major}.${sourceRuleSet.version_minor}.${sourceRuleSet.version_patch}`,
+        toVersion: `${newMajor}.${newMinor}.${newPatch}`,
+        changeType: `${versionType}_update`,
+        changeSummary: value.changeSummary,
+        breakingChanges: value.breakingChanges,
+        migrationNotes: value.migrationNotes,
+        sourceRuleSetId: sourceRuleSet.id
+      }, organizationId, userId);
+
+      logger.info('New tax rule set version created', {
+        sourceRuleSetId: ruleSetId,
+        newRuleSetId: newRuleSet.id,
+        fromVersion: `${sourceRuleSet.version_major}.${sourceRuleSet.version_minor}.${sourceRuleSet.version_patch}`,
+        toVersion: `${newMajor}.${newMinor}.${newPatch}`,
+        versionType,
+        organizationId,
+        userId
+      });
+
+      return newRuleSet;
+
+    } catch (err) {
+      logger.error('Error creating new tax rule version', {
+        error: err.message,
+        ruleSetId,
+        organizationId,
+        versionData
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Get version history for tax rule set
+   * @param {string} ruleSetCode - Tax rule set code
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array>} Version history with details
+   */
+  async getTaxRuleVersionHistory(ruleSetCode, organizationId) {
+    try {
+      const versions = await this.taxEngineRepository.findTaxRuleVersionHistory(ruleSetCode, organizationId);
+
+      return versions.map(version => ({
+        id: version.id,
+        version: `${version.version_major}.${version.version_minor}.${version.version_patch}`,
+        versionMajor: version.version_major,
+        versionMinor: version.version_minor,
+        versionPatch: version.version_patch,
+        status: version.is_published ? 'published' : version.is_archived ? 'archived' : 'draft',
+        effectiveFrom: version.effective_from,
+        effectiveTo: version.effective_to,
+        createdAt: version.created_at,
+        createdBy: version.created_by,
+        createdByName: version.created_by_name,
+        changeSummary: version.metadata?.versionNotes || null,
+        breakingChanges: version.metadata?.breakingChanges || false,
+        migrationNotes: version.metadata?.migrationNotes || null,
+        ruleCount: version.rule_count || 0,
+        bracketCount: version.bracket_count || 0
+      }));
+
+    } catch (err) {
+      logger.error('Error getting tax rule version history', {
+        error: err.message,
+        ruleSetCode,
+        organizationId
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Publish draft tax rule set version
+   * @param {string} ruleSetId - Tax rule set UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User UUID
+   * @returns {Promise<Object>} Published tax rule set
+   */
+  async publishTaxRuleVersion(ruleSetId, organizationId, userId) {
+    try {
+      const ruleSet = await this.taxEngineRepository.findTaxRuleSetById(ruleSetId, organizationId);
+      if (!ruleSet) {
+        throw new NotFoundError('Tax rule set not found');
+      }
+
+      if (!ruleSet.is_draft) {
+        throw new ValidationError('Only draft rule sets can be published');
+      }
+
+      if (ruleSet.is_published || ruleSet.is_archived) {
+        throw new ValidationError('Rule set is already published or archived');
+      }
+
+      // Validate rule set has at least one active tax rule
+      const ruleCount = await this.taxEngineRepository.getActiveRuleCountForRuleSet(ruleSetId, organizationId);
+      if (ruleCount === 0) {
+        throw new ValidationError('Cannot publish rule set without active tax rules');
+      }
+
+      // Archive any other published version of the same rule set code for the same effective period
+      await this.taxEngineRepository.archiveOverlappingRuleSets(
+        ruleSet.rule_set_code,
+        ruleSet.effective_from,
+        ruleSet.effective_to,
+        organizationId,
+        userId
+      );
+
+      // Publish the rule set
+      const publishedRuleSet = await this.taxEngineRepository.publishTaxRuleSet(ruleSetId, organizationId, userId);
+
+      logger.info('Tax rule set version published', {
+        ruleSetId,
+        version: `${ruleSet.version_major}.${ruleSet.version_minor}.${ruleSet.version_patch}`,
+        ruleSetCode: ruleSet.rule_set_code,
+        effectiveFrom: ruleSet.effective_from,
+        organizationId,
+        userId
+      });
+
+      return publishedRuleSet;
+
+    } catch (err) {
+      logger.error('Error publishing tax rule version', {
+        error: err.message,
+        ruleSetId,
+        organizationId
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Archive tax rule set version
+   * @param {string} ruleSetId - Tax rule set UUID
+   * @param {string} archiveReason - Reason for archiving
+   * @param {string} organizationId - Organization UUID
+   * @param {string} userId - User UUID
+   * @returns {Promise<Object>} Archived tax rule set
+   */
+  async archiveTaxRuleVersion(ruleSetId, archiveReason, organizationId, userId) {
+    try {
+      const ruleSet = await this.taxEngineRepository.findTaxRuleSetById(ruleSetId, organizationId);
+      if (!ruleSet) {
+        throw new NotFoundError('Tax rule set not found');
+      }
+
+      if (ruleSet.is_archived) {
+        throw new ValidationError('Tax rule set is already archived');
+      }
+
+      // Archive the rule set
+      const archivedRuleSet = await this.taxEngineRepository.archiveTaxRuleSet(
+        ruleSetId,
+        archiveReason,
+        organizationId,
+        userId
+      );
+
+      logger.info('Tax rule set version archived', {
+        ruleSetId,
+        version: `${ruleSet.version_major}.${ruleSet.version_minor}.${ruleSet.version_patch}`,
+        ruleSetCode: ruleSet.rule_set_code,
+        reason: archiveReason,
+        organizationId,
+        userId
+      });
+
+      return archivedRuleSet;
+
+    } catch (err) {
+      logger.error('Error archiving tax rule version', {
+        error: err.message,
+        ruleSetId,
+        organizationId
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Compare two tax rule set versions
+   * @param {string} fromRuleSetId - Source rule set UUID
+   * @param {string} toRuleSetId - Target rule set UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Object>} Comparison result
+   */
+  async compareTaxRuleVersions(fromRuleSetId, toRuleSetId, organizationId) {
+    try {
+      const [fromRuleSet, toRuleSet] = await Promise.all([
+        this.taxEngineRepository.findTaxRuleSetByIdWithDetails(fromRuleSetId, organizationId),
+        this.taxEngineRepository.findTaxRuleSetByIdWithDetails(toRuleSetId, organizationId)
+      ]);
+
+      if (!fromRuleSet || !toRuleSet) {
+        throw new NotFoundError('One or both tax rule sets not found');
+      }
+
+      // Compare basic properties
+      const propertyChanges = [];
+      const checkFields = [
+        'rule_set_name', 'description', 'tax_type', 'jurisdiction',
+        'effective_from', 'effective_to', 'priority'
+      ];
+
+      for (const field of checkFields) {
+        if (fromRuleSet[field] !== toRuleSet[field]) {
+          propertyChanges.push({
+            field,
+            from: fromRuleSet[field],
+            to: toRuleSet[field]
+          });
+        }
+      }
+
+      // Compare tax rules
+      const fromRules = fromRuleSet.taxRules || [];
+      const toRules = toRuleSet.taxRules || [];
+      
+      const ruleChanges = {
+        added: [],
+        removed: [],
+        modified: []
+      };
+
+      // Find added and modified rules
+      for (const toRule of toRules) {
+        const fromRule = fromRules.find(r => r.rule_code === toRule.rule_code);
+        if (!fromRule) {
+          ruleChanges.added.push(toRule);
+        } else {
+          // Check for modifications
+          const modifications = [];
+          const ruleFields = ['rule_name', 'description', 'rule_type', 'conditions', 'priority', 'is_active'];
+          
+          for (const field of ruleFields) {
+            if (JSON.stringify(fromRule[field]) !== JSON.stringify(toRule[field])) {
+              modifications.push({
+                field,
+                from: fromRule[field],
+                to: toRule[field]
+              });
+            }
+          }
+
+          if (modifications.length > 0) {
+            ruleChanges.modified.push({
+              ruleCode: toRule.rule_code,
+              ruleName: toRule.rule_name,
+              changes: modifications
+            });
+          }
+        }
+      }
+
+      // Find removed rules
+      for (const fromRule of fromRules) {
+        const toRule = toRules.find(r => r.rule_code === fromRule.rule_code);
+        if (!toRule) {
+          ruleChanges.removed.push(fromRule);
+        }
+      }
+
+      return {
+        fromVersion: `${fromRuleSet.version_major}.${fromRuleSet.version_minor}.${fromRuleSet.version_patch}`,
+        toVersion: `${toRuleSet.version_major}.${toRuleSet.version_minor}.${toRuleSet.version_patch}`,
+        ruleSetCode: fromRuleSet.rule_set_code,
+        propertyChanges,
+        ruleChanges,
+        summary: {
+          propertiesChanged: propertyChanges.length,
+          rulesAdded: ruleChanges.added.length,
+          rulesRemoved: ruleChanges.removed.length,
+          rulesModified: ruleChanges.modified.length,
+          hasBreakingChanges: ruleChanges.removed.length > 0 || 
+                              ruleChanges.modified.some(r => 
+                                r.changes.some(c => ['rule_type', 'conditions'].includes(c.field))
+                              )
+        }
+      };
+
+    } catch (err) {
+      logger.error('Error comparing tax rule versions', {
+        error: err.message,
+        fromRuleSetId,
+        toRuleSetId,
+        organizationId
+      });
+      throw err;
+    }
+  }
 }
 
 // Export both class and singleton instance

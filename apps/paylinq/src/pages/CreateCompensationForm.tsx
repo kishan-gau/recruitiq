@@ -24,6 +24,7 @@ import type {
   CreateCompensationRequest, 
   CompensationType,
   Currency,
+  PayFrequency,
 } from '@recruitiq/types';
 
 type FormData = {
@@ -35,6 +36,7 @@ type FormData = {
   effectiveFrom: string;
   effectiveTo?: string;
   currency: Currency;
+  payFrequency: PayFrequency;
   changeReason?: string;
 };
 
@@ -124,9 +126,10 @@ export default function CreateCompensationForm() {
         amount: data.amount,
         hourlyRate: data.hourlyRate,
         overtimeRate: data.overtimeRate,
-        effectiveFrom: data.effectiveFrom,
-        effectiveTo: data.effectiveTo,
+        effectiveDate: data.effectiveFrom, // Backend expects effectiveDate
+        endDate: data.effectiveTo,         // Backend expects endDate
         currency: data.currency,
+        payFrequency: data.payFrequency,
       };
 
       await createMutation.mutateAsync(payload);
@@ -371,6 +374,33 @@ export default function CreateCompensationForm() {
                 Leave empty for ongoing compensation
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Pay Frequency */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Pay Schedule</h2>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Pay Frequency <span className="text-red-500">*</span>
+            </label>
+            <select
+              {...register('payFrequency', { required: 'Pay frequency is required' })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            >
+              <option value="">Select pay frequency</option>
+              <option value="weekly">Weekly</option>
+              <option value="bi_weekly">Bi-weekly (Every 2 weeks)</option>
+              <option value="semi_monthly">Semi-monthly (Twice a month)</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            {errors.payFrequency && (
+              <p className="mt-1 text-sm text-red-600">{errors.payFrequency.message}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              How often the employee will be paid
+            </p>
           </div>
         </div>
 

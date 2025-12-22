@@ -149,3 +149,56 @@ export function mapRoleWorkersDbToApi(dbWorkers) {
   if (!Array.isArray(dbWorkers)) return [];
   return dbWorkers.map(mapRoleWorkerDbToApi);
 }
+
+/**
+ * Map role from frontend format to API format for validation
+ * Handles frontend format: { role_name, description, hourly_rate }
+ * @param {Object} frontendData - Role data from frontend (mixed format)
+ * @returns {Object} Role in API format (camelCase) ready for validation
+ */
+export function mapRoleFrontendToApi(frontendData) {
+  if (!frontendData) return null;
+
+  // Generate roleCode from role_name if not provided
+  const generatedRoleCode = frontendData.role_name
+    ? frontendData.role_name
+        .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars except spaces
+        .trim()
+        .replace(/\s+/g, '_') // Replace spaces with underscores
+        .toUpperCase() // Convert to uppercase
+    : 'ROLE_' + Date.now();
+
+  // Helper function to properly convert undefined to null
+  const toNullIfUndefined = (value) => value === undefined ? null : value;
+
+  // Helper function to map frontend skillLevel values to backend validation values
+  const mapSkillLevel = (rawSkillLevel) => {
+    if (!rawSkillLevel || rawSkillLevel === undefined) return null;
+    
+    // Map frontend display values to backend validation values
+    const skillLevelMap = {
+      'Beginner': 'entry',
+      'beginner': 'entry',
+      'entry': 'entry',
+      'Intermediate': 'intermediate', 
+      'intermediate': 'intermediate',
+      'Advanced': 'advanced',
+      'advanced': 'advanced',
+      'Expert': 'expert',
+      'expert': 'expert'
+    };
+    
+    return skillLevelMap[rawSkillLevel] || null;
+  };
+
+  return {
+    roleCode: frontendData.role_code || generatedRoleCode,
+    roleName: frontendData.role_name || frontendData.name,
+    description: toNullIfUndefined(frontendData.description),
+    color: toNullIfUndefined(frontendData.color || frontendData.colorCode),
+    requiresCertification: frontendData.requires_certification || frontendData.requiresCertification || false,
+    certificationTypes: toNullIfUndefined(frontendData.certification_types || frontendData.certificationTypes),
+    skillLevel: mapSkillLevel(frontendData.skill_level || frontendData.skillLevel),
+    hourlyRate: toNullIfUndefined(frontendData.hourly_rate || frontendData.hourlyRate)
+  };
+}

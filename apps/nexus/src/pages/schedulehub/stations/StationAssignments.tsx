@@ -22,17 +22,7 @@ const StationAssignments: React.FC = () => {
   const { data: station, isLoading: loadingStation, error: stationError } = useStation(id!);
   
   // Fetch station assignments
-  const { data: assignments = [], isLoading: loadingAssignments } = useStationAssignments(id!) as {
-    data: Array<{
-      id: string;
-      employeeId: string;
-      employeeName: string;
-      employeeNumber: string;
-      assignedAt: string;
-      assignedBy: string;
-    }>;
-    isLoading: boolean;
-  };
+  const { data: assignments = [], isLoading: loadingAssignments } = useStationAssignments(id!);
   
   // Fetch all employees for assignment
   const { data: employees = [], isLoading: loadingEmployees } = useEmployees();

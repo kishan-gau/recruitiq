@@ -3,7 +3,7 @@
  * Aligns with backend schema: payroll.compensation
  */
 
-import { BaseEntity, Currency } from './common';
+import { BaseEntity, Currency, PayFrequency } from './common';
 
 /**
  * Compensation Type
@@ -35,15 +35,18 @@ export interface Compensation extends BaseEntity {
 
 /**
  * Create Compensation Request
+ * Must match backend validation schema
  */
 export interface CreateCompensationRequest {
   employeeId: string;
   compensationType: CompensationType;
   amount: number;
+  hourlyRate?: number;
   overtimeRate?: number;
-  effectiveFrom: string; // ISO date
-  effectiveTo?: string; // ISO date
-  currency?: Currency;
+  effectiveDate: string; // ISO date - backend expects effectiveDate
+  endDate?: string; // ISO date - backend expects endDate
+  currency: Currency;
+  payFrequency: PayFrequency;
 }
 
 /**

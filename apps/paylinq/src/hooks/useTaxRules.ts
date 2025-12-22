@@ -39,14 +39,14 @@ export const useTaxRules = (filters?: {
     queryFn: async () => {
       const response = await paylinq.getTaxRules(filters);
       console.log('🔍 Tax Rules API Response:', response);
-      console.log('🔍 Tax Rules count:', response.taxRules?.length);
-      if (response.taxRules?.length > 0) {
-        console.log('🔍 First tax rule:', response.taxRules[0]);
+      // API client already extracts response.data, so response is the actual body
+      // Backend returns { success: true, taxRules: [...], pagination: {...} }
+      const taxRules = (response as any)?.taxRules || [];
+      console.log('🔍 Tax Rules count:', taxRules?.length);
+      if (taxRules?.length > 0) {
+        console.log('🔍 First tax rule:', taxRules[0]);
       }
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to fetch tax rules');
-      }
-      return response.taxRules || [];
+      return taxRules;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes - tax rules change infrequently
   });
@@ -67,9 +67,6 @@ export const useTaxRule = (id: string) => {
     queryKey: taxRuleKeys.detail(id),
     queryFn: async () => {
       const response = await paylinq.getTaxRule(id);
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to fetch tax rule');
-      }
       return response.taxRule;
     },
     enabled: !!id,

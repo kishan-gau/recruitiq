@@ -5,7 +5,9 @@
  * Seeds permissions for ScheduleHub scheduling product:
  * - Schedule Management
  * - Shift Management
+ * - Shift Template Management
  * - Station Management
+ * - Assignment Management
  * - Worker Management
  * - Availability Management
  * - Time-Off Management
@@ -34,10 +36,20 @@ export async function seed(knex) {
     { product: 'schedulehub', name: 'scheduling:shifts:assign', display_name: 'Assign Shifts', description: 'Assign/unassign workers to shifts', category: 'shifts' },
     { product: 'schedulehub', name: 'scheduling:shifts:clock', display_name: 'Clock In/Out', description: 'Clock in/out of shifts', category: 'shifts' },
 
+    // Shift Template Management
+    { product: 'schedulehub', name: 'scheduling:shift_templates:manage', display_name: 'Manage Shift Templates', description: 'Create, update, delete, and manage reusable shift templates', category: 'shift_templates' },
+
     // Station Management
     { product: 'schedulehub', name: 'scheduling:stations:create', display_name: 'Create Stations', description: 'Create work stations', category: 'stations' },
     { product: 'schedulehub', name: 'scheduling:stations:read', display_name: 'View Stations', description: 'View station information and requirements', category: 'stations' },
     { product: 'schedulehub', name: 'scheduling:stations:update', display_name: 'Update Stations', description: 'Update station information and requirements', category: 'stations' },
+
+    // Station Assignment Management
+    { product: 'schedulehub', name: 'scheduling:assignments:create', display_name: 'Create Assignments', description: 'Create worker station assignments', category: 'assignments' },
+    { product: 'schedulehub', name: 'scheduling:assignments:read', display_name: 'View Assignments', description: 'View station assignments and coverage', category: 'assignments' },
+    { product: 'schedulehub', name: 'scheduling:assignments:update', display_name: 'Update Assignments', description: 'Update station assignments', category: 'assignments' },
+    { product: 'schedulehub', name: 'scheduling:assignments:delete', display_name: 'Delete Assignments', description: 'Remove station assignments', category: 'assignments' },
+    { product: 'schedulehub', name: 'scheduling:assignments:assign', display_name: 'Assign Workers', description: 'Assign/unassign workers to stations', category: 'assignments' },
 
     // Worker Management
     { product: 'schedulehub', name: 'scheduling:workers:create', display_name: 'Create Workers', description: 'Create worker profiles', category: 'workers' },
@@ -82,12 +94,13 @@ export async function seed(knex) {
   }
 
   console.log('[OK] ScheduleHub permissions seeded successfully!');
-  console.log('Total: 33 permissions (matching all route requirements)');
+  console.log('Total: 38 permissions (matching all route requirements)');
   console.log('');
   console.log('Categories:');
   console.log('  - schedules (3 permissions)');
   console.log('  - shifts (6 permissions)');
   console.log('  - stations (3 permissions)');
+  console.log('  - assignments (5 permissions)');
   console.log('  - workers (4 permissions)');
   console.log('  - availability (4 permissions)');
   console.log('  - time_off (4 permissions)');

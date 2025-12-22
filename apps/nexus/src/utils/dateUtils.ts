@@ -119,3 +119,56 @@ export const getDaysInMonth = (date: Date): Date[] => {
   
   return days;
 };
+
+/**
+ * Formats a duration in minutes to a human-readable string (e.g., "2h 30m", "45m")
+ */
+export const formatDuration = (minutes: number): string => {
+  if (minutes <= 0) return '0m';
+  
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  
+  if (hours === 0) {
+    return `${remainingMinutes}m`;
+  }
+  
+  if (remainingMinutes === 0) {
+    return `${hours}h`;
+  }
+  
+  return `${hours}h ${remainingMinutes}m`;
+};
+
+/**
+ * Parses a duration string (e.g., "2h 30m", "45m", "1.5h") to minutes
+ */
+export const parseDuration = (duration: string): number => {
+  if (!duration || duration.trim() === '') return 0;
+  
+  const trimmed = duration.trim().toLowerCase();
+  
+  // Handle decimal hours (e.g., "1.5h", "2.25h")
+  const decimalHourMatch = trimmed.match(/^(\d+(?:\.\d+)?)h?$/);
+  if (decimalHourMatch) {
+    return Math.round(parseFloat(decimalHourMatch[1]) * 60);
+  }
+  
+  // Handle hours and minutes (e.g., "2h 30m", "1h", "45m")
+  const hourMatch = trimmed.match(/(\d+)h/);
+  const minuteMatch = trimmed.match(/(\d+)m/);
+  
+  const hours = hourMatch ? parseInt(hourMatch[1], 10) : 0;
+  const minutes = minuteMatch ? parseInt(minuteMatch[1], 10) : 0;
+  
+  return hours * 60 + minutes;
+};
+
+/**
+ * Formats a time slot (start and end time) for display
+ */
+export const formatTimeSlot = (startTime: string, endTime: string): string => {
+  if (!startTime || !endTime) return '';
+  
+  return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+};

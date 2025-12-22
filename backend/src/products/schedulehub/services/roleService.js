@@ -5,10 +5,15 @@
 
 import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
-import { mapRoleWorkersDbToApi } from '../dto/roleDto.js';
 import Joi from 'joi';
 import { ConflictError } from '../../../utils/errors.js';
-import { mapRoleDbToApi, mapRolesDbToApi, mapRoleApiToDb } from '../dto/roleDto.js';
+import { 
+  mapRoleDbToApi, 
+  mapRolesDbToApi, 
+  mapRoleApiToDb, 
+  mapRoleWorkersDbToApi,
+  mapRoleFrontendToApi
+} from '../dto/roleDto.js';
 
 class RoleService {
   constructor() {
@@ -32,57 +37,13 @@ class RoleService {
     try {
       await client.query('BEGIN');
       
-      // Log the incoming data format for debugging
-      console.log('=== ROLE SERVICE DEBUG ===');
-      console.log('Incoming roleData keys:', Object.keys(roleData));
-      console.log('Full roleData:', roleData);
-      logger.info('Service received roleData:', { keys: Object.keys(roleData), data: roleData });
+      // Use DTO to handle frontend format conversion
+      const normalizedData = mapRoleFrontendToApi(roleData);
       
-      // Handle multiple frontend formats
-      let normalizedData = roleData;
-      
-      if (roleData.role_code && !roleData.roleCode) {
-        // Data is in snake_case, convert to camelCase for validation
-        normalizedData = {
-          roleCode: roleData.role_code,
-          roleName: roleData.role_name,
-          description: roleData.description,
-          color: roleData.color,
-          requiresCertification: roleData.requires_certification,
-          certificationTypes: roleData.certification_types,
-          skillLevel: roleData.skill_level,
-          hourlyRate: roleData.hourly_rate
-        };
-        console.log('Converted snake_case to camelCase for validation');
-        logger.info('Converted snake_case to camelCase for validation');
-      } else if (roleData.name && !roleData.roleCode) {
-        // Frontend format: { name, description, colorCode/color } -> Backend format: { roleCode, roleName }
-        const generatedRoleCode = roleData.name
-          .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars except spaces
-          .trim()
-          .replace(/\s+/g, '_') // Replace spaces with underscores
-          .toUpperCase(); // Convert to uppercase
-          
-        normalizedData = {
-          roleCode: generatedRoleCode || 'ROLE_' + Date.now(),
-          roleName: roleData.name,
-          description: roleData.description || null,
-          color: roleData.colorCode || roleData.color || null,
-          requiresCertification: roleData.requiresCertification || false,
-          certificationTypes: roleData.certificationTypes || null,
-          skillLevel: roleData.skillLevel || null,
-          hourlyRate: roleData.hourlyRate || null
-        };
-        
-        console.log('Converted frontend name format to backend roleCode format:', {
-          original: roleData,
-          converted: normalizedData
-        });
-        logger.info('Converted frontend name format to backend roleCode format', {
-          original: roleData,
-          converted: normalizedData
-        });
-      }
+      logger.info('Converted frontend format to API format using DTO', {
+        original: roleData,
+        converted: normalizedData
+      });
       
       // Validate API data (expects camelCase)
       const { error, value } = this.createRoleSchema.validate(normalizedData);

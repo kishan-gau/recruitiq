@@ -20,8 +20,8 @@ export function useEmployeeComponentAssignments(employeeId: string | undefined, 
     queryFn: async () => {
       if (!employeeId) throw new Error('Employee ID is required');
       const response = await paylinqClient.getEmployeeComponentAssignments(employeeId, filters);
-      // API returns array directly
-      return Array.isArray(response.data) ? response.data : [];
+      // API returns assignments array
+      return Array.isArray(response.assignments) ? response.assignments : [];
     },
     enabled: !!employeeId,
   });
@@ -39,7 +39,7 @@ export function useAssignComponent(employeeId: string | undefined) {
       if (!employeeId) throw new Error('Employee ID is required');
       const response = await paylinqClient.assignComponentToEmployee(employeeId, data);
       console.log('[useAssignComponent] Response:', response);
-      return response.data;
+      return response.assignment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employee-component-assignments', employeeId] });
@@ -56,7 +56,7 @@ export function useUpdateComponentAssignment(employeeId: string | undefined, ass
     mutationFn: async (data: any) => {
       if (!employeeId || !assignmentId) throw new Error('Employee ID and Assignment ID are required');
       const response = await paylinqClient.updateEmployeeComponentAssignment(employeeId, assignmentId, data);
-      return response.data;
+      return response.assignment;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employee-component-assignments', employeeId] });
@@ -72,7 +72,7 @@ export function useRemoveComponentAssignment() {
   return useMutation({
     mutationFn: async ({ employeeId, assignmentId }: { employeeId: string; assignmentId: string }) => {
       const response = await paylinqClient.removeEmployeeComponentAssignment(employeeId, assignmentId);
-      return response.data;
+      return response.assignment;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['employee-component-assignments', variables.employeeId] });

@@ -25,6 +25,9 @@ import {
   HeartPulse,
   LogOut,
   Shield,
+  CalendarDays,
+  CalendarCheck,
+  Repeat,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -83,10 +86,64 @@ const workforceItems: NavigationItem[] = [
 
 const schedulingItems: NavigationItem[] = [
   {
-    name: 'ScheduleHub',
+    name: 'Dashboard',
     href: '/schedulehub',
     icon: CalendarClock,
-    description: 'Work schedules and shifts',
+    description: 'ScheduleHub overview and analytics',
+  },
+  {
+    name: 'Station Coverage',
+    href: '/schedulehub/stations',
+    icon: MapPin,
+    description: 'Monitor real-time staffing levels',
+  },
+  {
+    name: 'Manage Schedules',
+    href: '/schedulehub/schedules',
+    icon: CalendarDays,
+    description: 'Browse and manage work schedules',
+  },
+  {
+    name: 'Shift Templates',
+    href: '/schedulehub/shift-templates',
+    icon: FileText,
+    description: 'Manage reusable shift templates',
+  },
+  {
+    name: 'Manage Workers',
+    href: '/schedulehub/workers',
+    icon: Users,
+    description: 'View and edit workforce',
+  },
+  {
+    name: 'Worker Availability',
+    href: '/schedulehub/availability',
+    icon: CalendarCheck,
+    description: 'Set worker availability schedules',
+  },
+  {
+    name: 'Manage Stations',
+    href: '/schedulehub/stations',
+    icon: Building2,
+    description: 'Configure workstations',
+  },
+  {
+    name: 'Manage Shift Roles',
+    href: '/schedulehub/roles',
+    icon: Briefcase,
+    description: 'Define shift roles for scheduling',
+  },
+  {
+    name: 'Time Off Requests',
+    href: '/schedulehub/time-off',
+    icon: Clock,
+    description: 'Review pending requests',
+  },
+  {
+    name: 'Shift Swaps',
+    href: '/schedulehub/shift-swaps',
+    icon: Repeat,
+    description: 'Manage shift marketplace',
   },
 ];
 

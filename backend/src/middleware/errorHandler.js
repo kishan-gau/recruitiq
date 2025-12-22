@@ -245,6 +245,20 @@ export const errorHandler = (err, req, res, next) => {
   }
   
   // ============================================================================
+  // JSON PARSING ERRORS
+  // ============================================================================
+  
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    statusCode = 400;
+    message = 'Invalid JSON format in request body';
+    errorCode = 'INVALID_JSON';
+    details = {
+      originalError: err.message,
+      hint: 'Common issues: trailing commas, unquoted keys, single quotes instead of double quotes, or sending literal "null" as a string.',
+    };
+  }
+  
+  // ============================================================================
   // MULTER FILE UPLOAD ERRORS
   // ============================================================================
   

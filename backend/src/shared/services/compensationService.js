@@ -264,6 +264,51 @@ class CompensationService {
       throw error;
     }
   }
+
+  /**
+   * Get compensation history for employee
+   * 
+   * Returns all compensation records for an employee ordered by effective date (newest first).
+   * Used for displaying compensation history in the UI.
+   * 
+   * @param {string} employeeId - Employee UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array>} Array of compensation records
+   */
+  async getCompensationHistory(employeeId, organizationId) {
+    try {
+      logger.info('Fetching compensation history', {
+        employeeId,
+        organizationId
+      });
+
+      const result = await query(
+        `SELECT * FROM payroll.compensation
+         WHERE employee_id = $1 
+           AND organization_id = $2
+           AND deleted_at IS NULL
+         ORDER BY effective_from DESC, created_at DESC`,
+        [employeeId, organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'payroll.compensation' }
+      );
+
+      logger.info('Compensation history fetched successfully', {
+        employeeId,
+        recordCount: result.rows.length
+      });
+
+      return result.rows;
+    } catch (error) {
+      logger.error('Error fetching compensation history', {
+        error: error.message,
+        employeeId,
+        organizationId,
+        stack: error.stack
+      });
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance

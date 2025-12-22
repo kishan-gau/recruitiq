@@ -103,6 +103,11 @@ import type {
   LaborCostReport,
   AnalyticsDashboard,
   YearToDateSummary,
+  // Tax Versioning
+  TaxRule,
+  TaxRuleVersion,
+  TaxRuleVersionComparison,
+  CreateVersionRequest,
 } from '@recruitiq/types';
 
 // Forfait Rule Types (inline until added to @recruitiq/types)
@@ -364,7 +369,7 @@ export class PaylinqClient {
    */
   async getCompensationHistory(employeeId: string) {
     return this.client.get<ApiResponse<CompensationHistoryEntry[]>>(
-      `${this.basePath}/compensation/employee/${employeeId}/history`
+      `${this.basePath}/employees/${employeeId}/compensation/history`
     );
   }
 
@@ -1515,14 +1520,14 @@ export class PaylinqClient {
    */
   async getTaxRules(params?: { status?: string; type?: string } & PaginationParams) {
     const query = params ? new URLSearchParams(params as any).toString() : '';
-    return this.client.get(`${this.basePath}/settings/tax-rules${query ? '?' + query : ''}`);
+    return this.client.get<PaginatedResponse<TaxRule>>(`${this.basePath}/settings/tax-rules${query ? '?' + query : ''}`);
   }
 
   /**
    * Get single tax rule by ID
    */
   async getTaxRule(id: string) {
-    return this.client.get(`${this.basePath}/settings/tax-rules/${id}`);
+    return this.client.get<ApiResponse<TaxRule>>(`${this.basePath}/settings/tax-rules/${id}`);
   }
 
   /**
@@ -1544,6 +1549,42 @@ export class PaylinqClient {
    */
   async deleteTaxRule(id: string) {
     return this.client.delete(`${this.basePath}/settings/tax-rules/${id}`);
+  }
+
+  /**
+   * Create tax rule version
+   */
+  async createTaxRuleVersion(data: CreateVersionRequest) {
+    return this.client.post<ApiResponse<TaxRuleVersion>>(`${this.basePath}/settings/tax-rules/versions`, data);
+  }
+
+  /**
+   * Get tax rule version history
+   */
+  async getTaxRuleVersions(ruleSetId: string, params?: PaginationParams) {
+    const query = params ? new URLSearchParams(params as any).toString() : '';
+    return this.client.get<PaginatedResponse<TaxRuleVersion>>(`${this.basePath}/settings/tax-rules/${ruleSetId}/versions${query ? '?' + query : ''}`);
+  }
+
+  /**
+   * Get specific tax rule version
+   */
+  async getTaxRuleVersion(versionId: string) {
+    return this.client.get<ApiResponse<TaxRuleVersion>>(`${this.basePath}/settings/tax-rules/versions/${versionId}`);
+  }
+
+  /**
+   * Compare tax rule versions
+   */
+  async compareTaxRuleVersions(fromVersionId: string, toVersionId: string) {
+    return this.client.get<ApiResponse<TaxRuleVersionComparison>>(`${this.basePath}/settings/tax-rules/versions/compare/${fromVersionId}/${toVersionId}`);
+  }
+
+  /**
+   * Publish tax rule version
+   */
+  async publishTaxRuleVersion(versionId: string) {
+    return this.client.post<ApiResponse<TaxRuleVersion>>(`${this.basePath}/settings/tax-rules/versions/${versionId}/publish`);
   }
 
   // ============================================================================

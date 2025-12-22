@@ -10,6 +10,7 @@ import ScheduleController from '../controllers/scheduleController.js';
 import AvailabilityController from '../controllers/availabilityController.js';
 import TimeOffController from '../controllers/timeOffController.js';
 import ShiftTradeController from '../controllers/shiftTradeController.js';
+import ShiftTemplateController from '../controllers/shiftTemplateController.js';
 import RoleController from '../controllers/roleController.js';
 import StationController from '../controllers/stationController.js';
 import StatsController from '../controllers/statsController.js';
@@ -26,6 +27,7 @@ const scheduleController = new ScheduleController();
 const availabilityController = new AvailabilityController();
 const timeOffController = new TimeOffController();
 const shiftTradeController = new ShiftTradeController();
+const shiftTemplateController = new ShiftTemplateController();
 const roleController = new RoleController();
 const stationController = new StationController();
 const statsController = new StatsController();
@@ -57,6 +59,7 @@ router.post('/schedules', requirePermission('scheduling:schedules:create'), sche
 router.post('/schedules/auto-generate', requirePermission('scheduling:schedules:create'), scheduleController.autoGenerateSchedule);
 router.get('/schedules', requirePermission('scheduling:schedules:read'), scheduleController.listSchedules);
 router.get('/schedules/:id', requirePermission('scheduling:schedules:read'), scheduleController.getScheduleById);
+router.put('/schedules/:id/regenerate', requirePermission('scheduling:schedules:create'), scheduleController.regenerateSchedule);
 router.post('/schedules/:scheduleId/shifts', requirePermission('scheduling:shifts:create'), scheduleController.createShift);
 router.post('/schedules/:id/publish', requirePermission('scheduling:schedules:publish'), scheduleController.publishSchedule);
 
@@ -70,6 +73,7 @@ router.post('/shifts/:id/assign', requirePermission('scheduling:shifts:assign'),
 router.post('/shifts/:id/unassign', requirePermission('scheduling:shifts:assign'), scheduleController.unassignWorker);
 router.post('/shifts/:id/clock-in', requirePermission('scheduling:shifts:clock'), scheduleController.clockIn);
 router.get('/workers/:workerId/shifts', requirePermission('scheduling:shifts:read'), scheduleController.getWorkerShifts);
+router.get('/shifts', requirePermission('scheduling:shifts:read'), scheduleController.getAllShifts);
 
 // ============================================================================
 // AVAILABILITY ROUTES
@@ -114,6 +118,29 @@ router.get('/workers/:workerId/swap-offers', requirePermission('scheduling:shift
 router.post('/shift-swap-requests/:requestId/accept', requirePermission('scheduling:shift_swaps:approve'), shiftTradeController.acceptSwapRequest);
 
 // ============================================================================
+// SHIFT TEMPLATE ROUTES
+// ============================================================================
+
+// Test route to verify ScheduleHub routing works
+router.get('/test', (req, res) => { 
+  console.log('🧪 TEST ROUTE HIT'); 
+  res.json({ message: 'ScheduleHub routing works!' }); 
+});
+
+router.post('/shift-templates', requirePermission('scheduling:shift_templates:manage'), shiftTemplateController.createTemplate);
+router.get('/shift-templates', requirePermission('scheduling:shift_templates:manage'), shiftTemplateController.getTemplates);
+router.get('/shift-templates/summaries', requirePermission('scheduling:shift_templates:manage'), shiftTemplateController.getTemplateSummaries);
+router.get('/shift-templates/:id', 
+  (req, res, next) => { console.log('🔥 ROUTE HIT: /shift-templates/:id', req.params.id); next(); },
+  requirePermission('scheduling:shift_templates:manage'), 
+  shiftTemplateController.getTemplateById);
+router.patch('/shift-templates/:id', requirePermission('scheduling:shift_templates:manage'), shiftTemplateController.updateTemplate);
+router.delete('/shift-templates/:id', requirePermission('scheduling:shift_templates:manage'), shiftTemplateController.deleteTemplate);
+router.get('/shift-templates/:id/usage', requirePermission('scheduling:shift_templates:manage'), shiftTemplateController.getTemplateUsage);
+router.post('/shift-templates/:id/validate', requirePermission('scheduling:shift_templates:manage'), shiftTemplateController.validateTemplate);
+router.post('/shift-templates/:id/clone', requirePermission('scheduling:shift_templates:manage'), shiftTemplateController.cloneTemplate);
+
+// ============================================================================
 // ROLE ROUTES
 // ============================================================================
 
@@ -135,6 +162,7 @@ router.get('/workers/:workerId/roles', requirePermission('scheduling:roles:read'
 router.post('/stations', requirePermission('scheduling:stations:create'), stationController.createStation);
 router.get('/stations', requirePermission('scheduling:stations:read'), stationController.listStations);
 router.get('/stations/:id', requirePermission('scheduling:stations:read'), stationController.getStationById);
+router.get('/stations/coverage/stats', requirePermission('scheduling:stations:read'), stationController.getStationCoverageStats);
 router.patch('/stations/:id', requirePermission('scheduling:stations:update'), stationController.updateStation);
 router.get('/stations/:id/requirements', requirePermission('scheduling:stations:read'), stationController.getStationRequirements);
 router.post('/stations/:stationId/requirements', requirePermission('scheduling:stations:update'), stationController.addRequirement);

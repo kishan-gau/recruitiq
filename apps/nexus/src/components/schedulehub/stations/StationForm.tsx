@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { scheduleHubService } from '../../../services/schedulehub';
+import { useQuery } from '@tanstack/react-query';
+import { useStation, useCreateStation, useUpdateStation } from '../../../hooks/schedulehub/useStations';
 import { locationsService } from '../../../services/locations.service';
-import { departmentsService } from '../../../services/departments.service';
 import { useToast } from '../../../contexts/ToastContext';
 import { handleApiError } from '../../../utils/errorHandler';
 
@@ -12,16 +11,22 @@ interface StationFormData {
   stationName: string;
   description: string;
   locationId: string;
-  departmentId: string;
   capacity: number | null;
   isActive: boolean;
 }
 
 export default function StationForm() {
+  const params = useParams();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
-  const queryClient = useQueryClient();
+
+  // Debug: Log all params and current info
+  console.log('StationForm - All params:', params);
+  console.log('StationForm - ID param:', id);
+  console.log('StationForm - Current URL:', window.location.pathname);
+  console.log('StationForm - Current href:', window.location.href);
+  
   const isEditing = !!id;
 
   const [formData, setFormData] = useState<StationFormData>({
@@ -29,7 +34,6 @@ export default function StationForm() {
     stationName: '',
     description: '',
     locationId: '',
-    departmentId: '',
     capacity: null,
     isActive: true,
   });
@@ -37,11 +41,7 @@ export default function StationForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Fetch existing station if editing
-  const { data: station, isLoading: isLoadingStation } = useQuery({
-    queryKey: ['stations', id],
-    queryFn: () => scheduleHubService.getStation(id!),
-    enabled: isEditing,
-  });
+  const { data: station, isLoading: isLoadingStation } = useStation(id!, isEditing);
 
   // Fetch locations for dropdown
   const { data: locations } = useQuery({
@@ -49,11 +49,7 @@ export default function StationForm() {
     queryFn: () => locationsService.list(),
   });
 
-  // Fetch departments for dropdown
-  const { data: departments } = useQuery({
-    queryKey: ['departments'],
-    queryFn: () => departmentsService.listDepartments(),
-  });
+
 
   // Populate form when editing
   useEffect(() => {
@@ -63,7 +59,6 @@ export default function StationForm() {
         stationName: station.stationName,
         description: station.description || '',
         locationId: station.locationId || '',
-        departmentId: station.departmentId || '',
         capacity: station.capacity,
         isActive: station.isActive,
       });
@@ -71,10 +66,8 @@ export default function StationForm() {
   }, [station]);
 
   // Create mutation
-  const createMutation = useMutation({
-    mutationFn: (data: StationFormData) => scheduleHubService.createStation(data),
+  const createMutation = useCreateStation({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stations'] });
       toast.success('Station created successfully');
       navigate('/schedulehub/stations');
     },
@@ -87,22 +80,7 @@ export default function StationForm() {
   });
 
   // Update mutation
-  const updateMutation = useMutation({
-    mutationFn: (data: StationFormData) =>
-      scheduleHubService.updateStation(id!, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stations'] });
-      queryClient.invalidateQueries({ queryKey: ['stations', id] });
-      toast.success('Station updated successfully');
-      navigate('/schedulehub/stations');
-    },
-    onError: (error) => {
-      handleApiError(error, {
-        toast,
-        defaultMessage: 'Failed to update station',
-      });
-    },
-  });
+  const updateMutation = useUpdateStation();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -148,6 +126,10 @@ export default function StationForm() {
       newErrors.stationName = 'Station name must not exceed 100 characters';
     }
 
+    if (!formData.locationId.trim()) {
+      newErrors.locationId = 'Location is required';
+    }
+
     if (formData.description && formData.description.length > 500) {
       newErrors.description = 'Description must not exceed 500 characters';
     }
@@ -168,7 +150,22 @@ export default function StationForm() {
     }
 
     if (isEditing) {
-      updateMutation.mutate(formData);
+      if (!id) {
+        toast.error('Station ID is missing');
+        return;
+      }
+      updateMutation.mutate({ id, updates: formData }, {
+        onSuccess: () => {
+          toast.success('Station updated successfully');
+          navigate('/schedulehub/stations');
+        },
+        onError: (error) => {
+          handleApiError(error, {
+            toast,
+            defaultMessage: 'Failed to update station',
+          });
+        },
+      });
     } else {
       createMutation.mutate(formData);
     }
@@ -190,21 +187,21 @@ export default function StationForm() {
         <div className="flex items-center space-x-4">
           <button
             onClick={() => navigate('/schedulehub/stations')}
-            className="text-gray-600 hover:text-gray-900"
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
           >
             ← Back
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             {isEditing ? 'Edit Station' : 'Create New Station'}
           </h1>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="space-y-6">
           {/* Station Code */}
           <div>
-            <label htmlFor="stationCode" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="stationCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Station Code <span className="text-red-500">*</span>
             </label>
             <input
@@ -214,9 +211,9 @@ export default function StationForm() {
               value={formData.stationCode}
               onChange={handleChange}
               disabled={isEditing} // Code cannot be changed after creation
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.stationCode ? 'border-red-500' : 'border-gray-300'
-              } ${isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:border-gray-600 ${
+                errors.stationCode ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+              } ${isEditing ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : ''}`}
               placeholder="e.g., ST-001"
             />
             {errors.stationCode && (
@@ -226,7 +223,7 @@ export default function StationForm() {
 
           {/* Station Name */}
           <div>
-            <label htmlFor="stationName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="stationName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Station Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -235,8 +232,8 @@ export default function StationForm() {
               name="stationName"
               value={formData.stationName}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.stationName ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:border-gray-600 ${
+                errors.stationName ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Enter station name"
             />
@@ -247,7 +244,7 @@ export default function StationForm() {
 
           {/* Description */}
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Description
             </label>
             <textarea
@@ -256,64 +253,48 @@ export default function StationForm() {
               value={formData.description}
               onChange={handleChange}
               rows={3}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.description ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:border-gray-600 ${
+                errors.description ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Optional description of the station"
             />
             {errors.description && (
               <p className="mt-1 text-sm text-red-600">{errors.description}</p>
             )}
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {formData.description.length}/500 characters
             </p>
           </div>
 
           {/* Location */}
           <div>
-            <label htmlFor="locationId" className="block text-sm font-medium text-gray-700 mb-1">
-              Location
+            <label htmlFor="locationId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Location <span className="text-red-500">*</span>
             </label>
             <select
               id="locationId"
               name="locationId"
               value={formData.locationId}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:border-gray-600 ${
+                errors.locationId ? 'border-red-300 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+              }`}
             >
-              <option value="">Select a location (optional)</option>
+              <option value="">Select a location</option>
               {locations?.map((location: any) => (
                 <option key={location.id} value={location.id}>
-                  {location.name}
+                  {location.locationName}
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* Department */}
-          <div>
-            <label htmlFor="departmentId" className="block text-sm font-medium text-gray-700 mb-1">
-              Department
-            </label>
-            <select
-              id="departmentId"
-              name="departmentId"
-              value={formData.departmentId}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select a department (optional)</option>
-              {departments?.map((department: any) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
+            {errors.locationId && (
+              <p className="mt-1 text-sm text-red-600">{errors.locationId}</p>
+            )}
           </div>
 
           {/* Capacity */}
           <div>
-            <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Capacity
             </label>
             <input
@@ -323,15 +304,15 @@ export default function StationForm() {
               value={formData.capacity === null ? '' : formData.capacity}
               onChange={handleChange}
               min="1"
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                errors.capacity ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:border-gray-600 ${
+                errors.capacity ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="Leave empty for unlimited capacity"
             />
             {errors.capacity && (
               <p className="mt-1 text-sm text-red-600">{errors.capacity}</p>
             )}
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Maximum number of employees that can be assigned to this station
             </p>
           </div>
@@ -344,9 +325,9 @@ export default function StationForm() {
               name="isActive"
               checked={formData.isActive}
               onChange={handleChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
             />
-            <label htmlFor="isActive" className="ml-2 block text-sm text-gray-700">
+            <label htmlFor="isActive" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
               Active
             </label>
           </div>
@@ -357,7 +338,7 @@ export default function StationForm() {
           <button
             type="button"
             onClick={() => navigate('/schedulehub/stations')}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800"
             disabled={isSubmitting}
           >
             Cancel

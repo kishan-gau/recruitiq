@@ -45,10 +45,15 @@ class ScheduleController {
       const organizationId = req.user.organization_id;
       const userId = req.user.id;
 
+      // Extract options from request body
+      const { allowPartialTime, ...scheduleData } = req.body;
+      const options = { allowPartialTime: allowPartialTime || false };
+
       const result = await this.scheduleService.autoGenerateSchedule(
-        req.body,
+        scheduleData,
         organizationId,
-        userId
+        userId,
+        options
       );
 
       res.status(201).json({
@@ -93,6 +98,65 @@ class ScheduleController {
       });
     } catch (error) {
       logger.error('Error in getScheduleById controller:', error);
+      next(error);
+    }
+  };
+
+  /**
+   * Update and regenerate schedule with new template configuration
+   * PUT /api/schedulehub/schedules/:id/regenerate
+   */
+  regenerateSchedule = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const userId = req.user.id;
+      const { id } = req.params;
+
+      const result = await this.scheduleService.updateScheduleGeneration(
+        id,
+        req.body,
+        organizationId,
+        userId
+      );
+
+      // Handle conflict response
+      if (!result.success && result.code === 'SHIFT_CONFLICT') {
+        return res.status(409).json({
+          success: false,
+          error: result.error,
+          conflicts: result.conflicts,
+          code: result.code
+        });
+      }
+
+      // Return successful regeneration
+      res.json({
+        success: true,
+        schedule: result.schedule,
+        generationSummary: result.generationSummary
+      });
+    } catch (error) {
+      logger.error('Error in regenerateSchedule controller:', error);
+      
+      // Handle validation errors
+      if (error.message.includes('Validation error')) {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+          code: 'VALIDATION_ERROR'
+        });
+      }
+      
+      // Handle business logic errors
+      if (error.message.includes('not found') || 
+          error.message.includes('Cannot regenerate')) {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+          code: 'BUSINESS_LOGIC_ERROR'
+        });
+      }
+      
       next(error);
     }
   };
@@ -312,6 +376,48 @@ class ScheduleController {
       res.json(result);
     } catch (error) {
       logger.error('Error in getWorkerShifts controller:', error);
+      next(error);
+    }
+  };
+
+  /**
+   * Get all shifts with optional filtering
+   * GET /api/schedulehub/shifts
+   */
+  getAllShifts = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const { date, stationId, status } = req.query;
+      
+      const result = await this.scheduleService.getAllShifts(
+        organizationId,
+        { date, stationId, status }
+      );
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in getAllShifts controller:', error);
+      next(error);
+    }
+  };
+
+  /**
+   * Get station coverage statistics for timeline visualization
+   * GET /api/schedulehub/stations/coverage/stats
+   */
+  getStationCoverageStats = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const { date = new Date().toISOString().split('T')[0] } = req.query;
+      
+      const result = await this.scheduleService.getStationCoverageStats(
+        organizationId,
+        date
+      );
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in getStationCoverageStats controller:', error);
       next(error);
     }
   };

@@ -79,6 +79,24 @@ describe('ScheduleBuilder Integration', () => {
     expect(notesInput).toHaveValue('Test schedule notes');
   });
 
+  it('allows user to toggle partial time coverage option', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ScheduleBuilder />);
+
+    const partialTimeCheckbox = screen.getByLabelText(/Allow partial time coverage/i);
+
+    // Initially unchecked
+    expect(partialTimeCheckbox).not.toBeChecked();
+
+    // Click to enable partial time coverage
+    await user.click(partialTimeCheckbox);
+    expect(partialTimeCheckbox).toBeChecked();
+
+    // Click again to disable
+    await user.click(partialTimeCheckbox);
+    expect(partialTimeCheckbox).not.toBeChecked();
+  });
+
   it('allows user to add shift template', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ScheduleBuilder />);
@@ -414,6 +432,60 @@ describe('ScheduleBuilder Integration', () => {
       const stationInput = screen.getByPlaceholderText('Enter station ID') as HTMLInputElement;
       expect(roleInput.value).toBe('');
       expect(stationInput.value).toBe('');
+    });
+  });
+
+  it('includes partial time coverage option in auto-generation request', async () => {
+    const mockAutoGenerate = jest.fn().mockResolvedValue({
+      success: true,
+      schedule: { id: 'generated-id', name: 'Generated Schedule' }
+    });
+
+    // Mock the hook
+    const mockUseAutoGenerateSchedule = jest.fn(() => ({
+      autoGenerate: mockAutoGenerate,
+      isLoading: false,
+      error: null
+    }));
+
+    // Mock the module
+    jest.doMock('../../src/hooks/useAutoGenerateSchedule', () => ({
+      useAutoGenerateSchedule: mockUseAutoGenerateSchedule
+    }));
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScheduleBuilder />);
+
+    // Fill out the form
+    await user.type(screen.getByLabelText(/Schedule Name/i), 'Test Schedule');
+    await user.type(screen.getByLabelText(/Start Date/i), '2025-11-07');
+    await user.type(screen.getByLabelText(/End Date/i), '2025-11-13');
+    
+    // Enable partial time coverage
+    const partialTimeCheckbox = screen.getByLabelText(/Allow partial time coverage/i);
+    await user.click(partialTimeCheckbox);
+    expect(partialTimeCheckbox).toBeChecked();
+
+    // Add a shift template
+    await user.type(screen.getByPlaceholderText('Enter role ID'), 'role-1');
+    await user.type(screen.getByPlaceholderText('Enter station ID'), 'station-1');
+    await user.click(screen.getByText('Add Shift'));
+
+    // Trigger auto-generation
+    const autoGenerateButton = screen.getByRole('button', { name: /Auto Generate/i });
+    await user.click(autoGenerateButton);
+
+    // Verify the API call includes allowPartialTime: true
+    await waitFor(() => {
+      expect(mockAutoGenerate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Test Schedule',
+          startDate: '2025-11-07',
+          endDate: '2025-11-13',
+          allowPartialTime: true,
+          shifts: expect.any(Array)
+        })
+      );
     });
   });
 });

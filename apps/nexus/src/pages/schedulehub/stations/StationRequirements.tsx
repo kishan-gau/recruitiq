@@ -8,8 +8,8 @@
  */
 
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Plus, Trash2, Edit2, Users, AlertCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Plus, Trash2, Edit2, Users, AlertCircle, ArrowLeft } from 'lucide-react';
 import {
   useStation,
   useStationRequirements,
@@ -29,6 +29,7 @@ interface RequirementFormData {
 
 export default function StationRequirements() {
   const { id: stationId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [isAddingRequirement, setIsAddingRequirement] = useState(false);
   const [editingRequirement, setEditingRequirement] = useState<any>(null);
   const [formData, setFormData] = useState<RequirementFormData>({
@@ -168,6 +169,24 @@ export default function StationRequirements() {
 
   return (
     <div className="space-y-6">
+      {/* Back Navigation */}
+      <div className="flex items-center gap-4 mb-4">
+        <button
+          onClick={() => navigate(`/schedulehub/stations/${stationId}`)}
+          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Station
+        </button>
+        <span className="text-gray-400 dark:text-gray-500">|</span>
+        <button
+          onClick={() => navigate('/schedulehub/stations')}
+          className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
+        >
+          All Stations
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -232,13 +251,14 @@ export default function StationRequirements() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Maximum Workers
+                  Maximum Workers <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   min={formData.minWorkers}
                   value={formData.maxWorkers}
                   onChange={(e) => setFormData(prev => ({ ...prev, maxWorkers: parseInt(e.target.value) || 0 }))}
+                  required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowLeft, 
   Badge,
@@ -14,16 +14,23 @@ import {
   Grid
 } from 'lucide-react';
 import { schedulehubApi } from '@/lib/api/schedulehub';
+import { scheduleHubService } from '@/services/schedulehub.service';
+import { useStations } from '@/hooks/schedulehub/useStations';
+import { useToast } from '@/contexts/ToastContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import StatusBadge from '@/components/ui/StatusBadge';
-import CalendarView from '../../components/schedulehub/CalendarView.tsx';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import CalendarView from '../../components/schedulehub/CalendarView';
+import ShiftAssignmentModal from '../../components/schedulehub/ShiftAssignmentModal';
 
 // TypeScript interfaces for schedule and shift data
-  interface Worker {
-    id: string;
-    firstName: string;
-    lastName: string;
-  }interface Role {
+interface Worker {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+interface Role {
   id: string;
   name: string;
 }
@@ -137,7 +144,6 @@ const calculateDuration = (startDate: string | Date | null | undefined, endDate:
     
     return `${diffDays} day${diffDays === 1 ? '' : 's'}`;
   } catch (error) {
-    console.error('Error calculating duration:', error, { startDate, endDate });
     return 'Duration calculation error';
   }
 };
@@ -145,10 +151,6 @@ const calculateDuration = (startDate: string | Date | null | undefined, endDate:
 // Helper functions to calculate schedule statistics
 const calculateAssignedWorkers = (shifts: Shift[]): number => {
   if (!shifts || !Array.isArray(shifts)) {
-    console.log('DEBUG: calculateAssignedWorkers - Invalid shifts', { 
-      hasShifts: !!shifts, 
-      isArray: Array.isArray(shifts) 
-    });
     return 0;
   }
   
@@ -168,17 +170,7 @@ const calculateAssignedWorkers = (shifts: Shift[]): number => {
     }
   });
   
-  console.log('DEBUG: calculateAssignedWorkers result', { 
-    totalShifts: shifts.length, 
-    uniqueWorkers: uniqueWorkers.size,
-    workerKeys: Array.from(uniqueWorkers),
-    sampleShift: shifts.length > 0 ? {
-      hasWorkerId: !!shifts[0].workerId,
-      hasWorker: !!shifts[0].worker,
-      workerId: shifts[0].workerId,
-      workerName: shifts[0].worker ? `${shifts[0].worker.firstName} ${shifts[0].worker.lastName}` : null
-    } : null
-  });
+
   
   return uniqueWorkers.size;
 };
@@ -211,9 +203,18 @@ const calculateTotalShifts = (shifts: Shift[]): number => {
 
 type ViewMode = 'list' | 'week' | 'month';
 
-export default function ScheduleDetails() {
+function ScheduleDetailsComponent() {
   const { id } = useParams<{ id: string }>();
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<ViewMode>('week'); // Default to week view to show calendar first
+  const [showQuickStats, setShowQuickStats] = useState(false); // Collapsed by default
+  const [showSummary, setShowSummary] = useState(true); // Keep summary visible
+  // Add date state for calendar navigation
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  
+  // Shift assignment modal state
+  const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
 
   const { data: scheduleResponse, isLoading, error } = useQuery({
     queryKey: ['schedule', id],
@@ -221,24 +222,129 @@ export default function ScheduleDetails() {
     enabled: !!id,
   });
 
+  // Fetch stations for calendar view filtering
+  const { data: stations = [] } = useStations();
+
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  
+  // Publish schedule mutation following RolesList pattern
+  const publishMutation = useMutation({
+    mutationFn: (scheduleId: string) => scheduleHubService.publishSchedule(scheduleId),
+    onSuccess: (result) => {
+      // Invalidate and refetch schedule data
+      queryClient.invalidateQueries({ queryKey: ['schedule', id] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      
+      if (result.success) {
+        toast.success('Schedule published successfully!');
+      }
+    },
+    onError: (error: any) => {
+
+      
+      // Handle ConflictError from service layer
+      if (error.conflicts && error.conflicts.length > 0) {
+        // For now, show a basic alert with conflict information
+        // TODO: Implement proper conflict resolution modal/dialog
+        const conflictSummary = error.conflicts
+          .map((conflict: any) => `${conflict.employee.name}: ${conflict.message}`)
+          .join('\n');
+        
+        toast.error(`Cannot publish schedule due to conflicts:\n\n${conflictSummary}\n\nPlease resolve these conflicts and try again.`);
+      } else {
+        // General error handling
+        toast.error(`Error publishing schedule: ${error.message || 'Unknown error'}`);
+      }
+    },
+  });
+
+  // Update shift mutation for drag-drop functionality
+  const updateShiftMutation = useMutation({
+    mutationFn: ({ shiftId, startTime, date }: { shiftId: string; startTime: string; date: Date }) => {
+      // Convert date to ISO 8601 format (YYYY-MM-DD) required by backend
+      const dateStr = date.toISOString().split('T')[0];
+      // NOTE: Backend schema expects 'shiftDate', not 'date'
+      return scheduleHubService.updateShift(shiftId, { startTime, shiftDate: dateStr });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedule', id] });
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update shift. Please try again.');
+    }
+  });
+
+  // Handle shift time change from calendar drag-drop
+  const handleShiftTimeChange = (shiftId: string, newTime: string, newDate: Date) => {
+    updateShiftMutation.mutate({ shiftId, startTime: newTime, date: newDate });
+  };
+
+  // Optimized event handlers with useCallback for performance
+  const handlePublishClick = useCallback(() => {
+    if (id) {
+      publishMutation.mutate(id);
+    }
+  }, [id, publishMutation]);
+
+  const handleEditClick = useCallback(() => {
+    if (id) {
+      navigate(`/schedulehub/schedules/${id}/edit`);
+    }
+  }, [id, navigate]);
+
+  const handleQuickStatsToggle = useCallback(() => {
+    setShowQuickStats(prev => !prev);
+  }, []);
+
+  const handleWeekViewClick = useCallback(() => {
+    setViewMode('week');
+  }, []);
+
+  const handleMonthViewClick = useCallback(() => {
+    setViewMode('month');
+  }, []);
+
+  const handleListViewClick = useCallback(() => {
+    setViewMode('list');
+  }, []);
+
+  // Handler for shift assignment modal
+  const handleEditShift = useCallback((shift: Shift) => {
+    setSelectedShift(shift);
+    setIsAssignmentModalOpen(true);
+  }, []);
+
+  const handleCloseAssignmentModal = useCallback(() => {
+    setIsAssignmentModalOpen(false);
+    setSelectedShift(null);
+  }, []);
+
   const schedule = scheduleResponse?.schedule;
   const shifts = scheduleResponse?.shifts || [];
-  
-  // DEBUG: Log schedule response and shifts data
-  React.useEffect(() => {
-    console.log('DEBUG: Schedule response data:', {
-      hasScheduleResponse: !!scheduleResponse,
-      scheduleExists: !!schedule,
-      shiftsFromResponse: scheduleResponse?.shifts,
-      shiftsLength: shifts.length,
-      isLoading,
-      error
-    });
-    if (scheduleResponse) {
-      console.log('DEBUG: Full schedule response:', scheduleResponse);
-    }
-  }, [scheduleResponse, schedule, shifts, isLoading, error]);
-  
+
+  // Memoized calculations to prevent unnecessary re-computation
+  const scheduleDuration = useMemo(() => 
+    calculateDuration(schedule?.startDate, schedule?.endDate), 
+    [schedule?.startDate, schedule?.endDate]
+  );
+
+  const assignedWorkersCount = useMemo(() => 
+    calculateAssignedWorkers(shifts), 
+    [shifts]
+  );
+
+  const stationsCount = useMemo(() => 
+    calculateStations(shifts), 
+    [shifts]
+  );
+
+  const totalShiftsCount = useMemo(() => 
+    calculateTotalShifts(shifts), 
+    [shifts]
+  );
+
   // State for worker and station name mappings
   const [workerNames, setWorkerNames] = React.useState<Record<string, string>>({});
   const [stationNames, setStationNames] = React.useState<Record<string, string>>({});
@@ -246,15 +352,11 @@ export default function ScheduleDetails() {
 
   // Fetch worker and station names for shifts
   React.useEffect(() => {
-    console.log('DEBUG: Name fetching useEffect triggered!', {
-      shiftsLength: shifts.length,
-      shiftsArray: shifts,
-      hasShifts: shifts.length > 0
-    });
+
     
     const fetchNames = async () => {
       if (!shifts.length) {
-        console.log('DEBUG: No shifts to fetch names for - shifts array is empty');
+
         return;
       }
       
@@ -262,22 +364,16 @@ export default function ScheduleDetails() {
       
       try {
         // Debug: Log first few shifts to understand structure
-        console.log('DEBUG: First 3 shifts structure:', shifts.slice(0, 3));
+    
         
         // Get unique worker IDs and station IDs from shifts
         const workerIds = [...new Set(shifts.map((s: any) => s.employeeId || s.workerId).filter(Boolean))] as string[];
         const stationIds = [...new Set(shifts.map((s: any) => s.stationId).filter(Boolean))] as string[];
         
-        console.log('DEBUG: Extracted IDs:', { 
-          workerIds, 
-          stationIds,
-          totalShifts: shifts.length,
-          shiftsWithWorkerIds: shifts.filter((s: any) => s.employeeId || s.workerId).length,
-          shiftsWithStationIds: shifts.filter((s: any) => s.stationId).length
-        });
+
         
         if (workerIds.length === 0 && stationIds.length === 0) {
-          console.warn('DEBUG: No worker or station IDs found in shifts');
+
           setNamesLoading(false);
           return;
         }
@@ -285,22 +381,20 @@ export default function ScheduleDetails() {
         // Fetch worker names
         const workerPromises = workerIds.map(async (id) => {
           try {
-            console.log(`DEBUG: Fetching worker data for ID: ${id}`);
             const response = await schedulehubApi.workers.get(id);
-            console.log(`DEBUG: Worker API response for ${id}:`, response);
             // Worker data is in response.data
             const worker = response.data || response;
-            console.log('DEBUG: Worker data extracted:', worker);
+
             // Handle both snake_case (from API) and camelCase field names
             const firstName = worker.first_name || worker.firstName;
             const lastName = worker.last_name || worker.lastName;
             const name = firstName && lastName 
               ? `${firstName} ${lastName}`
               : worker.name || `Worker ${id}`;
-            console.log(`DEBUG: Resolved name for worker ${id}: ${name} (firstName: ${firstName}, lastName: ${lastName})`);
+
             return { id, name };
           } catch (error) {
-            console.warn(`DEBUG: Failed to fetch worker ${id}:`, error);
+
             return { id, name: `Worker ${id}` };
           }
         });
@@ -308,17 +402,13 @@ export default function ScheduleDetails() {
         // Fetch station names
         const stationPromises = stationIds.map(async (id) => {
           try {
-            console.log(`DEBUG: Fetching station data for ID: ${id}`);
             const response = await schedulehubApi.stations.get(id);
-            console.log(`DEBUG: Station API response for ${id}:`, response);
             // Station data is in response.station
             const station = response.station || response.data || response;
-            console.log(`DEBUG: Station data extracted:`, station);
             const name = station.name || `Station ${id}`;
-            console.log(`DEBUG: Resolved name for station ${id}: ${name}`);
             return { id, name };
           } catch (error) {
-            console.warn(`DEBUG: Failed to fetch station ${id}:`, error);
+
             return { id, name: `Station ${id}` };
           }
         });
@@ -342,64 +432,18 @@ export default function ScheduleDetails() {
         setWorkerNames(workerNameMap);
         setStationNames(stationNameMap);
         
-        console.log('DEBUG: Name mappings created:', {
-          workerNames: workerNameMap,
-          stationNames: stationNameMap
-        });
+
         
       } catch (error) {
-        console.error('Error fetching names:', error);
+
       } finally {
         setNamesLoading(false);
       }
     };
     
-    console.log('DEBUG: Calling fetchNames() function');
+
     fetchNames();
   }, [shifts]);
-  
-  // Debug the shifts prop changes
-  React.useEffect(() => {
-    console.log('DEBUG: Shifts prop changed:', {
-      shiftsCount: shifts.length,
-      shiftsEmpty: shifts.length === 0,
-      firstShiftSample: shifts[0] ? Object.keys(shifts[0]).slice(0, 10) : 'no shifts'
-    });
-  }, [shifts]);
-
-  // Debug: Log the actual data structure to see what's coming from the API
-  React.useEffect(() => {
-    if (scheduleResponse) {
-      console.log('DEBUG: Full API response:', scheduleResponse);
-      console.log('DEBUG: Shifts data received:', {
-        shiftsCount: shifts.length,
-        shiftsArray: shifts,
-        firstShift: shifts[0],
-        hasShifts: shifts.length > 0,
-        shiftsType: typeof shifts,
-        isArray: Array.isArray(shifts),
-        shiftDates: shifts.map((s: any) => ({
-          id: s.id,
-          shiftDate: s.shiftDate, // Updated to use correct property
-          dateType: typeof s.shiftDate,
-          parsedDate: new Date(s.shiftDate),
-          dateString: new Date(s.shiftDate).toDateString()
-        }))
-      });
-      console.log('DEBUG: Schedule data received:', {
-        startDate: schedule?.startDate,
-        startDateType: typeof schedule?.startDate,
-        endDate: schedule?.endDate,
-        endDateType: typeof schedule?.endDate,
-        createdAt: schedule?.createdAt,
-        createdAtType: typeof schedule?.createdAt,
-        publishedAt: schedule?.publishedAt,
-        rawStartDate: schedule?.startDate ? new Date(schedule.startDate) : 'No date',
-        rawEndDate: schedule?.endDate ? new Date(schedule.endDate) : 'No date',
-        fullSchedule: schedule
-      });
-    }
-  }, [scheduleResponse, schedule, shifts]);
 
   if (isLoading) {
     return (
@@ -434,10 +478,10 @@ export default function ScheduleDetails() {
 
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center mb-4">
+    <div className="max-w-full mx-auto">
+      {/* Compact Header */}
+      <div className="mb-4">
+        <div className="flex items-center mb-3">
           <Link
             to="/schedulehub/schedules"
             className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
@@ -447,76 +491,152 @@ export default function ScheduleDetails() {
           </Link>
         </div>
         
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              {schedule.name}
-            </h1>
-            <div className="flex items-center mt-2 space-x-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white truncate">
+                {schedule.name}
+              </h1>
               <StatusBadge status={schedule.status} />
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+            </div>
+            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center">
                 <Calendar className="h-4 w-4 mr-1" />
                 {formatDateRange(schedule.startDate, schedule.endDate)}
+              </div>
+              {/* Contextual Quick Stats - Always visible, compact */}
+              <div className="hidden sm:flex items-center gap-4">
+                <span className="flex items-center gap-1">
+                  <Users className="h-3 w-3" />
+                  {calculateAssignedWorkers(shifts)} workers
+                </span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {calculateStations(shifts)} stations
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {calculateTotalShifts(shifts)} shifts
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          {/* Action Buttons - Compact on mobile */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             {schedule.status === 'draft' && (
-              <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                Publish
+              <button 
+                  onClick={handlePublishClick}
+                disabled={publishMutation.isPending}
+                className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {publishMutation.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-1"></div>
+                    <span className="hidden sm:inline">Publishing...</span>
+                    <span className="sm:hidden">Pub...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Publish</span>
+                    <span className="sm:hidden">Pub</span>
+                  </>
+                )}
               </button>
             )}
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
+            <button 
+                onClick={handleEditClick}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Edit className="h-4 w-4" />
+              <span className="ml-1 hidden sm:inline">Edit</span>
             </button>
-            <button className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
-              <Download className="h-4 w-4 mr-2" />
-              Export
+            <button className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <Download className="h-4 w-4" />
+              <span className="ml-1 hidden sm:inline">Export</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Quick Stats Bar */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 mb-6">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">
-              {schedule ? calculateDuration(schedule.startDate, schedule.endDate) : 'Loading...'}
+      {/* Mobile Quick Stats - Only show on mobile when needed */}
+      <div className="sm:hidden mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                {calculateAssignedWorkers(shifts)}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Workers</div>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Duration</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">
-              {schedule ? calculateAssignedWorkers(shifts) : 0}
+            <div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                {calculateStations(shifts)}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Stations</div>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Workers</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">
-              {schedule ? calculateStations(shifts) : 0}
+            <div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                {totalShiftsCount}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Shifts</div>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Stations</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">
-              {schedule ? calculateTotalShifts(shifts) : 0}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Shifts</div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Collapsible Extended Stats */}
+      <div className="mb-4">
+        <button
+            onClick={handleQuickStatsToggle}
+          className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+        >
+          <span>{showQuickStats ? 'Hide' : 'Show'} detailed statistics</span>
+          <span className="text-xs">
+            {showQuickStats ? '▲' : '▼'}
+          </span>
+        </button>
         
-        {/* Main Calendar View - Takes 3/4 of the space */}
-        <div className="lg:col-span-3">
+        {showQuickStats && (
+          <div className="mt-2 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {schedule ? scheduleDuration : 'Loading...'}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Duration</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {schedule ? assignedWorkersCount : 0}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Assigned Workers</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {schedule ? stationsCount : 0}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Active Stations</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {schedule ? totalShiftsCount : 0}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Total Shifts</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Full-Width Calendar Layout */}
+      <div className="w-full">
+        
+        {/* Main Calendar View - Full width */}
+        <div className="w-full">
           <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
+            <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
                 <div>
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white">
                     Shift Assignments
@@ -527,41 +647,41 @@ export default function ScheduleDetails() {
                   </p>
                 </div>
                 
-                {/* View Mode Toggle */}
+                {/* View Mode Toggle - Calendar Views First */}
                 <div className="flex items-center space-x-2">
                   <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-1 flex">
                     <button
-                      onClick={() => setViewMode('list')}
-                      className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                        viewMode === 'list'
-                          ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                          : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-                      }`}
-                    >
-                      <List className="h-4 w-4 mr-1.5" />
-                      List
-                    </button>
-                    <button
-                      onClick={() => setViewMode('week')}
-                      className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      onClick={handleWeekViewClick}
+                      className={`flex items-center px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                         viewMode === 'week'
                           ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
                           : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                       }`}
                     >
-                      <Calendar className="h-4 w-4 mr-1.5" />
-                      Week
+                      <Calendar className="h-4 w-4 sm:mr-1.5" />
+                      <span className="hidden sm:inline">Week</span>
                     </button>
                     <button
-                      onClick={() => setViewMode('month')}
-                      className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      onClick={handleMonthViewClick}
+                      className={`flex items-center px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                         viewMode === 'month'
                           ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
                           : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                       }`}
                     >
-                      <Grid className="h-4 w-4 mr-1.5" />
-                      Month
+                      <Grid className="h-4 w-4 sm:mr-1.5" />
+                      <span className="hidden sm:inline">Month</span>
+                    </button>
+                    <button
+                      onClick={handleListViewClick}
+                      className={`flex items-center px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        viewMode === 'list'
+                          ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+                          : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <List className="h-4 w-4 sm:mr-1.5" />
+                      <span className="hidden sm:inline">List</span>
                     </button>
                   </div>
                 </div>
@@ -576,7 +696,7 @@ export default function ScheduleDetails() {
                       {shifts.map((shift: Shift) => (
                         <div
                           key={shift.id}
-                          className="py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          className="py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -652,12 +772,19 @@ export default function ScheduleDetails() {
                       ))}
                     </div>
                   ) : (
-                    <CalendarView 
-                      shifts={shifts} 
-                      viewType={viewMode as 'week' | 'month'}
-                      workerNames={workerNames}
-                      stationNames={stationNames}
-                    />
+                    <div className="min-h-[400px]">
+                      <CalendarView 
+                        shifts={shifts} 
+                        viewType={viewMode as 'week' | 'month'}
+                        workerNames={workerNames}
+                        stationNames={stationNames}
+                        stations={stations}
+                        selectedDate={selectedDate}
+                        onDateChange={setSelectedDate}
+                        onShiftTimeChange={handleShiftTimeChange}
+                        onEditShift={handleEditShift}
+                      />
+                    </div>
                   )}
                 </>
               ) : (
@@ -674,69 +801,29 @@ export default function ScheduleDetails() {
             </div>
           </div>
         </div>
-
-        {/* Sidebar - Takes 1/4 of the space */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Quick Stats */}
-          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Quick Stats
-            </h2>
-            
-            <dl className="space-y-4">
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Duration
-                </dt>
-                <dd className="text-sm text-gray-900 dark:text-white">
-                  {schedule ? calculateDuration(schedule.startDate, schedule.endDate) : 'Loading...'}
-                </dd>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-                  <Users className="h-4 w-4 mr-2" />
-                  Workers
-                </dt>
-                <dd className="text-sm text-gray-900 dark:text-white">
-                  {schedule ? `${calculateAssignedWorkers(shifts)}` : 'Loading...'}
-                </dd>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Stations
-                </dt>
-                <dd className="text-sm text-gray-900 dark:text-white">
-                  {schedule ? `${calculateStations(shifts)}` : 'Loading...'}
-                </dd>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <dt className="flex items-center text-sm font-medium text-gray-500 dark:text-gray-400">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Shifts
-                </dt>
-                <dd className="text-sm text-gray-900 dark:text-white">
-                  {schedule ? `${calculateTotalShifts(shifts)}` : 'Loading...'}
-                </dd>
-              </div>
-            </dl>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Recent Activity
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              No recent activity to display.
-            </p>
-          </div>
-        </div>
       </div>
+      
+      {/* Shift Assignment Modal */}
+      {selectedShift && (
+        <ShiftAssignmentModal
+          isOpen={isAssignmentModalOpen}
+          onClose={handleCloseAssignmentModal}
+          shift={selectedShift}
+          scheduleId={id!}
+          onAssignmentChange={() => {
+            // Refetch schedule data to update the UI
+            queryClient.invalidateQueries({ queryKey: ['schedule', id] });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+export default function ScheduleDetails() {
+  return (
+    <ErrorBoundary>
+      <ScheduleDetailsComponent />
+    </ErrorBoundary>
   );
 }

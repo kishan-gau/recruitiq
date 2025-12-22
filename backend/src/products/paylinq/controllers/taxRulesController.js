@@ -516,6 +516,285 @@ export const deleteTaxRule = async (req, res) => {
 };
 
 /**
+ * Create new version of tax rule
+ */
+export const createTaxRuleVersion = async (req, res) => {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+    const {
+      versionType = 'minor',
+      changeSummary,
+      effectiveDate,
+      breakingChanges,
+    } = req.body;
+
+    // Validate required fields
+    if (!changeSummary) {
+      return res.status(400).json({
+        success: false,
+        error: 'Change summary is required',
+        errorCode: 'VALIDATION_ERROR',
+      });
+    }
+
+    // Check if rule exists
+    const existingRule = await taxCalculationService.getTaxRuleSetById(id, organizationId);
+    if (!existingRule) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tax rule not found',
+        errorCode: 'TAX_RULE_NOT_FOUND',
+      });
+    }
+
+    // Create new version
+    const versionData = {
+      versionType,
+      changeSummary,
+      effectiveDate: effectiveDate ? new Date(effectiveDate) : null,
+      breakingChanges: breakingChanges || false,
+    };
+
+    const newVersion = await taxCalculationService.createNewTaxRuleVersion(
+      id,
+      versionData,
+      organizationId,
+      userId
+    );
+
+    logger.info('Tax rule version created', {
+      organizationId,
+      originalRuleId: id,
+      newVersionId: newVersion.id,
+      versionType,
+      userId,
+    });
+
+    res.status(201).json({
+      success: true,
+      version: newVersion,
+      message: 'Tax rule version created successfully',
+    });
+  } catch (error) {
+    logger.error('Error creating tax rule version', {
+      error: error.message,
+      stack: error.stack,
+      taxRuleId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to create tax rule version',
+      errorCode: 'CREATE_TAX_RULE_VERSION_ERROR',
+    });
+  }
+};
+
+/**
+ * Get version history for tax rule
+ */
+export const getTaxRuleVersionHistory = async (req, res) => {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { ruleSetCode } = req.params;
+
+    // Get version history
+    const history = await taxCalculationService.getTaxRuleVersionHistory(
+      ruleSetCode,
+      organizationId
+    );
+
+    res.status(200).json({
+      success: true,
+      versions: history,
+    });
+  } catch (error) {
+    logger.error('Error fetching tax rule version history', {
+      error: error.message,
+      stack: error.stack,
+      ruleSetCode: req.params.ruleSetCode,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch version history',
+      errorCode: 'FETCH_VERSION_HISTORY_ERROR',
+    });
+  }
+};
+
+/**
+ * Publish tax rule version
+ */
+export const publishTaxRuleVersion = async (req, res) => {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+
+    // Check if rule exists
+    const existingRule = await taxCalculationService.getTaxRuleSetById(id, organizationId);
+    if (!existingRule) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tax rule not found',
+        errorCode: 'TAX_RULE_NOT_FOUND',
+      });
+    }
+
+    // Publish the version
+    const publishedVersion = await taxCalculationService.publishTaxRuleVersion(
+      id,
+      organizationId,
+      userId
+    );
+
+    logger.info('Tax rule version published', {
+      organizationId,
+      taxRuleId: id,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      version: publishedVersion,
+      message: 'Tax rule version published successfully',
+    });
+  } catch (error) {
+    logger.error('Error publishing tax rule version', {
+      error: error.message,
+      stack: error.stack,
+      taxRuleId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to publish tax rule version',
+      errorCode: 'PUBLISH_TAX_RULE_VERSION_ERROR',
+    });
+  }
+};
+
+/**
+ * Archive tax rule version
+ */
+export const archiveTaxRuleVersion = async (req, res) => {
+  try {
+    const { organization_id: organizationId, id: userId } = req.user;
+    const { id } = req.params;
+    const { archiveReason } = req.body;
+
+    // Check if rule exists
+    const existingRule = await taxCalculationService.getTaxRuleSetById(id, organizationId);
+    if (!existingRule) {
+      return res.status(404).json({
+        success: false,
+        error: 'Tax rule not found',
+        errorCode: 'TAX_RULE_NOT_FOUND',
+      });
+    }
+
+    // Archive the version
+    const archivedVersion = await taxCalculationService.archiveTaxRuleVersion(
+      id,
+      archiveReason,
+      organizationId,
+      userId
+    );
+
+    logger.info('Tax rule version archived', {
+      organizationId,
+      taxRuleId: id,
+      archiveReason,
+      userId,
+    });
+
+    res.status(200).json({
+      success: true,
+      version: archivedVersion,
+      message: 'Tax rule version archived successfully',
+    });
+  } catch (error) {
+    logger.error('Error archiving tax rule version', {
+      error: error.message,
+      stack: error.stack,
+      taxRuleId: req.params.id,
+      organizationId: req.user?.organization_id,
+      userId: req.user?.id,
+    });
+
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to archive tax rule version',
+      errorCode: 'ARCHIVE_TAX_RULE_VERSION_ERROR',
+    });
+  }
+};
+
+/**
+ * Compare two tax rule versions
+ */
+export const compareTaxRuleVersions = async (req, res) => {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { fromId, toId } = req.params;
+
+    // Check if both rules exist
+    const [fromRule, toRule] = await Promise.all([
+      taxCalculationService.getTaxRuleSetById(fromId, organizationId),
+      taxCalculationService.getTaxRuleSetById(toId, organizationId),
+    ]);
+
+    if (!fromRule) {
+      return res.status(404).json({
+        success: false,
+        error: 'Source tax rule not found',
+        errorCode: 'SOURCE_TAX_RULE_NOT_FOUND',
+      });
+    }
+
+    if (!toRule) {
+      return res.status(404).json({
+        success: false,
+        error: 'Target tax rule not found',
+        errorCode: 'TARGET_TAX_RULE_NOT_FOUND',
+      });
+    }
+
+    // Compare versions
+    const comparison = await taxCalculationService.compareTaxRuleVersions(
+      fromId,
+      toId,
+      organizationId
+    );
+
+    res.status(200).json({
+      success: true,
+      comparison,
+    });
+  } catch (error) {
+    logger.error('Error comparing tax rule versions', {
+      error: error.message,
+      stack: error.stack,
+      fromId: req.params.fromId,
+      toId: req.params.toId,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to compare tax rule versions',
+      errorCode: 'COMPARE_TAX_RULE_VERSIONS_ERROR',
+    });
+  }
+};
+
+/**
  * Helper function to map frontend tax type to backend tax type
  */
 function mapTaxTypeToBackend(frontendType) {

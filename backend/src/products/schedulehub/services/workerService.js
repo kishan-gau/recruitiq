@@ -7,6 +7,7 @@ import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import { ValidationError } from '../../../utils/errors.js';
 import Joi from 'joi';
+import { mapWorkerDbToApi, mapWorkersDbToApi, mapWorkerApiToDb } from '../dto/workerDto.js';
 
 class WorkerService {
   constructor() {
@@ -47,6 +48,24 @@ class WorkerService {
     minHoursPerWeek: Joi.number().min(0),
     maxConsecutiveDays: Joi.number().integer().min(1).max(7),
     minRestHoursBetweenShifts: Joi.number().integer().min(0),
+    isSchedulable: Joi.boolean().optional(),
+    schedulingStatus: Joi.string().valid('active', 'temporary_unavailable', 'restricted').optional(),
+    schedulingNotes: Joi.string().max(1000).allow(null, '').optional(),
+    notes: Joi.string().max(1000).allow(null, '').optional(),
+    preferredShiftTypes: Joi.array().items(Joi.string()).optional(),
+    unavailableDays: Joi.array().items(
+      Joi.alternatives().try(
+        Joi.number().integer().min(0).max(6),
+        Joi.string().valid('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday')
+      )
+    ).optional().custom((value, helpers) => {
+      // Convert day names to numbers
+      const dayNameToNumber = {
+        'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
+        'thursday': 4, 'friday': 5, 'saturday': 6
+      };
+      return value.map(day => typeof day === 'string' ? dayNameToNumber[day.toLowerCase()] : day);
+    }),
     status: Joi.string().valid('active', 'inactive', 'on_leave', 'terminated')
   }).min(1);
 
@@ -142,7 +161,7 @@ class WorkerService {
       const result = await pool.query(
         `SELECT 
           e.id,
-          e.employee_number as worker_number,
+          e.employee_number as employee_id,
           e.first_name,
           e.last_name,
           e.email,
@@ -226,7 +245,7 @@ class WorkerService {
         return null;
       }
 
-      return result.rows[0];
+      return mapWorkerDbToApi(result.rows[0]);
 
     } catch (error) {
       this.logger.error('Error fetching worker by employee ID:', error);
@@ -356,7 +375,7 @@ class WorkerService {
 
       return {
         success: true,
-        data: result.rows,
+        data: mapWorkersDbToApi(result.rows),
         pagination: {
           page,
           limit,
@@ -386,35 +405,24 @@ class WorkerService {
         throw new ValidationError(error.details[0].message);
       }
 
-      // Get employee_id from worker config first
-      const workerCheck = await client.query(
-        `SELECT employee_id FROM scheduling.worker_scheduling_config 
-         WHERE employee_id = $1 AND organization_id = $2`,
+      // Check employee exists and not terminated (workerId is employee_id)
+      const employeeCheck = await client.query(
+        `SELECT id, employment_status FROM hris.employee WHERE id = $1 AND organization_id = $2`,
         [workerId, organizationId]
       );
 
-      if (workerCheck.rows.length === 0) {
-        throw new Error('Worker not found');
-      }
-
-      const employeeId = workerCheck.rows[0].employee_id;
-
-      // Check employee exists and not terminated
-      const employeeCheck = await client.query(
-        `SELECT id, employment_status FROM hris.employee WHERE id = $1 AND organization_id = $2`,
-        [employeeId, organizationId]
-      );
-
       if (employeeCheck.rows.length === 0) {
-        throw new Error('Employee not found');
+        throw new Error('Worker not found');
       }
 
       if (employeeCheck.rows[0].employment_status === 'terminated') {
         throw new ValidationError('Cannot update terminated worker');
       }
 
+      const employeeId = workerId; // workerId is actually the employee_id
+
       // Separate employee fields from scheduling fields
-      const schedulingFields = ['maxHoursPerWeek', 'minHoursPerWeek', 'maxConsecutiveDays', 'minRestHoursBetweenShifts'];
+      const schedulingFields = ['maxHoursPerWeek', 'minHoursPerWeek', 'maxConsecutiveDays', 'minRestHoursBetweenShifts', 'isSchedulable', 'schedulingStatus', 'schedulingNotes', 'notes', 'preferredShiftTypes', 'unavailableDays'];
       const employeeFields = ['firstName', 'lastName', 'email', 'phone', 'employmentType', 'departmentId', 'locationId', 'status'];
       
       const schedulingUpdates = [];
@@ -425,9 +433,25 @@ class WorkerService {
       // Categorize fields
       Object.keys(value).forEach(key => {
         if (schedulingFields.includes(key)) {
-          const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          // Special field mappings for scheduling fields
+          let snakeKey;
+          if (key === 'unavailableDays') {
+            snakeKey = 'blocked_days';
+          } else if (key === 'notes') {
+            snakeKey = 'scheduling_notes';
+          } else {
+            snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          }
+          
           schedulingUpdates.push(snakeKey);
-          schedulingParams.push(value[key]);
+          
+          // Special handling for array fields for PostgreSQL
+          if ((key === 'preferredShiftTypes' || key === 'unavailableDays') && Array.isArray(value[key])) {
+            // Pass array directly to PostgreSQL - it will handle the conversion
+            schedulingParams.push(value[key]);
+          } else {
+            schedulingParams.push(value[key]);
+          }
         } else if (employeeFields.includes(key)) {
           // Special field mapping: status -> employment_status
           const snakeKey = key === 'status' 
@@ -445,25 +469,34 @@ class WorkerService {
 
       let result;
 
-      // Update scheduling config if there are scheduling fields
+      // Update or insert scheduling config if there are scheduling fields
       if (schedulingUpdates.length > 0) {
+        // Build column names and values for UPSERT
+        const columnNames = ['employee_id', 'organization_id', 'created_by', ...schedulingUpdates];
+        const columnValues = [workerId, organizationId, userId, ...schedulingParams];
+        
+        // Build placeholders for VALUES clause
         let paramCount = 0;
-        const setClause = schedulingUpdates.map(field => {
+        const valuePlaceholders = columnValues.map(() => {
           paramCount++;
-          return `${field} = $${paramCount}`;
+          return `$${paramCount}`;
+        });
+        
+        // Build SET clause for ON CONFLICT UPDATE
+        const updateSetClause = schedulingUpdates.map((field, index) => {
+          return `${field} = EXCLUDED.${field}`;
         }).join(', ');
 
-        paramCount++;
-        const updatedByParam = paramCount;
-        paramCount++;
-        const workerIdParam = paramCount;
-        paramCount++;
-        const orgIdParam = paramCount;
-
         const schedulingQuery = `
-          UPDATE scheduling.worker_scheduling_config 
-          SET ${setClause}, updated_by = $${updatedByParam}
-          WHERE employee_id = $${workerIdParam} AND organization_id = $${orgIdParam}
+          INSERT INTO scheduling.worker_scheduling_config 
+            (${columnNames.join(', ')}, updated_by)
+          VALUES 
+            (${valuePlaceholders.join(', ')}, $${paramCount + 1})
+          ON CONFLICT (employee_id, organization_id) 
+          DO UPDATE SET 
+            ${updateSetClause},
+            updated_by = $${paramCount + 1},
+            updated_at = NOW()
           RETURNING 
             id,
             employee_id,
@@ -475,7 +508,7 @@ class WorkerService {
             is_schedulable,
             scheduling_status,
             preferred_shift_types,
-            blocked_days,
+            blocked_days as unavailable_days,
             scheduling_notes,
             created_at,
             updated_at,
@@ -483,7 +516,7 @@ class WorkerService {
             updated_by
         `;
 
-        const allParams = [...schedulingParams, userId, workerId, organizationId];
+        const allParams = [...columnValues, userId];
         result = await client.query(schedulingQuery, allParams);
       }
 
@@ -514,13 +547,13 @@ class WorkerService {
       }
 
       // If no result from scheduling update, fetch complete worker data
-      // Need to JOIN employee and scheduling tables to get all fields
+      // Use LEFT JOIN so it works even when no scheduling config exists
       if (!result) {
         result = await client.query(
           `SELECT 
             wsc.id,
-            wsc.employee_id,
-            wsc.organization_id,
+            e.id as employee_id,
+            e.organization_id,
             CAST(wsc.max_hours_per_week AS INTEGER) as max_hours_per_week,
             CAST(wsc.min_hours_per_week AS INTEGER) as min_hours_per_week,
             wsc.max_consecutive_days,
@@ -528,7 +561,7 @@ class WorkerService {
             wsc.is_schedulable,
             wsc.scheduling_status,
             wsc.preferred_shift_types,
-            wsc.blocked_days,
+            wsc.blocked_days as unavailable_days,
             wsc.scheduling_notes,
             wsc.created_at,
             wsc.updated_at,
@@ -541,9 +574,9 @@ class WorkerService {
             e.employment_status as status,
             e.department_id,
             e.location_id
-          FROM scheduling.worker_scheduling_config wsc
-          INNER JOIN hris.employee e ON wsc.employee_id = e.id AND wsc.organization_id = e.organization_id
-          WHERE wsc.employee_id = $1 AND wsc.organization_id = $2`,
+          FROM hris.employee e
+          LEFT JOIN scheduling.worker_scheduling_config wsc ON wsc.employee_id = e.id AND wsc.organization_id = e.organization_id
+          WHERE e.id = $1 AND e.organization_id = $2`,
           [workerId, organizationId]
         );
       }
@@ -557,7 +590,7 @@ class WorkerService {
 
       return {
         success: true,
-        data: result.rows[0]
+        data: mapWorkerDbToApi(result.rows[0])
       };
 
     } catch (error) {
@@ -659,7 +692,7 @@ class WorkerService {
 
       return {
         success: true,
-        data: workerResult.rows[0]
+        data: mapWorkerDbToApi(workerResult.rows[0])
       };
 
     } catch (error) {

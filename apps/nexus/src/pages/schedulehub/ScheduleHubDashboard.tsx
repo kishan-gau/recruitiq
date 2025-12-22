@@ -1,4 +1,4 @@
-import { Calendar, Users, Clock, Repeat, AlertCircle, TrendingUp, Building2, Briefcase, CalendarCheck, CalendarDays, MapPin, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { AlertCircle, TrendingUp, MapPin, CheckCircle, AlertTriangle, XCircle, Users, Calendar, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useScheduleStats } from '@/hooks/schedulehub/useScheduleStats';
 import { useStations } from '@/hooks/schedulehub/useStations';
@@ -46,76 +46,7 @@ export default function ScheduleHubDashboard() {
     };
   }, [stations]);
 
-  const quickActions = [
-    // Station coverage as top priority for managers
-    {
-      title: 'Station Coverage',
-      description: 'Monitor real-time staffing levels',
-      href: '/schedulehub/stations',
-      icon: MapPin,
-      color: stationCoverage?.status === 'critical' ? 'bg-red-500' : 
-             stationCoverage?.status === 'warning' ? 'bg-yellow-500' : 'bg-green-500',
-      priority: 'critical',
-      badge: stationCoverage?.criticalStations?.length || 0,
-      badgeLabel: 'Critical stations'
-    },
-    {
-      title: 'View Schedules',
-      description: 'Browse all published schedules',
-      href: '/schedulehub/schedules',
-      icon: CalendarDays,
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'Create Schedule',
-      description: 'Build a new work schedule',
-      href: '/schedulehub/schedules/create',
-      icon: Calendar,
-      color: 'bg-emerald-500',
-    },
-    {
-      title: 'Manage Workers',
-      description: 'View and edit workforce',
-      href: '/schedulehub/workers',
-      icon: Users,
-      color: 'bg-green-500',
-    },
-    {
-      title: 'Worker Availability',
-      description: 'Set worker availability schedules',
-      href: '/schedulehub/availability',
-      icon: CalendarCheck,
-      color: 'bg-indigo-500',
-    },
-    {
-      title: 'Manage Stations',
-      description: 'Configure workstations',
-      href: '/schedulehub/stations',
-      icon: Building2,
-      color: 'bg-cyan-500',
-    },
-    {
-      title: 'Manage Shift Roles',
-      description: 'Define shift roles for scheduling',
-      href: '/schedulehub/roles',
-      icon: Briefcase,
-      color: 'bg-violet-500',
-    },
-    {
-      title: 'Time Off Requests',
-      description: 'Review pending requests',
-      href: '/schedulehub/time-off',
-      icon: Clock,
-      color: 'bg-purple-500',
-    },
-    {
-      title: 'Shift Swaps',
-      description: 'Manage shift marketplace',
-      href: '/schedulehub/shift-swaps',
-      icon: Repeat,
-      color: 'bg-orange-500',
-    },
-  ];
+
 
   const statCards = [
     // Station coverage as priority stat for managers
@@ -276,39 +207,7 @@ export default function ScheduleHubDashboard() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {quickActions.map((action, index) => (
-            <Link
-              key={index}
-              to={action.href}
-              className="group relative bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6 hover:shadow-md transition-all duration-200 hover:border-blue-500 dark:hover:border-blue-500"
-            >
-              <div className={`inline-flex p-3 rounded-lg ${action.color} mb-4 relative`}>
-                <action.icon className="w-6 h-6 text-white" />
-                {action.badge && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {action.badge}
-                  </span>
-                )}
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                {action.title}
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {action.description}
-              </p>
-              <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
+
 
       {/* Manager Scheduling Summary */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6">

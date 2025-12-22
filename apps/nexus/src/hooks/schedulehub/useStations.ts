@@ -16,22 +16,18 @@ function transformStationFromApi(station: any) {
   return {
     ...station,
     isActive: station.is_active, // Transform snake_case to camelCase
+    stationName: station.name, // Backend returns 'name', form expects 'stationName'
+    stationCode: station.stationCode, // Ensure this is available
+    locationId: station.locationId, // Ensure this is available
   };
 }
 
-// Helper function to transform station data from UI format (camelCase) to API format (snake_case)
+// Helper function to transform station data from UI format to API format
 function transformStationToApi(data: any) {
   if (!data) return null;
   
-  const transformed = { ...data };
-  
-  // Transform camelCase to snake_case for API
-  if (data.isActive !== undefined) {
-    transformed.is_active = data.isActive;
-    delete transformed.isActive; // Remove camelCase version
-  }
-  
-  return transformed;
+  // Return data as-is since backend expects camelCase field names
+  return { ...data };
 }
 
 // Query keys factory
@@ -82,14 +78,14 @@ export function useStation(id: string, enabled = true) {
 
 /**
  * Hook to fetch station requirements
- * Note: Requirements are included in the station details
+ * Uses the dedicated requirements endpoint
  */
 export function useStationRequirements(stationId: string, enabled = true) {
   return useQuery({
     queryKey: stationKeys.requirements(stationId),
     queryFn: async () => {
-      const response = await schedulehubApi.stations.get(stationId);
-      return response.station?.requirements || response.requirements || [];
+      const response = await schedulehubApi.stations.getRequirements(stationId);
+      return response || [];
     },
     enabled: enabled && !!stationId,
   });
@@ -258,7 +254,12 @@ export function useRemoveStationRequirement() {
 export function useStationAssignments(stationId: string) {
   return useQuery({
     queryKey: stationKeys.assignments(stationId),
-    queryFn: () => schedulehubApi.stations.getAssignments(stationId),
+    queryFn: async () => {
+      const response = await schedulehubApi.stations.getAssignments(stationId);
+      // API returns { success: true, assignments: [...] }
+      // Extract the assignments array for React Query's data property
+      return response.assignments || [];
+    },
     enabled: !!stationId,
   });
 }

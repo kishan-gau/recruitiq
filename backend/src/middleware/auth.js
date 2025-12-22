@@ -117,6 +117,18 @@ export const authenticateTenant = async (req, res, next) => {
     // Tests must use cookie jar pattern per TESTING_STANDARDS.md
     const token = req.cookies.tenant_access_token;
     
+    // CONSOLE DEBUG: Detailed authentication logging
+    console.log('🔍 TENANT AUTH DEBUG:', {
+      path: req.path,
+      method: req.method,
+      hasCookies: !!req.cookies,
+      cookieKeys: Object.keys(req.cookies || {}),
+      hasAccessToken: !!token,
+      tokenLength: token?.length,
+      rawCookieHeader: req.headers.cookie?.substring(0, 200) + '...',
+      timestamp: new Date().toISOString()
+    });
+    
     // DEBUG: Log authentication debug info
     logger.debug('authenticateTenant - Auth debug', {
       hasCookies: !!req.cookies,
@@ -259,8 +271,12 @@ export const authenticateTenant = async (req, res, next) => {
     if (process.env.NODE_ENV === 'development') {
       console.log('=== MIDDLEWARE AUTH CHECK ===');
       console.log('User email:', req.user.email);
+      console.log('User ID:', req.user.id);
+      console.log('Organization ID:', req.user.organizationId);
       console.log('enabledProducts:', req.user.enabledProducts);
-      console.log('RBAC Permissions:', req.user.permissions.length);
+      console.log('RBAC Permissions count:', req.user.permissions.length);
+      console.log('RBAC Permissions list:', req.user.permissions);
+      console.log('ScheduleHub permissions:', req.user.permissions.filter(p => p.includes('scheduling')));
     }
     
     next();
@@ -494,6 +510,15 @@ export const requirePermission = (...permissions) => {
     }
     
     const userPermissions = req.user.permissions || [];
+    
+    // DEBUG: Log permission check details (dev mode only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('=== PERMISSION CHECK ===');
+      console.log('Endpoint:', req.originalUrl);
+      console.log('Required permissions:', permissions);
+      console.log('User permissions:', userPermissions);
+      console.log('User has required permission?', permissions.some(p => userPermissions.includes(p)));
+    }
     
     // Check if user has at least one required permission
     const hasPermission = permissions.some(p => userPermissions.includes(p));

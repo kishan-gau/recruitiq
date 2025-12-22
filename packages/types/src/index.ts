@@ -5,3 +5,6 @@
 
 // Paylinq types
 export * from './paylinq';
+
+// Shift Template types
+export * from './shift-templates';

@@ -25,5 +25,5 @@ export type { TenantRbacService } from './services/tenantRbacService';
 
 // Organization RBAC Service (Centralized multi-product RBAC management)
 export { OrganizationRbacService, organizationRbacService } from './services/organizationRbacService';
-export type { Permission, Role, User, PermissionsGrouped, RolesGrouped } from './services/organizationRbacService';
+export type { Permission, Role, User as RbacUser, PermissionsGrouped, RolesGrouped } from './services/organizationRbacService';
 

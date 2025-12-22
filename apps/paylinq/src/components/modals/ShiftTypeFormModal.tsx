@@ -4,6 +4,8 @@ import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
 import Button from '@/components/ui/Button';
 import type { ShiftType } from '@recruitiq/types';
+import { handleFormError } from '@recruitiq/utils';
+import { useToast } from '@/contexts/ToastContext';
 
 interface ShiftTypeFormModalProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ export default function ShiftTypeFormModal({
     status: 'active' as 'active' | 'inactive',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const toast = useToast();
 
   // Populate form when editing
   useEffect(() => {
@@ -166,7 +169,20 @@ export default function ShiftTypeFormModal({
       };
 
       await onSubmit(submitData);
-    } catch (err) {
+    } catch (err: any) {
+      // Use centralized error handler for consistent field-specific error messages
+      const fieldMapping = {
+        'templateName': 'shiftName', // Backend uses templateName, frontend uses shiftName
+      };
+      
+      handleFormError({
+        error: err,
+        setFieldErrors: (fieldErrors) => setErrors(prev => ({ ...prev, ...fieldErrors })),
+        showToast: (message, type) => toast[type](message),
+        fieldMap: fieldMapping,
+        defaultMessage: 'Failed to save shift type',
+      });
+      
       console.error('Failed to submit shift type:', err);
     } finally {
       setIsSubmitting(false);

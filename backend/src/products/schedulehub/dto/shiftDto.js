@@ -88,6 +88,7 @@ export function mapShiftDbToApi(dbShift) {
     employeeId: dbShift.employee_id,
     roleId: dbShift.role_id,
     stationId: dbShift.station_id,
+    templateId: dbShift.template_id,
     shiftDate: formatDate(dbShift.shift_date),
     startTime: formatTime(dbShift.start_time),
     endTime: formatTime(dbShift.end_time),
@@ -130,6 +131,16 @@ export function mapShiftDbToApi(dbShift) {
     };
   }
 
+  // Add template information if available from JOIN
+  if (dbShift.template_name) {
+    shift.template = {
+      id: dbShift.template_id,
+      templateName: dbShift.template_name,
+      startTime: formatTime(dbShift.template_start_time),
+      endTime: formatTime(dbShift.template_end_time)
+    };
+  }
+
   return shift;
 }
 
@@ -165,6 +176,9 @@ export function mapShiftApiToDb(apiData) {
   }
   if (apiData.stationId !== undefined) {
     dbData.station_id = apiData.stationId;
+  }
+  if (apiData.templateId !== undefined) {
+    dbData.template_id = apiData.templateId;
   }
   if (apiData.shiftDate !== undefined) {
     dbData.shift_date = apiData.shiftDate;

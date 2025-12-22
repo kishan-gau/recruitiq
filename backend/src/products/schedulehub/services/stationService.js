@@ -3,7 +3,7 @@
  * Business logic for station and coverage requirement management
  */
 
-import pool from '../../../config/database.js';
+import pool, { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import Joi from 'joi';
 import { mapStationDbToApi, mapStationsDbToApi } from '../dto/stationDto.js';
@@ -17,11 +17,20 @@ class StationService {
     stationCode: Joi.string().max(50).required(),
     stationName: Joi.string().max(100).required(),
     description: Joi.string().allow(null, ''),
-    locationId: Joi.string().uuid().allow(null),
+    locationId: Joi.string().uuid().required(),
     floorLevel: Joi.string().max(20).allow(null),
     zone: Joi.string().max(50).allow(null),
     capacity: Joi.number().integer().positive().allow(null),
-    requiresSupervision: Joi.boolean().default(false)
+    requiresSupervision: Joi.boolean().default(false),
+    isActive: Joi.boolean().default(true)
+  });
+
+  addRoleRequirementSchema = Joi.object({
+    stationId: Joi.string().uuid().required(),
+    roleId: Joi.string().uuid().required(),
+    minWorkers: Joi.number().integer().min(0).required(),
+    maxWorkers: Joi.number().integer().min(Joi.ref('minWorkers')).required(),
+    priority: Joi.number().integer().min(1).max(10).default(5)
   });
 
   async createStation(stationData, organizationId, userId) {
@@ -35,19 +44,19 @@ class StationService {
       const result = await client.query(
         `INSERT INTO scheduling.stations (
           organization_id, station_code, station_name, description, location_id,
-          floor_level, zone, capacity, requires_supervision
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          floor_level, zone, capacity, requires_supervision, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *`,
         [organizationId, value.stationCode, value.stationName, value.description || null,
          value.locationId || null, value.floorLevel || null, value.zone || null,
-         value.capacity || null, value.requiresSupervision]
+         value.capacity || null, value.requiresSupervision, value.isActive]
       );
 
       await client.query('COMMIT');
       this.logger.info('Station created', { stationId: result.rows[0].id, organizationId });
       
       // Transform database record to API format
-      return { success: true, data: mapStationDbToApi(result.rows[0]) };
+      return mapStationDbToApi(result.rows[0]);
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating station:', error);
@@ -59,7 +68,7 @@ class StationService {
 
   async listStations(organizationId, includeInactive = false) {
     try {
-      let query = `
+      let sql = `
         SELECT s.*,
           l.location_name,
           (SELECT COUNT(*) FROM scheduling.shifts WHERE station_id = s.id) as shift_count
@@ -69,10 +78,13 @@ class StationService {
       `;
       const params = [organizationId];
 
-      if (!includeInactive) query += ` AND s.deleted_at IS NULL`;
-      query += ` ORDER BY s.station_name`;
+      if (!includeInactive) sql += ` AND s.deleted_at IS NULL`;
+      sql += ` ORDER BY s.station_name`;
 
-      const result = await pool.query(query, params);
+      const result = await query(sql, params, organizationId, {
+        operation: 'SELECT',
+        table: 'stations'
+      });
       
       // Transform database records to API format
       return mapStationsDbToApi(result.rows);
@@ -84,14 +96,19 @@ class StationService {
 
   async getStationById(stationId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await query(
         `SELECT s.*,
           l.location_name,
           (SELECT COUNT(*) FROM scheduling.station_role_requirements WHERE station_id = s.id) as role_requirement_count
         FROM scheduling.stations s
         LEFT JOIN hris.location l ON s.location_id = l.id
         WHERE s.id = $1 AND s.organization_id = $2`,
-        [stationId, organizationId]
+        [stationId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'stations'
+        }
       );
 
       if (result.rows.length === 0) return null;
@@ -145,7 +162,7 @@ class StationService {
       await client.query('COMMIT');
       
       // Transform database record to API format
-      return { success: true, data: mapStationDbToApi(result.rows[0]) };
+      return mapStationDbToApi(result.rows[0]);
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error updating station:', error);
@@ -175,7 +192,7 @@ class StationService {
       );
 
       await client.query('COMMIT');
-      return { success: true, data: result.rows[0] };
+      return result.rows[0];
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error adding role requirement:', error);
@@ -187,15 +204,20 @@ class StationService {
 
   async removeRoleRequirement(stationId, roleId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await query(
         `DELETE FROM scheduling.station_role_requirements
          WHERE station_id = $1 AND role_id = $2 AND organization_id = $3
          RETURNING *`,
-        [stationId, roleId, organizationId]
+        [stationId, roleId, organizationId],
+        organizationId,
+        {
+          operation: 'DELETE',
+          table: 'station_role_requirements'
+        }
       );
 
       if (result.rows.length === 0) throw new Error('Requirement not found');
-      return { success: true, data: result.rows[0] };
+      return result.rows[0];
     } catch (error) {
       this.logger.error('Error removing role requirement:', error);
       throw error;
@@ -207,21 +229,27 @@ class StationService {
     try {
       this.logger.info(`Fetching assignments for station ${stationId}`);
 
-      const result = await pool.query(
+      const result = await query(
         `SELECT 
            sa.*,
            e.first_name,
            e.last_name,
            e.email,
-           u.name as assigned_by_name
+           COALESCE(assigned_emp.first_name || ' ' || assigned_emp.last_name, u.email) as assigned_by_name
          FROM scheduling.station_assignments sa
-         LEFT JOIN nexus.employees e ON sa.employee_id = e.id AND e.organization_id = sa.organization_id
+         LEFT JOIN hris.employee e ON sa.employee_id = e.id AND e.organization_id = sa.organization_id
          LEFT JOIN hris.user_account u ON sa.assigned_by = u.id AND u.organization_id = sa.organization_id
+         LEFT JOIN hris.employee assigned_emp ON u.employee_id = assigned_emp.id AND assigned_emp.organization_id = sa.organization_id
          WHERE sa.station_id = $1 
            AND sa.organization_id = $2 
            AND sa.deleted_at IS NULL
          ORDER BY sa.assigned_at DESC`,
-        [stationId, organizationId]
+        [stationId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'station_assignments'
+        }
       );
 
       return result.rows.map(assignment => ({
@@ -260,7 +288,7 @@ class StationService {
 
       // Verify employee exists and belongs to organization  
       const employeeResult = await client.query(
-        'SELECT id, first_name, last_name, email FROM nexus.employees WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL',
+        'SELECT id, first_name, last_name, email FROM hris.employee WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL',
         [employeeId, organizationId]
       );
 
@@ -341,7 +369,7 @@ class StationService {
       
       this.logger.info(`Assignment ${assignmentId} removed from station ${stationId}`);
       
-      return { success: true };
+      return true;
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error removing employee assignment:', error);
@@ -363,7 +391,7 @@ class StationService {
    */
   async getStationRequirements(stationId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await query(
         `SELECT 
           srr.station_id,
           srr.role_id,
@@ -381,7 +409,12 @@ class StationService {
            AND srr.organization_id = $2
            AND srr.deleted_at IS NULL
          ORDER BY srr.priority ASC, r.role_name ASC`,
-        [stationId, organizationId]
+        [stationId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'station_role_requirements'
+        }
       );
 
       const requirements = result.rows.map(row => ({
@@ -403,7 +436,7 @@ class StationService {
         count: requirements.length 
       });
 
-      return { success: true, requirements };
+      return requirements;
     } catch (error) {
       this.logger.error('Error getting station requirements:', error);
       throw error;
@@ -422,6 +455,11 @@ class StationService {
    * @returns {Promise<Object>} Created requirement
    */
   async addRoleRequirement(stationId, roleId, organizationId, minWorkers, maxWorkers, priority, userId) {
+    // Validate input data
+    const data = { stationId, roleId, minWorkers, maxWorkers, priority };
+    const validated = await this.addRoleRequirementSchema.validateAsync(data);
+    const { stationId: validatedStationId, roleId: validatedRoleId, minWorkers: validatedMinWorkers, maxWorkers: validatedMaxWorkers, priority: validatedPriority } = validated;
+    
     const client = await pool.connect();
     
     try {
@@ -431,7 +469,7 @@ class StationService {
       const stationCheck = await client.query(
         `SELECT id FROM scheduling.stations 
          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
-        [stationId, organizationId]
+        [validatedStationId, organizationId]
       );
 
       if (stationCheck.rows.length === 0) {
@@ -442,7 +480,7 @@ class StationService {
       const roleCheck = await client.query(
         `SELECT id FROM scheduling.roles 
          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`,
-        [roleId, organizationId]
+        [validatedRoleId, organizationId]
       );
 
       if (roleCheck.rows.length === 0) {
@@ -453,7 +491,7 @@ class StationService {
       const existingCheck = await client.query(
         `SELECT id FROM scheduling.station_role_requirements 
          WHERE station_id = $1 AND role_id = $2 AND organization_id = $3 AND deleted_at IS NULL`,
-        [stationId, roleId, organizationId]
+        [validatedStationId, validatedRoleId, organizationId]
       );
 
       if (existingCheck.rows.length > 0) {
@@ -467,14 +505,14 @@ class StationService {
           priority, created_by, updated_by
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
         RETURNING *`,
-        [stationId, roleId, organizationId, minWorkers, maxWorkers, priority, userId]
+        [validatedStationId, validatedRoleId, organizationId, validatedMinWorkers, validatedMaxWorkers, validatedPriority, userId]
       );
 
       await client.query('COMMIT');
       
       this.logger.info('Role requirement added to station', { 
-        stationId, 
-        roleId, 
+        stationId: validatedStationId, 
+        roleId: validatedRoleId, 
         organizationId 
       });
 
@@ -499,19 +537,16 @@ class StationService {
 
       const requirement = requirementWithRole.rows[0];
       return {
-        success: true,
-        requirement: {
-          stationId: requirement.station_id,
-          roleId: requirement.role_id,
-          roleName: requirement.role_name,
-          roleCode: requirement.role_code,
-          hourlyRate: requirement.hourly_rate,
-          minWorkers: requirement.min_workers,
-          maxWorkers: requirement.max_workers,
-          priority: requirement.priority,
-          createdAt: requirement.created_at,
-          updatedAt: requirement.updated_at
-        }
+        stationId: requirement.station_id,
+        roleId: requirement.role_id,
+        roleName: requirement.role_name,
+        roleCode: requirement.role_code,
+        hourlyRate: requirement.hourly_rate,
+        minWorkers: requirement.min_workers,
+        maxWorkers: requirement.max_workers,
+        priority: requirement.priority,
+        createdAt: requirement.created_at,
+        updatedAt: requirement.updated_at
       };
     } catch (error) {
       await client.query('ROLLBACK');
@@ -556,7 +591,7 @@ class StationService {
         organizationId 
       });
 
-      return { success: true };
+      return true;
     } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error removing role requirement:', error);
@@ -564,6 +599,182 @@ class StationService {
     } finally {
       client.release();
     }
+  }
+
+  /**
+   * Get station coverage statistics for a specific date
+   * @param {string} organizationId - Organization ID
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @returns {Promise<Object>} Coverage analysis with station-level statistics
+   */
+  async getStationCoverageStats(organizationId, date) {
+    try {
+      // Parse date parameter
+      const targetDate = date ? new Date(date) : new Date();
+      const dateStr = targetDate.toISOString().split('T')[0];
+
+      // Get comprehensive station coverage with shift details
+      const queryText = `
+        WITH station_requirements AS (
+          -- Get stations with their requirements
+          SELECT 
+            s.id as station_id,
+            s.station_name as station_name,
+            s.is_active,
+            -- Get role requirements for each station
+            COALESCE(SUM(sr.min_workers), 0) as min_staffing,
+            COALESCE(SUM(GREATEST(sr.min_workers, COALESCE(sr.max_workers, sr.min_workers))), 0) as required_staffing
+          FROM scheduling.stations s
+          LEFT JOIN scheduling.station_role_requirements sr 
+            ON s.id = sr.station_id 
+            AND sr.organization_id = $1
+            AND sr.deleted_at IS NULL
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+          GROUP BY s.id, s.station_name, s.is_active
+        ),
+        shift_coverage AS (
+          -- Get actual shift assignments for the date
+          SELECT 
+            sh.station_id,
+            COUNT(*)  FILTER (WHERE sh.status IN ('confirmed', 'scheduled')) as current_staffing,
+            json_agg(
+              json_build_object(
+                'id', sh.id,
+                'employeeId', sh.employee_id,
+                'employeeName', COALESCE(CONCAT(e.first_name, ' ', e.last_name), e.preferred_name, 'Unassigned'),
+                'roleId', sh.role_id,
+                'roleName', r.role_name,
+                'startTime', TO_CHAR(sh.start_time, 'HH24:MI'),
+                'endTime', TO_CHAR(sh.end_time, 'HH24:MI'),
+                'status', sh.status,
+                'shiftDate', sh.shift_date
+              )
+            ) as shifts
+          FROM scheduling.shifts sh
+          LEFT JOIN hris.employee e ON sh.employee_id = e.id AND e.organization_id = $1
+          LEFT JOIN scheduling.roles r ON sh.role_id = r.id AND r.organization_id = $1
+          WHERE sh.organization_id = $1
+            AND sh.shift_date = $2
+          GROUP BY sh.station_id
+        )
+        SELECT 
+          sr.station_id as "stationId",
+          sr.station_name as "stationName",
+          sr.required_staffing as "requiredStaffing",
+          sr.min_staffing as "minimumStaffing",
+          COALESCE(sc.current_staffing, 0) as "currentStaffing",
+          CASE 
+            WHEN sr.required_staffing = 0 THEN 0
+            ELSE ROUND((COALESCE(sc.current_staffing, 0)::numeric / sr.required_staffing) * 100)
+          END as "coveragePercentage",
+          CASE 
+            WHEN COALESCE(sc.current_staffing, 0) = 0 THEN 'critical'
+            WHEN COALESCE(sc.current_staffing, 0) < sr.min_staffing THEN 'critical'
+            WHEN COALESCE(sc.current_staffing, 0) < sr.required_staffing THEN 'warning'
+            ELSE 'optimal'
+          END as status,
+          GREATEST(0, sr.required_staffing - COALESCE(sc.current_staffing, 0)) as "unfilledSlots",
+          sr.is_active as "isActive",
+          COALESCE(sc.shifts, '[]'::json) as shifts
+        FROM station_requirements sr
+        LEFT JOIN shift_coverage sc ON sr.station_id = sc.station_id
+        ORDER BY 
+          CASE 
+            WHEN COALESCE(sc.current_staffing, 0) = 0 THEN 1
+            WHEN COALESCE(sc.current_staffing, 0) < sr.min_staffing THEN 2
+            WHEN COALESCE(sc.current_staffing, 0) < sr.required_staffing THEN 3
+            ELSE 4
+          END,
+          sr.station_name
+      `;
+
+      const result = await query(queryText, [organizationId, dateStr], organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.stations',
+        userId: null
+      });
+      const stationCoverage = result.rows;
+
+      // Calculate overall statistics
+      const totalStations = stationCoverage.length;
+      const optimalStations = stationCoverage.filter(s => s.status === 'optimal').length;
+      const warningStations = stationCoverage.filter(s => s.status === 'warning').length;
+      const criticalStations = stationCoverage.filter(s => s.status === 'critical').length;
+      
+      const overallCoveragePercentage = totalStations > 0
+        ? Math.round(stationCoverage.reduce((sum, s) => sum + s.coveragePercentage, 0) / totalStations)
+        : 0;
+
+      // Identify critical periods (simplified - can be enhanced)
+      const criticalPeriods = this._identifyCriticalPeriods(stationCoverage, dateStr);
+
+      return {
+        totalStations,
+        optimalStations,
+        warningStations,
+        criticalStations,
+        overallCoveragePercentage,
+        stationCoverage,
+        criticalPeriods
+      };
+    } catch (error) {
+      this.logger.error('Error fetching station coverage stats:', {
+        error: error.message,
+        code: error.code,
+        detail: error.detail,
+        hint: error.hint,
+        position: error.position,
+        organizationId,
+        date
+      });
+      throw error; // Throw original error to get more details in response
+    }
+  }
+
+  /**
+   * Identify critical time periods with coverage issues
+   * @private
+   */
+  _identifyCriticalPeriods(stationCoverage, date) {
+    const criticalPeriods = [];
+    
+    // Define standard shift periods
+    const periods = [
+      { start: 6, end: 14, name: 'Morning' },
+      { start: 14, end: 22, name: 'Afternoon' },
+      { start: 22, end: 6, name: 'Night' }
+    ];
+
+    periods.forEach(period => {
+      const affectedStations = stationCoverage
+        .filter(sc => sc.status !== 'optimal')
+        .map(sc => sc.stationName);
+
+      if (affectedStations.length >= 2) {
+        const criticalCount = stationCoverage.filter(sc => 
+          affectedStations.includes(sc.stationName) && sc.status === 'critical'
+        ).length;
+
+        const startTime = new Date(date);
+        startTime.setHours(period.start, 0, 0, 0);
+        
+        const endTime = new Date(date);
+        if (period.end < period.start) {
+          endTime.setDate(endTime.getDate() + 1);
+        }
+        endTime.setHours(period.end, 0, 0, 0);
+
+        criticalPeriods.push({
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+          affectedStations,
+          severity: criticalCount >= 2 ? 'critical' : 'warning'
+        });
+      }
+    });
+
+    return criticalPeriods;
   }
 }
 

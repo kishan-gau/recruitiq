@@ -296,6 +296,27 @@ class StationController {
       next(error);
     }
   };
+
+  /**
+   * Get station coverage statistics
+   * GET /api/products/schedulehub/stations/coverage/stats
+   */
+  getStationCoverageStats = async (req, res, next) => {
+    try {
+      const organizationId = req.user.organization_id;
+      const { date } = req.query;
+
+      const result = await this.stationService.getStationCoverageStats(
+        organizationId,
+        date
+      );
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Error in getStationCoverageStats controller:', error);
+      next(error);
+    }
+  };
 }
 
 export default StationController;

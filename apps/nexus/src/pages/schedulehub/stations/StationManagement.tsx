@@ -8,13 +8,10 @@ import { useState } from 'react';
 import { Plus, Search, Edit, Trash2, Users, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useStations, useDeleteStation } from '@/hooks/schedulehub/useStations';
 import { useNavigate, Link } from 'react-router-dom';
-import StationForm from './StationForm';
 
 export default function StationManagement() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingStation, setEditingStation] = useState<any>(null);
 
   const { data: stations, isLoading, error } = useStations();
   const { mutate: deleteStation } = useDeleteStation();
@@ -32,14 +29,14 @@ export default function StationManagement() {
   };
 
   const handleEdit = (station: any) => {
-    setEditingStation(station);
-    setShowCreateModal(true);
+    console.log('StationManagement - Navigating to edit, station:', station);
+    console.log('StationManagement - Station ID:', station.id);
+    const editUrl = `/schedulehub/stations/${station.id}/edit`;
+    console.log('StationManagement - Edit URL:', editUrl);
+    navigate(editUrl);
   };
 
-  const handleCloseModal = () => {
-    setShowCreateModal(false);
-    setEditingStation(null);
-  };
+
 
   if (isLoading) {
     return (
@@ -78,7 +75,7 @@ export default function StationManagement() {
           <p className="text-gray-600 dark:text-gray-400">Manage stations and their requirements</p>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => navigate('/schedulehub/stations/new')}
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Plus className="h-5 w-5 mr-2" />
@@ -110,7 +107,7 @@ export default function StationManagement() {
           </p>
           {!searchQuery && (
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate('/schedulehub/stations/new')}
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <Plus className="h-5 w-5 mr-2" />
@@ -195,15 +192,6 @@ export default function StationManagement() {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Create/Edit Modal */}
-      {showCreateModal && (
-        <StationForm
-          station={editingStation}
-          onClose={handleCloseModal}
-          onSuccess={handleCloseModal}
-        />
       )}
     </div>
   );

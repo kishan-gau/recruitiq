@@ -20,6 +20,7 @@
     "@recruitiq/api-client": "workspace:*",
     "@recruitiq/auth": "workspace:*",
     "@recruitiq/ui": "workspace:*",
+    "@recruitiq/utils": "workspace:*",
     "@tanstack/react-query": "^5.64.4",
     "axios": "^1.12.2",
     "clsx": "^2.1.1",

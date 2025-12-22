@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@recruitiq/auth';
+import { useAuth, useHasPermission } from '@recruitiq/auth';
 import { Plus, Download, Upload, Filter, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { Modal } from '@recruitiq/ui';
 import AvailabilityCalendar from '../../components/schedulehub/availability/AvailabilityCalendar';
 import AvailabilityEditor from '../../components/schedulehub/availability/AvailabilityEditor';
 import Tabs from '../../components/ui/Tabs';
-import { useAvailability, useCreateAvailability, useUpdateAvailability } from '../../hooks/schedulehub/useAvailability';
+import { useAvailability, useCreateAvailability, useUpdateAvailability, useDeleteAvailability } from '../../hooks/schedulehub/useAvailability';
 import { useToast } from '../../contexts/ToastContext';
 import { useEmployees } from '../../hooks/useEmployees';
 
@@ -25,6 +25,8 @@ interface AvailabilityRule {
 const AvailabilityManagement = () => {
   const { user } = useAuth();
   const toast = useToast();
+  const canCreateAvailability = useHasPermission('scheduling:availability:create');
+  const canUpdateAvailability = useHasPermission('scheduling:availability:update');
   const [activeTab, setActiveTab] = useState('calendar');
   const [filterVisible, setFilterVisible] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -36,6 +38,7 @@ const AvailabilityManagement = () => {
   const { data: employees } = useEmployees();
   const createAvailability = useCreateAvailability();
   const updateAvailability = useUpdateAvailability();
+  const deleteAvailability = useDeleteAvailability();
 
   // Transform flat availability data into grouped format for calendar
   const groupedAvailability = useMemo(() => {
@@ -48,10 +51,20 @@ const AvailabilityManagement = () => {
       if (!grouped.has(rule.workerId)) {
         grouped.set(rule.workerId, []);
       }
+      
+      // Normalize dayOfWeek: Convert 1-7 to 0-6 if needed
+      // Expected format: 0=Sunday, 1=Monday, ..., 6=Saturday
+      // Some legacy data might use 1=Monday, 7=Sunday format
+      let normalizedDayOfWeek = rule.dayOfWeek;
+      if (normalizedDayOfWeek >= 1 && normalizedDayOfWeek <= 7) {
+        // Convert 1-7 to 0-6 (assume 1=Monday format, convert to 0=Sunday)
+        normalizedDayOfWeek = normalizedDayOfWeek === 7 ? 0 : normalizedDayOfWeek;
+      }
+      
       grouped.get(rule.workerId)!.push({
         id: rule.id,
         workerId: rule.workerId,
-        dayOfWeek: rule.dayOfWeek,
+        dayOfWeek: normalizedDayOfWeek,
         startTime: rule.startTime,
         endTime: rule.endTime,
         isRecurring: rule.availabilityType === 'recurring',
@@ -96,6 +109,12 @@ const AvailabilityManagement = () => {
   };
 
   const handleAddAvailability = () => {
+    // Check permission before opening editor
+    if (!canCreateAvailability) {
+      toast.error('You do not have permission to create availability schedules. Please contact your administrator.');
+      return;
+    }
+
     // Open editor in create mode (without pre-selected employee)
     if (employees && employees.length > 0) {
       setSelectedWorkerId(null); // No pre-selection - let user choose
@@ -109,12 +128,31 @@ const AvailabilityManagement = () => {
 
   const handleSaveAvailability = async (rules: AvailabilityRule[], selectedWorkerIds: string[]) => {
     try {
+      // Check permissions before proceeding
+      if (!canCreateAvailability && !canUpdateAvailability) {
+        toast.error('You do not have permission to modify availability schedules. Please contact your administrator.');
+        return;
+      }
+
       // If editing a single worker, use the pre-selected workerId
       const workerIds = selectedWorkerIds.length > 0 ? selectedWorkerIds : (selectedWorkerId ? [selectedWorkerId] : []);
       
       if (workerIds.length === 0) {
         toast.error('No workers selected');
         return;
+      }
+
+      // Handle deletions first (only when editing a single worker)
+      if (selectedWorkerId && existingRules.length > 0) {
+        const rulesToDelete = existingRules.filter(existingRule => 
+          existingRule.id && !rules.find(currentRule => currentRule.id === existingRule.id)
+        );
+        
+        for (const ruleToDelete of rulesToDelete) {
+          if (ruleToDelete.id) {
+            await deleteAvailability.mutateAsync(ruleToDelete.id);
+          }
+        }
       }
 
       // Create rules for each selected worker
@@ -124,6 +162,7 @@ const AvailabilityManagement = () => {
             workerId: workerId,
             availabilityType: 'recurring' as const, // Backend expects this field
             dayOfWeek: rule.dayOfWeek, // Backend expects number, not string
+            // specificDate is forbidden for recurring availability - don't include it
             startTime: rule.startTime,
             endTime: rule.endTime,
             effectiveFrom: rule.effectiveDate,
@@ -133,9 +172,17 @@ const AvailabilityManagement = () => {
 
           if (rule.id && selectedWorkerId) {
             // Update existing rule (only when editing single worker)
+            if (!canUpdateAvailability) {
+              toast.error('You do not have permission to update availability schedules.');
+              return;
+            }
             await updateAvailability.mutateAsync({ id: rule.id, updates: payload });
           } else {
             // Create new rule (for all selected workers or new rules)
+            if (!canCreateAvailability) {
+              toast.error('You do not have permission to create availability schedules.');
+              return;
+            }
             await createAvailability.mutateAsync(payload);
           }
         }
@@ -305,7 +352,13 @@ const AvailabilityManagement = () => {
           
           <button
             onClick={handleAddAvailability}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            disabled={!canCreateAvailability}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              canCreateAvailability
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-600 dark:text-gray-400'
+            }`}
+            title={!canCreateAvailability ? 'You do not have permission to create availability schedules' : ''}
           >
             <Plus className="w-4 h-4" />
             Add Availability

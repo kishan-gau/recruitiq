@@ -4,11 +4,11 @@ import { useShiftTypes, useCreateShiftType, useUpdateShiftType, useDeleteShiftTy
 import Button from '@/components/ui/Button';
 import ShiftTypeFormModal from '@/components/modals/ShiftTypeFormModal';
 import { useToast } from '@/contexts/ToastContext';
-import { handleApiError } from '@/utils/errorHandler';
+import { handleFormError } from '@recruitiq/utils';
 import type { ShiftType, CreateShiftTypeRequest, UpdateShiftTypeRequest } from '@recruitiq/types';
 
 export default function ShiftTypes() {
-  const { success, error } = useToast();
+  const toast = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedShiftType, setSelectedShiftType] = useState<ShiftType | null>(null);
 
@@ -35,10 +35,10 @@ export default function ShiftTypes() {
 
     try {
       await deleteMutation.mutateAsync(shiftType.id);
-      success(`Shift type "${shiftType.shiftName}" deleted successfully`);
+      toast.success(`Shift type "${shiftType.shiftName}" deleted successfully`);
     } catch (err: any) {
-      handleApiError(err, {
-        toast,
+      handleFormError(err, {
+        showToast: toast.error,
         defaultMessage: 'Failed to delete shift type',
       });
     }
@@ -57,8 +57,8 @@ export default function ShiftTypes() {
       setIsModalOpen(false);
       setSelectedShiftType(null);
     } catch (err: any) {
-      handleApiError(err, {
-        toast,
+      handleFormError(err, {
+        showToast: toast.error,
         defaultMessage: `Failed to ${selectedShiftType ? 'update' : 'create'} shift type`,
       });
     }

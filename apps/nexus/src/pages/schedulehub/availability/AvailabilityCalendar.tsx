@@ -42,6 +42,8 @@ import {
   useCreateAvailabilityException,
 } from '@/hooks/schedulehub/useAvailability';
 import { useEmployees } from '@/hooks/useEmployees';
+import { useTemplateBasedTimeSlots } from '@/utils/time-slot-generator';
+import { useShiftTemplates } from '@/hooks/schedulehub/useShiftTemplates';
 
 interface TimeSlot {
   hour: number;
@@ -70,6 +72,7 @@ export default function AvailabilityCalendar() {
 
   // Fetch data
   const { data: employees } = useEmployees();
+  const { data: shiftTemplates } = useShiftTemplates();
   const { data: availability, isLoading } = useAvailability({
     workerId: selectedEmployeeId,
     startDate: format(currentWeek, 'yyyy-MM-dd'),
@@ -82,23 +85,40 @@ export default function AvailabilityCalendar() {
   const deleteAvailability = useDeleteAvailability();
   const createException = useCreateAvailabilityException();
 
-  // Time slots (6 AM to 10 PM in 30-minute intervals)
-  const timeSlots: TimeSlot[] = useMemo(() => {
-    const slots: TimeSlot[] = [];
-    for (let hour = 6; hour <= 22; hour++) {
-      slots.push({
-        hour: hour * 60, // minutes from midnight
-        label: format(setHours(setMinutes(new Date(), 0), hour), 'h:mm a'),
-      });
-      if (hour < 22) {
-        slots.push({
-          hour: hour * 60 + 30,
-          label: format(setHours(setMinutes(new Date(), 30), hour), 'h:mm a'),
-        });
-      }
+  // Template-based time slots with 30-minute intervals
+  const { timeSlots: templateTimeSlots, metadata } = useTemplateBasedTimeSlots({
+    templates: shiftTemplates?.templates || [],
+    config: {
+      intervalMinutes: 30, // 30-minute intervals for availability
+      preBuffer: 30, // 30min buffer before earliest template
+      postBuffer: 30, // 30min buffer after latest template
+      fallbackStart: '08:00', // Fallback to 8 AM (matching 'opstart' template)
+      fallbackEnd: '15:00' // Fallback to 3 PM (matching 'opstart' template)
     }
-    return slots;
-  }, []);
+  });
+
+  // Debug: Log template-based time slot generation
+  console.log('🕐 AvailabilityCalendar - Time slot generation:', {
+    templatesCount: shiftTemplates?.templates?.length || 0,
+    templates: shiftTemplates?.templates?.map(t => ({
+      name: t.templateName,
+      start: t.startTime,
+      end: t.endTime,
+      active: t.isActive
+    })) || [],
+    metadata,
+    firstTimeSlot: templateTimeSlots[0],
+    lastTimeSlot: templateTimeSlots[templateTimeSlots.length - 1],
+    totalSlots: templateTimeSlots.length
+  });
+
+  // Convert to local TimeSlot format
+  const timeSlots: TimeSlot[] = useMemo(() => {
+    return templateTimeSlots.map(slot => ({
+      hour: slot.hour,
+      label: slot.label
+    }));
+  }, [templateTimeSlots]);
 
   // Generate week days
   const weekDays = useMemo(() => {
@@ -115,7 +135,16 @@ export default function AvailabilityCalendar() {
 
   // Process availability data into calendar format
   const calendarData = useMemo(() => {
-    if (!availability) return new Map<string, DayAvailability>();
+    if (!availability) {
+      console.log('🔍 calendarData: No availability data');
+      return new Map<string, DayAvailability>();
+    }
+
+    console.log('🔍 calendarData Processing:', {
+      availabilityCount: Array.isArray(availability) ? availability.length : 'not array',
+      firstItem: Array.isArray(availability) && availability.length > 0 ? availability[0] : null,
+      weekDaysCount: weekDays.length
+    });
 
     const dataMap = new Map<string, DayAvailability>();
 
@@ -124,35 +153,49 @@ export default function AvailabilityCalendar() {
       const dayOfWeekNumber = day.date.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
       // Find availability rules for this day
-      // NOTE: API returns snake_case field names from database
+      // NOTE: API returns camelCase field names (DTO-transformed)
       const dayAvailability = Array.isArray(availability)
         ? availability.filter((rule: any) => {
             // Match recurring availability by day of week number
-            if (rule.availability_type === 'recurring' && rule.day_of_week === dayOfWeekNumber) {
+            if (rule.availabilityType === 'recurring' && rule.dayOfWeek === dayOfWeekNumber) {
+              console.log(`✓ Matched recurring for ${day.dayName}:`, {
+                ruleId: rule.id,
+                dayOfWeek: rule.dayOfWeek,
+                startTime: rule.startTime,
+                endTime: rule.endTime
+              });
               return true;
             }
             // Match one-time or unavailable by specific date
-            if ((rule.availability_type === 'one_time' || rule.availability_type === 'unavailable') && 
-                rule.specific_date && isSameDay(parseISO(rule.specific_date), day.date)) {
+            if ((rule.availabilityType === 'one_time' || rule.availabilityType === 'unavailable') && 
+                rule.specificDate && isSameDay(parseISO(rule.specificDate), day.date)) {
+              console.log(`✓ Matched specific date for ${dateKey}:`, rule);
               return true;
             }
             return false;
           })
         : [];
 
+      console.log(`📅 ${day.dayName} (${dateKey}, dow:${dayOfWeekNumber}): ${dayAvailability.length} slots`);
+
       dataMap.set(dateKey, {
         date: day.date,
         dayName: day.dayName,
-        slots: dayAvailability.map((rule: any) => ({
-          id: rule.id,
-          startTime: rule.start_time, // snake_case from database
-          endTime: rule.end_time, // snake_case from database
-          isRecurring: rule.availability_type === 'recurring',
-          isException: rule.availability_type === 'one_time' || rule.availability_type === 'unavailable',
-        })),
+        slots: dayAvailability.map((rule: any) => {
+          const slot = {
+            id: rule.id,
+            startTime: rule.startTime.substring(0, 5), // Trim HH:mm:ss to HH:mm for comparison
+            endTime: rule.endTime.substring(0, 5), // Trim HH:mm:ss to HH:mm for comparison
+            isRecurring: rule.availabilityType === 'recurring',
+            isException: rule.availabilityType === 'one_time' || rule.availabilityType === 'unavailable',
+          };
+          console.log(`  → Slot: ${slot.startTime} - ${slot.endTime}`);
+          return slot;
+        }),
       });
     });
 
+    console.log('🗺️ Final dataMap size:', dataMap.size);
     return dataMap;
   }, [availability, weekDays]);
 
@@ -160,15 +203,25 @@ export default function AvailabilityCalendar() {
   const isSlotAvailable = (date: Date, time: number): boolean => {
     const dateKey = format(date, 'yyyy-MM-dd');
     const dayData = calendarData.get(dateKey);
-    if (!dayData || !dayData.slots.length) return false;
+    
+    if (!dayData || !dayData.slots.length) {
+      // console.log(`⚪ No availability for ${dateKey} at ${time}`);
+      return false;
+    }
 
     const timeStr = format(setMinutes(setHours(new Date(), Math.floor(time / 60)), time % 60), 'HH:mm');
 
-    return dayData.slots.some((slot) => {
+    const isAvailable = dayData.slots.some((slot) => {
       const slotStart = slot.startTime;
       const slotEnd = slot.endTime;
-      return timeStr >= slotStart && timeStr < slotEnd;
+      const matches = timeStr >= slotStart && timeStr < slotEnd;
+      if (matches) {
+        console.log(`🟢 Available: ${dateKey} ${timeStr} (${slotStart}-${slotEnd})`);
+      }
+      return matches;
     });
+
+    return isAvailable;
   };
 
   // Handle slot click/drag

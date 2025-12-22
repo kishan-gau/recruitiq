@@ -282,7 +282,7 @@ export const ScheduleHubPermissions = {
    * Check if user can manage shift templates
    * @returns {Function} Express middleware
    */
-  canManageShiftTemplates: () => requirePermission('shift_templates:manage'),
+  canManageShiftTemplates: () => requirePermission('scheduling:shift_templates:manage'),
   
   // ========================================
   // Role-Based Shortcuts

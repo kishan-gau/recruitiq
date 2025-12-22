@@ -111,7 +111,12 @@ class WorkerController {
 
       const result = await this.workerService.listWorkers(organizationId, filters);
 
-      res.json(result);
+      // Transform response to use resource-specific key format
+      res.json({
+        success: result.success,
+        workers: result.data,  // Use 'workers' key instead of 'data'
+        pagination: result.pagination
+      });
     } catch (error) {
       logger.error('Error in listWorkers controller:', error);
       next(error);

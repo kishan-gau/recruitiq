@@ -406,6 +406,71 @@ export function mapCompensationApiToDb(apiData) {
 }
 
 /**
+ * Map compensation DB data to API format
+ * @param {Object} dbData - Compensation data from database
+ * @returns {Object} Mapped data for API response
+ */
+export function mapCompensationDbToApi(dbData) {
+  if (!dbData) return null;
+
+  const mapped = {};
+  
+  // Map standard fields (snake_case to camelCase)
+  if (dbData.id) mapped.id = dbData.id;
+  if (dbData.employee_id) mapped.employeeId = dbData.employee_id;
+  if (dbData.compensation_type) mapped.compensationType = dbData.compensation_type;
+  if (dbData.amount !== undefined) mapped.amount = dbData.amount;
+  if (dbData.currency) mapped.currency = dbData.currency;
+  
+  // Map payPeriod back to payFrequency for UI
+  // Service uses: hour, day, week, month, year
+  // API expects: weekly, bi_weekly, monthly, semi_monthly
+  if (dbData.payPeriod || dbData.pay_period) {
+    const period = dbData.payPeriod || dbData.pay_period;
+    const frequencyMapping = {
+      'hour': 'hourly',
+      'day': 'daily', 
+      'week': 'weekly',
+      'month': 'monthly',
+      'year': 'yearly'
+    };
+    mapped.payFrequency = frequencyMapping[period] || period;
+  }
+  
+  // Map date fields
+  if (dbData.effective_from || dbData.effectiveFrom) {
+    mapped.effectiveDate = dbData.effective_from || dbData.effectiveFrom;
+  }
+  if (dbData.effective_to || dbData.effectiveTo) {
+    mapped.endDate = dbData.effective_to || dbData.effectiveTo;
+  }
+  
+  // Map boolean fields
+  if (dbData.is_current !== undefined) mapped.isCurrent = dbData.is_current;
+  if (dbData.isCurrent !== undefined) mapped.isCurrent = dbData.isCurrent;
+  if (dbData.is_active !== undefined) mapped.isActive = dbData.is_active;
+  if (dbData.isActive !== undefined) mapped.isActive = dbData.isActive;
+  
+  // Map audit fields
+  if (dbData.created_at) mapped.createdAt = dbData.created_at;
+  if (dbData.updated_at) mapped.updatedAt = dbData.updated_at;
+  if (dbData.created_by) mapped.createdBy = dbData.created_by;
+  if (dbData.updated_by) mapped.updatedBy = dbData.updated_by;
+  
+  return mapped;
+}
+
+/**
+ * Map array of compensation DB data to API format
+ * @param {Array} dbDataArray - Array of compensation data from database
+ * @returns {Array} Mapped array for API response
+ */
+export function mapCompensationDbArrayToApi(dbDataArray) {
+  if (!Array.isArray(dbDataArray)) return [];
+  return dbDataArray.map(mapCompensationDbToApi);
+}
+
+/**
  * Map schedule DB data to API format
  * @param {Object} dbData - Schedule data from database
  * @returns {Object} Mapped data for API response

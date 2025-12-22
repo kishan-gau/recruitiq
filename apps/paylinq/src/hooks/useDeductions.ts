@@ -32,7 +32,7 @@ export function useDeductions(params?: DeductionFilters & PaginationParams) {
     queryKey: [...DEDUCTIONS_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getDeductions(params);
-      return response.data || [];
+      return response.deductions || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -48,7 +48,7 @@ export function useDeduction(id: string) {
     queryKey: [...DEDUCTIONS_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getDeduction(id);
-      return response.data;
+      return response.deduction;
     },
     enabled: !!id,
   });
@@ -64,7 +64,7 @@ export function useEmployeeDeductions(employeeId: string) {
     queryKey: [...DEDUCTIONS_KEY, 'benefits', employeeId],
     queryFn: async () => {
       const response = await paylinq.getDeductions({ employeeId });
-      return response.data || [];
+      return response.deductions || [];
     },
     enabled: !!employeeId,
   });
@@ -80,7 +80,7 @@ export function useActiveDeductions(employeeId: string) {
     queryKey: [...DEDUCTIONS_KEY, 'employee', employeeId, 'active'],
     queryFn: async () => {
       const response = await paylinq.getActiveDeductions(employeeId);
-      return response.data || [];
+      return response.deductions || [];
     },
     enabled: !!employeeId,
     staleTime: 5 * 60 * 1000, // 5 minutes - active deductions change less frequently
@@ -98,7 +98,7 @@ export function useDeductionHistory(employeeId: string) {
     queryKey: [...DEDUCTIONS_KEY, 'statutory', employeeId],
     queryFn: async () => {
       const response = await paylinq.getDeductions({ employeeId });
-      return response.data || [];
+      return response.deductions || [];
     },
     enabled: !!employeeId,
   });
@@ -119,7 +119,7 @@ export function useCreateDeduction() {
   return useMutation({
     mutationFn: async (data: CreateDeductionRequest) => {
       const response = await paylinq.createDeduction(data);
-      return response.data;
+      return response.deduction;
     },
     onSuccess: (data) => {
       if (data) {
@@ -145,7 +145,7 @@ export function useUpdateDeduction() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateDeductionRequest }) => {
       const response = await paylinq.updateDeduction(id, data);
-      return response.data;
+      return response.deduction;
     },
     onSuccess: (data) => {
       if (data) {

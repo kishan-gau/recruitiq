@@ -35,6 +35,8 @@ export default function WorkersList() {
   const workers = data?.data || [];
   const pagination = data?.pagination;
 
+  console.log('WorkersList Debug:', { data, workers, pagination });
+
   return (
     <div className="space-y-6">
       {/* Back Navigation */}
@@ -175,7 +177,7 @@ export default function WorkersList() {
                 Hire Date
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Hourly Rate
+                Max Hours/Week
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
@@ -183,47 +185,68 @@ export default function WorkersList() {
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {workers.map((worker: Worker) => (
-              <tr key={worker.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
-                    Employee #{worker.employee_id}
+            {workers.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center">
+                  <div className="text-gray-500 dark:text-gray-400">
+                    <Users className="mx-auto h-12 w-12 text-gray-300" />
+                    <h3 className="mt-2 text-sm font-medium">No workers found</h3>
+                    <p className="mt-1 text-sm">Get started by adding your first worker.</p>
+                    <div className="mt-6">
+                      <Link
+                        to="/schedulehub/workers/new"
+                        className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Worker
+                      </Link>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    ID: {worker.id.slice(0, 8)}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      worker.status === 'active'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                        : worker.status === 'inactive'
-                          ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                    }`}
-                  >
-                    {worker.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                  {new Date(worker.hire_date).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                  {worker.base_hourly_rate
-                    ? `$${worker.base_hourly_rate.toFixed(2)}/hr`
-                    : 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Link
-                    to={`/schedulehub/workers/${worker.id}`}
-                    className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                  >
-                    View Details
-                  </Link>
                 </td>
               </tr>
-            ))}
+            ) : (
+              workers.map((worker: Worker) => (
+                <tr key={worker.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {worker.firstName} {worker.lastName}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      Employee #{worker.workerNumber || worker.employeeId}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        worker.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : worker.status === 'inactive'
+                            ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      }`}
+                    >
+                      {worker.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {worker.hireDate ? new Date(worker.hireDate).toLocaleDateString() : 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {worker.maxHoursPerWeek
+                      ? `${worker.maxHoursPerWeek} hrs/week max`
+                      : 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <Link
+                      to={`/schedulehub/workers/${worker.id}`}
+                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    >
+                      View Details
+                    </Link>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 

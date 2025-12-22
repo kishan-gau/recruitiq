@@ -47,7 +47,7 @@ export function useTimeEntries(params?: TimeEntryFilters & PaginationParams) {
     queryKey: [...TIME_ENTRIES_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getTimeEntries(params);
-      return response.data || [];
+      return response.timeEntries || [];
     },
     staleTime: 1 * 60 * 1000, // 1 minute
   });
@@ -63,7 +63,7 @@ export function useTimeEntry(id: string) {
     queryKey: [...TIME_ENTRIES_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getTimeEntry(id);
-      return response.data;
+      return response.timeEntry;
     },
     enabled: !!id,
   });
@@ -79,7 +79,7 @@ export function useEmployeeTimeEntries(employeeId: string, params?: PaginationPa
     queryKey: [...TIME_ENTRIES_KEY, 'employee', employeeId, params],
     queryFn: async () => {
       const response = await paylinq.getTimeEntries({ ...params, employeeId });
-      return response.data || [];
+      return response.timeEntries || [];
     },
     enabled: !!employeeId,
   });
@@ -100,7 +100,7 @@ export function useCreateTimeEntry() {
   return useMutation({
     mutationFn: async (data: CreateTimeEntryRequest) => {
       const response = await paylinq.createTimeEntry(data);
-      return response.data;
+      return response.timeEntry;
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [...TIME_ENTRIES_KEY, 'list'] });
@@ -127,7 +127,7 @@ export function useUpdateTimeEntry() {
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateTimeEntryRequest }) => {
       const response = await paylinq.updateTimeEntry(id, data);
-      return response.data;
+      return response.timeEntry;
     },
     onSuccess: (data: any) => {
       if (data) {
@@ -182,8 +182,8 @@ export function useTimesheets(params?: TimesheetFilters & PaginationParams) {
   return useQuery({
     queryKey: [...TIMESHEETS_KEY, 'list', params],
     queryFn: async () => {
-      const response = await paylinq.getTimesheets(params);
-      return response.data || [];
+      const response = await paylinq.getTimesheets({ employeeId });
+      return response.timesheets || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -198,8 +198,8 @@ export function useTimesheet(id: string) {
   return useQuery({
     queryKey: [...TIMESHEETS_KEY, id],
     queryFn: async () => {
-      const response = await paylinq.getTimesheet(id);
-      return response.data;
+      const response = await paylinq.getTimesheet(timesheetId);
+      return response.timesheet;
     },
     enabled: !!id,
   });
@@ -212,10 +212,10 @@ export function useEmployeeTimesheets(employeeId: string, params?: PaginationPar
   const { paylinq } = usePaylinqAPI();
 
   return useQuery({
-    queryKey: [...TIMESHEETS_KEY, 'employee', employeeId, params],
+    queryKey: [...TIME_ENTRIES_KEY, 'employee', employeeId, params],
     queryFn: async () => {
-      const response = await paylinq.getEmployeeTimesheets(employeeId);
-      return response.data || [];
+      const response = await paylinq.getEmployeeTimeEntries(employeeId, params);
+      return response.timeEntries || [];
     },
     enabled: !!employeeId,
   });
@@ -289,9 +289,9 @@ export function useSubmitTimesheet() {
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async (data: SubmitTimesheetRequest) => {
-      const response = await paylinq.submitTimesheet(data);
-      return response.data;
+    mutationFn: async (data: CreateTimesheetRequest) => {
+      const response = await paylinq.createTimesheet(data);
+      return response.timesheet;
     },
     onSuccess: (data) => {
       if (data) {
@@ -317,7 +317,7 @@ export function useApproveTimesheet() {
   return useMutation({
     mutationFn: async ({ id, status, notes }: { id: string; status: 'approved' | 'rejected'; notes?: string }) => {
       const response = await paylinq.approveRejectTimesheet(id, { status, notes });
-      return response.data;
+      return response.timesheet;
     },
     onSuccess: (data) => {
       if (data) {
@@ -346,7 +346,7 @@ export function useShiftTypes(params?: PaginationParams) {
     queryKey: [...SHIFT_TYPES_KEY, 'list', params],
     queryFn: async () => {
       const response = await paylinq.getShiftTypes(params);
-      return response.data || [];
+      return response.shiftTypes || [];
     },
     staleTime: 10 * 60 * 1000, // 10 minutes - shift types change infrequently
   });
@@ -362,7 +362,7 @@ export function useShiftType(id: string) {
     queryKey: [...SHIFT_TYPES_KEY, id],
     queryFn: async () => {
       const response = await paylinq.getShiftType(id);
-      return response.data;
+      return response.shiftType;
     },
     enabled: !!id,
   });
@@ -383,7 +383,7 @@ export function useCreateShiftType() {
   return useMutation({
     mutationFn: async (data: CreateShiftTypeRequest) => {
       const response = await paylinq.createShiftType(data);
-      return response.data;
+      return response.shiftType;
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: [...SHIFT_TYPES_KEY, 'list'] });
@@ -406,9 +406,9 @@ export function useUpdateShiftType() {
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateShiftTypeRequest }) => {
-      const response = await paylinq.updateShiftType(id, data);
-      return response.data;
+    mutationFn: async ({ id, data }: { id: string; data: UpdateTimesheetRequest }) => {
+      const response = await paylinq.updateTimesheet(id, data);
+      return response.timesheet;
     },
     onSuccess: (data: any) => {
       if (data) {
@@ -433,8 +433,8 @@ export function useDeleteShiftType() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await paylinq.deleteShiftType(id);
-      return response.data;
+      const response = await paylinq.deleteTimeEntry(id);
+      return response.timeEntry;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...SHIFT_TYPES_KEY, 'list'] });
@@ -461,7 +461,7 @@ export function useAttendanceEvents(employeeId: string, params?: PaginationParam
     queryKey: [...ATTENDANCE_KEY, 'employee', employeeId, params],
     queryFn: async () => {
       const response = await paylinq.getTimeAttendanceEvents({ employeeId, ...params });
-      return response.data || [];
+      return response.attendanceEvents || [];
     },
     enabled: !!employeeId,
   });

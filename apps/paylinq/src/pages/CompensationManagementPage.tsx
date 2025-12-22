@@ -54,6 +54,18 @@ export default function CompensationManagementPage({ employeeId: propEmployeeId 
   const { data: summary, isLoading: isLoadingSummary } = 
     useCompensationSummary(employeeId);
 
+  // Debug logging
+  console.log('DEBUG CompensationManagementPage - Data:', {
+    employeeId,
+    history: history,
+    historyLength: history?.length || 0,
+    historyType: typeof history,
+    historyArray: Array.isArray(history),
+    isLoadingHistory,
+    currentCompensationResponse,
+    summary
+  });
+
   // Extract compensation data and context from the response
   const currentCompensation = currentCompensationResponse?.compensation || null;
   const compensationMessage = currentCompensationResponse?.message;

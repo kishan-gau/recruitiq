@@ -4,9 +4,14 @@
  */
 
 import PayrollService from '../services/payrollService.js';
+import compensationService from '../../../shared/services/compensationService.js';
 
 const payrollService = new PayrollService();
-import { mapCompensationApiToDb } from '../utils/dtoMapper.js';
+import { 
+  mapCompensationApiToDb, 
+  mapCompensationDbToApi, 
+  mapCompensationDbArrayToApi 
+} from '../utils/dtoMapper.js';
 import logger from '../../../utils/logger.js';
 
 /**
@@ -42,7 +47,7 @@ async function createCompensation(req, res) {
 
     res.status(201).json({
       success: true,
-      compensation: compensation,
+      compensation: mapCompensationDbToApi(compensation),
       message: 'Compensation record created successfully',
     });
   } catch (error) {
@@ -88,7 +93,7 @@ async function getEmployeeCompensation(req, res) {
       const history = await payrollService.getCompensationHistory(employeeId, organizationId);
       return res.status(200).json({
         success: true,
-        history: history,
+        history: mapCompensationDbArrayToApi(history),
         count: history.length,
       });
     }
@@ -122,7 +127,7 @@ async function getEmployeeCompensation(req, res) {
 
     res.status(200).json({
       success: true,
-      compensation: compensation,
+      compensation: mapCompensationDbToApi(compensation),
     });
   } catch (error) {
     logger.error('Error fetching employee compensation', {
@@ -160,7 +165,7 @@ async function getCompensationById(req, res) {
 
     res.status(200).json({
       success: true,
-      data: compensation,
+      data: mapCompensationDbToApi(compensation),
     });
   } catch (error) {
     logger.error('Error fetching compensation', {
@@ -205,7 +210,7 @@ async function updateCompensation(req, res) {
 
     res.status(200).json({
       success: true,
-      compensation: compensation,
+      compensation: mapCompensationDbToApi(compensation),
       message: 'Compensation updated successfully',
     });
   } catch (error) {
@@ -278,11 +283,11 @@ async function getCompensationHistory(req, res) {
     const { organization_id: organizationId } = req.user;
     const { employeeId } = req.params;
 
-    const history = await payrollService.getCompensationHistory(employeeId, organizationId);
+    const history = await compensationService.getCompensationHistory(employeeId, organizationId);
 
     res.status(200).json({
       success: true,
-      history: history,
+      compensationHistory: mapCompensationDbArrayToApi(history),
       count: history.length,
     });
   } catch (error) {
@@ -313,7 +318,12 @@ async function getCompensationSummary(req, res) {
 
     res.status(200).json({
       success: true,
-      summary: summary,
+      summary: {
+        ...summary,
+        compensationType: summary.compensationType || summary.compensation_type,
+        lastChangeDate: summary.lastChangeDate,
+        firstHireDate: summary.firstHireDate
+      },
     });
   } catch (error) {
     logger.error('Error fetching compensation summary', {

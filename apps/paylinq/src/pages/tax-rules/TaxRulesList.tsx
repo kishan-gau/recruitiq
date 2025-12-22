@@ -1,60 +1,40 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, AlertCircle, Trash2, X, ArrowLeft } from 'lucide-react';
+import { Plus, AlertCircle, Trash2, X, ArrowLeft } from 'lucide-react';
+import { TaxRule } from '@recruitiq/types/paylinq';
 import StatusBadge from '@/components/ui/StatusBadge';
-import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
 import { useTaxRules, useCreateTaxRule, useUpdateTaxRule, useDeleteTaxRule } from '@/hooks/useTaxRules';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ErrorAlert } from '@/components/ui/ErrorDisplay';
 import { useToast } from '@/contexts/ToastContext';
-
-interface TaxRule {
-  id: string;
-  name: string;
-  type: 'wage-tax' | 'aov' | 'aww';
-  description: string;
-  rate?: number; // For flat rates
-  brackets?: Array<{
-    min: number;
-    max: number | null; // null means no upper limit
-    rate: number;
-    deduction: number; // Standard deduction for bracket
-  }>;
-  employerContribution?: number;
-  employeeContribution?: number;
-  calculationMode?: 'aggregated' | 'component_based' | 'proportional_distribution';
-  status: 'active' | 'inactive';
-  effectiveDate: string;
-  lastUpdated: string;
-}
+import TaxRuleCard from '@/components/tax-rules/TaxRuleCard';
+import VersionHistoryModal from '@/components/tax-rules/VersionHistoryModal';
+import CreateVersionModal from '@/components/tax-rules/CreateVersionModal';
 
 interface TaxRuleFormData {
-  name: string;
-  type: 'wage-tax' | 'aov' | 'aww';
+  taxName: string;
+  taxType: string;
   description: string;
-  rate?: number;
-  brackets?: Array<{
-    min: number;
-    max: number | null;
-    rate: number;
-    deduction: number;
-  }>;
-  employerContribution?: number;
-  employeeContribution?: number;
-  calculationMode?: 'aggregated' | 'component_based' | 'proportional_distribution';
-  status: 'active' | 'inactive';
-  effectiveDate: string;
+  calculationMethod: 'bracket' | 'flat_rate' | 'graduated';
+  calculationMode: 'aggregated' | 'component_based' | 'proportional_distribution';
+  effectiveFrom: string;
+  effectiveTo?: string;
+  annualCap?: number;
+  status: 'draft' | 'published' | 'archived';
 }
 
 export default function TaxRulesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<TaxRule | null>(null);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [isCreateVersionOpen, setIsCreateVersionOpen] = useState(false);
+  const [selectedRule, setSelectedRule] = useState<TaxRule | null>(null);
   const [formData, setFormData] = useState<TaxRuleFormData>({
-    name: '',
-    type: 'wage-tax',
+    taxName: '',
+    taxType: 'wage-tax',
     description: '',
     status: 'active',
-    effectiveDate: new Date().toISOString().split('T')[0],
+    effectiveFrom: new Date().toISOString().split('T')[0],
   });
 
   // Fetch tax rules using React Query
@@ -67,8 +47,8 @@ export default function TaxRulesList() {
   const handleEdit = (rule: TaxRule) => {
     setEditingRule(rule);
     setFormData({
-      name: rule.name,
-      type: rule.type,
+      taxName: rule.taxName,
+      taxType: rule.taxType,
       description: rule.description,
       rate: rule.rate,
       brackets: rule.brackets,
@@ -76,7 +56,7 @@ export default function TaxRulesList() {
       employeeContribution: rule.employeeContribution,
       calculationMode: rule.calculationMode,
       status: rule.status,
-      effectiveDate: rule.effectiveDate,
+      effectiveFrom: rule.effectiveFrom,
     });
     setIsModalOpen(true);
   };
@@ -84,12 +64,12 @@ export default function TaxRulesList() {
   const handleAdd = () => {
     setEditingRule(null);
     setFormData({
-      name: '',
-      type: 'wage-tax',
+      taxName: '',
+      taxType: 'wage-tax',
       description: '',
       calculationMode: 'proportional_distribution', // Smart default for progressive taxes
       status: 'active',
-      effectiveDate: new Date().toISOString().split('T')[0],
+      effectiveFrom: new Date().toISOString().split('T')[0],
     });
     setIsModalOpen(true);
   };
@@ -105,6 +85,17 @@ export default function TaxRulesList() {
     } catch (err) {
       errorToast(err instanceof Error ? err.message : 'Failed to delete tax rule');
     }
+  };
+
+  // Versioning handlers
+  const handleViewVersionHistory = (rule: TaxRule) => {
+    setSelectedRule(rule);
+    setIsVersionHistoryOpen(true);
+  };
+
+  const handleCreateVersion = (rule: TaxRule) => {
+    setSelectedRule(rule);
+    setIsCreateVersionOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -214,150 +205,14 @@ export default function TaxRulesList() {
             </div>
           ) : (
             taxRules.map((rule: TaxRule) => (
-          <div
-            key={rule.id}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow"
-          >
-            {/* Rule Header */}
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {rule.name}
-                  </h3>
-                  <StatusBadge status={rule.status} />
-                </div>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                  {rule.description}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleEdit(rule)}
-                  className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                  title="Edit tax rule"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(rule)}
-                  className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                  title="Delete tax rule"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Rule Details */}
-            <div className="space-y-3">
-              {/* Progressive Brackets */}
-              {rule.brackets && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Tax Brackets
-                  </h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200 dark:border-gray-700">
-                          <th className="text-left py-2 text-gray-600 dark:text-gray-400 font-medium">
-                            Income Range
-                          </th>
-                          <th className="text-left py-2 text-gray-600 dark:text-gray-400 font-medium">
-                            Tax Rate
-                          </th>
-                          <th className="text-left py-2 text-gray-600 dark:text-gray-400 font-medium">
-                            Standard Deduction
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rule.brackets.map((bracket, index) => (
-                          <tr
-                            key={index}
-                            className="border-b border-gray-100 dark:border-gray-800 last:border-0"
-                          >
-                            <td className="py-2 text-gray-900 dark:text-white">
-                              <CurrencyDisplay amount={bracket.min} /> -{' '}
-                              {bracket.max !== null ? (
-                                <CurrencyDisplay amount={bracket.max} />
-                              ) : (
-                                <span>and above</span>
-                              )}
-                            </td>
-                            <td className="py-2 text-gray-900 dark:text-white font-medium">
-                              {bracket.rate}%
-                            </td>
-                            <td className="py-2 text-gray-900 dark:text-white">
-                              <CurrencyDisplay amount={bracket.deduction} />
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Flat Rate Contributions */}
-              {(rule.employeeContribution !== undefined ||
-                rule.employerContribution !== undefined) && (
-                <div className="grid grid-cols-2 gap-4">
-                  {rule.employeeContribution !== undefined && (
-                    <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded">
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Employee Contribution
-                      </p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {rule.employeeContribution}%
-                      </p>
-                    </div>
-                  )}
-                  {rule.employerContribution !== undefined && (
-                    <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded">
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Employer Contribution
-                      </p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {rule.employerContribution}%
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Calculation Mode */}
-              {rule.calculationMode && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">
-                    Tax Calculation Mode
-                  </p>
-                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 capitalize">
-                    {rule.calculationMode.replace(/_/g, ' ')}
-                  </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                    {rule.calculationMode === 'proportional_distribution' && 
-                      'Tax calculated on total, distributed proportionally'}
-                    {rule.calculationMode === 'component_based' && 
-                      'Tax calculated separately per component'}
-                    {rule.calculationMode === 'aggregated' && 
-                      'Tax calculated on total only'}
-                  </p>
-                </div>
-              )}
-
-              {/* Metadata */}
-              <div className="flex items-center gap-6 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                <div>
-                  <span className="font-medium">Effective Date:</span> {rule.effectiveDate}
-                </div>
-                <div>
-                  <span className="font-medium">Last Updated:</span> {rule.lastUpdated}
-                </div>
-              </div>
-            </div>
-          </div>
+              <TaxRuleCard
+                key={rule.id}
+                rule={rule}
+                onEdit={() => handleEdit(rule)}
+                onDelete={() => handleDelete(rule)}
+                onViewVersionHistory={() => handleViewVersionHistory(rule)}
+                onCreateVersion={() => handleCreateVersion(rule)}
+              />
             ))
           )}
         </div>
@@ -389,8 +244,8 @@ export default function TaxRulesList() {
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="taxName"
+                  value={formData.taxName}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
@@ -404,8 +259,8 @@ export default function TaxRulesList() {
                   Type *
                 </label>
                 <select
-                  name="type"
-                  value={formData.type}
+                  name="taxType"
+                  value={formData.taxType}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
@@ -465,7 +320,7 @@ export default function TaxRulesList() {
               </div>
 
               {/* Progressive Tax Brackets (for wage-tax only) */}
-              {formData.type === 'wage-tax' && (
+              {formData.taxType === 'wage-tax' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -580,7 +435,7 @@ export default function TaxRulesList() {
               )}
 
               {/* Contributions (for AOV/AWW types) */}
-              {(formData.type === 'aov' || formData.type === 'aww') && (
+              {(formData.taxType === 'aov' || formData.taxType === 'aww') && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -641,8 +496,8 @@ export default function TaxRulesList() {
                 </label>
                 <input
                   type="date"
-                  name="effectiveDate"
-                  value={formData.effectiveDate}
+                  name="effectiveFrom"
+                  value={formData.effectiveFrom}
                   onChange={handleInputChange}
                   required
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
@@ -673,6 +528,24 @@ export default function TaxRulesList() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Version History Modal */}
+      {selectedRule && (
+        <VersionHistoryModal
+          taxRule={selectedRule}
+          isOpen={isVersionHistoryOpen}
+          onClose={() => setIsVersionHistoryOpen(false)}
+        />
+      )}
+
+      {/* Create Version Modal */}
+      {selectedRule && (
+        <CreateVersionModal
+          taxRule={selectedRule}
+          isOpen={isCreateVersionOpen}
+          onClose={() => setIsCreateVersionOpen(false)}
+        />
       )}
     </div>
   );
