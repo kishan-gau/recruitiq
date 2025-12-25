@@ -8,16 +8,33 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD environment variable is required}
       POSTGRES_DB: ${POSTGRES_DB:-recruitiq_dev}
+      # Environment variables for tenant initialization
+      DEFAULT_LICENSE_ID: ${DEFAULT_LICENSE_ID}
+      DEFAULT_CUSTOMER_ID: ${DEFAULT_CUSTOMER_ID}
+      DEFAULT_CUSTOMER_EMAIL: ${DEFAULT_CUSTOMER_EMAIL}
+      DEFAULT_CUSTOMER_NAME: ${DEFAULT_CUSTOMER_NAME}
+      DEFAULT_ORG_NAME: ${DEFAULT_ORG_NAME:-Test Organization}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@testorg.com}
+      DEFAULT_ADMIN_NAME: ${DEFAULT_ADMIN_NAME:-Admin User}
+      DEFAULT_TIER: ${DEFAULT_TIER:-premium}
+      DEFAULT_CUSTOMER_TYPE: ${DEFAULT_CUSTOMER_TYPE:-enterprise}
+      NODE_ENV: development
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./src/database/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+      # Mount the comprehensive Docker-specific initialization script
+      - ./docker-init/docker-entrypoint-init.sh:/docker-entrypoint-initdb.d/01-init-database.sh
+      # Mount the SQL files to the working directory for the shell script to access
+      - ./docker-init:/docker-init
+      # Mount the entire backend directory for npm scripts to work
+      - .:/app
+    working_dir: /app
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
     image: redis:7-alpine

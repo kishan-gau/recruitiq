@@ -2,8 +2,50 @@
 # This Dockerfile can build any of the frontend apps (nexus, paylinq, portal, recruitiq)
 ARG APP_NAME=nexus
 
+# Base stage for common dependencies
+FROM node:20-alpine AS base
+
+WORKDIR /app
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+
+# Development stage
+FROM base AS development
+
+ARG APP_NAME
+
+# Copy workspace configuration
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages ./packages
+
+# Copy app-specific files
+COPY apps/${APP_NAME} ./apps/${APP_NAME}
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Build packages first (api-client and auth)
+WORKDIR /app/packages/api-client
+RUN pnpm run build
+
+WORKDIR /app/packages/auth
+RUN pnpm run build
+
+# Set working directory to app
+WORKDIR /app/apps/${APP_NAME}
+
+# Expose the dev server port
+EXPOSE 5173
+EXPOSE 5174
+EXPOSE 5175
+EXPOSE 5176
+
+# Development command
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]
+
 # Build stage
-FROM node:20-alpine AS builder
+FROM base AS builder
 
 ARG APP_NAME
 WORKDIR /app
@@ -20,6 +62,13 @@ COPY apps/${APP_NAME} ./apps/${APP_NAME}
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
+
+# Build packages first (api-client and auth)
+WORKDIR /app/packages/api-client
+RUN pnpm run build
+
+WORKDIR /app/packages/auth
+RUN pnpm run build
 
 # Build the application
 WORKDIR /app/apps/${APP_NAME}

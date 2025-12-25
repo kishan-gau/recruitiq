@@ -1,0 +1,64 @@
+# Backend specific .dockerignore
+
+# Dependencies
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+
+# Build artifacts
+dist/
+build/
+
+# Tests and coverage
+tests/
+coverage/
+.nyc_output/
+**/*.test.js
+**/*.spec.js
+
+# Development files
+.env
+.env.*
+!.env.production
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+.cache/
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Scripts that aren't needed in container
+scripts/
+
+# Database files (dev)
+*.sqlite
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+
+# E2E test configs
+jest.e2e.config.js
+
+# Migrations (if they're run separately)
+migrations/
+seeds/

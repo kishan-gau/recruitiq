@@ -1,11 +1,11 @@
-# Multi-stage build for backend with development support
+# Multi-stage build for deployment service
 # Base stage with common dependencies
 FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# Install system dependencies including PostgreSQL client
-RUN apk add --no-cache dumb-init python3 make g++ postgresql-client bash
+# Install system dependencies
+RUN apk add --no-cache dumb-init python3 make g++
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -15,37 +15,34 @@ RUN addgroup -g 1001 -S nodejs && \
 FROM base AS development
 
 # Copy package files
-COPY backend/package*.json ./
+COPY deployment-service/package*.json ./
 
 # Install all dependencies (including dev)
 RUN npm ci && npm cache clean --force
 
-# Copy source code and scripts
-COPY --chown=nodejs:nodejs backend/ ./
-
-# Make startup script executable
-RUN chmod +x scripts/startup.sh
+# Copy source code
+COPY --chown=nodejs:nodejs deployment-service/ ./
 
 # Switch to non-root user
 USER nodejs
 
 # Expose port
-EXPOSE 3001
+EXPOSE 3002
 
-# Development command with automatic migrations
-CMD ["./scripts/startup.sh"]
+# Development command with nodemon for hot reloading
+CMD ["npm", "run", "dev"]
 
 # Production builder stage
 FROM base AS builder
 
 # Copy package files
-COPY backend/package*.json ./
+COPY deployment-service/package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
 
 # Copy source code
-COPY backend/ ./
+COPY deployment-service/ ./
 
 # Production stage
 FROM node:20-alpine AS production
@@ -53,7 +50,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init curl
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -61,21 +58,21 @@ RUN addgroup -g 1001 -S nodejs && \
 
 # Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --chown=nodejs:nodejs backend/src ./src
-COPY --chown=nodejs:nodejs backend/package*.json ./
+COPY --chown=nodejs:nodejs deployment-service/src ./src
+COPY --chown=nodejs:nodejs deployment-service/package*.json ./
 
 # Switch to non-root user
 USER nodejs
 
 # Expose port
-EXPOSE 3001
+EXPOSE 3002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD curl -f http://localhost:3002/health || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application with migrations
-CMD ["./scripts/startup.sh"]
+# Start application
+CMD ["node", "src/server.js"]

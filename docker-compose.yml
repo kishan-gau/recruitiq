@@ -1,0 +1,246 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: recruitiq_postgres_dev
+    restart: unless-stopped
+    command: ["postgres", "-c", "listen_addresses=*"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Tenant creation parameters from .env file
+      DEFAULT_LICENSE_ID: ${DEFAULT_LICENSE_ID}
+      DEFAULT_CUSTOMER_ID: ${DEFAULT_CUSTOMER_ID}
+      DEFAULT_CUSTOMER_EMAIL: ${DEFAULT_CUSTOMER_EMAIL}
+      DEFAULT_CUSTOMER_NAME: ${DEFAULT_CUSTOMER_NAME}
+      # Map .env variables to script variable names
+      DEFAULT_TENANT_NAME: ${DEFAULT_CUSTOMER_NAME}
+      DEFAULT_TENANT_EMAIL: ${DEFAULT_CUSTOMER_EMAIL}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      # Mount initialization script and dependencies
+      - ./backend/docker-init/docker-entrypoint-init.sh:/docker-entrypoint-initdb.d/01-init-database.sh:ro
+      - ./backend:/backend:ro
+    networks:
+      - recruitiq_dev_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: recruitiq_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    env_file:
+      - ./backend/.env
+    command: >
+      sh -c '
+      redis-server 
+      --requirepass "$$REDIS_PASSWORD"
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      '
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - recruitiq_dev_network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (Development)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: development
+    container_name: recruitiq_backend_dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-recruitiq_dev}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-in-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176}
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend/src:/app/src:ro
+      - ./backend/package.json:/app/package.json:ro
+      - ./backend/package-lock.json:/app/package-lock.json:ro
+      - ./apps:/app/apps:ro  # Mount apps directory for frontend validation
+      - backend_dev_logs:/app/logs
+      - backend_dev_uploads:/app/uploads
+      - /app/node_modules  # Anonymous volume for node_modules
+    networks:
+      - recruitiq_dev_network
+    # Command removed - let Dockerfile CMD execute startup script
+
+  # Deployment Service
+  # deployment-service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.deployment-service
+  #     target: development
+  #   container_name: recruitiq_deployment_service_dev
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #   environment:
+  #     NODE_ENV: development
+  #     PORT: 3002
+  #     DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-recruitiq_dev}
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: 6379
+  #     REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+  #     JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-key-change-in-production}
+  #   ports:
+  #     - "3002:3002"
+  #   volumes:
+  #     - ./deployment-service/src:/app/src:ro
+  #     - ./deployment-service/package.json:/app/package.json:ro
+  #     - /app/node_modules
+  #   networks:
+  #     - recruitiq_dev_network
+  #   command: ["npm", "run", "dev"]
+
+  # Nexus Frontend (Development)
+  nexus:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      target: development
+      args:
+        APP_NAME: nexus
+    container_name: recruitiq_nexus_dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/nexus:/app/apps/nexus
+      - ./packages:/app/packages:ro
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - /app/node_modules
+      - /app/apps/nexus/node_modules
+    networks:
+      - recruitiq_dev_network
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_APP_ENV=development
+    command: ["pnpm", "dev", "--host", "0.0.0.0"]
+
+  # PayLinQ Frontend (Development)
+  paylinq:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      target: development
+      args:
+        APP_NAME: paylinq
+    container_name: recruitiq_paylinq_dev
+    restart: unless-stopped
+    ports:
+      - "5174:5174"
+    volumes:
+      - ./apps/paylinq:/app/apps/paylinq
+      - ./packages:/app/packages:ro
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - /app/node_modules
+      - /app/apps/paylinq/node_modules
+    networks:
+      - recruitiq_dev_network
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_APP_ENV=development
+    command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5174"]
+
+  # Portal Frontend (Development)
+  portal:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      target: development
+      args:
+        APP_NAME: portal
+    container_name: recruitiq_portal_dev
+    restart: unless-stopped
+    ports:
+      - "5175:5175"
+    volumes:
+      - ./apps/portal:/app/apps/portal
+      - ./packages:/app/packages:ro
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - /app/node_modules
+      - /app/apps/portal/node_modules
+    networks:
+      - recruitiq_dev_network
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_APP_ENV=development
+    command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5175"]
+
+  # RecruitIQ Frontend (Development)
+  recruitiq:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      target: development
+      args:
+        APP_NAME: recruitiq
+    container_name: recruitiq_app_dev
+    restart: unless-stopped
+    ports:
+      - "5176:5176"
+    volumes:
+      - ./apps/recruitiq:/app/apps/recruitiq
+      - ./packages:/app/packages:ro
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - /app/node_modules
+      - /app/apps/recruitiq/node_modules
+    networks:
+      - recruitiq_dev_network
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_APP_ENV=development
+    command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5176"]
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  backend_dev_logs:
+    driver: local
+  backend_dev_uploads:
+    driver: local
+
+networks:
+  recruitiq_dev_network:
+    driver: bridge

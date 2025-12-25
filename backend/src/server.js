@@ -162,7 +162,11 @@ async function startServer() {
 }
 
 // Only start server if this file is run directly (not imported for tests)
-const isMainModule = import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}`;
+// Handle both direct execution and nodemon execution
+const isMainModule = import.meta.url === `file:///${process.argv[1]?.replace(/\\/g, '/')}` || 
+                     process.argv[1]?.endsWith('src/server.js') ||
+                     process.argv[1]?.endsWith('/server.js') ||
+                     import.meta.url.endsWith('/src/server.js');
 
 if (isMainModule && process.env.NODE_ENV !== 'test') {
   startServer().catch(error => {

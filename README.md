@@ -80,6 +80,7 @@ RecruitIQ follows a layered architecture pattern:
 ### Getting Started
 - [Installation Guide](#installation)
 - [Configuration](#configuration)
+- [Docker Development Setup](#-docker-development-setup)
 - [Running Tests](#testing)
 
 ### Development Standards
@@ -218,6 +219,99 @@ Create `.env` files in `portal` and `recruitiq` directories:
 ```env
 VITE_API_URL=http://localhost:3001/api
 ```
+
+## 🐳 Docker Development Setup
+
+### Quick Start (Automatic Database Setup)
+
+For rapid development environment setup with automated database initialization:
+
+```powershell
+# Navigate to backend directory
+cd backend
+
+# Option 1: Basic setup (manual tenant creation required)
+.\docker-init\setup.ps1
+
+# Option 2: Complete setup with automatic tenant creation
+# (requires license-id and customer-id from existing database records)
+.\docker-init\setup.ps1 -LicenseId "your-license-uuid" -CustomerId "your-customer-uuid"
+
+# Reset environment (clean slate)
+.\docker-init\setup.ps1 -Reset
+```
+
+**What happens automatically:**
+- ✅ PostgreSQL 15 container with RecruitIQ database
+- ✅ Database schema creation (migrations)
+- ✅ Production-ready seed data (organizations, users, features)
+- ✅ Conditional tenant creation (when license/customer IDs provided)
+- ✅ Development user account creation
+
+### Manual Docker Setup
+
+If you prefer manual control:
+
+```bash
+# Clone and navigate
+git clone https://github.com/yourorg/recruitiq.git
+cd recruitiq/backend
+
+# Setup environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Start services
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f postgres
+```
+
+### Tenant Creation
+
+If you didn't provide license/customer IDs during setup:
+
+```bash
+# Create tenant manually (inside running container)
+docker-compose exec backend node scripts/onboard-tenant.js \
+  --license-id "your-license-uuid" \
+  --customer-id "your-customer-uuid" \
+  --email "admin@yourcompany.com" \
+  --name "Your Company"
+```
+
+### Validation & Troubleshooting
+
+```powershell
+# Validate setup
+.\docker-init\validate.ps1
+
+# Test both scenarios
+.\docker-init\test-workflow.ps1 -FullTest
+
+# Check database status
+docker-compose exec postgres psql -U postgres -d recruitiq -c "\dt"
+
+# View recent logs
+docker-compose logs --tail 20 postgres
+
+# Reset if needed
+docker-compose down -v
+```
+
+### Quick Reference
+
+For a comprehensive command reference, see: [`backend/docker-init/QUICK_REFERENCE.md`](backend/docker-init/QUICK_REFERENCE.md)
+.\docker-init\setup.ps1 -Reset
+```
+
+**Note:** License and customer IDs must come from existing database records. Contact your system administrator or check the platform database for valid values.
+
+See [Docker Database Auto-Initialization](./backend/docker-init/README.md) for detailed documentation.
 
 ## 🧪 Testing
 

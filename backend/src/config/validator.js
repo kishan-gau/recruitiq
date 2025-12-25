@@ -126,11 +126,19 @@ function validateDatabaseConfig() {
  */
 function validateFrontendEnvFiles() {
   const apps = ['nexus', 'paylinq', 'recruitiq']; // Portal excluded - separate deployment
-  const rootDir = path.join(__dirname, '../../../'); // Go up to workspace root
+  
+  // Try Docker path first (/app/apps), then fall back to local development path
+  let appsDir;
+  if (fs.existsSync('/app/apps')) {
+    appsDir = '/app/apps'; // Docker container path
+  } else {
+    appsDir = path.join(__dirname, '../../../apps'); // Local development path
+  }
+  
   const missingEnvFiles = [];
 
   for (const app of apps) {
-    const envPath = path.join(rootDir, 'apps', app, '.env');
+    const envPath = path.join(appsDir, app, '.env');
     if (!fs.existsSync(envPath)) {
       missingEnvFiles.push(`apps/${app}/.env`);
     }

@@ -29,7 +29,7 @@ export const up = async function(knex) {
     
     // Template type
     table.string('template_type', 20).defaultTo('regular');
-    table.check('template_type IN (?)', ['regular', 'overtime', 'on_call', 'training']);
+    table.check("template_type IN ('regular', 'overtime', 'on_call', 'training')");
     
     // Configuration
     table.boolean('is_active').defaultTo(true);
@@ -64,7 +64,7 @@ export const up = async function(knex) {
     // Requirements
     table.integer('required_count').defaultTo(1); // How many workers with this role are needed
     table.string('min_proficiency', 20);
-    table.check('min_proficiency IN (?)', ['trainee', 'competent', 'proficient', 'expert']);
+    table.check("min_proficiency IN ('trainee', 'competent', 'proficient', 'expert')");
     
     // Priority for scheduling algorithms
     table.integer('priority').defaultTo(50); // 1-100, higher = more critical

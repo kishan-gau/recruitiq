@@ -8,7 +8,7 @@
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.up = async function(knex) {
+export const up = async function(knex) {
   // Create station_assignments table in scheduling schema
   await knex.schema.withSchema('scheduling').createTable('station_assignments', (table) => {
     // Primary key
@@ -77,7 +77,7 @@ exports.up = async function(knex) {
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
-exports.down = async function(knex) {
+export const down = async function(knex) {
   // Drop the station_assignments table
   await knex.schema.withSchema('scheduling').dropTableIfExists('station_assignments');
   

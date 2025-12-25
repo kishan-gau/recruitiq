@@ -1,0 +1,82 @@
+# Apps specific .dockerignore
+
+# Dependencies
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Build artifacts
+dist/
+build/
+.next/
+out/
+
+# Development server files
+.vite/
+.vite-cache/
+
+# Tests and coverage
+tests/
+test-results/
+coverage/
+.nyc_output/
+**/*.test.*
+**/*.spec.*
+e2e/
+playwright-report/
+playwright/.auth/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+.cache/
+.eslintcache
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+
+# Config files not needed in production
+*.config.ts
+*.config.js
+!vite.config.ts
+!tailwind.config.js
+!postcss.config.cjs
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Playwright
+playwright/
+playwright.config.ts
+
+# Development scripts
+start-dev-server.ps1
+
+# TypeScript config for testing
+tsconfig.test.json
+
+# Git
+.git/
