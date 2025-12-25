@@ -16,39 +16,29 @@
  * - CSRF tokens as secondary defense layer
  */
 
-import csrf from 'csurf';
+import { Tokens } from 'csrf';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 
+// Create CSRF token generator
+const tokens = new Tokens();
+
+// Generate secret on startup
+const csrfSecret = tokens.secretSync();
+
 /**
- * Create CSRF protection middleware
- * Industry standard: Use double-submit cookie pattern with secure tokens
+ * Generate CSRF token for the given secret
  */
-export const csrfProtection = csrf({
-  cookie: {
-    httpOnly: true, // Cannot be accessed via JavaScript (XSS protection)
-    secure: config.env === 'production', // HTTPS only in production
-    sameSite: config.env === 'production' ? 'strict' : 'lax', // Primary CSRF defense
-    signed: true, // Sign the cookie to prevent tampering
-    key: '_csrf', // Cookie name
-    path: '/', // Cookie path
-    maxAge: 3600000, // 1 hour
-  },
-  // Ignore GET, HEAD, OPTIONS (safe methods per OWASP)
-  ignoreMethods: ['GET', 'HEAD', 'OPTIONS'],
-  // Value function to extract token from request
-  value: (req) => {
-    // Check multiple sources for CSRF token (in order of preference)
-    return (
-      req.body?._csrf || // Body field
-      req.query?._csrf || // Query parameter (not recommended but supported)
-      req.headers['csrf-token'] || // Custom header
-      req.headers['xsrf-token'] || // Alternative header name
-      req.headers['x-csrf-token'] || // Standard header name
-      req.headers['x-xsrf-token'] // Another common variant
-    );
-  },
-});
+function generateToken() {
+  return tokens.create(csrfSecret);
+}
+
+/**
+ * Verify CSRF token against the secret
+ */
+function verifyToken(token) {
+  return tokens.verify(csrfSecret, token);
+}
 
 /**
  * Middleware to apply CSRF protection to state-changing operations
@@ -90,15 +80,23 @@ export function csrfMiddleware(req, res, next) {
   // SECURITY: Cookie-based authentication requires CSRF protection
   // All authenticated requests use httpOnly cookies
   
-  // Apply CSRF protection
-  csrfProtection(req, res, (err) => {
-    if (err) {
+  try {
+    // Extract CSRF token from request
+    const token = 
+      req.body?._csrf || // Body field
+      req.query?._csrf || // Query parameter (not recommended but supported)
+      req.headers['csrf-token'] || // Custom header
+      req.headers['xsrf-token'] || // Alternative header name
+      req.headers['x-csrf-token'] || // Standard header name
+      req.headers['x-xsrf-token']; // Another common variant
+
+    if (!token || !verifyToken(token)) {
       logger.warn('CSRF validation failed', {
         method: req.method,
         path: req.path,
         ip: req.ip,
-        error: err.code,
-        hasToken: !!(req.body?._csrf || req.headers['csrf-token'] || req.headers['x-csrf-token']),
+        hasToken: !!token,
+        userId: req.user?.id,
       });
       
       return res.status(403).json({
@@ -109,7 +107,20 @@ export function csrfMiddleware(req, res, next) {
     }
     
     next();
-  });
+  } catch (error) {
+    logger.error('CSRF validation error', {
+      error: error.message,
+      method: req.method,
+      path: req.path,
+      ip: req.ip,
+    });
+    
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'CSRF token validation failed',
+      code: 'CSRF_ERROR',
+    });
+  }
 }
 
 /**
@@ -118,21 +129,13 @@ export function csrfMiddleware(req, res, next) {
  */
 export function getCsrfToken(req, res) {
   try {
-    // Generate CSRF token
-    csrfProtection(req, res, (err) => {
-      if (err) {
-        logger.error('Failed to generate CSRF token', { error: err.message });
-        return res.status(500).json({
-          error: 'Internal Server Error',
-          message: 'Failed to generate CSRF token',
-        });
-      }
-      
-      // Return token to client
-      res.json({
-        csrfToken: req.csrfToken(),
-        expiresIn: 3600, // seconds
-      });
+    // Generate new CSRF token
+    const csrfToken = generateToken();
+    
+    // Return token to client
+    res.json({
+      csrfToken,
+      expiresIn: 3600, // 1 hour in seconds
     });
   } catch (error) {
     logger.error('CSRF token generation error', {
@@ -221,7 +224,6 @@ export function shouldApplyCsrf(req) {
 }
 
 export default {
-  csrfProtection,
   csrfMiddleware,
   getCsrfToken,
   csrfErrorHandler,
