@@ -259,6 +259,72 @@ export class ScheduleHubClient {
   }
 
   // ============================================================================
+  // Schedules
+  // ============================================================================
+
+  /**
+   * Lists all schedules with optional filters
+   */
+  async listSchedules(filters?: { date?: string; status?: string }) {
+    const queryParams = new URLSearchParams();
+    if (filters?.date) queryParams.append('date', filters.date);
+    if (filters?.status) queryParams.append('status', filters.status);
+
+    const queryString = queryParams.toString();
+    const url = `${this.basePath}/schedules${queryString ? `?${queryString}` : ''}`;
+    
+    return this.client.get<ApiResponse<any>>(url);
+  }
+
+  /**
+   * Gets a single schedule by ID
+   */
+  async getSchedule(id: string) {
+    return this.client.get<ApiResponse<any>>(
+      `${this.basePath}/schedules/${id}`
+    );
+  }
+
+  /**
+   * Creates a new schedule
+   */
+  async createSchedule(data: any) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/schedules`,
+      data
+    );
+  }
+
+  /**
+   * Updates an existing schedule
+   */
+  async updateSchedule(id: string, data: any) {
+    return this.client.put<ApiResponse<any>>(
+      `${this.basePath}/schedules/${id}`,
+      data
+    );
+  }
+
+  /**
+   * Deletes a schedule (soft delete)
+   */
+  async deleteSchedule(id: string) {
+    return this.client.delete<ApiResponse<void>>(
+      `${this.basePath}/schedules/${id}`
+    );
+  }
+
+  /**
+   * Publishes a schedule to make it active
+   */
+  async publishSchedule(id: string) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/schedules/${id}/publish`,
+      {}
+    );
+  }
+
+  // ============================================================================
   // Shifts
   // ============================================================================
 

@@ -12,7 +12,7 @@ on:
           - production
           - staging
       apps:
-        description: 'Apps to deploy (comma-separated: backend,nexus,paylinq,portal,recruitiq or "all")'
+        description: 'Apps to deploy (comma-separated: backend,nexus,paylinq,portal,recruitiq,web or "all")'
         required: true
         default: 'all'
 
@@ -50,6 +50,10 @@ jobs:
             dockerfile: Dockerfile.frontend
             context: .
             build-arg: APP_NAME=recruitiq
+          - service: web
+            dockerfile: Dockerfile.frontend
+            context: .
+            build-arg: APP_NAME=web
     
     steps:
       - name: Checkout code

@@ -30,10 +30,11 @@ This guide explains how to set up and run the RecruitIQ application using Docker
 
 4. **Access the applications**
    - **API Backend**: http://localhost:3001
-   - **Portal Admin**: http://localhost:5173
-   - **Nexus HRIS**: http://localhost:5174
-   - **PayLinQ**: http://localhost:5175
-   - **RecruitIQ**: http://localhost:5176
+   - **Unified Web App**: http://localhost:5177
+     - Recruitment Module: http://localhost:5177/recruitment
+     - HRIS (Nexus): http://localhost:5177/hris
+     - Payroll (PayLinQ): http://localhost:5177/payroll
+     - Scheduling: http://localhost:5177/scheduling
 
 ## Development Environment
 
@@ -45,7 +46,7 @@ The development environment includes:
 - **Redis 7** (port 6379) - Caching and sessions
 - **Backend API** (port 3001) - Node.js/Express API with hot reload
 - **Deployment Service** (port 3002) - Deployment management
-- **Frontend Apps** (ports 5173-5176) - Vite dev servers with hot reload
+- **Web App** (port 5177) - Unified frontend with Vite dev server and hot reload
 
 ### Available Commands
 
@@ -67,7 +68,7 @@ npm run docker:dev:logs
 
 # View logs from specific service
 docker compose logs -f backend
-docker compose logs -f nexus
+docker compose logs -f web
 
 # Clean up everything (containers, networks, volumes)
 npm run docker:dev:clean
@@ -125,7 +126,7 @@ docker compose exec -T postgres-dev psql -U recruitiq_user recruitiq_dev < backu
 **Port conflicts:**
 ```bash
 # Check what's using ports
-netstat -an | findstr "3001 5173 5432 6379"
+netstat -an | findstr "3001 5177 5432 6379"
 
 # Kill processes on Windows
 taskkill /f /pid <PID>

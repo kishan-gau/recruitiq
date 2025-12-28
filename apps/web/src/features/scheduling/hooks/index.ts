@@ -27,41 +27,33 @@ export {
   useCreateRole,
   useUpdateRole,
   useDeleteRole,
-  useRolesByDepartment,
-  useActiveRoles,
-  useWorkerRoles,
-  useAssignWorkerRole,
-  useRemoveWorkerRole,
-  useInvalidateRoles,
-  usePrefetchRole,
+  useAssignWorkerRoles,
 } from './useRoles';
 
 // Station Coverage Analysis Hooks
 export {
   stationCoverageKeys,
   useStationCoverage,
-  useStationCoverageAnalysis,
-  useStationCoverageImpact,
-  useInvalidateStationCoverage,
+  calculateCoverageImpact,
 } from './useStationCoverage';
 
 // Shift Swap Marketplace Hooks
 export {
   shiftSwapKeys,
+  useShiftSwapMarketplace,
   useShiftSwaps,
-  useShiftSwap,
-  useAvailableShiftsForSwap,
-  useMyShiftSwapRequests,
   useMyShiftSwapOffers,
-  useCreateShiftSwapRequest,
+  useShiftSwapOffer,
   useCreateShiftSwapOffer,
+  useRequestShiftSwap,
+  useShiftSwapRequests,
+  useShiftSwapRequest,
+  useAcceptShiftSwapRequest,
+  useRejectShiftSwapRequest,
+  usePendingShiftSwapApprovals,
   useApproveShiftSwap,
   useRejectShiftSwap,
-  useCancelShiftSwapRequest,
-  useCancelShiftSwapOffer,
-  useInvalidateShiftSwaps,
-  usePrefetchShiftSwap,
-  // Additional hooks for ShiftSwapApprovalQueue component
+  useCancelShiftSwap,
   usePendingSwaps,
   useBulkApproveSwaps,
   useBulkRejectSwaps,

@@ -1,32 +1,53 @@
-// TODO: Schedule management not yet implemented in ScheduleHubClient
-// Stubbed out methods until backend implementation is complete
+import { ScheduleHubClient, APIClient } from '@recruitiq/api-client';
+
+const apiClient = new APIClient();
+const schedulehubClient = new ScheduleHubClient(apiClient);
+
 export const schedulesService = {
-  async listSchedules(_filters?: any) {
-    console.warn('Schedule management not yet implemented');
-    return [];
+  /**
+   * Lists all schedules with optional filters
+   */
+  async listSchedules(filters?: { date?: string; status?: string }) {
+    const response = await schedulehubClient.listSchedules(filters);
+    return response.data?.schedules || response.data || [];
   },
 
-  async getSchedule(_id: string) {
-    console.warn('Schedule management not yet implemented');
-    return null;
+  /**
+   * Gets a single schedule by ID
+   */
+  async getSchedule(id: string) {
+    const response = await schedulehubClient.getSchedule(id);
+    return response.data?.schedule || response.data;
   },
 
-  async createSchedule(_data: any) {
-    console.warn('Schedule management not yet implemented');
-    return null;
+  /**
+   * Creates a new schedule
+   */
+  async createSchedule(data: any) {
+    const response = await schedulehubClient.createSchedule(data);
+    return response.data?.schedule || response.data;
   },
 
-  async updateSchedule(_id: string, _data: any) {
-    console.warn('Schedule management not yet implemented');
-    return null;
+  /**
+   * Updates an existing schedule
+   */
+  async updateSchedule(id: string, data: any) {
+    const response = await schedulehubClient.updateSchedule(id, data);
+    return response.data?.schedule || response.data;
   },
 
-  async deleteSchedule(_id: string) {
-    console.warn('Schedule management not yet implemented');
+  /**
+   * Deletes a schedule (soft delete)
+   */
+  async deleteSchedule(id: string) {
+    await schedulehubClient.deleteSchedule(id);
   },
 
-  async publishSchedule(_id: string) {
-    console.warn('Schedule management not yet implemented');
-    return null;
+  /**
+   * Publishes a schedule to make it active
+   */
+  async publishSchedule(id: string) {
+    const response = await schedulehubClient.publishSchedule(id);
+    return response.data?.schedule || response.data;
   },
 };

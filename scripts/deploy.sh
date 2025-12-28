@@ -43,10 +43,7 @@ echo "📦 Saving images..."
 mkdir -p dist/images
 if [ "$APPS" == "all" ]; then
     docker save -o dist/images/backend.tar recruitiq_backend:latest
-    docker save -o dist/images/nexus.tar recruitiq_nexus:latest
-    docker save -o dist/images/paylinq.tar recruitiq_paylinq:latest
-    docker save -o dist/images/portal.tar recruitiq_portal:latest
-    docker save -o dist/images/recruitiq.tar recruitiq_recruitiq:latest
+    docker save -o dist/images/web.tar recruitiq_web:latest
 else
     IFS=',' read -ra APP_ARRAY <<< "$APPS"
     for app in "${APP_ARRAY[@]}"; do

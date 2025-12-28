@@ -23,8 +23,12 @@ RecruitIQ follows a layered architecture pattern:
 ```
 ┌─────────────────────────────────────────┐
 │          Frontend (React)               │
-│  - Portal (Admin)                       │
-│  - RecruitIQ (Public)                   │
+│  - Unified Web App (apps/web)           │
+│    • Admin Portal Features              │
+│    • RecruitIQ Public Features          │
+│    • Nexus HRIS Features                │
+│    • PayLinQ Payroll Features           │
+│    • ScheduleHub Features               │
 └─────────────────────────────────────────┘
                   │ HTTP/REST
 ┌─────────────────────────────────────────┐
@@ -139,42 +143,41 @@ Backend will be available at `http://localhost:3001`
 
 ### Frontend Setup
 
-#### Admin Portal
+#### Unified Web App (Recommended)
+
+The unified web app consolidates all product features (Portal, RecruitIQ, Nexus, PayLinQ, ScheduleHub) into a single application:
 
 ```bash
-# Navigate to portal
-cd portal
+# From project root (uses pnpm workspace)
+pnpm dev:web
+
+# Or navigate to web app
+cd apps/web
 
 # Install dependencies
-npm install
+pnpm install
 
 # Setup environment variables
 cp .env.example .env
 # Edit .env with API URL
 
 # Start development server
-npm run dev
+pnpm dev
 ```
 
-Portal will be available at `http://localhost:5173`
+Web app will be available at `http://localhost:5177`
 
-#### Public RecruitIQ App
+#### Legacy Individual Apps (Deprecated)
+
+**Note:** Individual product apps (portal, recruitiq, nexus, paylinq) are deprecated in favor of the unified web app. Use apps/web for new development.
 
 ```bash
-# Navigate to recruitiq
-cd recruitiq
+# Portal (Admin) - http://localhost:5173
+cd apps/portal && pnpm dev
 
-# Install dependencies
-npm install
-
-# Setup environment variables
-cp .env.example .env
-
-# Start development server
-npm run dev
+# RecruitIQ (Public) - http://localhost:5174
+cd apps/recruitiq && pnpm dev
 ```
-
-RecruitIQ app will be available at `http://localhost:5174`
 
 ## ⚙️ Configuration
 
@@ -214,7 +217,14 @@ REDIS_PORT=6379
 
 ### Frontend Environment Variables
 
-Create `.env` files in `portal` and `recruitiq` directories:
+Create `.env` file in `apps/web` directory:
+
+```env
+VITE_API_URL=http://localhost:3001/api
+VITE_APP_NAME=RecruitIQ Web
+```
+
+For legacy individual apps, create `.env` files in `apps/portal` and `apps/recruitiq` directories:
 
 ```env
 VITE_API_URL=http://localhost:3001/api

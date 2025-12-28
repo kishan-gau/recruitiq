@@ -4,9 +4,14 @@
 
 RecruitIQ is a **multi-product SaaS platform** with a monorepo structure using pnpm workspaces. The system features:
 - **1 shared backend** (Node.js/Express with PostgreSQL) serving multiple products via a dynamic product loading system
-- **4 tenant applications** (RecruitIQ, PayLinQ, Nexus, ScheduleHub) - separate React frontends
-- **1 admin portal** (Platform/Portal) - React admin interface for cross-tenant management
+- **1 unified web app** (`apps/web`) - Single React frontend containing all product modules:
+  - **RecruitIQ** - Recruitment management (`/recruitment` routes)
+  - **Nexus** - HRIS/workspace management (`/hris` routes)
+  - **PayLinQ** - Payroll management (`/payroll` routes)
+  - **ScheduleHub** - Scheduling and time tracking (`/scheduling` routes)
 - **Multi-tenant architecture** with organization-level data isolation enforced at the database layer
+
+**Note:** Individual apps (apps/nexus, apps/paylinq, apps/portal, apps/recruitiq) are **legacy/deprecated**. All new development should use the unified `apps/web` application.
 
 ## Critical Architecture Patterns
 
@@ -154,9 +159,13 @@ pnpm dev
 
 # Run specific apps
 pnpm dev:backend    # Backend API (port 3001)
-pnpm dev:paylinq    # PayLinQ app (port 5174)
-pnpm dev:portal     # Admin portal (port 5173)
-pnpm dev:recruitiq  # RecruitIQ app (port 5174)
+pnpm dev:web        # Unified Web App (port 5177) - all product modules
+
+# Legacy individual apps (deprecated, use web instead)
+# pnpm dev:paylinq    # PayLinQ app (port 5174)
+# pnpm dev:portal     # Admin portal (port 5173)
+# pnpm dev:recruitiq  # RecruitIQ app (port 5176)
+# pnpm dev:nexus      # Nexus app (port 5175)
 
 # Build all apps
 pnpm build

@@ -79,7 +79,7 @@ services:
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-recruitiq_dev}
       SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-in-production}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177}
     ports:
       - "3001:3001"
     volumes:
@@ -230,6 +230,33 @@ services:
       - VITE_API_URL=http://localhost:3001
       - VITE_APP_ENV=development
     command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5176"]
+
+  # Web Frontend (Unified - Development)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      target: development
+      args:
+        APP_NAME: web
+    container_name: recruitiq_web_dev
+    restart: unless-stopped
+    ports:
+      - "5177:5177"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages:ro
+      - ./package.json:/app/package.json:ro
+      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
+      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
+      - /app/node_modules
+      - /app/apps/web/node_modules
+    networks:
+      - recruitiq_dev_network
+    environment:
+      - VITE_API_URL=http://localhost:3001
+      - VITE_APP_ENV=development
+    command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5177"]
 
 volumes:
   postgres_dev_data:

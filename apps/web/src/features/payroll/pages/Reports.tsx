@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { payrollRunsService } from '@/services/payroll.service';
+import { payrollRunsService } from '@/features/payroll/services';
 import { handleApiError } from '@/utils/errorHandler';
 
 type ReportType = 'payroll' | 'deductions' | 'ytd' | 'tax' | 'custom';

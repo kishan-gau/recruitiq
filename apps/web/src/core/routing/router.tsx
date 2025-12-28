@@ -37,15 +37,15 @@ const DeductionsPage = lazy(() => import('@features/payroll/pages/Deductions'));
 const ReportsPage = lazy(() => import('@features/payroll/pages/Reports'));
 
 // ScheduleHub module
-const ScheduleHubPage = lazy(() => import('@pages/scheduling/ScheduleHubPage'));
-const ScheduleAnalyticsPage = lazy(() => import('@pages/scheduling/ScheduleAnalyticsPage'));
-const SchedulesPage = lazy(() => import('@pages/scheduling/SchedulesPage'));
-const StationsPage = lazy(() => import('@pages/scheduling/StationsPage'));
-const ScheduleTimeOffPage = lazy(() => import('@pages/scheduling/TimeOffPage'));
-const TemplatesPage = lazy(() => import('@pages/scheduling/TemplatesPage'));
-const ScheduleReportsPage = lazy(() => import('@pages/scheduling/ReportsPage'));
-const RolesPage = lazy(() => import('@pages/scheduling/RolesPage'));
-const SettingsPage = lazy(() => import('@pages/scheduling/SettingsPage'));
+const ScheduleHubPage = lazy(() => import('@features/scheduling/pages/ScheduleHubPage'));
+const ScheduleAnalyticsPage = lazy(() => import('@features/scheduling/pages/ScheduleAnalyticsPage'));
+const SchedulesPage = lazy(() => import('@features/scheduling/pages/SchedulesPage'));
+const StationsPage = lazy(() => import('@features/scheduling/pages/StationsPage'));
+const ScheduleTimeOffPage = lazy(() => import('@features/scheduling/pages/TimeOffPage'));
+const TemplatesPage = lazy(() => import('@features/scheduling/pages/TemplatesPage'));
+const ScheduleReportsPage = lazy(() => import('@features/scheduling/pages/ReportsPage'));
+const RolesPage = lazy(() => import('@features/scheduling/pages/RolesPage'));
+const SettingsPage = lazy(() => import('@features/scheduling/pages/SettingsPage'));
 
 // Migration validation
 const ScheduleHubMigrationValidation = lazy(() => import('@/validation/ScheduleHubMigrationValidation'));

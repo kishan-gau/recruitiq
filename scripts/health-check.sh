@@ -62,10 +62,11 @@ check_service "Backend API Status" "https://api.$DOMAIN/api/status" 200
 # Check frontend applications
 echo ""
 echo "Frontend Applications:"
-check_service "RecruitIQ App" "https://$DOMAIN/" 200
-check_service "Nexus HRIS" "https://nexus.$DOMAIN/" 200
-check_service "PayLinQ" "https://paylinq.$DOMAIN/" 200
-check_service "Portal" "https://portal.$DOMAIN/" 200
+check_service "Unified Web App" "https://$DOMAIN/" 200
+check_service "Web App - Recruitment" "https://$DOMAIN/recruitment" 200
+check_service "Web App - HRIS" "https://$DOMAIN/hris" 200
+check_service "Web App - Payroll" "https://$DOMAIN/payroll" 200
+check_service "Web App - Scheduling" "https://$DOMAIN/scheduling" 200
 
 # Check infrastructure
 echo ""
@@ -75,7 +76,7 @@ check_service "Traefik Dashboard" "https://traefik.$DOMAIN/" 401  # Should requi
 # Check SSL certificates
 echo ""
 echo "SSL Certificates:"
-for subdomain in "" "nexus" "paylinq" "portal" "api" "traefik"; do
+for subdomain in "" "api" "traefik"; do
     if [ -z "$subdomain" ]; then
         host="$DOMAIN"
     else

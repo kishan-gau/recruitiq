@@ -147,6 +147,23 @@ services:
       - "traefik.http.routers.recruitiq.entrypoints=websecure"
       - "traefik.http.routers.recruitiq.tls.certresolver=letsencrypt"
 
+  # Web Frontend (Unified)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        APP_NAME: web
+    container_name: recruitiq_web
+    restart: unless-stopped
+    networks:
+      - recruitiq_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(`app.${DOMAIN}`)"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls.certresolver=letsencrypt"
+
   # Traefik Reverse Proxy
   traefik:
     image: traefik:v2.10

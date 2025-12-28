@@ -1,6 +1,7 @@
-import { NexusClient } from '@recruitiq/api-client';
+import { NexusClient, APIClient } from '@recruitiq/api-client';
 
-const nexusClient = new NexusClient();
+const apiClient = new APIClient();
+const nexusClient = new NexusClient(apiClient);
 
 export const contractsService = {
   /**
@@ -53,8 +54,8 @@ export const contractsService = {
   /**
    * Generates contract from template
    */
-  async generateFromTemplate(templateId: string, employeeId: string, data?: any) {
-    const response = await nexusClient.generateContractFromTemplate?.(templateId, employeeId, data);
+  async generateFromTemplate(templateId: string, data: any) {
+    const response = await nexusClient.generateFromTemplate(templateId, data);
     return response?.data?.contract || response?.data;
   },
 };

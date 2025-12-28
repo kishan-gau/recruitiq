@@ -7,3 +7,4 @@ export * from './usePerformance';
 export * from './useTimeOff';
 export * from './useAttendance';
 export * from './useBenefits';
+export * from './useDocuments';

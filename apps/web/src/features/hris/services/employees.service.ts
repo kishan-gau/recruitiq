@@ -43,7 +43,7 @@ export const employeesService = {
     const response = await nexusClient.listEmployees(filters);
     // APIClient.get() extracts response.data automatically
     // Backend returns { success: true, employees: [...], total, limit, offset }
-    return (response.employees || []) as EmployeeListItem[];
+    return ((response as any).employees || []) as EmployeeListItem[];
   },
 
   /**
@@ -55,7 +55,7 @@ export const employeesService = {
     limit = 20
   ): Promise<PaginatedResponse<EmployeeListItem>> => {
     const response = await nexusClient.listEmployeesPaginated(filters, page, limit);
-    return response as PaginatedResponse<EmployeeListItem>;
+    return response as any as PaginatedResponse<EmployeeListItem>;
   },
 
   /**
@@ -63,7 +63,7 @@ export const employeesService = {
    */
   get: async (id: string): Promise<Employee> => {
     const response = await nexusClient.getEmployee(id);
-    return response.employee as Employee;
+    return (response as any).employee as Employee;
   },
 
   /**
@@ -71,7 +71,7 @@ export const employeesService = {
    */
   create: async (employee: CreateEmployeeDTO): Promise<Employee> => {
     const response = await nexusClient.createEmployee(employee);
-    return response.employee as Employee;
+    return (response as any).employee as Employee;
   },
 
   /**
