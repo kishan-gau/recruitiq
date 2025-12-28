@@ -9,7 +9,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { format, addMinutes } from 'date-fns';
 import { Clock, Plus, Trash2, Copy, Save, AlertCircle } from 'lucide-react';
 import type { EmployeeListItem } from '../../../types/employee.types';
-import { useShiftTemplates } from '@/hooks/schedulehub/useShiftTemplates';
+import { useNexusAPI } from '@/hooks/api/useNexusAPI';
 import { useTemplateBasedTimeSlots, TimeSlotPresets } from '@/utils/time-slot-generator';
 
 interface AvailabilityRule {
@@ -102,7 +102,8 @@ export default function AvailabilityEditor({
   }, []); // Run only once on mount
 
   // Template-based time slots with 1-hour intervals for availability editing
-  const { data: templates, isLoading: templatesLoading } = useShiftTemplates();
+  const nexusAPI = useNexusAPI();
+  const { data: templates, isLoading: templatesLoading } = nexusAPI.shiftTemplates.list();
   const { timeSlots } = useTemplateBasedTimeSlots({
     templates: templates || [],
     config: {

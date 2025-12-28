@@ -5,7 +5,12 @@
     "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
-    "composite": true
+    "composite": true,
+    // Override root bundler settings to allow declaration emit
+    "emitDeclarationOnly": true,
+    "declarationDir": "./dist",
+    "moduleResolution": "node",
+    "module": "ES2020"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

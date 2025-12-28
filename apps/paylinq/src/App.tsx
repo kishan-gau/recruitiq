@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
@@ -7,6 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Layout from '@/components/layout/Layout';
+import { isAuthError, isPermissionError } from '@/utils/errorHandler';
 
 // Only import Login eagerly (needed immediately)
 import Login from '@/pages/Login';
@@ -51,14 +53,45 @@ const ApprovalQueuePage = lazy(() => import('@/components/approvals/ApprovalQueu
 const CompensationManagementPage = lazy(() => import('@/pages/CompensationManagementPage'));
 const CreateCompensationForm = lazy(() => import('@/pages/CreateCompensationForm'));
 
+// Create a query client for React Query with smart retry logic
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes - cache garbage collection
+      refetchOnWindowFocus: false,
+      retry: (failureCount, error: any) => {
+        // Don't retry on auth errors - user needs to log in again
+        if (isAuthError(error)) {
+          return false;
+        }
+        // Don't retry on permission errors - user lacks access
+        if (isPermissionError(error)) {
+          return false;
+        }
+        // Don't retry on 404s - these are expected when resources don't exist
+        if (error?.response?.status === 404) {
+          return false;
+        }
+        // Retry other errors once
+        return failureCount < 1;
+      },
+    },
+    mutations: {
+      retry: false, // Never retry mutations
+    },
+  },
+});
+
 function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <Suspense fallback={<LoadingSpinner />}>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+              <ToastProvider>
+                <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   {/* Public Routes */}
                   <Route path="/login" element={<Login />} />
@@ -138,6 +171,7 @@ function App() {
               </Suspense>
             </ToastProvider>
           </ThemeProvider>
+          </QueryClientProvider>
         </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

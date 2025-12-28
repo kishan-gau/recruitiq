@@ -94,7 +94,7 @@ export default function ShiftTemplateForm({
     defaultValues: {
       templateName: mode === 'clone' ? `${template?.templateName} (Copy)` : template?.templateName || '',
       description: template?.description || '',
-      stationIds: template?.stationIds || (template?.stationId ? [template.stationId] : []),
+      stationIds: (template?.stationIds || (template?.stationId ? [template.stationId] : []) || []) as string[],
       shiftDuration: template?.shiftDuration || 480, // 8 hours default
       breakDuration: template?.breakDuration || 30,
       startTime: template?.startTime || '',

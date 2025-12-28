@@ -43,7 +43,7 @@ import {
 } from '@/hooks/schedulehub/useAvailability';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useTemplateBasedTimeSlots } from '@/utils/time-slot-generator';
-import { useShiftTemplates } from '@/hooks/schedulehub/useShiftTemplates';
+import { useNexusAPI } from '@/hooks/api/useNexusAPI';
 
 interface TimeSlot {
   hour: number;
@@ -72,7 +72,8 @@ export default function AvailabilityCalendar() {
 
   // Fetch data
   const { data: employees } = useEmployees();
-  const { data: shiftTemplates } = useShiftTemplates();
+  const nexusAPI = useNexusAPI();
+  const { data: shiftTemplates } = nexusAPI.shiftTemplates.list();
   const { data: availability, isLoading } = useAvailability({
     workerId: selectedEmployeeId,
     startDate: format(currentWeek, 'yyyy-MM-dd'),

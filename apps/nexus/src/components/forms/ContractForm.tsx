@@ -48,8 +48,8 @@ export default function ContractForm({ contract, mode }: ContractFormProps) {
   const { data: employeesResponse } = useQuery({
     queryKey: ['employees', 'list'],
     queryFn: async () => {
-      const { data } = await apiClient.get<{ success: boolean; data: any[] }>('/employees');
-      return data.data;
+      const response = await apiClient.get<{ success: boolean; data: any[] }>('/employees');
+      return ((response.data as any)?.data as any[]) || [];
     },
   });
 

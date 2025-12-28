@@ -1,0 +1,120 @@
+import { Route, Navigate } from 'react-router-dom';
+import { MainLayout } from '@shared/layouts/MainLayout';
+import { AuthLayout } from '@shared/layouts/AuthLayout';
+
+// Lazy load feature modules
+import { lazy } from 'react';
+
+// Auth pages
+const Login = lazy(() => import('@core/auth/pages/Login'));
+const Register = lazy(() => import('@core/auth/pages/Register'));
+
+// Recruitment module
+const RecruitmentDashboard = lazy(() => import('@features/recruitment/pages/Dashboard'));
+const JobsPage = lazy(() => import('@features/recruitment/pages/Jobs'));
+const CandidatesPage = lazy(() => import('@features/recruitment/pages/Candidates'));
+const PipelinePage = lazy(() => import('@features/recruitment/pages/Pipeline'));
+const InterviewsPage = lazy(() => import('@features/recruitment/pages/Interviews'));
+
+// HRIS module
+const HRISDashboard = lazy(() => import('@features/hris/pages/Dashboard'));
+const EmployeesPage = lazy(() => import('@features/hris/pages/Employees'));
+const DepartmentsPage = lazy(() => import('@features/hris/pages/Departments'));
+const LocationsPage = lazy(() => import('@features/hris/pages/Locations'));
+const TimeOffPage = lazy(() => import('@features/hris/pages/TimeOff'));
+const AttendancePage = lazy(() => import('@features/hris/pages/Attendance'));
+const BenefitsPage = lazy(() => import('@features/hris/pages/Benefits'));
+const PerformancePage = lazy(() => import('@features/hris/pages/Performance'));
+const ContractsPage = lazy(() => import('@features/hris/pages/Contracts'));
+const DocumentsPage = lazy(() => import('@features/hris/pages/Documents'));
+
+// Payroll module
+const PayrollDashboard = lazy(() => import('@features/payroll/pages/Dashboard'));
+const PayrollRunsPage = lazy(() => import('@features/payroll/pages/PayrollRuns'));
+const CompensationPage = lazy(() => import('@features/payroll/pages/Compensation'));
+const TaxPage = lazy(() => import('@features/payroll/pages/Tax'));
+const DeductionsPage = lazy(() => import('@features/payroll/pages/Deductions'));
+const ReportsPage = lazy(() => import('@features/payroll/pages/Reports'));
+
+// ScheduleHub module
+const ScheduleHubPage = lazy(() => import('@pages/scheduling/ScheduleHubPage'));
+const ScheduleAnalyticsPage = lazy(() => import('@pages/scheduling/ScheduleAnalyticsPage'));
+const SchedulesPage = lazy(() => import('@pages/scheduling/SchedulesPage'));
+const StationsPage = lazy(() => import('@pages/scheduling/StationsPage'));
+const ScheduleTimeOffPage = lazy(() => import('@pages/scheduling/TimeOffPage'));
+const TemplatesPage = lazy(() => import('@pages/scheduling/TemplatesPage'));
+const ScheduleReportsPage = lazy(() => import('@pages/scheduling/ReportsPage'));
+const RolesPage = lazy(() => import('@pages/scheduling/RolesPage'));
+const SettingsPage = lazy(() => import('@pages/scheduling/SettingsPage'));
+
+// Migration validation
+const ScheduleHubMigrationValidation = lazy(() => import('@/validation/ScheduleHubMigrationValidation'));
+
+/**
+ * Application routes
+ * Exported as JSX elements for use with <Routes> component
+ * Following industry standard pattern with BrowserRouter
+ */
+export const routes = (
+  <>
+    {/* Auth routes */}
+    <Route path="/auth" element={<AuthLayout />}>
+      <Route path="login" element={<Login />} />
+      <Route path="register" element={<Register />} />
+      <Route index element={<Navigate to="/auth/login" replace />} />
+    </Route>
+
+    {/* Main app routes */}
+    <Route path="/" element={<MainLayout />}>
+      <Route index element={<Navigate to="/recruitment" replace />} />
+      
+      {/* Recruitment module */}
+      <Route path="recruitment">
+        <Route index element={<RecruitmentDashboard />} />
+        <Route path="jobs" element={<JobsPage />} />
+        <Route path="candidates" element={<CandidatesPage />} />
+        <Route path="pipeline" element={<PipelinePage />} />
+        <Route path="interviews" element={<InterviewsPage />} />
+      </Route>
+
+      {/* HRIS module */}
+      <Route path="hris">
+        <Route index element={<HRISDashboard />} />
+        <Route path="employees" element={<EmployeesPage />} />
+        <Route path="departments" element={<DepartmentsPage />} />
+        <Route path="locations" element={<LocationsPage />} />
+        <Route path="time-off" element={<TimeOffPage />} />
+        <Route path="attendance" element={<AttendancePage />} />
+        <Route path="benefits" element={<BenefitsPage />} />
+        <Route path="performance" element={<PerformancePage />} />
+        <Route path="contracts" element={<ContractsPage />} />
+        <Route path="documents" element={<DocumentsPage />} />
+      </Route>
+
+      {/* Payroll module */}
+      <Route path="payroll">
+        <Route index element={<PayrollDashboard />} />
+        <Route path="runs" element={<PayrollRunsPage />} />
+        <Route path="compensation" element={<CompensationPage />} />
+        <Route path="tax" element={<TaxPage />} />
+        <Route path="deductions" element={<DeductionsPage />} />
+        <Route path="reports" element={<ReportsPage />} />
+      </Route>
+
+      {/* ScheduleHub module */}
+      <Route path="scheduling">
+        <Route index element={<ScheduleHubPage />} />
+        <Route path="hub" element={<ScheduleHubPage />} />
+        <Route path="analytics" element={<ScheduleAnalyticsPage />} />
+        <Route path="schedules" element={<SchedulesPage />} />
+        <Route path="schedules/:view" element={<SchedulesPage />} />
+        <Route path="stations" element={<StationsPage />} />
+        <Route path="time-off" element={<ScheduleTimeOffPage />} />
+        <Route path="templates" element={<TemplatesPage />} />
+        <Route path="reports" element={<ScheduleReportsPage />} />
+        <Route path="roles" element={<RolesPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+    </Route>
+  </>
+);

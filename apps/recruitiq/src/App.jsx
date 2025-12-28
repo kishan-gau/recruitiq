@@ -1,6 +1,14 @@
 import React, { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from '@recruitiq/auth'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useAuth, AuthProvider } from '@recruitiq/auth'
+import { OrganizationProvider } from './context/OrganizationContext'
+import { WorkspaceProvider } from './context/WorkspaceContext'
+import { DataProvider } from './context/DataContext'
+import { ToastProvider } from './context/ToastContext'
+import { FlowProvider } from './context/FlowContext'
+import { isAuthError, isPermissionError } from './utils/errorHandler'
+import Sprite from './components/icons/Sprite'
 import Login from './pages/Login'
 import Layout from './components/Layout'
 import DebugOverlay from './components/DebugOverlay'
@@ -30,6 +38,33 @@ const CareerPage = lazy(() => import('./pages/public/CareerPage'))
 const ApplicantSignup = lazy(() => import('./pages/applicant/ApplicantSignup'))
 const ApplicantLogin = lazy(() => import('./pages/applicant/ApplicantLogin'))
 const ApplicantDashboard = lazy(() => import('./pages/applicant/ApplicantDashboard'))
+
+// Create React Query client with smart retry logic
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes - data fresh for 5 min
+      gcTime: 10 * 60 * 1000, // 10 minutes - cache garbage collection
+      retry: (failureCount, error) => {
+        // Don't retry on auth errors - user needs to log in again
+        if (isAuthError(error)) {
+          return false;
+        }
+        // Don't retry on permission errors - user lacks access
+        if (isPermissionError(error)) {
+          return false;
+        }
+        // Retry other errors once
+        return failureCount < 1;
+      },
+      refetchOnWindowFocus: false, // Don't refetch on window focus
+      refetchOnReconnect: true, // Refetch on network reconnect
+    },
+    mutations: {
+      retry: false, // Never retry mutations
+    }
+  }
+})
 
 // Loading fallback component
 function PageLoader() {
@@ -105,6 +140,29 @@ function ApplicantProtectedRoute({ children }) {
 }
 
 export default function App(){
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <OrganizationProvider>
+            <WorkspaceProvider>
+              <DataProvider>
+                <FlowProvider>
+                  <ToastProvider>
+                    <Sprite />
+                    <AppContent />
+                  </ToastProvider>
+                </FlowProvider>
+              </DataProvider>
+            </WorkspaceProvider>
+          </OrganizationProvider>
+        </QueryClientProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+
+function AppContent(){
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -192,5 +250,5 @@ export default function App(){
         </ProtectedRoute>
       } />
     </Routes>
-  )
+  );
 }

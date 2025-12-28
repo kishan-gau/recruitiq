@@ -26,6 +26,7 @@ export { RecruitIQAPI } from './products/recruitiq';
 export { PortalAPI } from './products/portal';
 export { PaylinqClient } from './products/paylinq';
 export { NexusClient } from './products/nexus';
+export { ScheduleHubClient } from './products/schedulehub';
 
 // Unified API Client
 import { APIClient, APIClientConfig, TokenStorage } from './core/client';
@@ -35,6 +36,7 @@ import { RecruitIQAPI } from './products/recruitiq';
 import { PortalAPI } from './products/portal';
 import { PaylinqClient } from './products/paylinq';
 import { NexusClient } from './products/nexus';
+import { ScheduleHubClient } from './products/schedulehub';
 
 /**
  * Unified RecruitIQ Platform API Client
@@ -47,8 +49,7 @@ export class RecruitIQPlatformAPI {
   public features: FeaturesAPI;
   public recruitiq: RecruitIQAPI;
   public portal: PortalAPI;
-  public paylinq: PaylinqClient;
-  public nexus: NexusClient;
+  public schedulehub: ScheduleHubClient;
 
   constructor(config: APIClientConfig = {}, tokenStorage?: TokenStorage) {
     this.apiClient = new APIClient(config, tokenStorage);
@@ -60,8 +61,11 @@ export class RecruitIQPlatformAPI {
     this.portal = new PortalAPI(this.apiClient);
     this.paylinq = new PaylinqClient(this.apiClient);
     this.nexus = new NexusClient(this.apiClient);
+    this.schedulehub = new ScheduleHubClient(this.apiClient);
   }
 
+    public paylinq: PaylinqClient;
+    public nexus: NexusClient;
   /**
    * Get the underlying API client for direct access
    */
@@ -71,6 +75,8 @@ export class RecruitIQPlatformAPI {
 
   /**
    * Get token storage interface
+      this.paylinq = new PaylinqClient(this.apiClient);
+      this.nexus = new NexusClient(this.apiClient);
    */
   public getTokenStorage(): TokenStorage {
     return this.apiClient.getTokenStorage();

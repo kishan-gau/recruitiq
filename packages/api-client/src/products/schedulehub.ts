@@ -229,6 +229,16 @@ export class ScheduleHubClient {
   }
 
   /**
+   * Toggle the status (active/inactive) of a shift template
+   */
+  async toggleStatus(id: string, isActive: boolean) {
+    return this.client.patch<ApiResponse<ShiftTemplate>>(
+      `${this.basePath}/shift-templates/${id}/status`,
+      { isActive }
+    );
+  }
+
+  /**
    * Validate a shift template
    */
   async validateShiftTemplate(data: CreateShiftTemplateInput | UpdateShiftTemplateInput) {

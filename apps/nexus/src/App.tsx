@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { ProtectedRoute, AuthProvider } from '@recruitiq/auth';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { handleApiError, isAuthError } from '@/utils/errorHandler';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import Layout from '@/components/layout/Layout';
@@ -108,14 +111,36 @@ const AvailabilityManagement = lazy(() => import('@/pages/schedulehub/Availabili
 // Shift Templates
 const ShiftTemplateManagement = lazy(() => import('@/pages/ShiftTemplates/ShiftTemplateManagement'));
 
+// Create a QueryClient configured per Frontend Standards
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      retry: (failureCount, error) => {
+        if (isAuthError(error)) {
+          return false;
+        }
+        return failureCount < 1;
+      },
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
+
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider>
-          <ToastProvider>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider>
+              <ToastProvider>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Routes>
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
 
@@ -285,12 +310,14 @@ function App() {
                   {/* 404 */}
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Route>
-              </Routes>
-            </Suspense>
-          </ToastProvider>
-        </ThemeProvider>
-      </AuthProvider>
-    </BrowserRouter>
+                  </Routes>
+                </Suspense>
+              </ToastProvider>
+            </ThemeProvider>
+          </QueryClientProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 

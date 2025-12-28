@@ -28,7 +28,7 @@ export default function DepartmentTreeNode({
 }: DepartmentTreeNodeProps) {
   const [isExpanded, setIsExpanded] = useState(level < 2); // Auto-expand first 2 levels
   const [showMenu, setShowMenu] = useState(false);
-  const { toast } = useToast();
+  const { success, error, warning, info } = useToast();
   const deleteDepartment = useDeleteDepartment();
 
   const hasChildren = department.children && department.children.length > 0;
@@ -41,12 +41,9 @@ export default function DepartmentTreeNode({
 
     try {
       await deleteDepartment.mutateAsync(department.id);
-      toast.success('Department deleted successfully');
+      success('Department deleted successfully');
     } catch (error) {
-      handleApiError(error, {
-        toast,
-        defaultMessage: 'Failed to delete department',
-      });
+      error('Failed to delete department');
     }
   };
 

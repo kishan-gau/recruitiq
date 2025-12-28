@@ -3,7 +3,7 @@ import { useNavigate, Link, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Calendar, Users, Clock, Save, ArrowLeft, Zap, MapPin, User, CheckCircle, Target, AlertTriangle, XCircle } from 'lucide-react';
 import { useAutoGenerateSchedule, useRegenerateSchedule } from '@/hooks/schedulehub/useScheduleStats';
-import { useShiftTemplates } from '@/hooks/schedulehub/useShiftTemplates';
+import { useNexusAPI } from '@/hooks/api/useNexusAPI';
 import { schedulehubApi } from '@/lib/api/schedulehub';
 import { Button, Modal, ModalFooter } from '@recruitiq/ui';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -35,7 +35,10 @@ export default function ScheduleBuilder() {
 
   const autoGenerateSchedule = useAutoGenerateSchedule();
   const regenerateSchedule = useRegenerateSchedule();
-  const { data: templatesData, isLoading: templatesLoading, isError: templatesError } = useShiftTemplates();
+  
+  // Initialize API hooks
+  const nexusAPI = useNexusAPI();
+  const { data: templatesData, isLoading: templatesLoading, isError: templatesError } = nexusAPI.shiftTemplates.list();
 
   const templates = (templatesData?.templates || []) as ShiftTemplateSummary[];
   const activeTemplates = templates.filter(template => template.isActive);

@@ -19,3 +19,15 @@ export * from './components/AccessDenied';
 
 // Export hooks
 export * from './hooks';
+
+// Recruitment-specific components
+export { FilterChips } from './recruitment/FilterChips';
+export { Pagination } from './recruitment/Pagination';
+export { SearchInput } from './recruitment/SearchInput';
+export { ApplicationSourceBadge } from './recruitment/ApplicationSourceBadge';
+
+// Recruitment component types
+export type { Filter, FilterChipsProps } from './recruitment/FilterChips';
+export type { PaginationProps } from './recruitment/Pagination';
+export type { SearchInputProps } from './recruitment/SearchInput';
+export type { ApplicationSource, ApplicationSourceBadgeProps } from './recruitment/ApplicationSourceBadge';

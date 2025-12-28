@@ -1,5 +1,36 @@
 # Frontend Consolidation & Restructuring Plan
 
+# Frontend Consolidation & Restructuring Plan
+
+## Status Update — 2025-12-26
+
+Samenvatting van de huidige uitvoeringsstatus en actiepunten, gebaseerd op de geauditeerde codebase.
+
+### Gereed (Done)
+- Unified frontend aanwezig en operationeel in apps/web met feature-based modules en gecentraliseerde routing.
+- Vier domeinen actief in unified frontend: recruitment, hris, payroll, scheduling (incl. time-tracking).
+- Centrale API-clients in gebruik over modules: NexusClient, PayLinQClient, ScheduleHubClient, RecruitIQAPI via packages/api-client.
+- Backend product-architectuur en API-paden behouden: alle product-API’s bereikbaar via `/api/products/{slug}/*`.
+- Timesheets expliciet niet gemigreerd naar PayLinQ; robuuste time-tracking via ScheduleHub/Nexus wordt gebruikt.
+
+### Gedeeltelijk (Partial)
+- Provider stack wijkt af van de standaard:
+  - AuthProvider ontbreekt in apps/web.
+  - Dubbele QueryClientProvider (zowel in App.tsx als in main.tsx).
+- Volgorde Theme/Toast dient bevestigd en zo nodig aangepast te worden conform frontend-standaarden.
+
+### Openstaand (Pending)
+- Hernoemen van backend folder van backend/ naar apps/api (planning + migratiescripts + CI-aanpassingen).
+
+### Actiepunten (Next)
+- Provider stack refactoren naar standaardvolgorde:
+  - ErrorBoundary → BrowserRouter → AuthProvider → QueryClientProvider → ThemeProvider → ToastProvider → Domain Providers.
+  - Eén enkele QueryClientProvider handhaven (duplicaten verwijderen) en AuthProvider integreren met shared `@recruitiq/auth`.
+- Bevestig Theme/Toast volgorde en pas indien nodig aan.
+- Plan en documenteer hernoeming van backend naar apps/api, inclusief build/run scripts en CI/CD updates.
+
+---
+
 ## Huidige Situatie
 
 ### Frontends (4 apps → consolideren naar 1)
@@ -361,6 +392,25 @@ Gebruikers moeten wennen aan nieuwe navigatie:
 5. ⏳ Parallel draaien van oude + nieuwe frontend (feature flag)
 6. ⏳ Geleidelijke rollout naar productie
 7. ⏳ Verwijder oude frontends
+
+---
+
+## Consolidatie Finalisatie-Checklist
+
+Gebruik deze checklist om de consolidatie af te ronden vóór we builds en runtimes gaan fixen:
+
+- [ ] **API paden conform standaarden**: Alle frontends gebruiken `/api/products/{slug}/*` (zie docs/API_STANDARDS.md).
+- [ ] **Centraal @recruitiq/api-client**: Alle apps/services roepen via `packages/api-client` aan; geen lokale axios-clients.
+- [ ] **Provider volgorde correct**: ErrorBoundary → BrowserRouter → AuthProvider → QueryClientProvider → Theme → Toast → Domain (zie docs/FRONTEND_STANDARDS.md).
+- [ ] **DTO-transformaties consistent**: Services gebruiken DTO’s voor snake_case ↔ camelCase (zie docs/BACKEND_STANDARDS.md).
+- [ ] **Tenant-isolatie enforced**: Repositories gebruiken altijd `query()` wrapper met `organization_id` filter (zie docs/DATABASE_STANDARDS.md).
+- [ ] **Duplicaten verwijderd/uitgefaseerd**: PayLinQ Timesheets en dubbele Workers/Scheduling vervangen door Nexus/ScheduleHub implementaties.
+- [ ] **Unified frontend routing**: Module-routes aanwezig onder `apps/web/src/features/*` volgens dit plan.
+- [ ] **E2E & integratietests**: Basisflows per module aanwezig; auth-cookie flow gebruikt (zie docs/TESTING_STANDARDS.md).
+- [ ] **Performance check**: Code-splitting per feature, lazy routes, Query staleTime/gcTime ingesteld.
+- [ ] **Documentatie bijgewerkt**: Readmes en standaarden verwijzen naar unified frontend en actuele workflows.
+
+Wanneer alle items boven groen zijn, eerst type-checks/builds uitvoeren en vervolgens runtime fixes oppakken.
 
 ---
 

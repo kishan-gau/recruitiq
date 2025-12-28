@@ -75,8 +75,8 @@ export default function AttendanceManualEntry({
       await createRecord.mutateAsync({
         employeeId: formData.employeeId,
         date: formData.date,
-        checkInTime: formData.checkInTime,
-        checkOutTime: formData.checkOutTime || undefined,
+        clockInTime: formData.checkInTime,
+        clockOutTime: formData.checkOutTime || undefined,
         status: formData.status,
         notes: formData.notes || undefined,
         isManualEntry: true,

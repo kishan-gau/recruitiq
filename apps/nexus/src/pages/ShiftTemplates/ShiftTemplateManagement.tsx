@@ -7,16 +7,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import {
-  useShiftTemplates,
-  useShiftTemplate,
-  useDeleteShiftTemplate,
-  useToggleShiftTemplateStatus,
-  useBulkShiftTemplateOperations,
-  usePrefetchShiftTemplate,
-  useCreateShiftTemplate,
-  useUpdateShiftTemplate
-} from '@/hooks/schedulehub/useShiftTemplates';
+import { useNexusAPI } from '@/hooks/api/useNexusAPI';
 import {
   ShiftTemplateFilters,
   ShiftTemplateSortField,
@@ -149,32 +140,34 @@ export default function ShiftTemplateManagement({
   }>({ show: false });
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
-  // Data fetching
-  const {
-    data,
-    isLoading,
-    error,
-    refetch
-  } = useShiftTemplates(filters);
+  // Initialize API hooks for shift templates
+  const nexusAPI = useNexusAPI();
+  
+  // Data fetching with useNexusAPI
+  const listQuery = nexusAPI.shiftTemplates.list(filters);
+  const { data, isLoading, error, refetch } = listQuery;
   
   // Extract templates array from response data
   const templates = data?.templates || [];
 
-  // Mutations - ALL hooks must be called at the top level, not conditionally
-  const deleteMutation = useDeleteShiftTemplate();
-  const createMutation = useCreateShiftTemplate(); // Moved from conditional block
-  const updateMutation = useUpdateShiftTemplate();
-  
-  // Single useShiftTemplate hook call - conditionally enabled based on mode
+  // Detail query for editing/viewing
+  const detailQuery = nexusAPI.shiftTemplates.getById(templateId || '', {
+    enabled: !!templateId && (isEditMode || isViewMode)
+  });
   const { 
     data: template, 
     isLoading: isLoadingTemplate, 
     error: templateError 
-  } = useShiftTemplate(
-    templateId || '', 
-    !!templateId && (isEditMode || isViewMode)
-  );
+  } = detailQuery;
   
+  // Mutations
+  const createMutation = nexusAPI.shiftTemplates.create();
+  const updateMutation = nexusAPI.shiftTemplates.update();
+  const deleteMutation = nexusAPI.shiftTemplates.delete();
+  const toggleStatusMutation = nexusAPI.shiftTemplates.toggleStatus();
+  const bulkOperationsMutation = nexusAPI.shiftTemplates.bulkOperations();
+  
+  // Success handlers
   const handleDeleteSuccess = () => {
     toast.success('Shift template deleted successfully');
     setDeleteConfirm({ show: false });
@@ -184,8 +177,6 @@ export default function ShiftTemplateManagement({
     handleApiError(error, { toast, defaultMessage: 'Failed to delete shift template' });
   };
 
-  const toggleStatusMutation = useToggleShiftTemplateStatus();
-  
   const handleToggleSuccess = (updatedTemplate: { id: string; isActive: boolean }) => {
     const status = updatedTemplate.isActive ? 'activated' : 'deactivated';
     toast.success(`Shift template ${status} successfully`);
@@ -195,8 +186,6 @@ export default function ShiftTemplateManagement({
     handleApiError(error, { toast, defaultMessage: 'Failed to toggle template status' });
   };
 
-  const bulkOperationsMutation = useBulkShiftTemplateOperations();
-  
   const handleBulkOperationSuccess = (_: any, { operation }: { operation: 'delete' | 'activate' | 'deactivate' }) => {
     const operationText: Record<string, string> = {
       delete: 'deleted',
