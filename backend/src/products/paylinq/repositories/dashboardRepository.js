@@ -278,31 +278,31 @@ class DashboardRepository {
  * @returns {Promise<Object>}
  */
   async getHistoricalEmployeeMetrics(organizationId, startDate, endDate) {
-  try {
-    const query = `
-      SELECT 
-        COUNT(*) as total_employees,
-        COUNT(CASE WHEN e.employment_status = 'active' THEN 1 END) as active_employees
-      FROM hris.employee e
-      WHERE e.organization_id = $1
-        AND e.created_at < $3
-        AND (e.deleted_at IS NULL OR e.deleted_at >= $2)
-    `;
+    try {
+      const query = `
+        SELECT 
+          COUNT(*) as total_employees,
+          COUNT(CASE WHEN e.employment_status = 'active' THEN 1 END) as active_employees
+        FROM hris.employee e
+        WHERE e.organization_id = $1
+          AND e.created_at < $3
+          AND (e.deleted_at IS NULL OR e.deleted_at >= $2)
+      `;
 
-    const result = await this.db.query(query, [organizationId, startDate, endDate]);
-    
-    return {
-      totalEmployees: parseInt(result.rows[0].total_employees) || 0,
-      activeEmployees: parseInt(result.rows[0].active_employees) || 0
-    };
-  } catch (error) {
-    logger.error('Error fetching historical employee metrics', {
-      error: error.message,
-      organizationId
-    });
-    throw error;
+      const result = await this.db.query(query, [organizationId, startDate, endDate]);
+      
+      return {
+        totalEmployees: parseInt(result.rows[0].total_employees) || 0,
+        activeEmployees: parseInt(result.rows[0].active_employees) || 0
+      };
+    } catch (error) {
+      logger.error('Error fetching historical employee metrics', {
+        error: error.message,
+        organizationId
+      });
+      throw error;
+    }
   }
-}
 
 /**
  * Get pending approvals count
@@ -310,44 +310,44 @@ class DashboardRepository {
  * @returns {Promise<Array>}
  */
   async getPendingApprovals(organizationId) {
-  try {
-    // Check if currency_approval_request table exists in payroll schema
-    const query = `
-      SELECT 
-        id,
-        request_type,
-        reference_type,
-        reference_id,
-        priority,
-        required_approvals,
-        current_approvals,
-        expires_at,
-        created_at
-      FROM payroll.currency_approval_request
-      WHERE organization_id = $1
-        AND status = 'pending'
-        AND deleted_at IS NULL
-      ORDER BY priority DESC, created_at ASC
-      LIMIT 50
-    `;
+    try {
+      // Check if currency_approval_request table exists in payroll schema
+      const query = `
+        SELECT 
+          id,
+          request_type,
+          reference_type,
+          reference_id,
+          priority,
+          required_approvals,
+          current_approvals,
+          expires_at,
+          created_at
+        FROM payroll.currency_approval_request
+        WHERE organization_id = $1
+          AND status = 'pending'
+          AND deleted_at IS NULL
+        ORDER BY priority DESC, created_at ASC
+        LIMIT 50
+      `;
 
-    const result = await this.db.query(query, [organizationId]);
-    return result.rows;
-  } catch (error) {
-    // If table doesn't exist or query fails, return empty array
-    if (error.code === '42P01' || error.message.includes('does not exist')) {
-      logger.warn('Currency approval request table not found, returning empty approvals', {
+      const result = await this.db.query(query, [organizationId]);
+      return result.rows;
+    } catch (error) {
+      // If table doesn't exist or query fails, return empty array
+      if (error.code === '42P01' || error.message.includes('does not exist')) {
+        logger.warn('Currency approval request table not found, returning empty approvals', {
+          organizationId
+        });
+        return [];
+      }
+      logger.error('Error fetching pending approvals', {
+        error: error.message,
         organizationId
       });
-      return [];
+      throw error;
     }
-    logger.error('Error fetching pending approvals', {
-      error: error.message,
-      organizationId
-    });
-    throw error;
   }
-}
 
 }
 
