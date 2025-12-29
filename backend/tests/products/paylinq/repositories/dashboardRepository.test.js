@@ -229,7 +229,7 @@ describe('Dashboard Repository', () => {
 
       const query = mockQuery.mock.calls[0][0];
       expect(query).toContain('hris.employee'); // Correct - new schema
-      expect(query).toContain('payroll.worker_type'); // Correct
+      expect(query).toContain('hris.worker_type'); // Correct - worker_type in hris schema
       // Note: query contains column alias worker_types_count, which is correct
     });
 
@@ -245,9 +245,9 @@ describe('Dashboard Repository', () => {
       await dashboardRepository.getEmployeeMetrics('9ee50aee-76c3-46ce-87ed-005c6dd893ef');
 
       const query = mockQuery.mock.calls[0][0];
-      // Should join on employee_id
-      expect(query).toContain('wt.employee_id');
-      expect(query).toContain('e.id');
+      // Should join on worker_type_id
+      expect(query).toContain('e.worker_type_id = wt.id');
+      expect(query).toContain('wt.organization_id = e.organization_id');
     });
 
     test('should return worker type breakdown', async () => {
@@ -426,6 +426,183 @@ describe('Dashboard Repository', () => {
   });
 
   // ============================================================================
+  // getHistoricalEmployeeMetrics - Historical Employee Data for Trends
+  // ============================================================================
+  
+  describe('getHistoricalEmployeeMetrics', () => {
+    test('should return historical employee counts', async () => {
+      mockQuery.mockResolvedValue({
+        rows: [{
+          total_employees: '40',
+          active_employees: '38'
+        }]
+      });
+
+      const result = await dashboardRepository.getHistoricalEmployeeMetrics(
+        '9ee50aee-76c3-46ce-87ed-005c6dd893ef',
+        new Date('2024-09-01'),
+        new Date('2024-09-30')
+      );
+
+      expect(result).toEqual({
+        totalEmployees: 40,
+        activeEmployees: 38
+      });
+
+      const query = mockQuery.mock.calls[0][0];
+      expect(query).toContain('hris.employee');
+      expect(query).toContain('organization_id = $1');
+    });
+
+    test('should handle employees created before period', async () => {
+      mockQuery.mockResolvedValue({
+        rows: [{
+          total_employees: '25',
+          active_employees: '22'
+        }]
+      });
+
+      await dashboardRepository.getHistoricalEmployeeMetrics(
+        '9ee50aee-76c3-46ce-87ed-005c6dd893ef',
+        new Date('2024-08-01'),
+        new Date('2024-08-31')
+      );
+
+      const query = mockQuery.mock.calls[0][0];
+      // Should check created_at < endDate
+      expect(query).toContain('created_at');
+    });
+
+    test('should handle null values gracefully', async () => {
+      mockQuery.mockResolvedValue({
+        rows: [{
+          total_employees: null,
+          active_employees: null
+        }]
+      });
+
+      const result = await dashboardRepository.getHistoricalEmployeeMetrics(
+        '9ee50aee-76c3-46ce-87ed-005c6dd893ef',
+        new Date(),
+        new Date()
+      );
+
+      expect(result.totalEmployees).toBe(0);
+      expect(result.activeEmployees).toBe(0);
+    });
+  });
+
+  // ============================================================================
+  // getPendingApprovals - Pending Approval Requests
+  // ============================================================================
+  
+  describe('getPendingApprovals', () => {
+    test('should return pending approval requests', async () => {
+      mockQuery.mockResolvedValue({
+        rows: [
+          {
+            id: 'approval-1',
+            request_type: 'currency_change',
+            reference_type: 'payroll_run',
+            reference_id: 'ref-1',
+            priority: 'high',
+            required_approvals: 2,
+            current_approvals: 1,
+            expires_at: new Date(),
+            created_at: new Date()
+          },
+          {
+            id: 'approval-2',
+            request_type: 'rate_change',
+            reference_type: 'employee',
+            reference_id: 'ref-2',
+            priority: 'normal',
+            required_approvals: 1,
+            current_approvals: 0,
+            expires_at: null,
+            created_at: new Date()
+          }
+        ]
+      });
+
+      const result = await dashboardRepository.getPendingApprovals(
+        '9ee50aee-76c3-46ce-87ed-005c6dd893ef'
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('approval-1');
+      expect(result[0].request_type).toBe('currency_change');
+      expect(result[1].id).toBe('approval-2');
+
+      const query = mockQuery.mock.calls[0][0];
+      expect(query).toContain('currency_approval_request');
+      expect(query).toContain("status = 'pending'");
+      expect(query).toContain('organization_id = $1');
+      expect(query).toContain('LIMIT 50');
+    });
+
+    test('should order by priority DESC, then created_at ASC', async () => {
+      mockQuery.mockResolvedValue({
+        rows: []
+      });
+
+      await dashboardRepository.getPendingApprovals(
+        '9ee50aee-76c3-46ce-87ed-005c6dd893ef'
+      );
+
+      const query = mockQuery.mock.calls[0][0];
+      expect(query).toContain('ORDER BY priority DESC, created_at ASC');
+    });
+
+    test('should return empty array if approval table does not exist', async () => {
+      // Mock table not found error
+      const error = new Error('relation "payroll.currency_approval_request" does not exist');
+      error.code = '42P01';
+      mockQuery.mockRejectedValue(error);
+
+      const result = await dashboardRepository.getPendingApprovals(
+        '9ee50aee-76c3-46ce-87ed-005c6dd893ef'
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    test('should return empty array if table query fails with does not exist message', async () => {
+      const error = new Error('Table does not exist');
+      mockQuery.mockRejectedValue(error);
+
+      const result = await dashboardRepository.getPendingApprovals(
+        '9ee50aee-76c3-46ce-87ed-005c6dd893ef'
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    test('should throw error for other database errors', async () => {
+      const error = new Error('Connection timeout');
+      error.code = 'ETIMEDOUT';
+      mockQuery.mockRejectedValue(error);
+
+      await expect(
+        dashboardRepository.getPendingApprovals('9ee50aee-76c3-46ce-87ed-005c6dd893ef')
+      ).rejects.toThrow('Connection timeout');
+    });
+
+    test('should filter out soft-deleted records', async () => {
+      mockQuery.mockResolvedValue({
+        rows: []
+      });
+
+      await dashboardRepository.getPendingApprovals(
+        '9ee50aee-76c3-46ce-87ed-005c6dd893ef'
+      );
+
+      const query = mockQuery.mock.calls[0][0];
+      expect(query).toContain('deleted_at IS NULL');
+    });
+  });
+
+  // ============================================================================
   // Error Handling
   // ============================================================================
   
@@ -455,5 +632,4 @@ describe('Dashboard Repository', () => {
     });
   });
 });
-
 
