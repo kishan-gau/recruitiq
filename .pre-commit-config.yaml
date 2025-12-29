@@ -1,0 +1,76 @@
+# Pre-commit hooks configuration
+# Install: pnpm add -D -w husky lint-staged
+# Setup: pnpm exec husky install
+
+# Run these checks before allowing commits
+
+default_language_version:
+  node: system
+
+repos:
+  - repo: local
+    hooks:
+      # ESLint for JavaScript files
+      - id: eslint
+        name: ESLint
+        entry: bash -c 'cd backend && npm run lint'
+        language: system
+        types: [javascript]
+        pass_filenames: false
+        
+      # Audit pool.query usage (CRITICAL)
+      - id: audit-pool-query
+        name: Audit pool.query usage (Security)
+        entry: bash -c 'cd backend && npm run audit:pool-query'
+        language: system
+        files: '\.js$'
+        pass_filenames: false
+        
+      # Audit console.log usage
+      - id: audit-console-log
+        name: Audit console.log usage (Logging)
+        entry: bash -c 'cd backend && npm run audit:console-log'
+        language: system
+        files: '\.js$'
+        pass_filenames: false
+        stages: [commit]
+        
+      # Audit singleton exports
+      - id: audit-singleton-exports
+        name: Audit singleton exports (Testing)
+        entry: bash -c 'cd backend && npm run audit:singleton-exports'
+        language: system
+        files: 'Service\.js$|Controller\.js$'
+        pass_filenames: false
+        stages: [commit]
+        
+      # Prettier for formatting
+      - id: prettier
+        name: Prettier
+        entry: prettier --write
+        language: system
+        types: [javascript, jsx, json, markdown]
+        
+      # Check for secrets
+      - id: detect-secrets
+        name: Detect hardcoded secrets
+        entry: bash -c 'if grep -r -E "(password|secret|api_key|api-key|apikey)\s*=\s*['\''\"\''][^'\''\"\'']+" --include="*.js" --include="*.jsx" . 2>/dev/null; then echo "Potential hardcoded secrets found!"; exit 1; fi'
+        language: system
+        types: [javascript]
+        pass_filenames: false
+        
+      # Check for large files
+      - id: check-added-large-files
+        name: Check for large files
+        entry: bash -c 'git diff --cached --name-only | xargs -I {} sh -c "if [ -f \"{}\" ] && [ \$(wc -c < \"{}\") -gt 500000 ]; then echo \"Large file: {}\"; exit 1; fi"'
+        language: system
+        pass_filenames: false
+        
+      # Prevent commits to main
+      - id: no-commit-to-main
+        name: Prevent commits to main branch
+        entry: bash -c 'if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then echo "Cannot commit directly to main!"; exit 1; fi'
+        language: system
+        always_run: true
+        pass_filenames: false
+        stages: [commit]

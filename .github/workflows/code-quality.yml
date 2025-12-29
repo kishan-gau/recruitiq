@@ -1,0 +1,217 @@
+name: Code Quality Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**/*.js'
+      - 'apps/**/*.js'
+      - 'apps/**/*.jsx'
+      - 'packages/**/*.js'
+      - 'packages/**/*.jsx'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**/*.js'
+      - 'apps/**/*.js'
+      - 'apps/**/*.jsx'
+      - 'packages/**/*.js'
+      - 'packages/**/*.jsx'
+
+jobs:
+  code-quality-audit:
+    name: Code Quality Standards Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.15.0
+      
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          cd backend && npm install
+      
+      - name: Run ESLint
+        run: |
+          cd backend
+          npm run lint
+        continue-on-error: true
+      
+      - name: Audit pool.query usage
+        id: audit-pool
+        run: |
+          cd backend
+          npm run audit:pool-query || echo "pool-query-violations=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Audit console.log usage
+        id: audit-console
+        run: |
+          cd backend
+          npm run audit:console-log || echo "console-log-violations=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Audit singleton exports
+        id: audit-singleton
+        run: |
+          cd backend
+          npm run audit:singleton-exports || echo "singleton-violations=true" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      
+      - name: Comment PR with audit results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            
+            // Run audits and capture output
+            let poolQueryOutput = '';
+            let consoleLogOutput = '';
+            let singletonOutput = '';
+            
+            try {
+              poolQueryOutput = execSync('cd backend && npm run audit:pool-query 2>&1', { encoding: 'utf-8' });
+            } catch (e) {
+              poolQueryOutput = e.stdout;
+            }
+            
+            try {
+              consoleLogOutput = execSync('cd backend && npm run audit:console-log 2>&1', { encoding: 'utf-8' });
+            } catch (e) {
+              consoleLogOutput = e.stdout;
+            }
+            
+            try {
+              singletonOutput = execSync('cd backend && npm run audit:singleton-exports 2>&1', { encoding: 'utf-8' });
+            } catch (e) {
+              singletonOutput = e.stdout;
+            }
+            
+            // Count violations
+            const poolViolations = (poolQueryOutput.match(/Issue: Using/g) || []).length;
+            const consoleViolations = (consoleLogOutput.match(/Line \d+:/g) || []).length;
+            const singletonViolations = (singletonOutput.match(/export default new/g) || []).length;
+            
+            const totalViolations = poolViolations + consoleViolations + singletonViolations;
+            
+            // Create comment
+            const comment = `## 🔍 Code Quality Audit Results
+            
+            ### Summary
+            ${totalViolations === 0 ? '✅ **No violations found!** Great job! 🎉' : `⚠️ **${totalViolations} total violations found**`}
+            
+            | Category | Status | Count |
+            |----------|--------|-------|
+            | 🔴 pool.query usage (Security) | ${poolViolations === 0 ? '✅' : '❌'} | ${poolViolations} |
+            | 🟡 console.log usage (Logging) | ${consoleViolations === 0 ? '✅' : '❌'} | ${consoleViolations} |
+            | 🟡 Singleton exports (Testing) | ${singletonViolations === 0 ? '✅' : '❌'} | ${singletonViolations} |
+            
+            ${totalViolations > 0 ? `
+            ### ⚠️ Action Required
+            
+            Please fix these violations before merging. See the [Code Quality Fix Guide](../docs/CODE_QUALITY_FIX_GUIDE.md) for help.
+            
+            **To fix locally:**
+            \`\`\`bash
+            cd backend
+            npm run audit:code-quality
+            \`\`\`
+            
+            **Priority Order:**
+            1. 🔴 **CRITICAL:** Fix pool.query violations (security risk!)
+            2. 🟡 **HIGH:** Fix singleton exports (testability)
+            3. 🟡 **HIGH:** Replace console.log with logger
+            
+            See [CODE_QUALITY_REPORT.md](../CODE_QUALITY_REPORT.md) for detailed findings.
+            ` : ''}
+            
+            ---
+            
+            <details>
+            <summary>View detailed audit results</summary>
+            
+            ### pool.query Violations
+            \`\`\`
+            ${poolViolations > 0 ? poolQueryOutput.slice(0, 2000) + '...' : 'No violations ✅'}
+            \`\`\`
+            
+            ### console.log Violations
+            \`\`\`
+            ${consoleViolations > 0 ? consoleLogOutput.slice(0, 2000) + '...' : 'No violations ✅'}
+            \`\`\`
+            
+            ### Singleton Export Violations
+            \`\`\`
+            ${singletonViolations > 0 ? singletonOutput.slice(0, 2000) + '...' : 'No violations ✅'}
+            \`\`\`
+            
+            </details>
+            
+            ---
+            
+            📚 **References:**
+            - [Code Quality Report](../CODE_QUALITY_REPORT.md)
+            - [Code Quality Fix Guide](../docs/CODE_QUALITY_FIX_GUIDE.md)
+            - [Backend Standards](../docs/BACKEND_STANDARDS.md)
+            - [Security Standards](../docs/SECURITY_STANDARDS.md)
+            `;
+            
+            // Post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+      
+      - name: Fail if critical violations found
+        if: steps.audit-pool.outputs.pool-query-violations == 'true'
+        run: |
+          echo "❌ CRITICAL: pool.query violations found!"
+          echo "These bypass tenant isolation and security logging."
+          echo "Fix before merging - see docs/CODE_QUALITY_FIX_GUIDE.md"
+          exit 1
+
+  eslint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.15.0
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run ESLint on backend
+        run: |
+          cd backend
+          npm run lint
+        continue-on-error: true
+      
+      - name: Run ESLint on root
+        run: npx eslint "apps/**/*.{js,jsx}" "packages/**/*.{js,jsx}" --max-warnings 50
+        continue-on-error: true
