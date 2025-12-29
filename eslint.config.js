@@ -124,12 +124,13 @@ export default [
       'max-lines-per-function': ['warn', { max: 100 }],
       
       // Custom rules for RecruitIQ patterns
-      // Note: These would ideally be custom ESLint rules, documenting as warnings
+      // Note: AST selector catches direct pool.query() calls
+      // Combined with audit script for comprehensive detection
       'no-restricted-syntax': [
         'error',
         {
           selector: 'CallExpression[callee.object.name="pool"][callee.property.name="query"]',
-          message: 'Use custom query() wrapper from config/database.js instead of pool.query() for tenant isolation and security logging.',
+          message: 'Use custom query() wrapper from config/database.js instead of pool.query() for tenant isolation and security logging. Run `npm run audit:pool-query` for comprehensive detection.',
         },
         {
           selector: 'ExportDefaultDeclaration > NewExpression',
@@ -177,8 +178,10 @@ export default [
       },
     },
     rules: {
-      // React-specific rules would go here
-      // These require @eslint/plugin-react which should be added
+      // Basic frontend rules
+      // TODO: Add @eslint/plugin-react for React-specific rules
+      // Install: pnpm add -D -w @eslint/plugin-react
+      // Then import and add React rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },

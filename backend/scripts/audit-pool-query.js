@@ -60,11 +60,20 @@ function checkFile(filePath) {
   const violations = [];
 
   lines.forEach((line, index) => {
-    // Check for pool.query usage
-    if (line.includes('pool.query') && !line.trim().startsWith('//') && !line.trim().startsWith('*')) {
-      // Check if it's importing the query wrapper
-      if (line.includes('import') && line.includes('query')) {
-        return; // Skip import statements
+    // Skip comments
+    if (line.trim().startsWith('//') || line.trim().startsWith('*')) {
+      return;
+    }
+
+    // Check for pool.query usage (including chained calls)
+    if (line.includes('pool.query')) {
+      // Check if it's importing the query wrapper specifically
+      if (line.includes('import') && (
+        line.includes("'query'") || 
+        line.includes('"query"') ||
+        line.includes('{ query }')
+      )) {
+        return; // Skip import statements for query function
       }
 
       violations.push({

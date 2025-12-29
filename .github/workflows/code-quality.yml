@@ -38,9 +38,7 @@ jobs:
           version: 8.15.0
       
       - name: Install dependencies
-        run: |
-          pnpm install --frozen-lockfile
-          cd backend && npm install
+        run: pnpm install --frozen-lockfile
       
       - name: Run ESLint
         run: |
@@ -183,6 +181,10 @@ jobs:
           echo "❌ CRITICAL: pool.query violations found!"
           echo "These bypass tenant isolation and security logging."
           echo "Fix before merging - see docs/CODE_QUALITY_FIX_GUIDE.md"
+          echo ""
+          echo "Note: Only pool.query violations block merges (CRITICAL security)."
+          echo "Singleton exports and console.log are HIGH priority but won't block."
+          echo "Please address these in follow-up PRs."
           exit 1
 
   eslint:

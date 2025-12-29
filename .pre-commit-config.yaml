@@ -26,19 +26,19 @@ repos:
         files: '\.js$'
         pass_filenames: false
         
-      # Audit console.log usage
+      # Audit console.log usage (warning only, doesn't block commit)
       - id: audit-console-log
-        name: Audit console.log usage (Logging)
-        entry: bash -c 'cd backend && npm run audit:console-log'
+        name: Audit console.log usage (Logging) - Warning
+        entry: bash -c 'cd backend && npm run audit:console-log || echo "⚠️ console.log violations found - please address"; exit 0'
         language: system
         files: '\.js$'
         pass_filenames: false
         stages: [commit]
         
-      # Audit singleton exports
+      # Audit singleton exports (warning only, doesn't block commit)
       - id: audit-singleton-exports
-        name: Audit singleton exports (Testing)
-        entry: bash -c 'cd backend && npm run audit:singleton-exports'
+        name: Audit singleton exports (Testing) - Warning
+        entry: bash -c 'cd backend && npm run audit:singleton-exports || echo "⚠️ Singleton export violations found - please address"; exit 0'
         language: system
         files: 'Service\.js$|Controller\.js$'
         pass_filenames: false

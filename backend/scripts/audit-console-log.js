@@ -65,8 +65,9 @@ function checkFile(filePath) {
       return;
     }
 
-    // Check for console usage
-    const consoleMatch = line.match(/console\.(log|error|warn|info|debug)/);
+    // Check for console usage (including bracket notation)
+    const consoleMatch = line.match(/console\.(log|error|warn|info|debug)/) || 
+                        line.match(/console\[['"`](log|error|warn|info|debug)['"`]\]/);
     if (consoleMatch) {
       violations.push({
         line: index + 1,
