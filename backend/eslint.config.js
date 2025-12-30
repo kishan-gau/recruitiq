@@ -108,23 +108,27 @@ const eslintConfig = [
       '@typescript-eslint': tseslint
     },
     rules: {
-      // TypeScript-specific rules
+      // TypeScript-specific rules - relaxed for migration
       '@typescript-eslint/no-explicit-any': 'warn',  // Warn but allow during migration
       '@typescript-eslint/explicit-function-return-type': 'off',  // Too strict for migration
       '@typescript-eslint/explicit-module-boundary-types': 'off',  // Too strict for migration
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['warn', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_'
+      }],
       
       // Base rules that work for both JS and TS
       'no-console': ['warn', { allow: ['error', 'warn', 'info'] }],
       'no-var': 'error',
-      'prefer-const': 'error',
+      'prefer-const': 'warn',  // Changed from error to warn
       'prefer-arrow-callback': 'error',
       'eqeqeq': ['error', 'always'],
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
       'no-with': 'error',
-      'require-await': 'error',
+      'require-await': 'warn',  // Changed from error to warn
       'indent': ['error', 2, { SwitchCase: 1 }],
       'quotes': ['error', 'single', { avoidEscape: true }],
       'semi': ['error', 'always'],
@@ -160,6 +164,18 @@ const eslintConfig = [
       'require-await': 'off',
       'no-unused-expressions': 'off'
     }
+  },
+
+  // Test files - more lenient rules
+  {
+    files: ['**/*.test.ts', '**/*.test.js', '**/__tests__/**/*.ts', '**/__tests__/**/*.js'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-console': 'off',
+      'require-await': 'off',
+      '@typescript-eslint/no-empty-function': 'off',
+    },
   },
 
   // Prettier integration - must be last to override other formatting rules

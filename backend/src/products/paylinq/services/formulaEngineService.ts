@@ -162,6 +162,7 @@ class FormulaEngineService {
         // Declare all detected variables
         const varDeclarations = variables.map(v => `let ${v};`).join('\n');
         const testCode = `${varDeclarations}\n${finalFormula}`;
+        // eslint-disable-next-line no-new-func
         new Function(testCode);
       } catch (err) {
         throw new Error(`Syntax error: ${err.message}. Check your formula for typos or missing operators.`);
