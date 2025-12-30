@@ -1,0 +1,14 @@
+﻿node.exe : 
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Oops! Something went wrong! :(
+
+ESLint: 9.39.2
+
+No files matching the pattern "src/**/*.{js,ts}" were found.
+Please check for typing mistakes in the pattern.
+

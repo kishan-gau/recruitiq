@@ -51,10 +51,6 @@ class TenantOnboardingService {
       country = 'SR'
     } = options
 
-    console.log('[TENANT ONBOARDING] Starting tenant initialization...')
-    console.log(`[INFO] Customer: ${customerName} (${customerEmail})`)
-    console.log(`[INFO] License: ${licenseId} - Tier: ${tier}`)
-    console.log(`[INFO] Products: ${products.join(', ')}`)
 
     const client = await pool.connect()
     
@@ -64,7 +60,6 @@ class TenantOnboardingService {
       // ========================================================================
       // STEP 1: Create Organization
       // ========================================================================
-      console.log('[1/8] Creating organization...')
       
       const orgId = uuidv4()
       const slug = this._generateSlug(customerName)
@@ -89,12 +84,10 @@ class TenantOnboardingService {
         })
       ])
 
-      console.log(`[OK] Organization created: ${orgId}`)
 
       // ========================================================================
       // STEP 2: Create Admin User
       // ========================================================================
-      console.log('[2/8] Creating admin user...')
       
       const userId = uuidv4()
       const tempPassword = this._generateTempPassword()
@@ -113,13 +106,10 @@ class TenantOnboardingService {
         JSON.stringify(products) // Store enabled products as JSONB array
       ])
 
-      console.log(`[OK] Admin user created: ${customerEmail}`)
-      console.log(`[INFO] Temporary password: ${tempPassword}`)
 
       // ========================================================================
       // STEP 3: Seed Default Roles with Permissions
       // ========================================================================
-      console.log('[3/8] Seeding default roles...')
       
       await this._seedRoles(client, orgId, userId)
 
@@ -127,55 +117,44 @@ class TenantOnboardingService {
       // STEP 4: Seed Worker Types (HRIS)
       // ========================================================================
       if (products.includes('nexus')) {
-        console.log('[4/8] Seeding worker types...')
         await this._seedWorkerTypes(client, orgId, userId)
       } else {
-        console.log('[4/8] Skipping worker types (Nexus not enabled)')
       }
 
       // ========================================================================
       // STEP 5: Seed Payroll Run Types (PayLinQ)
       // ========================================================================
       if (products.includes('paylinq')) {
-        console.log('[5/8] Seeding payroll run types...')
         await this._seedPayrollRunTypes(client, orgId, userId)
       } else {
-        console.log('[5/8] Skipping payroll run types (PayLinQ not enabled)')
       }
 
       // ========================================================================
       // STEP 6: Seed Pay Components (PayLinQ)
       // ========================================================================
       if (products.includes('paylinq')) {
-        console.log('[6/8] Seeding pay components...')
         await this._seedPayComponents(client, orgId, userId)
       } else {
-        console.log('[6/8] Skipping pay components (PayLinQ not enabled)')
       }
 
       // ========================================================================
       // STEP 7: Seed Tax Rules (Country-specific)
       // ========================================================================
       if (products.includes('paylinq') && country === 'SR') {
-        console.log('[7/8] Seeding Suriname tax rules...')
         await this._seedTaxRules(client, orgId, userId)
       } else {
-        console.log('[7/8] Skipping tax rules')
       }
 
       // ========================================================================
       // STEP 8: Seed Allowances & Deductions
       // ========================================================================
       if (products.includes('paylinq')) {
-        console.log('[8/8] Seeding allowances and deductions...')
         await this._seedAllowances(client, orgId, userId)
       } else {
-        console.log('[8/8] Skipping allowances (PayLinQ not enabled)')
       }
 
       await client.query('COMMIT')
 
-      console.log('[SUCCESS] Tenant onboarding completed!')
 
       return {
         organizationId: orgId,
@@ -189,7 +168,6 @@ class TenantOnboardingService {
 
     } catch (error) {
       await client.query('ROLLBACK')
-      console.error('[ERROR] Tenant onboarding failed:', error)
       throw error
     } finally {
       client.release()
@@ -340,7 +318,6 @@ class TenantOnboardingService {
         `)
       }
 
-      console.log(`  [+] Role: ${role.displayName} (${role.permissions.length} permissions)`)
     }
 
     // Assign org_admin role to the admin user
@@ -355,7 +332,6 @@ class TenantOnboardingService {
         VALUES ($1, $2)
       `, [userId, adminRole.rows[0].id])
 
-      console.log('  [+] Assigned org_admin role to admin user')
     }
   }
 
@@ -449,7 +425,6 @@ class TenantOnboardingService {
         wt.benefitsEligible, wt.isActive, userId
       ])
 
-      console.log(`  [+] Worker Type: ${wt.name} (${wt.code})`)
     }
   }
 
@@ -540,7 +515,6 @@ class TenantOnboardingService {
         rt.isActive, userId
       ])
 
-      console.log(`  [+] Run Type: ${rt.typeName}`)
     }
   }
 
@@ -1174,10 +1148,8 @@ class TenantOnboardingService {
         comp.displayOrder, userId
       ])
 
-      console.log(`  [+] Component: ${comp.name} (${comp.code})`)
     }
 
-    console.log(`  [OK] Seeded ${components.length} pay components`)
   }
 
   /**
@@ -1219,7 +1191,6 @@ class TenantOnboardingService {
       `, [orgId, taxRuleId, i + 1, bracket.min, bracket.max, bracket.rate, userId])
     }
 
-    console.log('  [+] Tax brackets created')
 
     // Create AOV rule (4% flat rate)
     await client.query(`
@@ -1239,7 +1210,6 @@ class TenantOnboardingService {
                 '2025-01-01', '2025-12-31', $2)
     `, [orgId, userId])
 
-    console.log('  [+] Social security rules created (AOV, AWW)')
   }
 
   /**
@@ -1295,9 +1265,7 @@ class TenantOnboardingService {
           allowance.isActive, allowance.country, allowance.description, userId
         ])
 
-        console.log(`  [+] Allowance: ${allowance.name}`)
       } else {
-        console.log(`  [=] Allowance already exists: ${allowance.name}`)
       }
     }
   }

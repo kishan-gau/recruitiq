@@ -1208,25 +1208,18 @@ class ScheduleService {
       const templates = [];
       const missingTemplates = [];
       
-      console.log('🔍 DEBUG: About to fetch templates for IDs:', value.templateIds);
       
       for (const templateId of value.templateIds) {
-        console.log(`🔍 DEBUG: Fetching template ${templateId}...`);
         const template = await this.shiftTemplateService.getById(templateId, organizationId);
-        console.log(`🔍 DEBUG: Template ${templateId} result:`, template ? { id: template.id, name: template.templateName } : 'NOT FOUND');
         
         if (!template) {
-          console.log(`❌ DEBUG: Template ${templateId} not found or inactive`);
           missingTemplates.push(templateId);
           generationSummary.warnings.push(`Template ${templateId} not found or inactive`);
           continue;
         }
         templates.push(template);
-        console.log(`✅ DEBUG: Added template ${templateId} to templates array. Total templates: ${templates.length}`);
       }
       
-      console.log('🔍 DEBUG: Final templates array:', templates.map(t => ({ id: t.id, name: t.templateName })));
-      console.log('🔍 DEBUG: Missing templates:', missingTemplates);
 
       // Check if we have any valid templates
       if (templates.length === 0) {
@@ -1281,7 +1274,6 @@ class ScheduleService {
         }
         
         if (invalidMappings.length > 0) {
-          console.log('⚠️ DEBUG: Invalid template mappings detected:', invalidMappings);
           generationSummary.warnings.push(
             `Some templates referenced in day mapping are not available: ${invalidMappings.map(m => `Template ${m.templateId} on Day ${m.day}`).join(', ')}`
           );
@@ -1291,14 +1283,12 @@ class ScheduleService {
       // Process templates grouped by day from templateDayMapping
       // templateDayMapping is structured as: { dayNumber: [templateIds] }
       // We need to iterate through each day and process only the templates assigned to that day
-      console.log('🔍 DEBUG: templateDayMapping:', value.templateDayMapping);
       
       if (value.templateDayMapping && Object.keys(value.templateDayMapping).length > 0) {
         // FIXED: Iterate by day number, not by template ID
         for (const dayNumberStr of Object.keys(value.templateDayMapping)) {
           const dayNumber = parseInt(dayNumberStr, 10);
           const templatesForDay = value.templateDayMapping[dayNumber] || [];
-          console.log(`🔍 DEBUG: Day ${dayNumber} has templates:`, templatesForDay);
           
 
           
@@ -1306,13 +1296,9 @@ class ScheduleService {
           for (let templateIndex = 0; templateIndex < templatesForDay.length; templateIndex++) {
             const templateId = templatesForDay[templateIndex];
             // Find the template object by ID
-            console.log(`🔍 DEBUG: Looking for template ${templateId} in templates array`);
-            console.log(`🔍 DEBUG: Available template IDs:`, templates.map(t => t.id));
             const template = templates.find(t => t.id === templateId);
-            console.log(`🔍 DEBUG: Found template:`, template ? { id: template.id, name: template.templateName } : 'NOT FOUND');
             
             if (!template) {
-              console.log(`❌ DEBUG: Template ${templateId} not found in templates array`);
               logger.warn(`Template ${templateId} referenced in templateDayMapping for day ${dayNumber} but not found in templates array`);
               
               // Add specific warning for this day
@@ -1323,17 +1309,14 @@ class ScheduleService {
               continue;
             }
             
-            console.log(`✅ DEBUG: About to call generateShiftsFromDedicatedTemplate for template ${template.id}`);
             const sessionSummary = {};
             for (const [employeeId, shifts] of this.sessionShifts.entries()) {
               sessionSummary[employeeId] = shifts.length;
             }
-            console.log(`📊 [DAY ${dayNumber}] Session state before template ${template.templateName}:`, {
               totalEmployeesWithShifts: this.sessionShifts.size,
               shiftsPerEmployee: sessionSummary
             });
             
-            console.log(`📊 [DAY ${dayNumber}] Current generation summary before processing:`, {
               totalRequested: generationSummary.totalShiftsRequested,
               generated: generationSummary.shiftsGenerated,
               partial: generationSummary.partialCoverage,
@@ -1353,7 +1336,6 @@ class ScheduleService {
               options
             );
             
-            console.log(`✅ [DAY ${dayNumber}] Template "${template.templateName}" processing complete:`, {
               templateId: template.id,
               templateName: template.templateName,
               requested: templateShifts.requested,
@@ -1369,7 +1351,6 @@ class ScheduleService {
             generationSummary.noCoverage += templateShifts.uncovered;
             generationSummary.warnings.push(...templateShifts.warnings);
             
-            console.log(`📈 [DAY ${dayNumber}] Cumulative summary after template ${template.templateName}:`, {
               totalRequested: generationSummary.totalShiftsRequested,
               totalGenerated: generationSummary.shiftsGenerated,
               totalPartial: generationSummary.partialCoverage,
@@ -1380,13 +1361,11 @@ class ScheduleService {
         }
       } else {
         // FALLBACK: If no templateDayMapping specified, generate all templates for all days (original behavior)
-        console.log('⚠️ [FALLBACK] No templateDayMapping specified, generating all templates for all days');
         logger.info('No templateDayMapping specified, generating all templates for all days');
         
         for (const template of templates) {
           const applicableDays = [1, 2, 3, 4, 5, 6, 7]; // All days
           
-          console.log(`🔄 [FALLBACK] Template ${template.templateName} (${template.id}) applies to days:`, applicableDays);
           
           const templateShifts = await this.generateShiftsFromDedicatedTemplate(
             client, 
@@ -1592,7 +1571,6 @@ class ScheduleService {
    * @returns {Object} Generation summary
    */
   async generateShiftsFromTemplates(client, scheduleId, startDate, endDate, templateIds, templateDayMapping = {}, allowPartialTime = false, organizationId, userId) {
-    console.log('🚀 [REGEN DEBUG] Starting generateShiftsFromTemplates with:', {
       scheduleId,
       templateIds,
       templateDayMapping: JSON.stringify(templateDayMapping, null, 2),
@@ -1625,30 +1603,23 @@ class ScheduleService {
       throw new Error('No valid templates found for schedule generation');
     }
 
-    console.log('📋 [REGEN DEBUG] Valid templates loaded:', templates.map(t => ({ id: t.id, name: t.templateName })));
 
     // Initialize session-aware conflict tracking
     this.sessionShifts.clear();
-    console.log('🧹 [REGEN DEBUG] Cleared session shifts tracking');
     
     // Process each dedicated template
     for (const template of templates) {
-      console.log(`\n🎬 [REGEN DEBUG] Processing template "${template.templateName}" (${template.id})`);
       
       // Determine which days this template should apply to
       // templateDayMapping structure: { dayNumber: [templateId1, templateId2, ...] }
       const applicableDays = [];
       if (templateDayMapping && Object.keys(templateDayMapping).length > 0) {
-        console.log(`🗓️ [REGEN DEBUG] Checking templateDayMapping for template ${template.id}:`, templateDayMapping);
         
         // Find days where this template is assigned
         for (const [dayNumber, templateIds] of Object.entries(templateDayMapping)) {
-          console.log(`   📅 Day ${dayNumber}: templates [${templateIds.join(', ')}]`);
           if (templateIds.includes(template.id)) {
             applicableDays.push(parseInt(dayNumber));
-            console.log(`   ✅ Template ${template.id} found in day ${dayNumber} mapping`);
           } else {
-            console.log(`   ⏭️ Template ${template.id} not in day ${dayNumber} mapping`);
           }
         }
       } else {
@@ -1656,15 +1627,12 @@ class ScheduleService {
         applicableDays.push(...[1, 2, 3, 4, 5, 6, 7]);
       }
 
-      console.log(`🎯 [TEMPLATE FIX] Template "${template.templateName}" (${template.id}) will apply to days:`, applicableDays);
       
       // Skip if no applicable days found
       if (applicableDays.length === 0) {
-        console.log(`⚠️ [TEMPLATE FIX] Template "${template.templateName}" (${template.id}) not assigned to any days, skipping`);
         continue;
       }
 
-      console.log(`🔧 [REGEN DEBUG] Calling generateShiftsFromDedicatedTemplate for "${template.templateName}" with applicableDays:`, applicableDays);
       
       const templateShifts = await this.generateShiftsFromDedicatedTemplate(
         client, 
@@ -1678,7 +1646,6 @@ class ScheduleService {
         { allowPartialTime }
       );
       
-      console.log(`📊 [REGEN DEBUG] Template "${template.templateName}" generation complete:`, {
         requested: templateShifts.requested,
         generated: templateShifts.generated,
         partial: templateShifts.partial,
@@ -1760,7 +1727,6 @@ class ScheduleService {
     const formattedStartTime = startTime.includes(':') && startTime.split(':').length === 2 ? `${startTime}:00` : startTime;
     const formattedEndTime = endTime.includes(':') && endTime.split(':').length === 2 ? `${endTime}:00` : endTime;
     
-    console.log('🔍 DEBUG: findAvailableWorkers called with:', {
       roleId,
       stationId, 
       shiftDate: dateString,
@@ -1845,7 +1811,6 @@ class ScheduleService {
     `;
 
     // 🐛 DEBUG: Let's break down the query to see which condition is excluding workers
-    console.log('🔍 DEBUG: SQL Query Parameters:', {
       organizationId,
       roleId,
       dayOfWeek,
@@ -1866,7 +1831,6 @@ class ScheduleService {
         AND e.employment_status = 'active'
     `;
     const step1Result = await client.query(step1Query, [organizationId]);
-    console.log('📊 Step 1 - Active employees:', step1Result.rows[0]);
 
     // Step 2: Check role assignment
     const step2Query = `
@@ -1879,7 +1843,6 @@ class ScheduleService {
         AND e.employment_status = 'active'
     `;
     const step2Result = await client.query(step2Query, [organizationId, roleId]);
-    console.log('📊 Step 2 - Workers with required role:', step2Result.rows[0]);
 
     // Step 3: Check scheduling configuration
     const step3Query = `
@@ -1895,7 +1858,6 @@ class ScheduleService {
         AND e.employment_status = 'active'
     `;
     const step3Result = await client.query(step3Query, [organizationId, roleId]);
-    console.log('📊 Step 3 - Schedulable workers with role:', step3Result.rows[0]);
 
     // Step 4: Check availability records exist
     const step4Query = `
@@ -1913,7 +1875,6 @@ class ScheduleService {
         AND wa.id IS NOT NULL
     `;
     const step4Result = await client.query(step4Query, [organizationId, roleId]);
-    console.log('📊 Step 4 - Workers with availability records:', step4Result.rows[0]);
 
     // Step 5: Check time and date conditions
     const step5Query = `
@@ -1942,7 +1903,6 @@ class ScheduleService {
         AND wa.priority != 'unavailable'
     `;
     const step5Result = await client.query(step5Query, [organizationId, roleId, dayOfWeek, formattedStartTime, formattedEndTime, shiftDate.toISOString().split('T')[0]]);
-    console.log('📊 Step 5 - Workers matching time/date conditions:', step5Result.rows[0]);
 
     // DEBUG: Check Vivaan Gauri's actual availability data
     const vivaanDebugQuery = `
@@ -1957,12 +1917,10 @@ class ScheduleService {
         AND wr.removed_date IS NULL
     `;
     const vivaanDebugResult = await client.query(vivaanDebugQuery, [organizationId, roleId]);
-    console.log('🔍 DEBUG: Vivaan Gauri availability data:', vivaanDebugResult.rows);
 
     // DEBUG: Check time condition evaluation
     if (vivaanDebugResult.rows.length > 0) {
       const availability = vivaanDebugResult.rows[0];
-      console.log('🔍 DEBUG: Time condition evaluation:', {
         timeCondition,
         availability: {
           availability_type: availability.availability_type,
@@ -1991,7 +1949,6 @@ class ScheduleService {
       shiftDate.toISOString().split('T')[0] // Date only in YYYY-MM-DD format
     ]);
 
-    console.log('🔍 DEBUG: Worker availability query result:', {
       date: dateString,
       dayOfWeek,
       originalTimeSlot: `${startTime}-${endTime}`,
@@ -2006,7 +1963,6 @@ class ScheduleService {
       const hasConflict = this.hasSessionConflict(worker.id, shiftDate, startTime, endTime);
       if (hasConflict) {
         const workerSessionShifts = this.sessionShifts.get(worker.id) || [];
-        console.log('⚠️  DEBUG: Worker has session conflict:', {
           workerId: worker.id,
           name: `${worker.first_name} ${worker.last_name}`,
           date: dateString,
@@ -2032,7 +1988,6 @@ class ScheduleService {
       });
     }
 
-    console.log('✅ DEBUG: Final available workers:', {
       date: dateString,
       beforeConflictFilter: result.rows.length,
       afterConflictFilter: availableWorkers.length,
@@ -2053,7 +2008,6 @@ class ScheduleService {
    * @param {Object} options - Generation options including allowPartialTime
    */
   async generateShiftsFromDedicatedTemplate(client, scheduleId, template, startDate, endDate, applicableDays, organizationId, userId, options = {}) {
-    console.log(`🚀 DEBUG: generateShiftsFromDedicatedTemplate called for template:`, {
       templateId: template.id,
       templateName: template.templateName,
       applicableDays,
@@ -2131,7 +2085,6 @@ class ScheduleService {
       // For each role requirement in the template
       for (const roleReq of roleRequirements) {
         for (const shiftDate of dates) {
-          console.log(`🎯 DEBUG: Processing shift for date: ${shiftDate.toDateString()}, station: ${stationId}, role: ${roleReq.roleId}`);
           summary.requested += roleReq.quantity;
           
           // Find available workers for this role, date, time, and station
@@ -2147,7 +2100,6 @@ class ScheduleService {
             allowPartialTime
           );
           
-          console.log(`👥 DEBUG: Found ${availableWorkers.length} available workers for ${shiftDate.toDateString()}`);
 
           if (availableWorkers.length === 0) {
             // No workers available - provide detailed debugging info
@@ -2167,7 +2119,6 @@ class ScheduleService {
               true // Skip session conflict check to see total available
             );
             
-            console.log(`❌ [NO WORKERS] Template "${template.templateName}" has no available workers:`, {
               date: shiftDate.toDateString(),
               timeSlot: `${template.startTime}-${template.endTime}`,
               roleId: roleReq.roleId,
@@ -2192,9 +2143,7 @@ class ScheduleService {
                 templateName: template.templateName
               };
 
-              console.log('🔍 CALLING enhanced exclusion analysis with params:', exclusionAnalysisParams);
               const enhancedWarnings = await enhanceExclusionWarnings(exclusionAnalysisParams, query);
-              console.log('🔍 ENHANCED exclusion analysis returned:', enhancedWarnings);
               
               // Add enhanced warnings with specific actions
               if (enhancedWarnings && enhancedWarnings.length > 0) {
@@ -2211,7 +2160,6 @@ class ScheduleService {
                   summary.warnings.push(detailedMessage);
                 });
                 
-                console.log('🔍 ENHANCED EXCLUSION ANALYSIS: Found specific issues:', enhancedWarnings.length, 'detailed warnings generated');
               } else {
                 // Fallback to basic warning if analysis returns empty
                 let warningMessage = `No workers available for role ${roleReq.roleId}${stationInfo} on ${shiftDate.toDateString()} ${template.startTime}-${template.endTime} (template: ${template.templateName})`;
@@ -2219,7 +2167,6 @@ class ScheduleService {
                 if (allPotentialWorkers.length > 0) {
                   // Workers exist but have session conflicts - this indicates multiple templates competing
                   warningMessage += ` - ${allPotentialWorkers.length} workers found but have conflicting shifts from other templates in this generation session`;
-                  console.log(`🔄 [TEMPLATE CONFLICT] Template "${template.templateName}" conflicts with earlier templates:`, {
                     date: shiftDate.toDateString(),
                     timeSlot: `${template.startTime}-${template.endTime}`,
                     roleId: roleReq.roleId,
@@ -2232,7 +2179,6 @@ class ScheduleService {
                 summary.warnings.push(warningMessage);
               }
             } catch (analysisError) {
-              console.error('❌ Enhanced exclusion analysis failed:', analysisError);
               
               // Fallback to basic warning
               let warningMessage = `No workers available for role ${roleReq.roleId}${stationInfo} on ${shiftDate.toDateString()} ${template.startTime}-${template.endTime} (template: ${template.templateName})`;
@@ -2298,11 +2244,9 @@ class ScheduleService {
               ]
             );
             
-            console.log(`✅ DEBUG: Created shift for ${worker.id} on ${shiftDate.toDateString()} ${actualStartTime}-${actualEndTime}`);
             
             // Track shift in session for cross-template conflict detection
             this.addShiftToSession(worker.id, shiftDate, actualStartTime, actualEndTime);
-            console.log(`📝 DEBUG: Added shift to session tracking:`, {
               workerId: worker.id,
               date: shiftDate.toDateString(),
               time: `${actualStartTime}-${actualEndTime}`,
@@ -2487,7 +2431,6 @@ class ScheduleService {
    * Update and regenerate an existing schedule with new template configuration
    */
   async updateScheduleGeneration(scheduleId, updateData, organizationId, userId) {
-    console.log('📝 [UPDATE DEBUG] updateScheduleGeneration called with:', {
       scheduleId,
       templateIds: updateData.templateIds,
       templateDayMapping: JSON.stringify(updateData.templateDayMapping, null, 2),
@@ -2506,7 +2449,6 @@ class ScheduleService {
         throw new Error(`Validation error: ${error.details[0].message}`);
       }
       
-      console.log('✅ [UPDATE DEBUG] Validation passed, validated data:', {
         templateIds: value.templateIds,
         templateDayMapping: JSON.stringify(value.templateDayMapping, null, 2)
       });

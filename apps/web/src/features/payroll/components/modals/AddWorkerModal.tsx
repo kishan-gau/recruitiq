@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
-import { useToast } from '@/contexts/ToastContext';
-import { useDepartments } from '@/hooks/useDepartments';
-import { useLocations } from '@/hooks/useLocations';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
-import { useWorkersForManager } from '@/hooks/useWorkersForManager';
-import { useWorkerTypeTemplates } from '@/hooks/useWorkerTypes';
+import { Dialog, Input, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, TextArea } from '@recruitiq/ui';
+import { FormField } from '@/components/FormField';
+import { 
+  useToast, 
+  useDepartments, 
+  useLocations, 
+  usePaylinqAPI, 
+  useWorkersForManager, 
+  useWorkerTypeTemplates 
+} from '@/hooks';
 import { handleApiError } from '@/utils/errorHandler';
 
 interface AddWorkerModalProps {
@@ -41,7 +43,7 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
   const { paylinq } = usePaylinqAPI();
   const toast = useToast();
   const { success, error } = toast;
-  const { data: workerTypes = [], isLoading: loadingTypes } = useWorkerTypeTemplates({ status: 'active' });
+  const { data: workerTypes = [], isLoading: loadingTypes } = useWorkerTypeTemplates();
   
   // Phase 2: Load organizational structure data
   const { data: departments = [], isLoading: loadingDepartments } = useDepartments({ isActive: true });
@@ -56,7 +58,7 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
     phone: '',
     nationalId: '',
     dateOfBirth: '',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0] ?? '',
     workerType: '',
     departmentId: '',   // Phase 2
     locationId: '',     // Phase 2
@@ -94,7 +96,7 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validate()) {
@@ -287,8 +289,8 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
     }
   };
 
-  const handleChange = (field: keyof WorkerFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const handleChange = (field: keyof WorkerFormData, value: string | undefined) => {
+    setFormData((prev) => ({ ...prev, [field]: value ?? '' }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
@@ -312,7 +314,6 @@ export default function AddWorkerModal({ isOpen, onClose, onSuccess }: AddWorker
           </button>
           <button
             type="submit"
-            onClick={handleSubmit}
             disabled={isLoading}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >

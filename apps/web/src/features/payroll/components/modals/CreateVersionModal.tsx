@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import Dialog from '@/components/ui/Dialog';
 import FormField from '@/components/ui/FormField';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 
 interface CreateVersionModalProps {

@@ -318,7 +318,6 @@ class ShiftTemplateService {
    */
   async create(data, organizationId, userId) {
     try {
-      console.log('🚀 START CREATE - Raw input data:', JSON.stringify(data, null, 2));
       
       // Validate input
       const { error, value } = ShiftTemplateService.createSchema.validate(data);
@@ -386,16 +385,12 @@ class ShiftTemplateService {
         // Insert role requirements
         const roleRequirements = [];
         for (const roleReq of value.roleRequirements) {
-          console.log('📋 Role Requirement Before DTO:', roleReq);
           const roleData = mapTemplateRoleApiToDb(roleReq);
-          console.log('✅ Role Data After DTO:', roleData);
           
           const sqlParams = [
             uuidv4(), templateId, roleData.role_id, roleData.required_count,
             roleData.min_proficiency, roleData.is_supervisor, roleData.priority, organizationId, now
           ];
-          console.log('🗄️ SQL Parameters being inserted:', sqlParams);
-          console.log('🔍 min_proficiency value type and value:', typeof sqlParams[4], sqlParams[4]);
           
           const roleResult = await client.query(`
             INSERT INTO shift_template_roles (
@@ -545,7 +540,6 @@ class ShiftTemplateService {
    * Retrieves a single shift template by ID with role requirements
    */
   async getById(id, organizationId, userId) {
-    console.log('🚨 [SERVICE] getById CALLED with:', { id, organizationId, userId });
     try {
       // Get template with station info
       const templateResult = await query(`
@@ -583,8 +577,6 @@ class ShiftTemplateService {
         queryParams: [id, organizationId]
       });
       
-      console.log('🔍 [SERVICE] Template roles count:', templateRolesCheck.rows[0]?.count || 0);
-      console.log('🔍 [SERVICE] Query params:', { id, organizationId });
       
       // Also check if the template itself exists in shift_template_roles
       const debugCheck = await query(`
@@ -602,7 +594,6 @@ class ShiftTemplateService {
         debugRecords: debugCheck.rows
       });
       
-      console.log('🔍 [SERVICE] Debug raw records:', debugCheck.rows);
       
       // Check if ANY records exist in the table
       const anyRecords = await query(`
@@ -612,7 +603,6 @@ class ShiftTemplateService {
         operation: 'SELECT',
         table: 'scheduling.shift_template_roles'
       });
-      console.log('🔍 [SERVICE] Total records in shift_template_roles table:', anyRecords.rows[0]?.total || 0);
 
       const rolesResult = await query(`
         SELECT 
@@ -652,10 +642,6 @@ class ShiftTemplateService {
         mappedRoles
       });
       
-      console.log('🔍 [SERVICE] Main roles query returned:', rolesResult.rows.length, 'rows');
-      console.log('🔍 [SERVICE] Raw roles data (first 2):', rolesResult.rows.slice(0, 2));
-      console.log('🔍 [SERVICE] Mapped roles count:', mappedRoles.length);
-      console.log('🔍 [SERVICE] Mapped roles:', mappedRoles);
       
       // Get assigned stations for template
       const templateStations = await this.shiftTemplateStationService.getStationsByTemplate(id, organizationId);
@@ -666,8 +652,6 @@ class ShiftTemplateService {
         stations: templateStations
       };
       
-      console.log('🔍 [SERVICE] completeTemplate keys:', Object.keys(completeTemplate));
-      console.log('🔍 [SERVICE] completeTemplate.roleRequirements:', completeTemplate.roleRequirements);
       
       logger.info('ShiftTemplateService.getById - Complete template before DTO', {
         templateId: id,

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 
 import { candidatesService } from '../services/candidates.service';
 import { interviewsService } from '../services/interviews.service';

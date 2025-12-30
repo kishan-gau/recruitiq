@@ -1,7 +1,7 @@
 import { Shield, CheckCircle, XCircle, Calendar, Mail, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { formatDate } from '@/utils/helpers';
 

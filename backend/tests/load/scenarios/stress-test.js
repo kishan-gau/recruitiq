@@ -54,7 +54,7 @@ export default function() {
   sleep(SLEEP.SHORT);
   
   // Heavy read operations
-  group('Heavy Read Load', function() {
+  group('Heavy Read Load', () => {
     // Multiple concurrent API calls
     const requests = {
       'jobs': { 
@@ -89,7 +89,7 @@ export default function() {
   sleep(SLEEP.SHORT);
   
   // Write operations (creates load on database)
-  group('Write Operations', function() {
+  group('Write Operations', () => {
     const jobData = {
       title: `Stress Test Job ${Date.now()}`,
       department: 'Engineering',

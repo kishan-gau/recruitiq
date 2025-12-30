@@ -7,33 +7,19 @@
 
 import { useContext } from 'react';
 
-import { ToastContext } from '@/contexts/ToastContext';
+import { ToastContext, ToastContextType } from '@/contexts/ToastContext';
 
-interface ShowOptions {
-  duration?: number;
-  action?: () => void;
-}
-
-export interface Toast {
-  show: (message: string, options?: ShowOptions) => string;
-  dismiss: (id: string) => void;
-}
-
-export function useToast(): Toast {
+/**
+ * Hook to access toast notifications
+ * Must be used within a ToastProvider
+ */
+export function useToast(): ToastContextType {
   const context = useContext(ToastContext);
   
   if (!context) {
-    // Fallback if ToastProvider is not in the tree
-    return {
-      show: (message: string) => {
-        console.warn('Toast: ToastProvider not found in component tree', message);
-        return '';
-      },
-      dismiss: () => {
-        console.warn('Toast: ToastProvider not found in component tree');
-      }
-    };
+    throw new Error('useToast must be used within ToastProvider');
   }
 
   return context;
 }
+

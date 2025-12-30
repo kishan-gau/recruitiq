@@ -57,7 +57,7 @@ export default function() {
   sleep(SLEEP.THINK);
   
   // Sustained realistic user behavior
-  group('Realistic User Session', function() {
+  group('Realistic User Session', () => {
     // Browse jobs
     let res = http.get(`${BASE_URL}/api/jobs`, { 
       headers: authHeaders,

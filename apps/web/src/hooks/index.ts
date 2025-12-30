@@ -54,6 +54,8 @@ export {
   // Original payroll hooks (not yet migrated)
   useCompensation,
   useDeductions,
+  useDepartments,
+  useLocations,
   useTaxRules,
   useTaxRule,
   useCreateTaxRule,

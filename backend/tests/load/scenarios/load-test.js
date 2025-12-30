@@ -23,7 +23,7 @@ export default function() {
   let token;
   
   // Group 1: Authentication Flow
-  group('Authentication', function() {
+  group('Authentication', () => {
     const res = http.post(
       `${BASE_URL}/api/auth/tenant/login`,
       JSON.stringify({
@@ -64,7 +64,7 @@ export default function() {
   sleep(SLEEP.THINK);
   
   // Group 3: Job Browsing
-  group('Job Browsing', function() {
+  group('Job Browsing', () => {
     // List jobs
     let res = http.get(`${BASE_URL}/api/jobs`, { 
       headers: authHeaders,
@@ -85,7 +85,7 @@ export default function() {
   sleep(SLEEP.THINK);
   
   // Group 4: Candidate Management
-  group('Candidate Management', function() {
+  group('Candidate Management', () => {
     // List candidates
     let res = http.get(`${BASE_URL}/api/candidates`, { 
       headers: authHeaders,
@@ -106,7 +106,7 @@ export default function() {
   sleep(SLEEP.THINK);
   
   // Group 5: Workspaces
-  group('Workspaces', function() {
+  group('Workspaces', () => {
     const res = http.get(`${BASE_URL}/api/workspaces`, { 
       headers: authHeaders,
       tags: TAGS.workspaces 

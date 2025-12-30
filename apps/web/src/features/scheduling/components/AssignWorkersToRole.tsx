@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 
 import { Modal, Button, Input } from '@recruitiq/ui';
 
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 import { useDepartments } from '../hooks/useDepartments';

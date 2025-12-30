@@ -12,7 +12,7 @@ describe('Shift Template Stations - Integration Tests', () => {
   let testOrgId;
   let testUserId;
   let testTemplateId;
-  let testStationIds = [];
+  const testStationIds = [];
 
   beforeAll(async () => {
     // Create simple database health check function

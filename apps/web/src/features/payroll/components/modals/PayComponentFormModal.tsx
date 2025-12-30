@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import CurrencySelector from '@/components/ui/CurrencySelector';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { type ForfaitRule } from '@/hooks/useForfaitRules';
 
 import FormulaBuilder from './FormulaBuilder';

@@ -7,7 +7,7 @@ import { Modal, Button, Input } from '@recruitiq/ui';
 
 import { Label } from '@/components/ui/Label';
 import { Switch } from '@/components/ui/Switch';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 import { workersService } from '../services';

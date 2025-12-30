@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useLocations } from '@/hooks/useLocations';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';

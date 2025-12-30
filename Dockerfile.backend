@@ -14,17 +14,26 @@ RUN addgroup -g 1001 -S nodejs && \
 # Development stage
 FROM base AS development
 
-# Copy package files
-COPY backend/package*.json ./
+# Enable corepack and install pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
-# Install all dependencies (including dev)
-RUN npm ci && npm cache clean --force
+# Copy monorepo workspace files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy packages directory for workspace resolution
+COPY packages ./packages
+
+# Copy backend package.json
+COPY backend/package.json ./backend/package.json
+
+# Install all dependencies (including dev) using pnpm
+RUN pnpm install --frozen-lockfile
 
 # Copy source code and scripts
-COPY --chown=nodejs:nodejs backend/ ./
+COPY --chown=nodejs:nodejs backend/ ./backend
 
 # Make startup script executable
-RUN chmod +x scripts/startup.sh
+RUN chmod +x backend/scripts/startup.sh
 
 # Switch to non-root user
 USER nodejs
@@ -33,19 +42,28 @@ USER nodejs
 EXPOSE 3001
 
 # Development command with automatic migrations
-CMD ["./scripts/startup.sh"]
+CMD ["./backend/scripts/startup.sh"]
 
 # Production builder stage
 FROM base AS builder
 
-# Copy package files
-COPY backend/package*.json ./
+# Enable corepack and install pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Copy monorepo workspace files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Copy source code
-COPY backend/ ./
+# Copy packages directory for workspace resolution
+COPY packages ./packages
+
+# Copy backend package.json
+COPY backend/package.json ./backend/package.json
+
+# Install production dependencies using pnpm
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy backend source code
+COPY backend/ ./backend
 
 # Production stage
 FROM node:20-alpine AS production
@@ -53,16 +71,25 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init bash postgresql-client
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copy built application
+# Copy monorepo root package.json and workspace config for reference
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nodejs:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=builder --chown=nodejs:nodejs /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+
+# Copy entire node_modules tree from builder (includes all dependencies via pnpm workspace)
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --chown=nodejs:nodejs backend/src ./src
-COPY --chown=nodejs:nodejs backend/package*.json ./
+
+# Copy backend directory (src, scripts, package.json, and everything needed for startup)
+COPY --from=builder --chown=nodejs:nodejs /app/backend ./backend
+
+# Ensure startup script is executable
+RUN chmod +x ./backend/scripts/startup.sh
 
 # Switch to non-root user
 USER nodejs
@@ -78,4 +105,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start application with migrations
-CMD ["./scripts/startup.sh"]
+CMD ["bash", "./backend/scripts/startup.sh"]

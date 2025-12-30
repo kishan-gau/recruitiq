@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 
 import { Modal, Button, Select } from '@recruitiq/ui';
 
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 import { useRoles, useAssignRole, useUnassignRole } from '../hooks/useRoles';

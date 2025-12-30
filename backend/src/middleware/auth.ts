@@ -16,7 +16,7 @@ function isJwtPayload(decoded: string | JwtPayload): decoded is JwtPayload {
 /**
  * Type guard to check if JwtPayload has our custom properties
  */
-function isCustomJwtPayload(decoded: JwtPayload): decoded is JWTPayload {
+function _isCustomJwtPayload(decoded: JwtPayload): decoded is JWTPayload {
   return 'id' in decoded || 'userId' in decoded;
 }
 
@@ -131,18 +131,6 @@ export const authenticateTenant = async (req, res, next) => {
     // SECURITY: Only support httpOnly cookies (no Bearer token fallback)
     // Tests must use cookie jar pattern per TESTING_STANDARDS.md
     const token = req.cookies.tenant_access_token;
-    
-    // CONSOLE DEBUG: Detailed authentication logging
-    console.log('🔍 TENANT AUTH DEBUG:', {
-      path: req.path,
-      method: req.method,
-      hasCookies: !!req.cookies,
-      cookieKeys: Object.keys(req.cookies || {}),
-      hasAccessToken: !!token,
-      tokenLength: token?.length,
-      rawCookieHeader: req.headers.cookie?.substring(0, 200) + '...',
-      timestamp: new Date().toISOString()
-    });
     
     // DEBUG: Log authentication debug info
     logger.debug('authenticateTenant - Auth debug', {
@@ -284,14 +272,15 @@ export const authenticateTenant = async (req, res, next) => {
     
     // DEBUG: Log what's in req.user (dev mode only)
     if (process.env.NODE_ENV === 'development') {
-      console.log('=== MIDDLEWARE AUTH CHECK ===');
-      console.log('User email:', req.user.email);
-      console.log('User ID:', req.user.id);
-      console.log('Organization ID:', req.user.organizationId);
-      console.log('enabledProducts:', req.user.enabledProducts);
-      console.log('RBAC Permissions count:', req.user.permissions.length);
-      console.log('RBAC Permissions list:', req.user.permissions);
-      console.log('ScheduleHub permissions:', req.user.permissions.filter(p => p.includes('scheduling')));
+      logger.debug('=== MIDDLEWARE AUTH CHECK ===', {
+        userEmail: req.user.email,
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        enabledProducts: req.user.enabledProducts,
+        permissionsCount: req.user.permissions.length,
+        permissions: req.user.permissions,
+        schedulingPermissions: req.user.permissions.filter(p => p.includes('scheduling'))
+      });
     }
     
     next();
@@ -391,12 +380,13 @@ export const requireProductAccess = (product) => {
     
     // DEBUG: Log product access check (dev mode only)
     if (process.env.NODE_ENV === 'development') {
-      console.log('=== PRODUCT ACCESS CHECK ===');
-      console.log('Required product:', product);
-      console.log('User enabledProducts:', enabledProducts);
-      console.log('Type of enabledProducts:', typeof enabledProducts);
-      console.log('Is array?:', Array.isArray(enabledProducts));
-      console.log('Includes product?:', enabledProducts.includes(product));
+      logger.debug('=== PRODUCT ACCESS CHECK ===', {
+        requiredProduct: product,
+        enabledProducts,
+        typeOfEnabledProducts: typeof enabledProducts,
+        isArray: Array.isArray(enabledProducts),
+        includesProduct: enabledProducts.includes(product)
+      });
     }
     
     if (!enabledProducts.includes(product)) {
@@ -455,7 +445,7 @@ export const requireProductRole = (product, ...roles) => {
  * This allows gradual migration
  * @deprecated Use authenticatePlatform or authenticateTenant directly
  */
-export const authenticate = async (req, res, next) => {
+export const authenticate = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     
@@ -531,11 +521,12 @@ export const requirePermission = (...permissions) => {
     
     // DEBUG: Log permission check details (dev mode only)
     if (process.env.NODE_ENV === 'development') {
-      console.log('=== PERMISSION CHECK ===');
-      console.log('Endpoint:', req.originalUrl);
-      console.log('Required permissions:', permissions);
-      console.log('User permissions:', userPermissions);
-      console.log('User has required permission?', permissions.some(p => userPermissions.includes(p)));
+      logger.debug('=== PERMISSION CHECK ===', {
+        endpoint: req.originalUrl,
+        requiredPermissions: permissions,
+        userPermissions,
+        hasRequiredPermission: permissions.some(p => userPermissions.includes(p))
+      });
     }
     
     // Check if user has at least one required permission

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { RunTypeSelector } from '@/components/common/RunTypeSelector';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input } from '@/components/ui/FormField';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { handleApiError } from '@/utils/errorHandler';
 

@@ -7,6 +7,9 @@ set -e  # Exit on any error
 
 echo "🚀 Starting RecruitIQ Backend..."
 
+# Ensure we're in the backend directory for npm commands
+cd /app/backend || exit 1
+
 # Wait for PostgreSQL to be ready
 echo "⏳ Waiting for PostgreSQL..."
 while ! pg_isready -h postgres -p 5432 -U postgres; do
@@ -15,7 +18,8 @@ while ! pg_isready -h postgres -p 5432 -U postgres; do
 done
 echo "✅ PostgreSQL is ready!"
 
-# Run database migrations
+# Run database migrations from backend directory
+# (knex and migration scripts are relative to /app/backend/package.json context)
 echo "📊 Running database migrations..."
 npm run migrate:latest
 if [ $? -eq 0 ]; then
@@ -41,6 +45,6 @@ if [ "$NODE_ENV" = "development" ]; then
   fi
 fi
 
-# Start the development server
+# Start the development server (already in backend directory)
 echo "🎯 Starting development server..."
 exec npm run dev

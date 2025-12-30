@@ -148,6 +148,17 @@ const eslintConfig = [
     }
   },
 
+  // Script and seed files - development only, more lenient rules
+  {
+    files: ['scripts/**/*.js', 'seeds/**/*.js'],
+    rules: {
+      'no-console': 'off',
+      'require-await': 'off',
+      'no-unused-vars': 'off',
+      'no-unused-expressions': 'off'
+    }
+  },
+
   {
     files: ['**/*.test.js', '**/tests/**/*.js'],
     languageOptions: {

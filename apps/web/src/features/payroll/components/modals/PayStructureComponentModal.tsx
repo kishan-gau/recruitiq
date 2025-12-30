@@ -7,7 +7,7 @@ import CurrencySelector from '@/components/ui/CurrencySelector';
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea } from '@/components/ui/FormField';
 import MetadataBuilder from '@/components/ui/MetadataBuilder';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { type ForfaitRule } from '@/hooks/useForfaitRules';
 import { usePayComponents } from '@/hooks/usePayComponents';
 import type { PayStructureComponent } from '@/hooks/usePayStructures';

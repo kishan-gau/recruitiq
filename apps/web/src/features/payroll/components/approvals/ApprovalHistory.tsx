@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { handleApiError } from '@/utils/errorHandler';
 
 import { usePaylinqAPI } from '../../hooks/usePaylinqAPI';

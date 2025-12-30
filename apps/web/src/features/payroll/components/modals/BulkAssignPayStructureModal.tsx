@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 
 import Dialog from '@/components/ui/Dialog';
 import FormField, { Input, TextArea } from '@/components/ui/FormField';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import { usePayStructureTemplates, useAssignPayStructureToWorker, useWorkers } from '@/hooks/usePayStructures';
 
 interface BulkAssignPayStructureModalProps {

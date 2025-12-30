@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import Dialog from '@/components/ui/Dialog';
 import FormField, { TextArea } from '@/components/ui/FormField';
-import { useToast } from '@/contexts/ToastContext';
+import { useToast } from '@/hooks/useToast';
 
 interface ApprovalModalProps {
   isOpen: boolean;

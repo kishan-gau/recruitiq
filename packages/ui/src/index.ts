@@ -8,6 +8,7 @@ import './styles.css';
 // Core UI Components
 export * from './components/Button';
 export * from './components/Card';
+export * from './components/Dialog';
 export * from './components/Input';
 export * from './components/Modal';
 export * from './components/LoadingSpinner';
@@ -15,6 +16,7 @@ export * from './components/StatusBadge';
 export * from './components/StatisticsCard';
 
 // Form Components
+export * from './components/FormField';
 export * from './components/Switch';
 export * from './components/Select';
 export * from './components/Tabs';

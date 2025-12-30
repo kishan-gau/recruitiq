@@ -7,7 +7,11 @@
  * Base Application Error
  */
 class ApplicationError extends Error {
-  constructor(message, statusCode = 500, code = 'INTERNAL_ERROR') {
+  statusCode: number;
+  code: string;
+  isOperational: boolean;
+
+  constructor(message: string, statusCode: number = 500, code: string = 'INTERNAL_ERROR') {
     super(message);
     this.name = this.constructor.name;
     this.statusCode = statusCode;
@@ -31,7 +35,9 @@ class ApplicationError extends Error {
  * 400 Bad Request - Validation Error
  */
 class ValidationError extends ApplicationError {
-  constructor(message = 'Validation failed', details = null) {
+  details: any;
+
+  constructor(message: string = 'Validation failed', details: any = null) {
     super(message, 400, 'VALIDATION_ERROR');
     this.details = details;
   }
@@ -48,7 +54,7 @@ class ValidationError extends ApplicationError {
  * 401 Unauthorized - Authentication Error
  */
 class AuthenticationError extends ApplicationError {
-  constructor(message = 'Authentication required') {
+  constructor(message: string = 'Authentication required') {
     super(message, 401, 'AUTHENTICATION_ERROR');
   }
 }
@@ -57,7 +63,7 @@ class AuthenticationError extends ApplicationError {
  * 403 Forbidden - Authorization Error
  */
 class ForbiddenError extends ApplicationError {
-  constructor(message = 'Access forbidden') {
+  constructor(message: string = 'Access forbidden') {
     super(message, 403, 'FORBIDDEN_ERROR');
   }
 }
@@ -66,7 +72,9 @@ class ForbiddenError extends ApplicationError {
  * 404 Not Found Error
  */
 class NotFoundError extends ApplicationError {
-  constructor(message = 'Resource not found', resource = null) {
+  resource: string | null;
+
+  constructor(message: string = 'Resource not found', resource: string | null = null) {
     super(message, 404, 'NOT_FOUND_ERROR');
     this.resource = resource;
   }
@@ -83,7 +91,9 @@ class NotFoundError extends ApplicationError {
  * 409 Conflict Error
  */
 class ConflictError extends ApplicationError {
-  constructor(message = 'Resource conflict', details = null) {
+  details: any;
+
+  constructor(message: string = 'Resource conflict', details: any = null) {
     super(message, 409, 'CONFLICT_ERROR');
     this.details = details;
   }
@@ -100,7 +110,9 @@ class ConflictError extends ApplicationError {
  * 422 Unprocessable Entity - Business Logic Error
  */
 class BusinessLogicError extends ApplicationError {
-  constructor(message = 'Business logic validation failed', details = null) {
+  details: any;
+
+  constructor(message: string = 'Business logic validation failed', details: any = null) {
     super(message, 422, 'BUSINESS_LOGIC_ERROR');
     this.details = details;
   }
@@ -117,7 +129,9 @@ class BusinessLogicError extends ApplicationError {
  * 500 Internal Server Error - Database Error
  */
 class DatabaseError extends ApplicationError {
-  constructor(message = 'Database operation failed', originalError = null) {
+  originalError: Error | null;
+
+  constructor(message: string = 'Database operation failed', originalError: Error | null = null) {
     super(message, 500, 'DATABASE_ERROR');
     this.originalError = originalError;
   }
@@ -136,7 +150,9 @@ class DatabaseError extends ApplicationError {
  * 503 Service Unavailable - External Service Error
  */
 class ExternalServiceError extends ApplicationError {
-  constructor(message = 'External service unavailable', service = null) {
+  service: string | null;
+
+  constructor(message: string = 'External service unavailable', service: string | null = null) {
     super(message, 503, 'EXTERNAL_SERVICE_ERROR');
     this.service = service;
   }
@@ -153,7 +169,9 @@ class ExternalServiceError extends ApplicationError {
  * 429 Too Many Requests - Rate Limit Error
  */
 class RateLimitError extends ApplicationError {
-  constructor(message = 'Rate limit exceeded', retryAfter = null) {
+  retryAfter: number | null;
+
+  constructor(message: string = 'Rate limit exceeded', retryAfter: number | null = null) {
     super(message, 429, 'RATE_LIMIT_ERROR');
     this.retryAfter = retryAfter;
   }
@@ -169,7 +187,7 @@ class RateLimitError extends ApplicationError {
 /**
  * Check if an error is an operational error (expected/handled)
  */
-export function isOperationalError(error) {
+export function isOperationalError(error: any): error is ApplicationError {
   if (error instanceof ApplicationError) {
     return error.isOperational;
   }
