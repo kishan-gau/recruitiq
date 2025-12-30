@@ -5,6 +5,7 @@
  * Phase 5 Refactored: Uses response helpers, proper user context, resource-specific keys
  */
 
+import { Request, Response, NextFunction } from 'express';
 import { CandidateService } from '../services/candidates/CandidateService.js';
 import logger from '../utils/logger.js';
 
@@ -14,9 +15,9 @@ const candidateService = new CandidateService();
  * Create a new candidate
  * POST /api/candidates
  */
-export async function createCandidate(req, res, next) {
+export async function createCandidate(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
-    const { organizationId, id: userId } = req.user;
+    const { organizationId, id: userId } = req.user!;
     const candidate = await candidateService.create(
       req.validatedBody,
       organizationId,
@@ -32,9 +33,9 @@ export async function createCandidate(req, res, next) {
  * Get candidate by ID
  * GET /api/candidates/:id
  */
-export async function getCandidate(req, res, next) {
+export async function getCandidate(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
-    const { organizationId, id: userId } = req.user;
+    const { organizationId, id: userId } = req.user!;
     const { id } = req.params;
     const { includeApplications } = req.query;
     

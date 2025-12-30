@@ -45,7 +45,9 @@ import {
  * }
  */
 export class BaseController {
-  constructor(service = null) {
+  protected service: unknown;
+
+  constructor(service: unknown = null) {
     this.service = service;
   }
 
