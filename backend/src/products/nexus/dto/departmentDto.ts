@@ -10,7 +10,7 @@
  * @param {Object} dbDepartment - Department record from database (snake_case)
  * @returns {Object} Department in API format (camelCase)
  */
-export function mapDepartmentDbToApi(dbDepartment) {
+export function mapDepartmentDbToApi(dbDepartment: any): Record<string, any> | null {
   if (!dbDepartment) return null;
 
   return {
@@ -38,7 +38,7 @@ export function mapDepartmentDbToApi(dbDepartment) {
  * @param {Array} dbDepartments - Array of department records
  * @returns {Array} Array of departments in API format
  */
-export function mapDepartmentsDbToApi(dbDepartments) {
+export function mapDepartmentsDbToApi(dbDepartments: any): Record<string, any> | null {
   if (!Array.isArray(dbDepartments)) return [];
   return dbDepartments.map(mapDepartmentDbToApi);
 }
@@ -48,10 +48,10 @@ export function mapDepartmentsDbToApi(dbDepartments) {
  * @param {Object} apiData - Department data from API (camelCase)
  * @returns {Object} Department in database format (snake_case)
  */
-export function mapDepartmentApiToDb(apiData) {
+export function mapDepartmentApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.departmentCode !== undefined) {

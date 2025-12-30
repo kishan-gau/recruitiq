@@ -15,7 +15,10 @@ import logger from '../utils/logger.js';
  * Transaction error class
  */
 export class TransactionError extends Error {
-  constructor(message: string, public originalError?: Error) {
+  
+  name: string;
+
+constructor(message: string, public originalError?: Error) {
     super(message);
     this.name = 'TransactionError';
   }

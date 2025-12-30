@@ -22,7 +22,12 @@ import { getTransIPClient, getSSHKeys, validateSSHKey } from '../../config/trans
 import logger from '../../utils/logger.js';
 
 class TransIPVPSService {
-  constructor(client = null) {
+  
+  client: any;
+
+  testMode: string | undefined;
+
+constructor(client = null) {
     this.client = client || getTransIPClient();
     this.testMode = process.env.NODE_ENV !== 'production';
   }

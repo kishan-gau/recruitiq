@@ -11,6 +11,14 @@ import config from '../config/index.js';
  * CloudWatch client wrapper
  */
 class CloudWatchClient {
+  enabled: boolean;
+  namespace: string;
+  region: string;
+  metricsClient: any;
+  logsClient: any;
+  PutMetricDataCommand: any;
+  PutLogEventsCommand: any;
+
   constructor() {
     this.enabled = config.monitoring?.cloudwatch?.enabled || false;
     this.namespace = config.monitoring?.cloudwatch?.namespace || 'RecruitIQ/Security';

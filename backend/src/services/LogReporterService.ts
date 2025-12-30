@@ -10,7 +10,28 @@
 import axios from 'axios';
 
 class LogReporterService {
-  constructor(options = {}) {
+  
+  flushInterval: any;
+
+  intervalId: any;
+
+  isRunning: boolean;
+
+  localStoragePath: string;
+
+  logBuffer: any;
+
+  maxBufferSize: any;
+
+  organizationSlug: string | undefined;
+
+  portalUrl: string | undefined;
+
+  tenantApiKey: string | undefined;
+
+  tenantId: string | undefined;
+
+constructor(options = {}) {
     this.portalUrl = options.portalUrl || process.env.PORTAL_API_URL || 'https://portal.recruitiq.nl';
     this.tenantId = options.tenantId || process.env.TENANT_ID;
     this.organizationSlug = options.organizationSlug || process.env.ORGANIZATION_SLUG;

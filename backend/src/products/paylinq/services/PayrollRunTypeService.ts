@@ -23,7 +23,12 @@ class PayrollRunTypeService {
    * @param {PayrollRunTypeRepository} repository - Optional repository instance for testing
    * @param {PayStructureService} payStructureService - Optional service instance for testing
    */
-  constructor(repository = null, payStructureService = null) {
+  
+  payStructureService: any;
+
+  repository: any;
+
+constructor(repository = null, payStructureService = null) {
     this.repository = repository || new PayrollRunTypeRepository();
     this.payStructureService = payStructureService || new PayStructureService();
   }

@@ -19,7 +19,10 @@ import { ValidationError, NotFoundError, ConflictError  } from '../../../middlew
 import formulaEngine from '../../../services/formula/FormulaEngine.js';
 
 class PayComponentService {
-  constructor(repository = null) {
+  
+  payComponentRepository: any;
+
+constructor(repository = null) {
     this.payComponentRepository = repository || new PayComponentRepository();
   }
 
@@ -630,80 +633,6 @@ class PayComponentService {
       return assignment;
     } catch (err) {
       logger.error('Error assigning component to employee', { error: err.message, organizationId });
-      throw err;
-    }
-  }
-
-  /**
-   * Get employee component assignments using new table
-   * @param {string} employeeId - Employee UUID
-   * @param {string} organizationId - Organization UUID
-   * @param {Object} filters - Optional filters
-   * @returns {Promise<Array>} Component assignments
-   */
-  async getEmployeeComponentAssignments(employeeId, organizationId, filters = {}) {
-    try {
-      return await this.payComponentRepository.findEmployeeComponentAssignments(
-        employeeId,
-        organizationId,
-        filters
-      );
-    } catch (err) {
-      logger.error('Error fetching employee component assignments', { error: err.message, employeeId });
-      throw err;
-    }
-  }
-
-  /**
-   * Update employee component assignment using new table
-   * @param {string} assignmentId - Assignment UUID
-   * @param {Object} updates - Fields to update
-   * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User making the update
-   * @returns {Promise<Object>} Updated assignment
-   */
-  async updateEmployeeAssignment(assignmentId, updates, organizationId, userId) {
-    try {
-      const assignment = await this.payComponentRepository.updateEmployeeAssignment(
-        assignmentId,
-        updates,
-        organizationId,
-        userId
-      );
-
-      logger.info('Employee assignment updated', {
-        assignmentId,
-        updatedFields: Object.keys(updates),
-        organizationId
-      });
-
-      return assignment;
-    } catch (err) {
-      logger.error('Error updating employee assignment', { error: err.message, assignmentId });
-      throw err;
-    }
-  }
-
-  /**
-   * Delete employee component assignment using new table
-   * @param {string} assignmentId - Assignment UUID
-   * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User deleting the assignment
-   * @returns {Promise<boolean>} Success status
-   */
-  async deleteEmployeeAssignment(assignmentId, organizationId, userId) {
-    try {
-      const result = await this.payComponentRepository.deleteEmployeeAssignment(
-        assignmentId,
-        organizationId,
-        userId
-      );
-
-      logger.info('Employee assignment deleted', { assignmentId, organizationId });
-
-      return result;
-    } catch (err) {
-      logger.error('Error deleting employee assignment', { error: err.message, assignmentId });
       throw err;
     }
   }

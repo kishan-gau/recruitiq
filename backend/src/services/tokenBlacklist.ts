@@ -9,7 +9,12 @@ import config from '../config/index.js';
 import logger from '../utils/logger.js';
 
 class TokenBlacklistService {
-  constructor() {
+  
+  client: any;
+
+  isConnected: boolean;
+
+constructor() {
     this.client = null;
     this.isConnected = false;
   }

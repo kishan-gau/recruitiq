@@ -10,7 +10,7 @@
  * @param {Object} dbSchedule - Work schedule record from database (snake_case)
  * @returns {Object} Work schedule in API format (camelCase)
  */
-export function mapScheduleDbToApi(dbSchedule) {
+export function mapScheduleDbToApi(dbSchedule: any): Record<string, any> | null {
   if (!dbSchedule) return null;
 
   return {
@@ -52,7 +52,7 @@ export function mapScheduleDbToApi(dbSchedule) {
  * @param {Array} dbSchedules - Array of work schedule records
  * @returns {Array} Array of work schedules in API format
  */
-export function mapSchedulesDbToApi(dbSchedules) {
+export function mapSchedulesDbToApi(dbSchedules: any): Record<string, any> | null {
   if (!Array.isArray(dbSchedules)) return [];
   return dbSchedules.map(mapScheduleDbToApi);
 }
@@ -62,10 +62,10 @@ export function mapSchedulesDbToApi(dbSchedules) {
  * @param {Object} apiData - Work schedule data from API (camelCase)
  * @returns {Object} Work schedule in database format (snake_case)
  */
-export function mapScheduleApiToDb(apiData) {
+export function mapScheduleApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.employeeId !== undefined) {
@@ -113,7 +113,7 @@ export function mapScheduleApiToDb(apiData) {
  * @param {Object} dbRequest - Schedule change request record from database
  * @returns {Object} Schedule change request in API format
  */
-export function mapScheduleChangeRequestDbToApi(dbRequest) {
+export function mapScheduleChangeRequestDbToApi(dbRequest: any): Record<string, any> | null {
   if (!dbRequest) return null;
 
   return {
@@ -142,7 +142,7 @@ export function mapScheduleChangeRequestDbToApi(dbRequest) {
  * @param {Array} dbRequests - Array of schedule change request records
  * @returns {Array} Array of schedule change requests in API format
  */
-export function mapScheduleChangeRequestsDbToApi(dbRequests) {
+export function mapScheduleChangeRequestsDbToApi(dbRequests: any): Record<string, any> | null {
   if (!Array.isArray(dbRequests)) return [];
   return dbRequests.map(mapScheduleChangeRequestDbToApi);
 }
@@ -152,10 +152,10 @@ export function mapScheduleChangeRequestsDbToApi(dbRequests) {
  * @param {Object} apiData - Schedule change request data from API
  * @returns {Object} Schedule change request in database format
  */
-export function mapScheduleChangeRequestApiToDb(apiData) {
+export function mapScheduleChangeRequestApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   if (apiData.scheduleId !== undefined) {
     dbData.schedule_id = apiData.scheduleId;

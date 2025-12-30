@@ -13,7 +13,12 @@ import pool from '../../../config/database.js';
  * - Optimized batch conversions with parallel processing
  */
 class CurrencyService {
-  constructor() {
+  
+  approvalService: any;
+
+  repository: any;
+
+constructor() {
     this.repository = new ExchangeRateRepository();
     this.approvalService = new ApprovalService();
     
@@ -726,14 +731,6 @@ class CurrencyService {
   clearCache() {
     this.cache.flushAll();
     logger.info('Exchange rate cache cleared');
-  }
-
-  /**
-   * Get cache statistics
-   * @returns {Object} Cache stats
-   */
-  getCacheStats() {
-    return this.cache.getStats();
   }
 
   /**

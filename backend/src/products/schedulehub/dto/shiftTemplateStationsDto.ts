@@ -10,7 +10,7 @@
  * @param {Object} dbRecord - Junction record from database (snake_case)
  * @returns {Object} Junction record in API format (camelCase)
  */
-export function mapShiftTemplateStationDbToApi(dbRecord) {
+export function mapShiftTemplateStationDbToApi(dbRecord: any): Record<string, any> | null {
   if (!dbRecord) return null;
 
   return {
@@ -32,7 +32,7 @@ export function mapShiftTemplateStationDbToApi(dbRecord) {
  * @param {Array} dbRecords - Array of junction records
  * @returns {Array} Array of junction records in API format
  */
-export function mapShiftTemplateStationsDbToApi(dbRecords) {
+export function mapShiftTemplateStationsDbToApi(dbRecords: any): Record<string, any> | null {
   if (!Array.isArray(dbRecords)) return [];
   return dbRecords.map(mapShiftTemplateStationDbToApi);
 }
@@ -42,10 +42,10 @@ export function mapShiftTemplateStationsDbToApi(dbRecords) {
  * @param {Object} apiData - Junction data from API (camelCase)
  * @returns {Object} Junction data in database format (snake_case)
  */
-export function mapShiftTemplateStationApiToDb(apiData) {
+export function mapShiftTemplateStationApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.shiftTemplateId !== undefined) {

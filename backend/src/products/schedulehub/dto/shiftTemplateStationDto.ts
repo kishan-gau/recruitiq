@@ -10,7 +10,7 @@
  * @param {Object} dbRecord - Record from database (snake_case)
  * @returns {Object} Record in API format (camelCase)
  */
-export function mapShiftTemplateStationDbToApi(dbRecord) {
+export function mapShiftTemplateStationDbToApi(dbRecord: any): Record<string, any> | null {
   if (!dbRecord) return null;
 
   return {
@@ -28,7 +28,7 @@ export function mapShiftTemplateStationDbToApi(dbRecord) {
  * @param {Array} dbRecords - Array of records from database
  * @returns {Array} Array of records in API format
  */
-export function mapShiftTemplateStationsDbToApi(dbRecords) {
+export function mapShiftTemplateStationsDbToApi(dbRecords: any): Record<string, any> | null {
   if (!Array.isArray(dbRecords)) return [];
   return dbRecords.map(mapShiftTemplateStationDbToApi);
 }
@@ -38,10 +38,10 @@ export function mapShiftTemplateStationsDbToApi(dbRecords) {
  * @param {Object} apiData - Data from API (camelCase)
  * @returns {Object} Data in database format (snake_case)
  */
-export function mapShiftTemplateStationApiToDb(apiData) {
+export function mapShiftTemplateStationApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   if (apiData.shiftTemplateId !== undefined) {
     dbData.shift_template_id = apiData.shiftTemplateId;

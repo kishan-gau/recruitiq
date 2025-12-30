@@ -15,7 +15,11 @@ class WorkerService {
   createWorkerSchema: Joi.ObjectSchema;
   updateWorkerSchema: Joi.ObjectSchema;
 
-  constructor() {
+  
+
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

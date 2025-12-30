@@ -21,7 +21,10 @@ class AllowanceService {
   /**
    * @param {AllowanceRepository} repository - Optional repository instance for testing
    */
-  constructor(repository = null) {
+  
+  repository: any;
+
+constructor(repository = null) {
     this.repository = repository || new AllowanceRepository();
   }
 

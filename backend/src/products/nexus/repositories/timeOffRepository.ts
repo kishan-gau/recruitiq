@@ -8,7 +8,20 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class TimeOffRepository {
-  constructor(database = null) {
+  
+  accrualTable: string;
+
+  balanceTable: string;
+
+  logger: any;
+
+  query: any;
+
+  requestTable: string;
+
+  typeTable: string;
+
+constructor(database = null) {
     this.query = database?.query || query;
     this.requestTable = 'hris.time_off_request';
     this.balanceTable = 'hris.employee_time_off_balance';

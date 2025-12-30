@@ -10,7 +10,7 @@
  * @param {Object} dbAvailability - Availability record from database (snake_case)
  * @returns {Object} Availability in API format (camelCase)
  */
-export function mapAvailabilityDbToApi(dbAvailability) {
+export function mapAvailabilityDbToApi(dbAvailability: any): Record<string, any> | null {
   if (!dbAvailability) return null;
 
   return {
@@ -40,7 +40,7 @@ export function mapAvailabilityDbToApi(dbAvailability) {
  * @param {Array} dbAvailabilities - Array of availability records
  * @returns {Array} Array of availabilities in API format
  */
-export function mapAvailabilitiesDbToApi(dbAvailabilities) {
+export function mapAvailabilitiesDbToApi(dbAvailabilities: any): Record<string, any> | null {
   if (!Array.isArray(dbAvailabilities)) return [];
   return dbAvailabilities.map(mapAvailabilityDbToApi);
 }
@@ -50,10 +50,10 @@ export function mapAvailabilitiesDbToApi(dbAvailabilities) {
  * @param {Object} apiData - Availability data from API (camelCase)
  * @returns {Object} Availability in database format (snake_case)
  */
-export function mapAvailabilityApiToDb(apiData) {
+export function mapAvailabilityApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.workerId !== undefined) {

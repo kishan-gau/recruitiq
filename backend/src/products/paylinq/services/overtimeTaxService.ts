@@ -70,7 +70,10 @@ class OvertimeTaxService {
    * 
    * @param {Object} repository - Optional repository for testing
    */
-  constructor(repository = null) {
+  
+  repository: any;
+
+constructor(repository = null) {
     this.repository = repository;
   }
 

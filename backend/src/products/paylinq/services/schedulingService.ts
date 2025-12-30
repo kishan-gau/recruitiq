@@ -31,7 +31,10 @@ function calculateDuration(startTime, endTime, breakMinutes = 0) {
 }
 
 class SchedulingService {
-  constructor() {
+  
+  schedulingRepository: any;
+
+constructor() {
     this.schedulingRepository = new SchedulingRepository();
   }
 

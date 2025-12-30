@@ -142,7 +142,7 @@ class BarbicanProvider {
    * @param {Object} options - Additional options
    * @returns {Promise<string>} - Decrypted secret value
    */
-  async getSecret(secretName, options = {}) {
+  async getSecret(secretName: string, options: any = {}): Promise<string> {
     try {
       // Check cache first
       const cached = this.getCachedSecret(secretName);
@@ -230,7 +230,7 @@ class BarbicanProvider {
    * @param {Object} options - Additional options
    * @returns {Promise<string>} - Secret reference URL
    */
-  async storeSecret(secretName, secretValue, options = {}) {
+  async storeSecret(secretName: string, secretValue: string, options: any = {}): Promise<string> {
     try {
       const token = await this.authenticate();
 
@@ -332,7 +332,7 @@ class BarbicanProvider {
    * @param {Object} options - Generation options
    * @returns {Promise<string>} - Secret reference URL
    */
-  async generateSecret(secretName, options = {}) {
+  async generateSecret(secretName: string, options: any = {}): Promise<string> {
     try {
       const token = await this.authenticate();
 

@@ -58,7 +58,7 @@ function formatTimestamp(timestampValue) {
  * @param {Object} dbSchedule - Schedule record from database (snake_case)
  * @returns {Object} Schedule in API format (camelCase)
  */
-export function mapScheduleDbToApi(dbSchedule) {
+export function mapScheduleDbToApi(dbSchedule: any): Record<string, any> | null {
   if (!dbSchedule) return null;
 
   return {
@@ -85,7 +85,7 @@ export function mapScheduleDbToApi(dbSchedule) {
  * @param {Array} dbSchedules - Array of schedule records from database
  * @returns {Array} Array of schedules in API format
  */
-export function mapSchedulesDbToApi(dbSchedules) {
+export function mapSchedulesDbToApi(dbSchedules: any): Record<string, any> | null {
   if (!Array.isArray(dbSchedules)) return [];
   return dbSchedules.map(mapScheduleDbToApi);
 }
@@ -95,10 +95,10 @@ export function mapSchedulesDbToApi(dbSchedules) {
  * @param {Object} apiData - Schedule data from API (camelCase)
  * @returns {Object} Schedule in database format (snake_case)
  */
-export function mapScheduleApiToDb(apiData) {
+export function mapScheduleApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.name !== undefined) {

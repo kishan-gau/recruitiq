@@ -8,7 +8,12 @@ import logger from '../../../utils/logger.js';
 import ProductConfig from '../models/ProductConfig.js';
 
 class ProductConfigRepository {
-  constructor(database = null) {
+  
+  logger: any;
+
+  query: any;
+
+constructor(database = null) {
     this.query = database?.query || query;
     this.logger = logger;
   }

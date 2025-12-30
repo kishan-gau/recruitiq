@@ -11,7 +11,14 @@ import logger from '../../utils/logger.js';
  * are created or modified.
  */
 class TransIPClient {
-  constructor() {
+  
+  baseURL: string;
+
+  privateKeyPath: string | undefined;
+
+  username: string | undefined;
+
+constructor() {
     this.baseURL = 'https://api.transip.nl/v6';
     this.username = process.env.TRANSIP_USERNAME;
     this.privateKeyPath = process.env.TRANSIP_PRIVATE_KEY;

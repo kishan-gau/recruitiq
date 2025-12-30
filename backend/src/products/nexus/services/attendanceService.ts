@@ -10,7 +10,11 @@ import type { AttendanceRecordData, AttendanceSummary, AttendanceSearchFilters }
 class AttendanceService {
   logger: typeof logger;
   
-  constructor() {
+  
+  
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

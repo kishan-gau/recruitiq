@@ -31,7 +31,14 @@ import { createClient } from 'redis';
 import logger from '../utils/logger.js';
 
 class CacheService {
-  constructor() {
+  
+  client: any;
+
+  defaultTTL: number;
+
+  isConnected: boolean;
+
+constructor() {
     this.client = null;
     this.isConnected = false;
     this.defaultTTL = 300; // 5 minutes

@@ -23,7 +23,10 @@ const execAsync = promisify(exec);
 const deploymentLogs = new Map();
 
 class SharedVPSOrchestrator {
-  constructor() {
+  
+  sshOptions: string;
+
+constructor() {
     this.sshOptions = '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null';
   }
 

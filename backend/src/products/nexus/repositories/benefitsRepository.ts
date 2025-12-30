@@ -8,7 +8,16 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class BenefitsRepository {
-  constructor(database = null) {
+  
+  enrollmentTable: string;
+
+  logger: any;
+
+  planTable: string;
+
+  query: any;
+
+constructor(database = null) {
     this.query = database?.query || query;
     this.planTable = 'hris.benefit_plan';
     this.enrollmentTable = 'hris.benefit_enrollment';

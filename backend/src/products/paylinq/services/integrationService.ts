@@ -10,7 +10,14 @@ import integrationErrorHandler from '../../../shared/utils/integrationErrorHandl
 import PayrollRepository from '../repositories/payrollRepository.js';
 
 class PaylinqIntegrationService {
-  constructor() {
+  
+  errorHandler: any;
+
+  logger: any;
+
+  payrollRepository: any;
+
+constructor() {
     this.payrollRepository = new PayrollRepository();
     this.logger = logger;
     this.errorHandler = integrationErrorHandler;

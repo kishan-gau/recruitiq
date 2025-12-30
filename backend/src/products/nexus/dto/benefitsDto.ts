@@ -8,10 +8,10 @@
  * @param {Object} apiData - Benefit plan data from API (camelCase)
  * @returns {Object} Database format (snake_case)
  */
-export function mapPlanApiToDb(apiData) {
+export function mapPlanApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Required fields - support both camelCase (API) and snake_case (direct DB format)
   if (apiData.planName !== undefined || apiData.plan_name !== undefined) {
@@ -116,7 +116,7 @@ export function mapPlanApiToDb(apiData) {
  * @param {Object} dbData - Benefit plan data from database (snake_case)
  * @returns {Object} API format (camelCase)
  */
-export function mapPlanDbToApi(dbData) {
+export function mapPlanDbToApi(dbData: any): Record<string, any> | null {
   if (!dbData) return null;
 
   return {
@@ -167,7 +167,7 @@ export function mapPlanDbToApi(dbData) {
  * @param {Array} dbPlans - Array of benefit plans from database
  * @returns {Array} Array in API format
  */
-export function mapPlansDbToApi(dbPlans) {
+export function mapPlansDbToApi(dbPlans: any): Record<string, any> | null {
   if (!Array.isArray(dbPlans)) return [];
   return dbPlans.map(mapPlanDbToApi);
 }

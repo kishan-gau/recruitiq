@@ -15,10 +15,13 @@ import db from '../config/knex.js';
 import logger from '../utils/logger.js';
 
 class BaseKnexRepository {
+  tableName: string;
+  db: any;
+
   /**
    * @param {string} tableName - Name of the database table
    */
-  constructor(tableName) {
+  constructor(tableName: string) {
     this.tableName = tableName;
     this.db = db;
   }
@@ -68,7 +71,7 @@ class BaseKnexRepository {
    * @param {Object} options - Query options (limit, offset, orderBy)
    * @returns {Promise<Array>}
    */
-  async findAll(organizationId, filters = {}, options = {}) {
+  async findAll(organizationId: string, filters: Record<string, any> = {}, options: { limit?: number; offset?: number; orderBy?: string; orderDirection?: string } = {}) {
     try {
       let query = this.baseQuery(organizationId);
       

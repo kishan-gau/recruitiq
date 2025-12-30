@@ -10,6 +10,10 @@ import logger from '../utils/logger.js';
  */
 
 class RateLimitManager {
+  redisEnabled: boolean;
+  redisClient: any;
+  isConnected: boolean;
+
   constructor() {
     this.redisEnabled = process.env.REDIS_ENABLED === 'true';
     this.redisClient = null;
@@ -29,11 +33,11 @@ class RateLimitManager {
     try {
       // Only include password if it's set and not empty
       const redisPassword = process.env.REDIS_PASSWORD?.trim();
-      const redisConfig = {
+      const redisConfig: any = {
         url: process.env.REDIS_URL || 'redis://localhost:6379',
         socket: {
           connectTimeout: 10000,
-          reconnectStrategy: (retries) => {
+          reconnectStrategy: (retries: number) => {
             if (retries > 10) {
               logger.error('Redis reconnection failed after 10 attempts');
               return new Error('Redis reconnection failed');

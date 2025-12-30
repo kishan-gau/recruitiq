@@ -20,7 +20,7 @@
  * @param {Object} dbStructure - Pay structure record from database
  * @returns {Object} Pay structure in API format
  */
-export function mapPayStructureDbToApi(dbStructure) {
+export function mapPayStructureDbToApi(dbStructure: any): Record<string, any> | null {
   if (!dbStructure) return null;
 
   return {
@@ -56,7 +56,7 @@ export function mapPayStructureDbToApi(dbStructure) {
  * @param {Array} dbStructures - Array of pay structure records
  * @returns {Array} Array of pay structures in API format
  */
-export function mapPayStructuresDbToApi(dbStructures) {
+export function mapPayStructuresDbToApi(dbStructures: any): Record<string, any> | null {
   if (!Array.isArray(dbStructures)) return [];
   
   return dbStructures.map(mapPayStructureDbToApi);
@@ -67,10 +67,10 @@ export function mapPayStructuresDbToApi(dbStructures) {
  * @param {Object} apiData - Pay structure data from API request
  * @returns {Object} Pay structure in database format
  */
-export function mapPayStructureApiToDb(apiData) {
+export function mapPayStructureApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields that are present in the API data
   if (apiData.structureCode !== undefined) {
@@ -109,7 +109,7 @@ export function mapPayStructureApiToDb(apiData) {
  * @param {Object} dbStructure - Pay structure record from database
  * @returns {Object} Pay structure with full template details in API format
  */
-export function mapPayStructureWithTemplateDbToApi(dbStructure) {
+export function mapPayStructureWithTemplateDbToApi(dbStructure: any): Record<string, any> | null {
   if (!dbStructure) return null;
 
   const baseMapping = mapPayStructureDbToApi(dbStructure);
@@ -143,7 +143,7 @@ export function mapPayStructureWithTemplateDbToApi(dbStructure) {
  * @param {Object} dbStructure - Pay structure record from database
  * @returns {Object} Pay structure summary in API format
  */
-export function mapPayStructureWithTemplateSummaryDbToApi(dbStructure) {
+export function mapPayStructureWithTemplateSummaryDbToApi(dbStructure: any): Record<string, any> | null {
   if (!dbStructure) return null;
 
   return {
@@ -165,7 +165,7 @@ export function mapPayStructureWithTemplateSummaryDbToApi(dbStructure) {
  * @param {Object} dbTemplate - Template record from database
  * @returns {Object} Template in API format
  */
-export function mapPayStructureTemplateDbToApi(dbTemplate) {
+export function mapPayStructureTemplateDbToApi(dbTemplate: any): Record<string, any> | null {
   if (!dbTemplate) return null;
 
   return {
@@ -216,7 +216,7 @@ export function mapPayStructureTemplateDbToApi(dbTemplate) {
  * @param {Array} dbTemplates - Array of template records
  * @returns {Array} Array of templates in API format
  */
-export function mapPayStructureTemplatesDbToApi(dbTemplates) {
+export function mapPayStructureTemplatesDbToApi(dbTemplates: any): Record<string, any> | null {
   if (!Array.isArray(dbTemplates)) return [];
   
   return dbTemplates.map(mapPayStructureTemplateDbToApi);

@@ -14,7 +14,10 @@ import { query  } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class SchedulingRepository {
-  constructor(database = null) {
+  
+  query: any;
+
+constructor(database = null) {
     this.query = database?.query || query;
   }
 

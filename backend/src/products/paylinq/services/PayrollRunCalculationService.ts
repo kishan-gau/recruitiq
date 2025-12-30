@@ -18,7 +18,10 @@ import logger from '../../../utils/logger.js';
 import { ValidationError } from '../../../middleware/errorHandler.js';
 
 class PayrollRunCalculationService {
-  constructor(loontijdvakService = null) {
+  
+  loontijdvakService: any;
+
+constructor(loontijdvakService = null) {
     this.loontijdvakService = loontijdvakService || new LoontijdvakService();
   }
 

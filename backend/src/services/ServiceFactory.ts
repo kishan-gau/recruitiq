@@ -51,7 +51,10 @@ export class ServiceFactory {
    * 
    * @param pool - Database connection pool
    */
-  constructor(pool: Pool) {
+  
+  pool: any;
+
+constructor(pool: Pool) {
     this.pool = pool;
     logger.info('Service factory created');
   }

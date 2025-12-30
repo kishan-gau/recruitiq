@@ -25,7 +25,10 @@ import { ValidationError, NotFoundError } from '../../../utils/errors.js';
 import PayComponentRepository from '../repositories/payComponentRepository.js';
 
 class ForfaitRuleService {
-  constructor(repository = null) {
+  
+  repository: any;
+
+constructor(repository = null) {
     this.repository = repository || new PayComponentRepository();
   }
 

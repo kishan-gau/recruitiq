@@ -10,7 +10,7 @@
  * @param {Object} dbWorker - Worker record from database (snake_case)
  * @returns {Object} Worker in API format (camelCase)
  */
-export function mapWorkerDbToApi(dbWorker) {
+export function mapWorkerDbToApi(dbWorker: any): Record<string, any> | null {
   if (!dbWorker) return null;
 
   return {
@@ -56,7 +56,7 @@ export function mapWorkerDbToApi(dbWorker) {
  * @param {Array} dbWorkers - Array of worker records
  * @returns {Array} Array of workers in API format
  */
-export function mapWorkersDbToApi(dbWorkers) {
+export function mapWorkersDbToApi(dbWorkers: any): Record<string, any> | null {
   if (!Array.isArray(dbWorkers)) return [];
   return dbWorkers.map(mapWorkerDbToApi);
 }
@@ -66,10 +66,10 @@ export function mapWorkersDbToApi(dbWorkers) {
  * @param {Object} apiData - Worker data from API (camelCase)
  * @returns {Object} Worker config in database format (snake_case)
  */
-export function mapWorkerApiToDb(apiData) {
+export function mapWorkerApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields that are present in API data (for updates)
   if (apiData.maxHoursPerWeek !== undefined) {

@@ -18,7 +18,12 @@ import { ValidationError, NotFoundError } from '../../../middleware/errorHandler
 import { query as defaultQuery } from '../../../config/database.js';
 
 class TemporalPatternService {
-  constructor(timeAttendanceRepository = null, queryFn = null) {
+  
+  query: any;
+
+  timeAttendanceRepository: any;
+
+constructor(timeAttendanceRepository = null, queryFn = null) {
     this.timeAttendanceRepository = timeAttendanceRepository || new TimeAttendanceRepository();
     this.query = queryFn || defaultQuery;
   }

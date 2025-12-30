@@ -162,7 +162,10 @@ export const VariableMetadata = {
  * Base AST Node interface
  */
 export class ASTNode {
-  constructor(type) {
+  
+  type: any;
+
+constructor(type) {
     this.type = type;
   }
 }

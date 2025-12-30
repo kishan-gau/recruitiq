@@ -10,7 +10,10 @@ import db from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class DashboardRepository {
-  constructor(database = null) {
+  
+  db: any;
+
+constructor(database = null) {
     this.db = database || db;
   }
 

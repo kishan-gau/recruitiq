@@ -9,7 +9,7 @@
  * @param {Object} dbRunType - Database record (snake_case)
  * @returns {Object|null} API-formatted run type (camelCase)
  */
-export function mapRunTypeDbToApi(dbRunType) {
+export function mapRunTypeDbToApi(dbRunType: any): Record<string, any> | null {
   if (!dbRunType) return null;
 
   return {
@@ -51,7 +51,7 @@ export function mapRunTypeDbToApi(dbRunType) {
  * @param {Array} dbRunTypes - Array of database records
  * @returns {Array} Array of API-formatted run types
  */
-export function mapRunTypesDbToApi(dbRunTypes) {
+export function mapRunTypesDbToApi(dbRunTypes: any): Record<string, any> | null {
   if (!Array.isArray(dbRunTypes)) return [];
   return dbRunTypes.map(mapRunTypeDbToApi);
 }
@@ -61,10 +61,10 @@ export function mapRunTypesDbToApi(dbRunTypes) {
  * @param {Object} apiData - API request data (camelCase)
  * @returns {Object} Database format (snake_case)
  */
-export function mapRunTypeApiToDb(apiData) {
+export function mapRunTypeApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
   
   // Only map fields that are present in the API data
   if (apiData.typeCode !== undefined) dbData.type_code = apiData.typeCode;

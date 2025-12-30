@@ -432,7 +432,12 @@ class VaultProvider extends SecretProvider {
  * - RESTful API for secret management
  */
 class BarbicanProvider extends SecretProvider {
-  constructor(options = {}) {
+  endpoint: string | undefined;
+  token: string | undefined;
+  projectId: string | undefined;
+  tokenExpiry: number | null;
+
+  constructor(options: Record<string, any> = {}) {
     super('Barbican');
     this.endpoint = options.endpoint || process.env.BARBICAN_ENDPOINT;
     this.token = options.token || process.env.BARBICAN_TOKEN;

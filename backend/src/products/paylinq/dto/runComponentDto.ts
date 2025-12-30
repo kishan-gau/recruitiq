@@ -22,7 +22,7 @@
  * @param {Object} dbRunComponent - Run component record from database
  * @returns {Object} Run component in API format
  */
-export function mapRunComponentDbToApi(dbRunComponent) {
+export function mapRunComponentDbToApi(dbRunComponent: any): Record<string, any> | null {
   if (!dbRunComponent) return null;
 
   return {
@@ -52,7 +52,7 @@ export function mapRunComponentDbToApi(dbRunComponent) {
  * @param {Array} dbRunComponents - Array of run component records
  * @returns {Array} Array of run components in API format
  */
-export function mapRunComponentsDbToApi(dbRunComponents) {
+export function mapRunComponentsDbToApi(dbRunComponents: any): Record<string, any> | null {
   if (!Array.isArray(dbRunComponents)) return [];
   
   return dbRunComponents.map(mapRunComponentDbToApi);
@@ -63,7 +63,7 @@ export function mapRunComponentsDbToApi(dbRunComponents) {
  * @param {Object} apiData - Run component data from API
  * @returns {Object} Run component in database format
  */
-export function mapRunComponentApiToDb(apiData) {
+export function mapRunComponentApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
   return {

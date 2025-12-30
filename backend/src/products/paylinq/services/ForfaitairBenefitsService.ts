@@ -31,7 +31,12 @@ import PayComponentRepository from '../repositories/payComponentRepository.js';
 import FormulaEngineService from './formulaEngineService.js';
 
 class ForfaitairBenefitsService {
-  constructor(repository = null, formulaEngine = null) {
+  
+  formulaEngine: any;
+
+  repository: any;
+
+constructor(repository = null, formulaEngine = null) {
     this.repository = repository || new PayComponentRepository();
     this.formulaEngine = formulaEngine || new FormulaEngineService();
   }

@@ -13,7 +13,10 @@ class ShiftTemplateStationsService {
    * Constructor with dependency injection
    * @param {ShiftTemplateStationsRepository} repository - Repository instance
    */
-  constructor(repository = null) {
+  
+  repository: any;
+
+constructor(repository = null) {
     this.repository = repository || new ShiftTemplateStationsRepository();
   }
 

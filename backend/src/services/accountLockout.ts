@@ -15,7 +15,14 @@ const ATTEMPT_WINDOW_MS = 30 * 60 * 1000; // 30 minutes window to count attempts
 const PROGRESSIVE_DELAYS = [0, 2000, 5000, 10000, 30000]; // Progressive delays in ms
 
 class AccountLockoutService {
-  constructor() {
+  
+  client: any;
+
+  inMemoryStore: Map<string, any>;
+
+  isConnected: boolean;
+
+constructor() {
     this.client = null;
     this.isConnected = false;
     this.inMemoryStore = new Map(); // Fallback if Redis is down

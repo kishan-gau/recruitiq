@@ -12,7 +12,12 @@ import {
 } from '../dto/availabilityDto.js';
 
 class AvailabilityService {
-  constructor(poolInstance = null) {
+  
+  logger: any;
+
+  pool: any;
+
+constructor(poolInstance = null) {
     this.pool = poolInstance || pool;
     this.logger = logger;
   }

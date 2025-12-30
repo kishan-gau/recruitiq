@@ -13,7 +13,10 @@ export const DEDUCTION_TYPES = {
 };
 
 class DeductionsService {
-  constructor(repository = null) {
+  
+  repository: any;
+
+constructor(repository = null) {
     this.repository = repository;
   }
 

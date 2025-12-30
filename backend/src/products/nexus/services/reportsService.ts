@@ -7,7 +7,10 @@ import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class ReportsService {
-  constructor() {
+  
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

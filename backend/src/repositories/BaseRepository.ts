@@ -19,10 +19,13 @@ import { mapDbToApi, mapApiToDb } from '../utils/dtoMapper.js';
 const db = { query };
 
 export class BaseRepository {
+  tableName: string;
+  logger: any;
+
   /**
    * @param {string} tableName - The database table name
    */
-  constructor(tableName) {
+  constructor(tableName: string) {
     if (new.target === BaseRepository) {
       throw new TypeError('Cannot construct BaseRepository instances directly');
     }
@@ -70,7 +73,7 @@ export class BaseRepository {
    * @param {Object} options - Query options (limit, offset, orderBy)
    * @returns {Promise<Array>}
    */
-  async findAll(filters = {}, organizationId, options = {}) {
+  async findAll(filters: Record<string, any> = {}, organizationId: string, options: { limit?: number; offset?: number; orderBy?: string } = {}) {
     try {
       const { limit = 50, offset = 0, orderBy = 'created_at DESC' } = options;
       

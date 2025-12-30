@@ -15,7 +15,12 @@ import {
 } from '../dto/complianceDto.js';
 
 class ComplianceService {
-  constructor(complianceRepository = null, payrollRepository = null) {
+  
+  complianceRepository: any;
+
+  payrollRepository: any;
+
+constructor(complianceRepository = null, payrollRepository = null) {
     this.complianceRepository = complianceRepository || new ComplianceRepository();
     this.payrollRepository = payrollRepository || new PayrollRepository();
   }

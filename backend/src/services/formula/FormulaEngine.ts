@@ -25,7 +25,14 @@ import {
 import logger from '../../utils/logger.js';
 
 class FormulaEngine {
-  constructor() {
+  
+  executor: any;
+
+  parser: any;
+
+  validator: any;
+
+constructor() {
     this.parser = new FormulaParser();
     this.validator = new FormulaValidator();
     this.executor = new FormulaExecutor();

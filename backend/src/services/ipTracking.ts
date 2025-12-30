@@ -14,7 +14,14 @@ const IP_HISTORY_TTL_DAYS = 90; // Keep IP history for 90 days
 const NEW_IP_THRESHOLD_DAYS = 30; // Consider IP "new" if not seen in 30 days
 
 class IPTrackingService {
-  constructor() {
+  
+  client: any;
+
+  inMemoryStore: Map<string, any>;
+
+  isConnected: boolean;
+
+constructor() {
     this.client = null;
     this.isConnected = false;
     this.inMemoryStore = new Map(); // Fallback

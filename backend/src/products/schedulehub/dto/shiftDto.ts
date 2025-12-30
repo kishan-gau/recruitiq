@@ -79,7 +79,7 @@ function formatTime(timeValue) {
  * @param {Object} dbShift - Shift record from database (snake_case)
  * @returns {Object} Shift in API format (camelCase)
  */
-export function mapShiftDbToApi(dbShift) {
+export function mapShiftDbToApi(dbShift: any): Record<string, any> | null {
   if (!dbShift) return null;
 
   const shift = {
@@ -149,7 +149,7 @@ export function mapShiftDbToApi(dbShift) {
  * @param {Array} dbShifts - Array of shift records from database
  * @returns {Array} Array of shifts in API format
  */
-export function mapShiftsDbToApi(dbShifts) {
+export function mapShiftsDbToApi(dbShifts: any): Record<string, any> | null {
   if (!Array.isArray(dbShifts)) return [];
   return dbShifts.map(mapShiftDbToApi);
 }
@@ -159,10 +159,10 @@ export function mapShiftsDbToApi(dbShifts) {
  * @param {Object} apiData - Shift data from API (camelCase)
  * @returns {Object} Shift in database format (snake_case)
  */
-export function mapShiftApiToDb(apiData) {
+export function mapShiftApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.scheduleId !== undefined) {

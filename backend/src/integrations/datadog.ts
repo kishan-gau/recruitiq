@@ -11,6 +11,13 @@ import config from '../config/index.js';
  * Datadog client wrapper
  */
 class DatadogClient {
+  enabled: boolean;
+  apiKey: string | undefined;
+  appKey: string | undefined;
+  site: string;
+  service: string;
+  env: string;
+
   constructor() {
     this.enabled = config.monitoring?.datadog?.enabled || false;
     this.apiKey = config.monitoring?.datadog?.apiKey || process.env.DATADOG_API_KEY;
