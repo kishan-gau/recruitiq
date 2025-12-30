@@ -3,11 +3,33 @@ export default {
   testEnvironment: 'node',
 
   // Enable ES modules support
-  transform: {},
+  extensionsToTreatAsEsm: ['.ts'],
+  
+  // Transform TypeScript files
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
+      useESM: true,
+    }],
+  },
+  
+  // Module name mapper for path aliases
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@config/(.*)$': '<rootDir>/src/config/$1',
+    '^@middleware/(.*)$': '<rootDir>/src/middleware/$1',
+    '^@controllers/(.*)$': '<rootDir>/src/controllers/$1',
+    '^@services/(.*)$': '<rootDir>/src/services/$1',
+    '^@repositories/(.*)$': '<rootDir>/src/repositories/$1',
+    '^@utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@validators/(.*)$': '<rootDir>/src/validators/$1',
+    '^@types/(.*)$': '<rootDir>/src/types/$1',
+    '^@dto/(.*)$': '<rootDir>/src/dto/$1',
+    '^@products/(.*)$': '<rootDir>/src/products/$1',
+  },
 
   // Global setup and teardown
-  globalSetup: './tests/setup.ts',
-  globalTeardown: './tests/teardown.ts',
+  globalSetup: './tests/setup.js',
+  globalTeardown: './tests/teardown.js',
 
   // Coverage configuration
   collectCoverageFrom: [

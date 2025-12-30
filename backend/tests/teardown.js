@@ -5,7 +5,7 @@
  * Use it for cleanup operations.
  */
 
-import { closePool } from '../src/config/database.js';
+import { closePool } from '../src/config/database.ts';
 
 export default async function globalTeardown() {
   // Close database pool to prevent connection leaks
