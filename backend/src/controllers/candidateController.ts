@@ -19,7 +19,8 @@ export async function createCandidate(req, res, next) {
     const { organizationId, id: userId } = req.user;
     const candidate = await candidateService.create(
       req.validatedBody,
-      req.user
+      organizationId,
+      userId
     );
     return res.sendCreated('candidate', candidate);
   } catch (error) {
@@ -39,7 +40,8 @@ export async function getCandidate(req, res, next) {
     
     const candidate = await candidateService.getById(
       id,
-      req.user,
+      organizationId,
+      userId,
       includeApplications === 'true'
     );
     

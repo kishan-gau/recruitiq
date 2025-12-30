@@ -12,9 +12,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { mapDbToApi } from '../utils/dtoMapper.js';
 
 export class FeatureRepository {
-  tableName: string;
-  logger: any;
-  
   constructor() {
     this.tableName = 'features';
     this.logger = logger;

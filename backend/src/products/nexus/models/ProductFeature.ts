@@ -3,25 +3,27 @@
  * Represents a feature flag for a product with rollout capabilities
  */
 
+import { ProductFeatureData, FeatureStatus } from '../../../types/models.types.js';
+
 class ProductFeature {
-  id: any;
-  productId: any;
-  featureKey: any;
-  featureName: any;
-  description: any;
-  status: any;
-  isDefault: any;
-  minTier: any;
-  requiresFeatures: any;
-  configSchema: any;
-  defaultConfig: any;
-  rolloutPercentage: any;
-  targetOrganizations: any;
-  createdAt: any;
-  updatedAt: any;
-  createdBy: any;
-  
-  constructor(data: any = {}) {
+  id?: string;
+  productId?: string;
+  featureKey?: string;
+  featureName?: string;
+  description?: string;
+  status: FeatureStatus;
+  isDefault?: boolean;
+  minTier?: string;
+  requiresFeatures?: string[];
+  configSchema?: Record<string, unknown>;
+  defaultConfig?: Record<string, unknown>;
+  rolloutPercentage: number;
+  targetOrganizations?: string[];
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  createdBy?: string;
+
+  constructor(data: ProductFeatureData = {}) {
     this.id = data.id;
     this.productId = data.product_id || data.productId;
     
@@ -29,7 +31,7 @@ class ProductFeature {
     this.featureName = data.feature_name || data.featureName;
     this.description = data.description;
     
-    this.status = data.status || 'alpha';
+    this.status = (data.status as FeatureStatus) || 'alpha';
     this.isDefault = data.is_default !== undefined ? data.is_default : data.isDefault;
     
     this.minTier = data.min_tier || data.minTier;

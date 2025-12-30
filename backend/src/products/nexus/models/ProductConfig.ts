@@ -3,28 +3,30 @@
  * Represents organization-specific configuration for a product
  */
 
+import { ProductConfigData, ConfigType } from '../../../types/models.types.js';
+
 class ProductConfig {
-  id: any;
-  organizationId: any;
-  productId: any;
-  configKey: any;
-  configValue: any;
-  configType: any;
-  isEncrypted: any;
-  isSensitive: any;
-  description: any;
-  createdAt: any;
-  updatedAt: any;
-  updatedBy: any;
-  
-  constructor(data: any = {}) {
+  id?: string;
+  organizationId?: string;
+  productId?: string;
+  configKey?: string;
+  configValue?: unknown;
+  configType: ConfigType;
+  isEncrypted?: boolean;
+  isSensitive?: boolean;
+  description?: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  updatedBy?: string;
+
+  constructor(data: ProductConfigData = {}) {
     this.id = data.id;
     this.organizationId = data.organization_id || data.organizationId;
     this.productId = data.product_id || data.productId;
     
     this.configKey = data.config_key || data.configKey;
     this.configValue = data.config_value || data.configValue;
-    this.configType = data.config_type || data.configType || 'custom';
+    this.configType = (data.config_type || data.configType || 'custom') as ConfigType;
     
     this.isEncrypted = data.is_encrypted !== undefined ? data.is_encrypted : data.isEncrypted;
     this.isSensitive = data.is_sensitive !== undefined ? data.is_sensitive : data.isSensitive;

@@ -12,17 +12,27 @@
 
 import axios from 'axios';
 import logger from '../../utils/logger.js';
+import { BarbicanConfig } from '../../types/models.types.js';
 
 /**
  * Barbican API Client
  */
 class BarbicanProvider {
-  config: any;
-  cache: Map<string, any>;
+  config: {
+    endpoint?: string;
+    authEndpoint?: string;
+    username?: string;
+    password?: string;
+    projectName?: string;
+    projectDomain: string;
+    userDomain: string;
+    cacheTTL: number;
+  };
+  cache: Map<string, { value: string; expiry: number }>;
   authToken: string | null;
   tokenExpiry: number | null;
-  
-  constructor(config: any) {
+
+  constructor(config: Partial<BarbicanConfig> = {}) {
     this.config = {
       endpoint: config.endpoint || process.env.BARBICAN_ENDPOINT,
       authEndpoint: config.authEndpoint || process.env.OPENSTACK_AUTH_URL,
