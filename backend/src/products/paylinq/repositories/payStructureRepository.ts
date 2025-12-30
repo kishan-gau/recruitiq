@@ -1507,63 +1507,6 @@ class PayStructureRepository {
   }
 
   /**
-   * Get template components
-   */
-  async getTemplateComponents(templateId, organizationId) {
-    const result = await this.query(
-      `SELECT psc.*, pc.component_name, pc.component_type
-       FROM payroll.pay_structure_component psc
-       LEFT JOIN payroll.pay_component pc ON pc.component_code = psc.component_code
-       WHERE psc.template_id = $1 AND psc.deleted_at IS NULL
-       ORDER BY psc.sequence_order`,
-      [templateId], organizationId, { operation: 'SELECT', table: 'payroll.pay_structure_component' }
-    );
-    
-    return result.rows;
-  }
-
-  /**
-   * Find template inclusions
-   */
-  async findTemplateInclusions(templateId, organizationId) {
-    const result = await this.query(
-      `SELECT psti.*
-       FROM payroll.pay_structure_template_inclusion psti
-       WHERE psti.parent_template_id = $1 
-         AND psti.organization_id = $2 
-         AND psti.deleted_at IS NULL
-         AND psti.is_active = true
-       ORDER BY psti.inclusion_priority`,
-      [templateId, organizationId],
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.pay_structure_template_inclusion' }
-    );
-    
-    return result.rows;
-  }
-
-  /**
-   * Find template by code (latest active version)
-   */
-  async findTemplateByCode(templateCode, organizationId) {
-    const result = await this.query(
-      `SELECT pst.*
-       FROM payroll.pay_structure_template pst
-       WHERE pst.template_code = $1 
-         AND pst.organization_id = $2 
-         AND pst.status = 'active'
-         AND pst.deleted_at IS NULL
-       ORDER BY pst.version_major DESC, pst.version_minor DESC, pst.version_patch DESC
-       LIMIT 1`,
-      [templateCode, organizationId],
-      organizationId,
-      { operation: 'SELECT', table: 'payroll.pay_structure_template' }
-    );
-    
-    return mapPayStructureTemplateDbToApi(result.rows[0]);
-  }
-
-  /**
    * Find current template by code
    * Returns the current version of a template (is_current = true)
    * Used for worker type template upgrades

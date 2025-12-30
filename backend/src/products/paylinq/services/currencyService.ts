@@ -729,14 +729,6 @@ class CurrencyService {
   }
 
   /**
-   * Get cache statistics
-   * @returns {Object} Cache stats
-   */
-  getCacheStats() {
-    return this.cache.getStats();
-  }
-
-  /**
    * Convert payroll components with currency support
    * Handles component-level currency conversions for payroll calculations
    * 
