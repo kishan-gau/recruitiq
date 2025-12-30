@@ -12,7 +12,11 @@ class ShiftTradeService {
   logger: typeof logger;
   createOfferSchema: Joi.ObjectSchema;
 
-  constructor() {
+  
+
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

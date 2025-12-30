@@ -16,7 +16,10 @@ import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 
 class PaymentService {
-  constructor() {
+  
+  paymentRepository: any;
+
+constructor() {
     this.paymentRepository = new PaymentRepository();
   }
 

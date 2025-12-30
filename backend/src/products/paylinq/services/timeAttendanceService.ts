@@ -18,7 +18,12 @@ import { ValidationError, NotFoundError, ConflictError  } from '../../../middlew
 import { nowUTC, toUTCDateString, calculateHours, formatForDatabase } from '../../../utils/timezone.js';
 
 class TimeAttendanceService {
-  constructor(timeAttendanceRepository = null, payComponentRepository = null) {
+  
+  payComponentRepository: any;
+
+  timeAttendanceRepository: any;
+
+constructor(timeAttendanceRepository = null, payComponentRepository = null) {
     this.timeAttendanceRepository = timeAttendanceRepository || new TimeAttendanceRepository();
     this.payComponentRepository = payComponentRepository || new PayComponentRepository();
   }

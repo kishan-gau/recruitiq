@@ -134,7 +134,10 @@ export const AlertSeverity = {
 // ============================================================================
 
 class SecurityMonitor extends EventEmitter {
-  constructor() {
+  
+  failedLogins: Map<string, any>;
+
+constructor() {
     super();
     
     // In-memory storage for tracking (use Redis in production)

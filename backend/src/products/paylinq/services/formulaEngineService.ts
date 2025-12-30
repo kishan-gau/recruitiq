@@ -24,7 +24,10 @@ const math = create(all, {
 });
 
 class FormulaEngineService {
-  constructor() {
+  
+  allowedOperators: any;
+
+constructor() {
     // MVP: Simple arithmetic operators only
     this.allowedOperators = ['+', '-', '*', '/', '(', ')'];
   }

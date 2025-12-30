@@ -15,7 +15,16 @@ import logger from '../utils/logger.js';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 
 export class FeatureTierService {
-  constructor() {
+  
+  accessService: any;
+
+  featureRepo: any;
+
+  grantRepo: any;
+
+  logger: any;
+
+constructor() {
     this.featureRepo = new FeatureRepository();
     this.grantRepo = new FeatureGrantRepository();
     this.accessService = new FeatureAccessService();

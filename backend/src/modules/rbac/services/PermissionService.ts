@@ -7,7 +7,10 @@ import logger from '../../../utils/logger.js';
  * Based on: docs/rbac/02-BACKEND-IMPLEMENTATION.md
  */
 class PermissionService {
-  constructor(permissionModel = null) {
+  
+  permissionModel: any;
+
+constructor(permissionModel = null) {
     this.permissionModel = permissionModel || Permission;
   }
 

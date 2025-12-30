@@ -41,7 +41,12 @@ class BonusTaxService {
    * @param {Object} taxCalculationService - Tax calculation service
    * @param {Object} loontijdvakService - Loontijdvak service
    */
-  constructor(taxCalculationService = null, loontijdvakService = null) {
+  
+  loontijdvakService: any;
+
+  taxCalculationService: any;
+
+constructor(taxCalculationService = null, loontijdvakService = null) {
     this.taxCalculationService = taxCalculationService;
     this.loontijdvakService = loontijdvakService || new LoontijdvakService();
   }

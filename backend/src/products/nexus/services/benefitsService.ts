@@ -11,7 +11,12 @@ class BenefitsService {
   /**
    * @param {IntegrationService} integrationService - Optional for testing
    */
-  constructor(integrationService = null) {
+  
+  integrationService: any;
+
+  logger: any;
+
+constructor(integrationService = null) {
     this.logger = logger;
     this.integrationService = integrationService || new IntegrationService();
   }

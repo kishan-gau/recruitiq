@@ -35,7 +35,12 @@ import {
 } from './FormulaTypes.js';
 
 class FormulaParser {
-  constructor() {
+  
+  current: number;
+
+  tokens: any;
+
+constructor() {
     this.tokens = [];
     this.current = 0;
   }

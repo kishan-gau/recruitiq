@@ -9,7 +9,12 @@ import logger from '../../../utils/logger.js';
 import integrationErrorHandler from '../../../shared/utils/integrationErrorHandler.js';
 
 class ScheduleHubIntegrationService {
-  constructor() {
+  
+  errorHandler: any;
+
+  logger: any;
+
+constructor() {
     this.logger = logger;
     this.errorHandler = integrationErrorHandler;
   }

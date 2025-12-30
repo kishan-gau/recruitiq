@@ -14,7 +14,10 @@ class FormulaTemplateService {
    * Constructor with dependency injection
    * @param {Object} formulaEngineInstance - Formula engine instance for testing
    */
-  constructor(formulaEngineInstance = null) {
+  
+  formulaEngine: any;
+
+constructor(formulaEngineInstance = null) {
     this.formulaEngine = formulaEngineInstance || formulaEngine;
   }
 

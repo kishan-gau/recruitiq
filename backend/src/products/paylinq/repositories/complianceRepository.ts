@@ -6,7 +6,10 @@
 import pool from '../../../config/database.js';
 
 class ComplianceRepository {
-  constructor() {
+  
+  db: any;
+
+constructor() {
     this.db = pool;
   }
 

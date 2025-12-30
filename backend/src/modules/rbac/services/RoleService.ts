@@ -10,7 +10,14 @@ import logger from '../../../utils/logger.js';
  * Based on: docs/rbac/02-BACKEND-IMPLEMENTATION.md
  */
 class RoleService {
-  constructor(roleModel = null, permissionModel = null, auditModel = null) {
+  
+  auditModel: any;
+
+  permissionModel: any;
+
+  roleModel: any;
+
+constructor(roleModel = null, permissionModel = null, auditModel = null) {
     this.roleModel = roleModel || Role;
     this.permissionModel = permissionModel || Permission;
     this.auditModel = auditModel || RoleAuditLog;

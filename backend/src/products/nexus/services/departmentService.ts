@@ -12,7 +12,11 @@ import type { DepartmentData, DepartmentSearchFilters } from '../../../types/nex
 class DepartmentService {
   logger: typeof logger;
   
-  constructor() {
+  
+  
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

@@ -10,7 +10,11 @@ import type { PerformanceReviewData, PerformanceGoal } from '../../../types/nexu
 class PerformanceService {
   logger: typeof logger;
   
-  constructor() {
+  
+  
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

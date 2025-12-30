@@ -13,7 +13,12 @@ import pool from '../../../config/database.js';
  * - Optimized batch conversions with parallel processing
  */
 class CurrencyService {
-  constructor() {
+  
+  approvalService: any;
+
+  repository: any;
+
+constructor() {
     this.repository = new ExchangeRateRepository();
     this.approvalService = new ApprovalService();
     

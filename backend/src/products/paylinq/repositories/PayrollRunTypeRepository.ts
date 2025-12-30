@@ -12,7 +12,10 @@ import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 class PayrollRunTypeRepository {
-  constructor(database = null) {
+  
+  query: any;
+
+constructor(database = null) {
     this.query = database?.query || query;
   }
 

@@ -24,7 +24,12 @@ import {
 } from '../dto/workerTypeDto.js';
 
 class WorkerTypeService {
-  constructor(repository = null, payStructureRepository = null) {
+  
+  payStructureRepository: any;
+
+  workerTypeRepository: any;
+
+constructor(repository = null, payStructureRepository = null) {
     this.workerTypeRepository = repository || new WorkerTypeRepository();
     this.payStructureRepository = payStructureRepository || new PayStructureRepository();
   }

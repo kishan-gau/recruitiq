@@ -19,7 +19,10 @@ import { ValidationError, NotFoundError, ConflictError  } from '../../../middlew
 import formulaEngine from '../../../services/formula/FormulaEngine.js';
 
 class PayComponentService {
-  constructor(repository = null) {
+  
+  payComponentRepository: any;
+
+constructor(repository = null) {
     this.payComponentRepository = repository || new PayComponentRepository();
   }
 

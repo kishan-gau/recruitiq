@@ -15,7 +15,12 @@ import pool from '../config/database.js';
 const execAsync = promisify(exec);
 
 class DeploymentOrchestrator {
-  constructor() {
+  
+  deploymentLogs: Map<string, any>;
+
+  deploymentQueue: Map<string, any>;
+
+constructor() {
     this.deploymentQueue = new Map();
     this.deploymentLogs = new Map();
   }

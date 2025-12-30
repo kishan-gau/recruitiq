@@ -10,7 +10,11 @@ import type { EmploymentHistoryData } from '../../../types/nexus.types.js';
 class EmploymentHistoryService {
   logger: typeof logger;
   
-  constructor() {
+  
+  
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

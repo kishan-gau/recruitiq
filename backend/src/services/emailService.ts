@@ -9,7 +9,12 @@ import nodemailer from 'nodemailer';
 import logger from '../utils/logger.js';
 
 class EmailService {
-  constructor() {
+  
+  config: any;
+
+  transporter: any;
+
+constructor() {
     this.transporter = null;
     this.config = null;
   }

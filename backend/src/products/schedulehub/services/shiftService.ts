@@ -10,7 +10,12 @@ import logger from '../../../utils/logger.js';
 import Joi from 'joi';
 
 class ShiftService {
-  constructor() {
+  
+  logger: any;
+
+  paylinqIntegration: any;
+
+constructor() {
     this.paylinqIntegration = new PaylinqIntegrationService();
     this.logger = logger;
   }

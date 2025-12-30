@@ -7,7 +7,12 @@ import { v4 as uuidv4 } from 'uuid';
  * Handles many-to-many relationship between shift templates and stations
  */
 class ShiftTemplateStationsRepository {
-  constructor() {
+  
+  schema: string;
+
+  tableName: string;
+
+constructor() {
     this.tableName = 'shift_template_stations';
     this.schema = 'scheduling';
     this.fullTableName = `${this.schema}.${this.tableName}`;

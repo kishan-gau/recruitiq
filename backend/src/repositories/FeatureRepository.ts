@@ -15,7 +15,14 @@ export class FeatureRepository {
   protected tableName: string;
   protected logger: typeof logger;
 
-  constructor() {
+  
+
+  logger: any;
+
+
+  tableName: string;
+
+constructor() {
     this.tableName = 'features';
     this.logger = logger;
   }

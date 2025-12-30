@@ -13,7 +13,10 @@ import logger from '../../../utils/logger.js';
 import { ValidationError } from '../../../middleware/errorHandler.js';
 
 class PayComponentRepository {
-  constructor(database = null) {
+  
+  query: any;
+
+constructor(database = null) {
     this.query = database?.query || query;
   }
 

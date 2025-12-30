@@ -8,7 +8,14 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class AttendanceRepository {
-  constructor(database = null) {
+  
+  logger: any;
+
+  query: any;
+
+  tableName: string;
+
+constructor(database = null) {
     this.query = database?.query || query;
     this.tableName = 'hris.attendance_record';
     this.logger = logger;

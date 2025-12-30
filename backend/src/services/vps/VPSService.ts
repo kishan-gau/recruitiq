@@ -17,7 +17,10 @@ class VPSService {
    * Constructor with dependency injection
    * @param {VPSRepository} repository - Optional repository instance for testing
    */
-  constructor(repository = null) {
+  
+  repository: any;
+
+constructor(repository = null) {
     this.repository = repository || new VPSRepository();
   }
 

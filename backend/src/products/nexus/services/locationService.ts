@@ -10,7 +10,11 @@ import type { LocationData, LocationSearchFilters } from '../../../types/nexus.t
 class LocationService {
   logger: typeof logger;
   
-  constructor() {
+  
+  
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

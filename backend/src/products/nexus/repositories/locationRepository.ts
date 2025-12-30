@@ -8,7 +8,14 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class LocationRepository {
-  constructor(database = null) {
+  
+  logger: any;
+
+  query: any;
+
+  tableName: string;
+
+constructor(database = null) {
     this.query = database?.query || query;
     this.tableName = 'hris.location';
     this.logger = logger;

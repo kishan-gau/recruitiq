@@ -19,7 +19,12 @@ import {
 } from './FormulaTypes.js';
 
 class FormulaValidator {
-  constructor() {
+  
+  validFunctions: any;
+
+  validVariables: any;
+
+constructor() {
     this.validVariables = Object.values(Variables);
     this.validFunctions = Object.values(Functions);
   }

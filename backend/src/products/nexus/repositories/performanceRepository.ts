@@ -8,7 +8,20 @@ import logger from '../../../utils/logger.js';
 import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class PerformanceRepository {
-  constructor(database = null) {
+  
+  feedbackTable: string;
+
+  goalTable: string;
+
+  logger: any;
+
+  query: any;
+
+  reviewTable: string;
+
+  templateTable: string;
+
+constructor(database = null) {
     this.query = database?.query || query;
     this.reviewTable = 'hris.performance_review';
     this.goalTable = 'hris.performance_goal';

@@ -16,7 +16,10 @@ import logger from '../../../utils/logger.js';
 import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 
 class ReconciliationService {
-  constructor() {
+  
+  reconciliationRepository: any;
+
+constructor() {
     this.reconciliationRepository = new ReconciliationRepository();
   }
 

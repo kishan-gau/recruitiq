@@ -13,7 +13,10 @@ import dtoMapper from '../utils/dtoMapper.js';
 import { mapPayStructureTemplateDbToApi, mapWorkerPayStructureDbToApi } from '../utils/dtoMapper.js';
 
 class PayStructureRepository {
-  constructor(database = null) {
+  
+  query: any;
+
+constructor(database = null) {
     this.query = database?.query || query;
   }
 

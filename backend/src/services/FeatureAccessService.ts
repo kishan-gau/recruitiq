@@ -17,7 +17,14 @@ const memoryCache = new Map();
 const MEMORY_CACHE_TTL = 60 * 1000; // 1 minute
 
 export class FeatureAccessService {
-  constructor() {
+  
+  featureRepo: any;
+
+  grantRepo: any;
+
+  logger: any;
+
+constructor() {
     this.featureRepo = new FeatureRepository();
     this.grantRepo = new FeatureGrantRepository();
     this.logger = logger;

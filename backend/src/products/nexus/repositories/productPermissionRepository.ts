@@ -8,7 +8,12 @@ import logger from '../../../utils/logger.js';
 import ProductPermission from '../models/ProductPermission.js';
 
 class ProductPermissionRepository {
-  constructor(database = null) {
+  
+  logger: any;
+
+  query: any;
+
+constructor(database = null) {
     this.query = database?.query || query;
     this.logger = logger;
   }

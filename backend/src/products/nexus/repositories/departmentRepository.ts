@@ -8,7 +8,14 @@ import logger from '../../../utils/logger.js';
 import { mapDepartmentDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.js';
 
 class DepartmentRepository {
-  constructor(database = null) {
+  
+  logger: any;
+
+  query: any;
+
+  tableName: string;
+
+constructor(database = null) {
     this.query = database?.query || query;
     this.tableName = 'hris.department';
     this.logger = logger;

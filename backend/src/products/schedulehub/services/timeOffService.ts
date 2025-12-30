@@ -9,7 +9,10 @@ import Joi from 'joi';
 import { dateOnlyRequired } from '../../../validators/dateValidators.js';
 
 class TimeOffService {
-  constructor() {
+  
+  logger: any;
+
+constructor() {
     this.logger = logger;
   }
 

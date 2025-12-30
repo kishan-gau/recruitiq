@@ -11,7 +11,16 @@ import fs from 'fs/promises';
 import path from 'path';
 
 class TransIPService {
-  constructor() {
+  
+  client: any;
+
+  enabled: boolean;
+
+  testMode: boolean;
+
+  vpsName: any;
+
+constructor() {
     this.client = null;
     this.enabled = config.transip?.enabled || false;
     this.vpsName = config.transip?.vpsName;

@@ -10,7 +10,14 @@ import jwt from 'jsonwebtoken';
 import logger from '../utils/logger.js';
 
 class DeploymentServiceClient {
-  constructor() {
+  
+  baseUrl: string | undefined;
+
+  secret: string | undefined;
+
+  timeout: number;
+
+constructor() {
     this.baseUrl = process.env.DEPLOYMENT_SERVICE_URL || 'http://localhost:5001/api';
     this.secret = process.env.DEPLOYMENT_SERVICE_SECRET || 'deployment-service-secret';
     this.timeout = 30000; // 30 seconds

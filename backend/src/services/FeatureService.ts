@@ -11,7 +11,14 @@ import logger from '../utils/logger.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 
 export class FeatureService {
-  constructor() {
+  
+  featureRepo: any;
+
+  grantRepo: any;
+
+  logger: any;
+
+constructor() {
     this.featureRepo = new FeatureRepository();
     this.grantRepo = new FeatureGrantRepository();
     this.logger = logger;
