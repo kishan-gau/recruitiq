@@ -183,6 +183,30 @@ export interface BarbicanConfig {
 }
 
 /**
+ * AWS Secrets Manager Config
+ */
+export interface AWSSecretsConfig {
+  region?: string;
+}
+
+/**
+ * Azure Key Vault Config
+ */
+export interface AzureKeyVaultConfig {
+  vaultUrl?: string;
+}
+
+/**
+ * HashiCorp Vault Config
+ */
+export interface HashiCorpVaultConfig {
+  endpoint?: string;
+  token?: string;
+  namespace?: string;
+  cacheTTL?: number;
+}
+
+/**
  * Secret Provider Interface
  */
 export interface ISecretProvider {

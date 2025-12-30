@@ -63,7 +63,7 @@ class EnvironmentProvider extends SecretProvider {
     super('Environment');
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     const value = process.env[secretName];
     
     if (!value) {
@@ -73,18 +73,18 @@ class EnvironmentProvider extends SecretProvider {
     return value;
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     process.env[secretName] = secretValue;
     logger.warn('Setting secrets via environment provider (development only)', {
       secretName,
     });
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     delete process.env[secretName];
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     throw new Error('Secret rotation not supported for environment variables');
   }
 }
@@ -93,7 +93,14 @@ class EnvironmentProvider extends SecretProvider {
  * AWS Secrets Manager Provider
  */
 class AWSSecretsProvider extends SecretProvider {
-  constructor(options = {}) {
+  region: string;
+  client: any; // AWS SDK client - using any as it's dynamically imported
+  GetSecretValueCommand: any;
+  PutSecretValueCommand: any;
+  DeleteSecretCommand: any;
+  RotateSecretCommand: any;
+
+  constructor(options: { region?: string } = {}) {
     super('AWS');
     this.region = options.region || config.aws?.region || 'us-east-1';
     this.client = null;
@@ -127,7 +134,7 @@ class AWSSecretsProvider extends SecretProvider {
     }
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     await this._initClient();
     
     try {
@@ -153,7 +160,7 @@ class AWSSecretsProvider extends SecretProvider {
       }
       
       throw new Error('Secret has no value');
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to retrieve secret from AWS', {
         secretName,
         error: error.name,
@@ -162,7 +169,7 @@ class AWSSecretsProvider extends SecretProvider {
     }
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     await this._initClient();
     
     try {
@@ -177,7 +184,7 @@ class AWSSecretsProvider extends SecretProvider {
       
       await this.client.send(command);
       logger.info('Secret updated in AWS', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to update secret in AWS', {
         secretName,
         error: error.name,
@@ -186,7 +193,7 @@ class AWSSecretsProvider extends SecretProvider {
     }
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     await this._initClient();
     
     try {
@@ -197,7 +204,7 @@ class AWSSecretsProvider extends SecretProvider {
       
       await this.client.send(command);
       logger.info('Secret deleted from AWS', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to delete secret from AWS', {
         secretName,
         error: error.name,
@@ -206,7 +213,7 @@ class AWSSecretsProvider extends SecretProvider {
     }
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     await this._initClient();
     
     try {
@@ -216,7 +223,7 @@ class AWSSecretsProvider extends SecretProvider {
       
       await this.client.send(command);
       logger.info('Secret rotation initiated in AWS', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to rotate secret in AWS', {
         secretName,
         error: error.name,
@@ -230,7 +237,10 @@ class AWSSecretsProvider extends SecretProvider {
  * Azure Key Vault Provider
  */
 class AzureKeyVaultProvider extends SecretProvider {
-  constructor(options = {}) {
+  vaultUrl: string | undefined;
+  client: any; // Azure SDK client - using any as it's dynamically imported
+
+  constructor(options: { vaultUrl?: string } = {}) {
     super('Azure');
     this.vaultUrl = options.vaultUrl || process.env.AZURE_KEY_VAULT_URL;
     this.client = null;
