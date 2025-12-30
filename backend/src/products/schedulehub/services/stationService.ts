@@ -5,10 +5,15 @@
 
 import pool, { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import type { StationData } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';
 import { mapStationDbToApi, mapStationsDbToApi } from '../dto/stationDto.js';
 
 class StationService {
+  logger: typeof logger;
+  createStationSchema: Joi.ObjectSchema;
+  addRoleRequirementSchema: Joi.ObjectSchema;
+
   constructor() {
     this.logger = logger;
   }

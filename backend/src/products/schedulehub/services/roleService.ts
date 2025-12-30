@@ -5,6 +5,7 @@
 
 import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import type { RoleData } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';
 import { ConflictError } from '../../../utils/errors.js';
 import { 
@@ -16,6 +17,9 @@ import {
 } from '../dto/roleDto.js';
 
 class RoleService {
+  logger: typeof logger;
+  createRoleSchema: Joi.ObjectSchema;
+
   constructor() {
     this.logger = logger;
   }

@@ -5,9 +5,13 @@
 
 import pool from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import type { ShiftTradeData } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';
 
 class ShiftTradeService {
+  logger: typeof logger;
+  createOfferSchema: Joi.ObjectSchema;
+
   constructor() {
     this.logger = logger;
   }
