@@ -2,12 +2,12 @@
  * Paylinq Timesheet Routes
  */
 
-import express from 'express';
-import timesheetController from '../controllers/timesheetController.js';
-import { validate  } from '../../../middleware/validation.js';
+import express, { Router } from 'express';
+import timesheetController from '../controllers/timesheetController.ts';
+import { validate  } from '../../../middleware/validation.ts';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Validation schemas
 const createTimesheetSchema = Joi.object({

@@ -8,8 +8,8 @@
  * Following SOLID principles and Clean Architecture patterns.
  */
 
-import { query } from '../../config/database.js';
-import logger from '../../utils/logger.js';
+import { query } from '../../config/database.ts';
+import logger from '../../utils/logger.ts';
 
 class CompensationService {
   /**

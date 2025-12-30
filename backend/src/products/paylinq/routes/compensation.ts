@@ -2,13 +2,13 @@
  * Paylinq Compensation Routes
  */
 
-import express from 'express';
-import compensationController from '../controllers/compensationController.js';
-import { validate  } from '../../../middleware/validation.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import express, { Router } from 'express';
+import compensationController from '../controllers/compensationController.ts';
+import { validate  } from '../../../middleware/validation.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Validation schemas
 // Note: Date-only fields per TIMEZONE_ARCHITECTURE.md use YYYY-MM-DD format

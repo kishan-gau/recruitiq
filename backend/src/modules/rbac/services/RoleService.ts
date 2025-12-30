@@ -1,8 +1,8 @@
 import Joi from 'joi';
-import Role from '../models/Role.js';
-import Permission from '../models/Permission.js';
-import RoleAuditLog from '../models/RoleAuditLog.js';
-import logger from '../../../utils/logger.js';
+import Role from '../models/Role.ts';
+import Permission from '../models/Permission.ts';
+import RoleAuditLog from '../models/RoleAuditLog.ts';
+import logger from '../../../utils/logger.ts';
 
 /**
  * RoleService

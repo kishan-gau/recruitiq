@@ -20,8 +20,8 @@
 import https from 'https';
 import tls from 'tls';
 import fs from 'fs';
-import logger from './logger.js';
-import config from '../config/index.js';
+import logger from './logger.ts';
+import config from '../config/index.ts';
 
 // ============================================================================
 // CONFIGURATION

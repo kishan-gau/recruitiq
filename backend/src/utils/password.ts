@@ -10,7 +10,7 @@
  */
 
 import bcrypt from 'bcryptjs';
-import { ValidationError } from './errors.js';
+import { ValidationError } from './errors.ts';
 
 /**
  * Password strength assessment result

@@ -2,13 +2,13 @@
  * Paylinq Time Attendance Routes
  */
 
-import express from 'express';
-import timeAttendanceController from '../controllers/timeAttendanceController.js';
-import { requirePermission } from '../../../middleware/auth.js';
-import { validate  } from '../../../middleware/validation.js';
+import express, { Router } from 'express';
+import timeAttendanceController from '../controllers/timeAttendanceController.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
+import { validate  } from '../../../middleware/validation.ts';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Validation schemas
 const clockInSchema = Joi.object({

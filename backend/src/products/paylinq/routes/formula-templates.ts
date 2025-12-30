@@ -2,11 +2,11 @@
  * Formula Template Routes
  */
 
-import express from 'express';
-import formulaTemplateController from '../controllers/formulaTemplateController.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import express, { Router } from 'express';
+import formulaTemplateController from '../controllers/formulaTemplateController.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Get all templates (with filtering)
 router.get('/', requirePermission('formulas:read'), formulaTemplateController.getTemplates);

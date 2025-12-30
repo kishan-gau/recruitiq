@@ -1,4 +1,4 @@
-import logger from './logger.js';
+import logger from './logger.ts';
 
 /**
  * File security validator
@@ -71,7 +71,7 @@ const FILE_SIGNATURES = {
  */
 const DANGEROUS_EXTENSIONS = [
   '.exe', '.bat', '.cmd', '.com', '.scr', '.pif',
-  '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh',
+  '.vbs', '.vbe', '.ts', '.jse', '.wsf', '.wsh',
   '.msi', '.msp', '.dll', '.sys', '.drv',
   '.ps1', '.psm1', '.sh', '.bash',
   '.jar', '.war', '.ear',

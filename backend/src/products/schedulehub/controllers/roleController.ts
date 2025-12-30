@@ -3,8 +3,8 @@
  * HTTP request handlers for role and worker assignment management
  */
 
-import RoleService from '../services/roleService.js';
-import logger from '../../../utils/logger.js';
+import RoleService from '../services/roleService.ts';
+import logger from '../../../utils/logger.ts';
 
 class RoleController {
   constructor() {

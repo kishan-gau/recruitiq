@@ -7,7 +7,7 @@
 
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
-import logger from '../utils/logger.js';
+import logger from '../utils/logger.ts';
 
 class DeploymentServiceClient {
   constructor() {

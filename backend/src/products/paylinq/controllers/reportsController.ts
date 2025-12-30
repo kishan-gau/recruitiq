@@ -3,12 +3,12 @@
  * Handles HTTP requests for payroll reports and analytics
  */
 
-import PayrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.ts';
 
 const payrollService = new PayrollService();
-import timeAttendanceService from '../services/timeAttendanceService.js';
-import taxCalculationService from '../services/taxCalculationService.js';
-import logger from '../../../utils/logger.js';
+import timeAttendanceService from '../services/timeAttendanceService.ts';
+import taxCalculationService from '../services/taxCalculationService.ts';
+import logger from '../../../utils/logger.ts';
 
 /**
  * Get payroll summary report

@@ -1,8 +1,8 @@
-import express from 'express'
-import { validationController } from '../controllers/validationController.js'
-import { asyncHandler } from '../middleware/errorHandler.js'
+import express, { Router } from 'express'
+import { validationController } from '../controllers/validationController.ts'
+import { asyncHandler } from '../middleware/errorHandler.ts'
 
-const router = express.Router()
+const router: Router = express.Router()
 
 // All validation endpoints are public (no authentication)
 // They will be called by RecruitIQ instances

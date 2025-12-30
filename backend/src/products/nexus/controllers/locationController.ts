@@ -3,9 +3,9 @@
  * HTTP request handlers for location management
  */
 
-import LocationService from '../services/locationService.js';
-import { mapLocationApiToDb, mapLocationDbToApi, mapLocationsDbToApi } from '../dto/locationDto.js';
-import logger from '../../../utils/logger.js';
+import LocationService from '../services/locationService.ts';
+import { mapLocationApiToDb, mapLocationDbToApi, mapLocationsDbToApi } from '../dto/locationDto.ts';
+import logger from '../../../utils/logger.ts';
 
 class LocationController {
   constructor() {

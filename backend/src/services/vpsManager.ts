@@ -3,7 +3,7 @@
  * Manages VPS pool, capacity tracking, and organization assignments
  */
 
-import pool from '../config/database.js';
+import pool from '../config/database.ts';
 
 class VPSManager {
   /**

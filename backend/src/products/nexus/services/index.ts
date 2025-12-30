@@ -3,18 +3,18 @@
  * Exports all service modules
  */
 
-import productService from './productService.js';
-import productPermissionService from './productPermissionService.js';
-import productConfigService from './productConfigService.js';
-import productFeatureService from './productFeatureService.js';
-import employeeService from './employeeService.js';
-import employmentHistoryService from './employmentHistoryService.js';
-import timeOffService from './timeOffService.js';
-import contractService from './contractService.js';
-import performanceService from './performanceService.js';
-import benefitsService from './benefitsService.js';
-import attendanceService from './attendanceService.js';
-import departmentService from './departmentService.js';
+import productService from './productService.ts';
+import productPermissionService from './productPermissionService.ts';
+import productConfigService from './productConfigService.ts';
+import productFeatureService from './productFeatureService.ts';
+import employeeService from './employeeService.ts';
+import employmentHistoryService from './employmentHistoryService.ts';
+import timeOffService from './timeOffService.ts';
+import contractService from './contractService.ts';
+import performanceService from './performanceService.ts';
+import benefitsService from './benefitsService.ts';
+import attendanceService from './attendanceService.ts';
+import departmentService from './departmentService.ts';
 
 export {
   productService,

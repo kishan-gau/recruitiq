@@ -3,19 +3,19 @@
  * Defines all REST API endpoints for ScheduleHub workforce scheduling
  */
 
-import express from 'express';
-import { authenticateTenant, requireProductAccess, requirePermission } from '../../../middleware/auth.js';
-import WorkerController from '../controllers/workerController.js';
-import ScheduleController from '../controllers/scheduleController.js';
-import AvailabilityController from '../controllers/availabilityController.js';
-import TimeOffController from '../controllers/timeOffController.js';
-import ShiftTradeController from '../controllers/shiftTradeController.js';
-import ShiftTemplateController from '../controllers/shiftTemplateController.js';
-import RoleController from '../controllers/roleController.js';
-import StationController from '../controllers/stationController.js';
-import StatsController from '../controllers/statsController.js';
+import express, { Router } from 'express';
+import { authenticateTenant, requireProductAccess, requirePermission } from '../../../middleware/auth.ts';
+import WorkerController from '../controllers/workerController.ts';
+import ScheduleController from '../controllers/scheduleController.ts';
+import AvailabilityController from '../controllers/availabilityController.ts';
+import TimeOffController from '../controllers/timeOffController.ts';
+import ShiftTradeController from '../controllers/shiftTradeController.ts';
+import ShiftTemplateController from '../controllers/shiftTemplateController.ts';
+import RoleController from '../controllers/roleController.ts';
+import StationController from '../controllers/stationController.ts';
+import StatsController from '../controllers/statsController.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All ScheduleHub routes require tenant authentication and product access
 router.use(authenticateTenant);

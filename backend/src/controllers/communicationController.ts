@@ -1,7 +1,7 @@
 import Joi from 'joi';
-import db from '../config/database.js';
-import logger from '../utils/logger.js';
-import { ValidationError, NotFoundError, ForbiddenError } from '../middleware/errorHandler.js';
+import db from '../config/database.ts';
+import logger from '../utils/logger.ts';
+import { ValidationError, NotFoundError, ForbiddenError } from '../middleware/errorHandler.ts';
 
 // Validation schemas
 const sendMessageSchema = Joi.object({

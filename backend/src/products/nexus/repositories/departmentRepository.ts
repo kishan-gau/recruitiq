@@ -3,9 +3,9 @@
  * Data access layer for department records
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
-import { mapDepartmentDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
+import { mapDepartmentDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.ts';
 
 class DepartmentRepository {
   constructor(database = null) {

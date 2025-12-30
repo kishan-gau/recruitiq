@@ -11,9 +11,9 @@
  * @module products/paylinq/controllers/PayrollRunTypeController
  */
 
-import PayrollRunTypeService from '../services/PayrollRunTypeService.js';
-import { mapRunTypesDbToApi, mapRunTypeDbToApi, mapRunTypesToSummary } from '../dto/payrollRunTypeDto.js';
-import logger from '../../../utils/logger.js';
+import PayrollRunTypeService from '../services/PayrollRunTypeService.ts';
+import { mapRunTypesDbToApi, mapRunTypeDbToApi, mapRunTypesToSummary } from '../dto/payrollRunTypeDto.ts';
+import logger from '../../../utils/logger.ts';
 
 // Instantiate service
 const service = new PayrollRunTypeService();

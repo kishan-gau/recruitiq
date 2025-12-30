@@ -13,16 +13,16 @@
  *   // result.value = 500
  */
 
-import FormulaParser from './FormulaParser.js';
-import FormulaValidator from './FormulaValidator.js';
-import FormulaExecutor from './FormulaExecutor.js';
+import FormulaParser from './FormulaParser.ts';
+import FormulaValidator from './FormulaValidator.ts';
+import FormulaExecutor from './FormulaExecutor.ts';
 import {
   FormulaParseError,
   FormulaValidationError,
   FormulaExecutionError,
   DivisionByZeroError,
-} from './FormulaTypes.js';
-import logger from '../../utils/logger.js';
+} from './FormulaTypes.ts';
+import logger from '../../utils/logger.ts';
 
 class FormulaEngine {
   constructor() {

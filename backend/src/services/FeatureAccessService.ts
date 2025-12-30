@@ -6,10 +6,10 @@
  * to determine feature access with multi-layer caching for performance
  */
 
-import FeatureRepository from '../repositories/FeatureRepository.js';
-import FeatureGrantRepository from '../repositories/FeatureGrantRepository.js';
-import logger from '../utils/logger.js';
-import { ForbiddenError, NotFoundError } from '../middleware/errorHandler.js';
+import FeatureRepository from '../repositories/FeatureRepository.ts';
+import FeatureGrantRepository from '../repositories/FeatureGrantRepository.ts';
+import logger from '../utils/logger.ts';
+import { ForbiddenError, NotFoundError } from '../middleware/errorHandler.ts';
 import crypto from 'crypto';
 
 // In-memory cache (L1) - very fast but limited

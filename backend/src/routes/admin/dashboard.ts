@@ -5,12 +5,12 @@
  * @module routes/admin/dashboard
  */
 
-import express from 'express';
-import { requirePlatformPermission } from '../../middleware/auth.js';
-import pool from '../../config/database.js';
-import logger from '../../utils/logger.js';
+import express, { Router } from 'express';
+import { requirePlatformPermission } from '../../middleware/auth.ts';
+import pool from '../../config/database.ts';
+import logger from '../../utils/logger.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 /**
  * GET /api/admin/dashboard

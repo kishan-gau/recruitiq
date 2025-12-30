@@ -4,8 +4,8 @@
  * Prevents runtime issues from misconfiguration
  */
 
-import config from './index.js';
-import logger from '../utils/logger.js';
+import config from './index.ts';
+import logger from '../utils/logger.ts';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

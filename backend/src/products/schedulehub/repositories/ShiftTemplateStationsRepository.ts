@@ -1,5 +1,5 @@
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 import { v4 as uuidv4 } from 'uuid';
 
 /**

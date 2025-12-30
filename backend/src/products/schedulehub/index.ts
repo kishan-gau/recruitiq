@@ -4,7 +4,7 @@
  * Exports routes, middleware, and configuration for the ScheduleHub workforce scheduling product
  */
 
-import schedulehubRoutes from './routes/index.js';
+import schedulehubRoutes from './routes/index.ts';
 
 /**
  * Product module configuration

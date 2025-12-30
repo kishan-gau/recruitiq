@@ -53,7 +53,7 @@ jest.unstable_mockModule('winston', () => {
   };
 });
 
-jest.unstable_mockModule('../../config/index.js', () => ({
+jest.unstable_mockModule('../../config/index.ts', () => ({
   default: {
     env: 'test',
     logging: {

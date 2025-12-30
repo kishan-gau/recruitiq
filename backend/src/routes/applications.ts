@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router } from 'express';
 import {
   listApplications,
   getApplication,
@@ -6,10 +6,10 @@ import {
   updateApplication,
   trackApplication,
   deleteApplication
-} from '../controllers/applicationController.refactored.js';
-import { authenticate, optionalAuth } from '../middleware/auth.js';
+} from '../controllers/applicationController.refactored.ts';
+import { authenticate, optionalAuth } from '../middleware/auth.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Public route - track application by code (no auth)
 router.get('/track/:trackingCode', trackApplication);

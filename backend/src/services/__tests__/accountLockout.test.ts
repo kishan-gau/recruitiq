@@ -7,7 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
-import accountLockoutService from '../accountLockout.js';
+import accountLockoutService from '../accountLockout.ts';
 
 // Constants from service
 const MAX_FAILED_ATTEMPTS = 5;

@@ -3,7 +3,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { AuthenticatedUser } from './auth.types.js';
+import { AuthenticatedUser } from './auth.types.ts';
 
 export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;

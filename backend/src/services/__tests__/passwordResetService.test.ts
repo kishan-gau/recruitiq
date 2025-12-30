@@ -17,9 +17,9 @@ const mockTokenBlacklist = { blacklistAllUserTokens: jest.fn() };
 
 jest.unstable_mockModule('crypto', () => ({ default: mockCrypto }));
 jest.unstable_mockModule('bcryptjs', () => ({ default: mockBcrypt }));
-jest.unstable_mockModule('../../config/database.js', () => ({ default: mockPool }));
-jest.unstable_mockModule('../../utils/logger.js', () => ({ default: mockLogger }));
-jest.unstable_mockModule('../tokenBlacklist.js', () => ({ default: mockTokenBlacklist }));
+jest.unstable_mockModule('../../config/database.ts', () => ({ default: mockPool }));
+jest.unstable_mockModule('../../utils/logger.ts', () => ({ default: mockLogger }));
+jest.unstable_mockModule('../tokenBlacklist.ts', () => ({ default: mockTokenBlacklist }));
 
 let passwordResetService;
 let mockClient;

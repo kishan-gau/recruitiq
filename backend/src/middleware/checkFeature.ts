@@ -3,8 +3,8 @@
  * Verifies if a specific feature is enabled for the user's organization/license
  */
 
-import pool from '../config/database.js';
-import logger from '../utils/logger.js';
+import pool from '../config/database.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Middleware factory to check if a feature is enabled

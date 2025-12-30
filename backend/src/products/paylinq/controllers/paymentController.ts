@@ -3,9 +3,9 @@
  * Handles HTTP requests for payment transaction management
  */
 
-import paymentService from '../services/paymentService.js';
-import { mapApiToDb } from '../utils/dtoMapper.js';
-import logger from '../../../utils/logger.js';
+import paymentService from '../services/paymentService.ts';
+import { mapApiToDb } from '../utils/dtoMapper.ts';
+import logger from '../../../utils/logger.ts';
 
 /**
  * Create a payment transaction

@@ -8,16 +8,16 @@
  */
 
 import Joi from 'joi';
-import PayrollRepository from '../repositories/payrollRepository.js';
-import DeductionRepository from '../repositories/deductionRepository.js';
-import taxCalculationService from './taxCalculationService.js';
-import PayStructureService from './payStructureService.js';
-import PayrollRunTypeService from './PayrollRunTypeService.js';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
-import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from '../../../utils/timezone.js';
-import compensationService from '../../../shared/services/compensationService.js';
-import PayrollRunCalculationService from './PayrollRunCalculationService.js';
+import PayrollRepository from '../repositories/payrollRepository.ts';
+import DeductionRepository from '../repositories/deductionRepository.ts';
+import taxCalculationService from './taxCalculationService.ts';
+import PayStructureService from './payStructureService.ts';
+import PayrollRunTypeService from './PayrollRunTypeService.ts';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
+import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from '../../../utils/timezone.ts';
+import compensationService from '../../../shared/services/compensationService.ts';
+import PayrollRunCalculationService from './PayrollRunCalculationService.ts';
 
 class PayrollService {
   constructor(

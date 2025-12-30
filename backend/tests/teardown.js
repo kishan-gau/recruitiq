@@ -5,11 +5,11 @@
  * Use it for cleanup operations.
  */
 
-import { closePool } from '../src/config/database.js';
-
 export default async function globalTeardown() {
   // Close database pool to prevent connection leaks
   try {
+    // Import dynamically to avoid .ts extension issues
+    const { closePool } = await import('../src/config/database.js');
     await closePool();
     console.error('🧹 Database pool closed');
   } catch (error) {

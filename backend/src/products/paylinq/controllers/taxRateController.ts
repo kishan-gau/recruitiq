@@ -3,9 +3,9 @@
  * Handles HTTP requests for tax calculation and rate management
  */
 
-import taxCalculationService from '../services/taxCalculationService.js';
-import { mapApiToDb } from '../utils/dtoMapper.js';
-import logger from '../../../utils/logger.js';
+import taxCalculationService from '../services/taxCalculationService.ts';
+import { mapApiToDb } from '../utils/dtoMapper.ts';
+import logger from '../../../utils/logger.ts';
 
 /**
  * Create a tax rule

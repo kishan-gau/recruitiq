@@ -41,7 +41,7 @@ jest.unstable_mockModule('tls', () => ({
   ...mockTls,
 }));
 
-jest.unstable_mockModule('../../config/index.js', () => ({
+jest.unstable_mockModule('../../config/index.ts', () => ({
   default: {
     env: 'test',
     tls: {
@@ -52,7 +52,7 @@ jest.unstable_mockModule('../../config/index.js', () => ({
   },
 }));
 
-jest.unstable_mockModule('../logger.js', () => ({
+jest.unstable_mockModule('../logger.ts', () => ({
   default: {
     info: jest.fn(),
     warn: jest.fn(),

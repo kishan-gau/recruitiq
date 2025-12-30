@@ -3,24 +3,24 @@
  * API routes for Nexus HRIS product
  */
 
-import express from 'express';
-import { authenticateTenant, requireProductAccess, requirePermission } from '../../../middleware/auth.js';
-import { requireOrganization } from '../../../middleware/requireOrganization.js';
-import EmployeeController from '../controllers/employeeController.js';
-import TimeOffController from '../controllers/timeOffController.js';
-import ContractController from '../controllers/contractController.js';
-import PerformanceController from '../controllers/performanceController.js';
-import BenefitsController from '../controllers/benefitsController.js';
-import AttendanceController from '../controllers/attendanceController.js';
-import DepartmentController from '../controllers/departmentController.js';
-import LocationController from '../controllers/locationController.js';
-import DocumentController from '../controllers/documentController.js';
-import ReportsController from '../controllers/reportsController.js';
-import * as userAccessController from '../controllers/userAccessController.js';
+import express, { Router } from 'express';
+import { authenticateTenant, requireProductAccess, requirePermission } from '../../../middleware/auth.ts';
+import { requireOrganization } from '../../../middleware/requireOrganization.ts';
+import EmployeeController from '../controllers/employeeController.ts';
+import TimeOffController from '../controllers/timeOffController.ts';
+import ContractController from '../controllers/contractController.ts';
+import PerformanceController from '../controllers/performanceController.ts';
+import BenefitsController from '../controllers/benefitsController.ts';
+import AttendanceController from '../controllers/attendanceController.ts';
+import DepartmentController from '../controllers/departmentController.ts';
+import LocationController from '../controllers/locationController.ts';
+import DocumentController from '../controllers/documentController.ts';
+import ReportsController from '../controllers/reportsController.ts';
+import * as userAccessController from '../controllers/userAccessController.ts';
 import Joi from 'joi';
-import { validate } from '../../../middleware/validation.js';
+import { validate } from '../../../middleware/validation.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All Nexus routes require tenant authentication and product access
 router.use(authenticateTenant);

@@ -6,8 +6,8 @@
  * @module products/paylinq/services/dashboardService
  */
 
-import DashboardRepository from '../repositories/dashboardRepository.js';
-import logger from '../../../utils/logger.js';
+import DashboardRepository from '../repositories/dashboardRepository.ts';
+import logger from '../../../utils/logger.ts';
 
 class DashboardService {
   /**

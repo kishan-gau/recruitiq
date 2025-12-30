@@ -8,11 +8,11 @@
  * - Manual tier sync is requested
  */
 
-import FeatureRepository from '../repositories/FeatureRepository.js';
-import FeatureGrantRepository from '../repositories/FeatureGrantRepository.js';
-import FeatureAccessService from './FeatureAccessService.js';
-import logger from '../utils/logger.js';
-import { NotFoundError, ValidationError } from '../middleware/errorHandler.js';
+import FeatureRepository from '../repositories/FeatureRepository.ts';
+import FeatureGrantRepository from '../repositories/FeatureGrantRepository.ts';
+import FeatureAccessService from './FeatureAccessService.ts';
+import logger from '../utils/logger.ts';
+import { NotFoundError, ValidationError } from '../middleware/errorHandler.ts';
 
 export class FeatureTierService {
   constructor() {

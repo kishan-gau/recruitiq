@@ -3,17 +3,17 @@
  * Business logic for role and worker role assignment management
  */
 
-import pool from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import pool from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 import Joi from 'joi';
-import { ConflictError } from '../../../utils/errors.js';
+import { ConflictError } from '../../../utils/errors.ts';
 import { 
   mapRoleDbToApi, 
   mapRolesDbToApi, 
   mapRoleApiToDb, 
   mapRoleWorkersDbToApi,
   mapRoleFrontendToApi
-} from '../dto/roleDto.js';
+} from '../dto/roleDto.ts';
 
 class RoleService {
   constructor() {

@@ -13,9 +13,9 @@
  */
 
 import Joi from 'joi';
-import AllowanceRepository from '../repositories/AllowanceRepository.js';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.js';
+import AllowanceRepository from '../repositories/AllowanceRepository.ts';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.ts';
 
 class AllowanceService {
   /**

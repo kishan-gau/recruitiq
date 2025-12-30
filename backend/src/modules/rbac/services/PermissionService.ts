@@ -1,5 +1,5 @@
-import Permission from '../models/Permission.js';
-import logger from '../../../utils/logger.js';
+import Permission from '../models/Permission.ts';
+import logger from '../../../utils/logger.ts';
 
 /**
  * PermissionService

@@ -3,8 +3,8 @@
  * Handles HTTP requests for managing Dutch payroll tax periods
  */
 
-import LoontijdvakService from '../services/loontijdvakService.js';
-import logger from '../../../utils/logger.js';
+import LoontijdvakService from '../services/loontijdvakService.ts';
+import logger from '../../../utils/logger.ts';
 
 const loontijdvakService = new LoontijdvakService();
 

@@ -6,8 +6,8 @@ import {
   updateFlowTemplate,
   deleteFlowTemplate,
   cloneFlowTemplate
-} from '../controllers/flowTemplateController.js';
-import { authenticate } from '../middleware/auth.js';
+} from '../controllers/flowTemplateController.ts';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = express.Router();
 

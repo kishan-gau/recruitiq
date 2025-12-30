@@ -3,8 +3,8 @@
  * Business logic for shift swapping and marketplace
  */
 
-import pool from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import pool from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 import Joi from 'joi';
 
 class ShiftTradeService {

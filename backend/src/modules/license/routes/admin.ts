@@ -1,13 +1,13 @@
-import express from 'express'
-import { adminController } from '../controllers/adminController.js'
-import { customerController } from '../controllers/customerController.js'
-import { licenseController } from '../controllers/licenseController.js'
+import express, { Router } from 'express'
+import { adminController } from '../controllers/adminController.ts'
+import { customerController } from '../controllers/customerController.ts'
+import { licenseController } from '../controllers/licenseController.ts'
 // Import from main auth middleware instead of license-specific
-import { authenticatePlatform, requirePlatformPermission } from '../../../middleware/auth.js'
-import { auditLog } from '../middleware/audit.js'
-import { asyncHandler } from '../middleware/errorHandler.js'
+import { authenticatePlatform, requirePlatformPermission } from '../../../middleware/auth.ts'
+import { auditLog } from '../middleware/audit.ts'
+import { asyncHandler } from '../middleware/errorHandler.ts'
 
-const router = express.Router()
+const router: Router = express.Router()
 
 // Auth routes now handled by main auth system
 // Login will use main /api/auth/login endpoint

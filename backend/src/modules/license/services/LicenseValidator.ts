@@ -1,7 +1,7 @@
-import License from '../models/License.js'
-import Customer from '../models/Customer.js'
-import UsageEvent from '../models/UsageEvent.js'
-import db from '../../../shared/database/licenseManagerDb.js'
+import License from '../models/License.ts'
+import Customer from '../models/Customer.ts'
+import UsageEvent from '../models/UsageEvent.ts'
+import db from '../../../shared/database/licenseManagerDb.ts'
 
 class LicenseValidator {
   /**

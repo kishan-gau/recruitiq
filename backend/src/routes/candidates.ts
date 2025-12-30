@@ -6,9 +6,9 @@ import {
   createCandidate,
   updateCandidate,
   deleteCandidate
-} from '../controllers/candidateController.js';
-import { authenticate } from '../middleware/auth.js';
-import { protectMassAssignment } from '../middleware/massAssignmentProtection.js';
+} from '../controllers/candidateController.ts';
+import { authenticate } from '../middleware/auth.ts';
+import { protectMassAssignment } from '../middleware/massAssignmentProtection.ts';
 
 const router = express.Router();
 

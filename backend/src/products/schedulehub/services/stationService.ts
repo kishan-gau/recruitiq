@@ -3,10 +3,10 @@
  * Business logic for station and coverage requirement management
  */
 
-import pool, { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import pool, { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 import Joi from 'joi';
-import { mapStationDbToApi, mapStationsDbToApi } from '../dto/stationDto.js';
+import { mapStationDbToApi, mapStationsDbToApi } from '../dto/stationDto.ts';
 
 class StationService {
   constructor() {

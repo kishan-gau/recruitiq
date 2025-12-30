@@ -3,9 +3,9 @@
  * Database operations for ProductConfig model
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
-import ProductConfig from '../models/ProductConfig.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
+import ProductConfig from '../models/ProductConfig.ts';
 
 class ProductConfigRepository {
   constructor(database = null) {

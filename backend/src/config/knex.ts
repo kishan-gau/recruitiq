@@ -16,8 +16,8 @@
  */
 
 import knex from 'knex';
-import config from '../config/index.js';
-import knexConfig from '../../knexfile.js';
+import config from '../config/index.ts';
+import knexConfig from '../../knexfile.ts';
 
 // Get environment-specific Knex config
 const environment = process.env.NODE_ENV || 'development';

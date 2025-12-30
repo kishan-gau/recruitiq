@@ -1,8 +1,8 @@
 import Joi from 'joi';
 import { v4 as uuidv4 } from 'uuid';
-import db from '../config/database.js';
-import { NotFoundError, ValidationError, ForbiddenError } from '../middleware/errorHandler.js';
-import logger from '../utils/logger.js';
+import db from '../config/database.ts';
+import { NotFoundError, ValidationError, ForbiddenError } from '../middleware/errorHandler.ts';
+import logger from '../utils/logger.ts';
 
 // Validation schemas
 const createApplicationSchema = Joi.object({

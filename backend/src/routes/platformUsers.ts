@@ -5,8 +5,8 @@
  */
 
 import express from 'express';
-import { authenticate } from '../middleware/auth.js';
-import * as platformUserController from '../controllers/platformUserController.js';
+import { authenticate } from '../middleware/auth.ts';
+import * as platformUserController from '../controllers/platformUserController.ts';
 
 const router = express.Router();
 

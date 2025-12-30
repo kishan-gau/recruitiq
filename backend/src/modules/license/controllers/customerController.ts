@@ -1,9 +1,9 @@
-import Customer from '../models/Customer.js'
-import License from '../models/License.js'
-import Instance from '../models/Instance.js'
-import UsageEvent from '../models/UsageEvent.js'
-import TierPreset from '../models/TierPreset.js'
-import LicenseGenerator from '../services/LicenseGenerator.js'
+import Customer from '../models/Customer.ts'
+import License from '../models/License.ts'
+import Instance from '../models/Instance.ts'
+import UsageEvent from '../models/UsageEvent.ts'
+import TierPreset from '../models/TierPreset.ts'
+import LicenseGenerator from '../services/LicenseGenerator.ts'
 import { addMonths } from 'date-fns'
 
 export const customerController = {

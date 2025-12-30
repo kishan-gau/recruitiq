@@ -2,13 +2,13 @@
  * Paylinq Paycheck Routes
  */
 
-import express from 'express';
-import paycheckController from '../controllers/paycheckController.js';
-import { validate  } from '../../../middleware/validation.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import express, { Router } from 'express';
+import paycheckController from '../controllers/paycheckController.ts';
+import { validate  } from '../../../middleware/validation.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Validation schemas
 const updatePaycheckSchema = Joi.object({

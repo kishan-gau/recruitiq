@@ -1,5 +1,5 @@
-import UserRoleService from '../services/UserRoleService.js';
-import logger from '../../../utils/logger.js';
+import UserRoleService from '../services/UserRoleService.ts';
+import logger from '../../../utils/logger.ts';
 
 const userRoleService = new UserRoleService();
 

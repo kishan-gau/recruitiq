@@ -5,8 +5,8 @@
  */
 
 import TransIP from 'transip-api';
-import logger from '../../utils/logger.js';
-import config from '../../config/index.js';
+import logger from '../../utils/logger.ts';
+import config from '../../config/index.ts';
 import fs from 'fs/promises';
 import path from 'path';
 

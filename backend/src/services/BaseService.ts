@@ -14,10 +14,10 @@
  */
 
 import { ObjectSchema } from 'joi';
-import { BaseRepository, PaginationResult } from '../repositories/BaseRepository.js';
-import { TransactionManager } from '../repositories/TransactionManager.js';
-import { ValidationError, NotFoundError, ConflictError } from '../utils/errors.js';
-import logger from '../utils/logger.js';
+import { BaseRepository, PaginationResult } from '../repositories/BaseRepository.ts';
+import { TransactionManager } from '../repositories/TransactionManager.ts';
+import { ValidationError, NotFoundError, ConflictError } from '../utils/errors.ts';
+import logger from '../utils/logger.ts';
 import { Pool } from 'pg';
 
 /**

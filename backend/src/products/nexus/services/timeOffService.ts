@@ -3,8 +3,8 @@
  * Business logic layer for time-off request management
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 
 class TimeOffService {
   constructor() {

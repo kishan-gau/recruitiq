@@ -7,11 +7,11 @@
  * @module products/paylinq/routes/payrollRunTypes
  */
 
-import express from 'express';
-import * as controller from '../controllers/PayrollRunTypeController.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import express, { Router } from 'express';
+import * as controller from '../controllers/PayrollRunTypeController.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // GET /api/paylinq/payroll-run-types/summary - Get summary for dropdowns
 router.get(

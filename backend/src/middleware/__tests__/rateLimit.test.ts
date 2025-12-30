@@ -74,13 +74,13 @@ jest.unstable_mockModule('rate-limit-redis', () => ({
   RedisStore: mockRedisStore,
 }));
 
-jest.unstable_mockModule('../../config/index.js', () => ({
+jest.unstable_mockModule('../../config/index.ts', () => ({
   default: {
     env: 'test',
   },
 }));
 
-jest.unstable_mockModule('../../utils/logger.js', () => ({
+jest.unstable_mockModule('../../utils/logger.ts', () => ({
   default: {
     info: jest.fn(),
     warn: jest.fn(),

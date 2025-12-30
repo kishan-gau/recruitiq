@@ -14,8 +14,8 @@
  */
 
 import { create, all } from 'mathjs';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
 
 // Create a limited math.js instance with only safe functions
 const math = create(all, {
@@ -162,6 +162,7 @@ class FormulaEngineService {
         // Declare all detected variables
         const varDeclarations = variables.map(v => `let ${v};`).join('\n');
         const testCode = `${varDeclarations}\n${finalFormula}`;
+        // eslint-disable-next-line no-new-func
         new Function(testCode);
       } catch (err) {
         throw new Error(`Syntax error: ${err.message}. Check your formula for typos or missing operators.`);

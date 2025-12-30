@@ -3,8 +3,8 @@
  * HTTP request handlers for time off request management
  */
 
-import TimeOffService from '../services/timeOffService.js';
-import logger from '../../../utils/logger.js';
+import TimeOffService from '../services/timeOffService.ts';
+import logger from '../../../utils/logger.ts';
 
 class TimeOffController {
   constructor() {

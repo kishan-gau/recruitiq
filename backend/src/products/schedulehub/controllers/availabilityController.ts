@@ -3,8 +3,8 @@
  * HTTP request handlers for worker availability management
  */
 
-import AvailabilityService from '../services/availabilityService.js';
-import logger from '../../../utils/logger.js';
+import AvailabilityService from '../services/availabilityService.ts';
+import logger from '../../../utils/logger.ts';
 
 class AvailabilityController {
   constructor() {

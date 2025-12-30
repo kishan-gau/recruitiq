@@ -4,8 +4,8 @@
  * Handles HTTP requests for VPS management operations
  */
 
-import transipService from '../services/transip/TransIPService.js';
-import logger from '../utils/logger.js';
+import transipService from '../services/transip/TransIPService.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Health check endpoint

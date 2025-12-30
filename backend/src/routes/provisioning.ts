@@ -8,17 +8,17 @@
  */
 
 import express from 'express';
-import { authenticatePlatform, requirePlatformRole, requirePlatformPermission } from '../middleware/auth.js';
-import vpsManager from '../services/vpsManager.js';
-import transipService from '../services/transip/TransIPService.js';
-import deploymentOrchestrator from '../services/deploymentOrchestrator.js';
-import sharedVPSOrchestrator from '../services/sharedVPSOrchestrator.js';
-import deploymentServiceClient from '../services/DeploymentServiceClient.js';
-import pool from '../config/database.js';
-import logger from '../utils/logger.js';
+import { authenticatePlatform, requirePlatformRole, requirePlatformPermission } from '../middleware/auth.ts';
+import vpsManager from '../services/vpsManager.ts';
+import transipService from '../services/transip/TransIPService.ts';
+import deploymentOrchestrator from '../services/deploymentOrchestrator.ts';
+import sharedVPSOrchestrator from '../services/sharedVPSOrchestrator.ts';
+import deploymentServiceClient from '../services/DeploymentServiceClient.ts';
+import pool from '../config/database.ts';
+import logger from '../utils/logger.ts';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
-import config from '../config/index.js';
+import config from '../config/index.ts';
 import crypto from 'crypto';
 
 const router = express.Router();

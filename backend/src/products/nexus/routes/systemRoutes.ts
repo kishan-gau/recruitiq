@@ -1,8 +1,8 @@
-import express from 'express';
-import productManager from '../../core/ProductManager.js';
-import { authenticatePlatform, requirePermission } from '../../../middleware/auth.js';
+import express, { Router } from 'express';
+import productManager from '../../core/ProductManager.ts';
+import { authenticatePlatform, requirePermission } from '../../../middleware/auth.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 const requireAdmin = (req, res, next) => {
   if (!req.user) return res.status(401).json({ error: 'Authentication required' });

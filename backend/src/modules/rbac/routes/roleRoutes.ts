@@ -1,6 +1,6 @@
-import express from 'express';
-import { authenticateTenant, requirePermission } from '../../../middleware/auth.js';
-import { requireRBACManagement, preventSystemRoleModification } from '../middleware/rbacEnforcement.js';
+import express, { Router } from 'express';
+import { authenticateTenant, requirePermission } from '../../../middleware/auth.ts';
+import { requireRBACManagement, preventSystemRoleModification } from '../middleware/rbacEnforcement.ts';
 import {
   listRoles,
   getRole,
@@ -8,9 +8,9 @@ import {
   updateRole,
   deleteRole,
   assignPermissions
-} from '../controllers/roleController.js';
+} from '../controllers/roleController.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All routes require tenant authentication
 router.use(authenticateTenant);

@@ -3,7 +3,7 @@
  * Company and payroll configuration endpoints
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import {
   getSettings,
   updateSettings,
@@ -11,18 +11,18 @@ import {
   updateCompanySettings,
   getPayrollSettings,
   updatePayrollSettings,
-} from '../controllers/settingsController.js';
+} from '../controllers/settingsController.ts';
 import {
   getTaxRules,
   getTaxRule,
   createTaxRule,
   updateTaxRule,
   deleteTaxRule,
-} from '../controllers/taxRulesController.js';
-import payPeriodController from '../controllers/payPeriodController.js';
-import { requirePermission } from '../../../middleware/auth.js';
+} from '../controllers/taxRulesController.ts';
+import payPeriodController from '../controllers/payPeriodController.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Get all settings (company + payroll)
 router.get('/', requirePermission('settings:read'), getSettings);

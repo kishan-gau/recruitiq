@@ -1,12 +1,12 @@
-import express from 'express';
-import { listUsers, getUser, createUser, updateUser, updateUserRole, deleteUser, updateUserStatus } from '../controllers/userController.js';
-import { authenticate, requireRole } from '../middleware/auth.js';
-import { validate, validateMultiple } from '../middleware/validation.js';
-import { userSchemas, commonSchemas } from '../utils/validationSchemas.js';
-import { protectMassAssignment } from '../middleware/massAssignmentProtection.js';
+import express, { Router } from 'express';
+import { listUsers, getUser, createUser, updateUser, updateUserRole, deleteUser, updateUserStatus } from '../controllers/userController.ts';
+import { authenticate, requireRole } from '../middleware/auth.ts';
+import { validate, validateMultiple } from '../middleware/validation.ts';
+import { userSchemas, commonSchemas } from '../utils/validationSchemas.ts';
+import { protectMassAssignment } from '../middleware/massAssignmentProtection.ts';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);

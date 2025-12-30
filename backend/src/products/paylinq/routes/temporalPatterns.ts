@@ -5,13 +5,13 @@
  * @module products/paylinq/routes/temporalPatterns
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import Joi from 'joi';
-import temporalPatternService from '../services/temporalPatternService.js';
-import { ValidationError } from '../../../middleware/errorHandler.js';
-import logger from '../../../utils/logger.js';
+import temporalPatternService from '../services/temporalPatternService.ts';
+import { ValidationError } from '../../../middleware/errorHandler.ts';
+import logger from '../../../utils/logger.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Rate limiting configurations (for future implementation)
 // Pattern testing is resource-intensive, limit to 10 requests per minute per user

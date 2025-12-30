@@ -8,8 +8,8 @@
  */
 
 import { Pool } from 'pg';
-import { BaseRepository } from './BaseRepository.js';
-import logger from '../utils/logger.js';
+import { BaseRepository } from './BaseRepository.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Repository factory class
@@ -143,10 +143,12 @@ let globalFactory: RepositoryFactory | undefined;
  * @param pool - Database connection pool
  * 
  * @example
- * import { initializeRepositoryFactory } from './repositories/RepositoryFactory.js';
+ * ```typescript
+ * import { initializeRepositoryFactory } from './repositories/RepositoryFactory.ts';
  * 
- * const pool = new Pool({ /* config */ });
+ * const pool = new Pool({ ...config });
  * initializeRepositoryFactory(pool);
+ * ```
  */
 export function initializeRepositoryFactory(pool: Pool): RepositoryFactory {
   globalFactory = new RepositoryFactory(pool);

@@ -1,6 +1,6 @@
 import express from 'express';
-import vpsService from '../../services/transip/VPSService.js';
-import { authenticate, requireRole } from '../../middleware/auth.js';
+import vpsService from '../../services/transip/VPSService.ts';
+import { authenticate, requireRole } from '../../middleware/auth.ts';
 
 const router = express.Router();
 

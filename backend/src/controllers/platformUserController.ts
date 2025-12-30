@@ -6,8 +6,8 @@
 
 import Joi from 'joi';
 import bcrypt from 'bcryptjs';
-import platformDb from '../shared/database/licenseManagerDb.js';
-import logger from '../utils/logger.js';
+import platformDb from '../shared/database/licenseManagerDb.ts';
+import logger from '../utils/logger.ts';
 
 // Validation schemas
 const createPlatformUserSchema = Joi.object({

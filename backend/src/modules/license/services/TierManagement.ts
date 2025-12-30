@@ -1,7 +1,7 @@
-import TierPreset from '../models/TierPreset.js'
-import License from '../models/License.js'
-import Customer from '../models/Customer.js'
-import db from '../../../shared/database/licenseManagerDb.js'
+import TierPreset from '../models/TierPreset.ts'
+import License from '../models/License.ts'
+import Customer from '../models/Customer.ts'
+import db from '../../../shared/database/licenseManagerDb.ts'
 
 /**
  * TierManagement Service

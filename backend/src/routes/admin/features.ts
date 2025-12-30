@@ -8,18 +8,18 @@
  * Security: All actions are audit logged
  */
 
-import express from 'express';
-import { authenticatePlatform, requirePlatformPermission } from '../../middleware/auth.js';
-import FeatureService from '../../services/FeatureService.js';
-import FeatureTierService from '../../services/FeatureTierService.js';
-import FeatureAccessService from '../../services/FeatureAccessService.js';
-import FeatureRepository from '../../repositories/FeatureRepository.js';
-import FeatureGrantRepository from '../../repositories/FeatureGrantRepository.js';
-import platformDb from '../../shared/database/licenseManagerDb.js';
-import logger from '../../utils/logger.js';
-import { ValidationError, NotFoundError } from '../../middleware/errorHandler.js';
+import express, { Router } from 'express';
+import { authenticatePlatform, requirePlatformPermission } from '../../middleware/auth.ts';
+import FeatureService from '../../services/FeatureService.ts';
+import FeatureTierService from '../../services/FeatureTierService.ts';
+import FeatureAccessService from '../../services/FeatureAccessService.ts';
+import FeatureRepository from '../../repositories/FeatureRepository.ts';
+import FeatureGrantRepository from '../../repositories/FeatureGrantRepository.ts';
+import platformDb from '../../shared/database/licenseManagerDb.ts';
+import logger from '../../utils/logger.ts';
+import { ValidationError, NotFoundError } from '../../middleware/errorHandler.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Initialize services
 const featureService = new FeatureService();

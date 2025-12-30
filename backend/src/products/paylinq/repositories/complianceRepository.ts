@@ -3,7 +3,7 @@
  * Data access layer for compliance-related operations
  */
 
-import pool from '../../../config/database.js';
+import pool from '../../../config/database.ts';
 
 class ComplianceRepository {
   constructor() {

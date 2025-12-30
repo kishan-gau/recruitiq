@@ -1,0 +1,13 @@
+dist/
+coverage/
+node_modules/
+*.min.js
+*.d.ts
+*.d.ts.map
+build/
+.env
+.env.*
+!.env.example
+migrations/
+seeds/
+knexfile.js

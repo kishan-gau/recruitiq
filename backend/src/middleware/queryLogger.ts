@@ -4,7 +4,7 @@
  * Detects suspicious query patterns
  */
 
-import logger from '../utils/logger.js';
+import logger from '../utils/logger.ts';
 
 // Suspicious patterns to detect
 const SUSPICIOUS_PATTERNS = [

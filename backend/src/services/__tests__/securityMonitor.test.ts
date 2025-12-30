@@ -21,10 +21,10 @@ const mockConfig = {
 const mockCloudWatchClient = { isEnabled: jest.fn(() => false), putAlert: jest.fn() };
 const mockDatadogClient = { isEnabled: jest.fn(() => false), sendAlert: jest.fn() };
 
-jest.unstable_mockModule('../../utils/logger.js', () => ({ default: mockLogger }));
-jest.unstable_mockModule('../../config/index.js', () => ({ default: mockConfig }));
-jest.unstable_mockModule('../../integrations/cloudwatch.js', () => ({ default: mockCloudWatchClient }));
-jest.unstable_mockModule('../../integrations/datadog.js', () => ({ default: mockDatadogClient }));
+jest.unstable_mockModule('../../utils/logger.ts', () => ({ default: mockLogger }));
+jest.unstable_mockModule('../../config/index.ts', () => ({ default: mockConfig }));
+jest.unstable_mockModule('../../integrations/cloudwatch.ts', () => ({ default: mockCloudWatchClient }));
+jest.unstable_mockModule('../../integrations/datadog.ts', () => ({ default: mockDatadogClient }));
 
 const { default: securityMonitor, SecurityEventType, AlertSeverity, SecurityMonitor } = await import('../securityMonitor');
 

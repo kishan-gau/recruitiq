@@ -1,8 +1,8 @@
-import express from 'express';
-import { authenticate } from '../../../middleware/auth.js';
-import { getDepartments, getDepartment, createDepartment, updateDepartment, deleteDepartment } from '../controllers/departmentController.js';
+import express, { Router } from 'express';
+import { authenticate } from '../../../middleware/auth.ts';
+import { getDepartments, getDepartment, createDepartment, updateDepartment, deleteDepartment } from '../controllers/departmentController.ts';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 /**
  * @route   GET /api/products/nexus/departments

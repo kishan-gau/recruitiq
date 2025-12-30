@@ -3,7 +3,7 @@
  * HTTP handlers for product permission endpoints
  */
 
-import { productPermissionService } from '../services/index.js';
+import { productPermissionService } from '../services/index.ts';
 
 class ProductPermissionController {
   /**

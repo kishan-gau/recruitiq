@@ -3,8 +3,8 @@
  * Manages product features and feature flags
  */
 
-import db from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import db from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 
 class ProductFeatureService {
   async getProductFeatures(productId) {

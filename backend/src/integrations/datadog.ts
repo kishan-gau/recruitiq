@@ -4,8 +4,8 @@
  * Integrates with Datadog for metrics, logs, and APM.
  */
 
-import logger from '../utils/logger.js';
-import config from '../config/index.js';
+import logger from '../utils/logger.ts';
+import config from '../config/index.ts';
 
 /**
  * Datadog client wrapper

@@ -13,7 +13,7 @@
  * - Apply security headers and validation
  */
 
-import logger from '../utils/logger.js';
+import logger from '../utils/logger.ts';
 import {
   ValidationError,
   UnauthorizedError,
@@ -21,7 +21,7 @@ import {
   NotFoundError,
   ConflictError,
   APIError,
-} from '../middleware/errorHandler.js';
+} from '../middleware/errorHandler.ts';
 
 /**
  * Base Controller Class

@@ -3,9 +3,9 @@
  * HTTP request handlers for department management
  */
 
-import DepartmentService from '../services/departmentService.js';
-import logger from '../../../utils/logger.js';
-import { mapDepartmentDbToApi, mapDepartmentsDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.js';
+import DepartmentService from '../services/departmentService.ts';
+import logger from '../../../utils/logger.ts';
+import { mapDepartmentDbToApi, mapDepartmentsDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.ts';
 
 class DepartmentController {
   constructor() {

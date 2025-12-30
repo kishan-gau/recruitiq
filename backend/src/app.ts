@@ -7,57 +7,57 @@
  * @module app
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import cookieParser from 'cookie-parser';
 
 // Import security middleware
-import { enhancedHelmetMiddleware, additionalSecurityHeaders } from './middleware/securityHeaders.js';
-import { enhancedCorsMiddleware, corsErrorHandler, handlePreflight, logCorsRequests } from './middleware/cors.js';
+import { enhancedHelmetMiddleware, additionalSecurityHeaders } from './middleware/securityHeaders.ts';
+import { enhancedCorsMiddleware, corsErrorHandler, handlePreflight, logCorsRequests } from './middleware/cors.ts';
 import { 
   globalLimiter, 
   authLimiter, 
   addRateLimitHeaders 
-} from './middleware/rateLimit.js';
-import { csrfMiddleware, getCsrfToken, csrfErrorHandler } from './middleware/csrf.js';
+} from './middleware/rateLimit.ts';
+import { csrfMiddleware, getCsrfToken, csrfErrorHandler } from './middleware/csrf.ts';
 
 // Import routes
-import authRoutes from './routes/auth/authRoutes.js';
-import mfaRoutes from './routes/mfa.routes.js';
-import organizationRoutes from './routes/organizations.js';
-import userRoutes from './routes/users.js';
-import platformUserRoutes from './routes/platformUsers.js';
-import workspaceRoutes from './routes/workspaces.js';
-import jobRoutes from './routes/jobs.js';
-import candidateRoutes from './routes/candidates.js';
-import applicationRoutes from './routes/applications.js';
-import interviewRoutes from './routes/interviews.js';
-import flowTemplateRoutes from './routes/flowTemplates.js';
-import publicRoutes from './routes/public.js';
-import communicationRoutes from './routes/communications.js';
-import portalRoutes from './routes/portal.js';
-import userManagementRoutes from './routes/userManagement.js';
-import rolesPermissionsRoutes from './routes/rolesPermissions.js';
-import securityRoutes from './routes/security.js';
-import provisioningRoutes from './routes/provisioning.js';
-import emailSettingsRoutes from './routes/emailSettings.js';
-import adminRouter from './routes/admin/index.js';
-import featuresRoutes from './routes/features.js';
-import licenseAdminRoutes from './modules/license/routes/admin.js';
-import licenseValidationRoutes from './modules/license/routes/validation.js';
-import licenseTelemetryRoutes from './modules/license/routes/telemetry.js';
-import licenseTierRoutes from './modules/license/routes/tiers.js';
-import productManagementRoutes from './products/nexus/routes/productManagementRoutes.js';
-import systemRoutes from './products/nexus/routes/systemRoutes.js';
-import rbacRoutes from './modules/rbac/routes/index.js';
-import vpsRoutes from './routes/portal/vps.js';
+import authRoutes from './routes/auth/authRoutes.ts';
+import mfaRoutes from './routes/mfa.routes.ts';
+import organizationRoutes from './routes/organizations.ts';
+import userRoutes from './routes/users.ts';
+import platformUserRoutes from './routes/platformUsers.ts';
+import workspaceRoutes from './routes/workspaces.ts';
+import jobRoutes from './routes/jobs.ts';
+import candidateRoutes from './routes/candidates.ts';
+import applicationRoutes from './routes/applications.ts';
+import interviewRoutes from './routes/interviews.ts';
+import flowTemplateRoutes from './routes/flowTemplates.ts';
+import publicRoutes from './routes/public.ts';
+import communicationRoutes from './routes/communications.ts';
+import portalRoutes from './routes/portal.ts';
+import userManagementRoutes from './routes/userManagement.ts';
+import rolesPermissionsRoutes from './routes/rolesPermissions.ts';
+import securityRoutes from './routes/security.ts';
+import provisioningRoutes from './routes/provisioning.ts';
+import emailSettingsRoutes from './routes/emailSettings.ts';
+import adminRouter from './routes/admin/index.ts';
+import featuresRoutes from './routes/features.ts';
+import licenseAdminRoutes from './modules/license/routes/admin.ts';
+import licenseValidationRoutes from './modules/license/routes/validation.ts';
+import licenseTelemetryRoutes from './modules/license/routes/telemetry.ts';
+import licenseTierRoutes from './modules/license/routes/tiers.ts';
+import productManagementRoutes from './products/nexus/routes/productManagementRoutes.ts';
+import systemRoutes from './products/nexus/routes/systemRoutes.ts';
+import rbacRoutes from './modules/rbac/routes/index.ts';
+import vpsRoutes from './routes/portal/vps.ts';
 
 // Import middleware
-import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { requestLogger } from './middleware/requestLogger.js';
-import requestIdMiddleware from './middleware/requestId.js';
-import { authenticate } from './middleware/auth.js';
-import { secureRequest, blockFilePathInjection } from './middleware/requestSecurity.js';
-import { timezoneMiddleware, timezoneHeaderMiddleware } from './middleware/timezone.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.ts';
+import { requestLogger } from './middleware/requestLogger.ts';
+import requestIdMiddleware from './middleware/requestId.ts';
+import { authenticate } from './middleware/auth.ts';
+import { secureRequest, blockFilePathInjection } from './middleware/requestSecurity.ts';
+import { timezoneMiddleware, timezoneHeaderMiddleware } from './middleware/timezone.ts';
 
 /**
  * Creates and configures Express application
@@ -74,7 +74,7 @@ import { timezoneMiddleware, timezoneHeaderMiddleware } from './middleware/timez
  * @param {Router} options.dynamicProductRouter - Optional pre-initialized product router
  * @returns {Express.Application} Configured Express app
  */
-export function createApp(options = {}) {
+export function createApp(options: any = {}) {
   const {
     config,
     logger,

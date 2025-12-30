@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import logger from './logger.js';
+import logger from './logger.ts';
 
 const execPromise = promisify(exec);
 
@@ -13,6 +13,12 @@ const execPromise = promisify(exec);
  */
 
 class VirusScanner {
+  enabled: boolean;
+  scannerType: string;
+  clamavPath: string;
+  clamavSocket: string;
+  tempDir: string;
+
   constructor() {
     this.enabled = process.env.VIRUS_SCANNING_ENABLED === 'true';
     this.scannerType = process.env.VIRUS_SCANNER_TYPE || 'clamav'; // clamav or mock
@@ -256,13 +262,11 @@ export default virusScanner;
 
 /**
  * Express middleware for virus scanning
- * @param {object} options - Middleware options
- * @returns {Function} - Express middleware
  */
-export function virusScanMiddleware(options = {}) {
+export function virusScanMiddleware(options: { required?: boolean } = {}) {
   const { required = true } = options;
 
-  return async (req, res, next) => {
+  return async (req: any, res: any, next: any) => {
     try {
       // Check if file exists in request
       if (!req.file && !req.files) {

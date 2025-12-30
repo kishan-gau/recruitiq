@@ -7,10 +7,10 @@
  * @module products/paylinq/repositories/payStructureRepository
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
-import dtoMapper from '../utils/dtoMapper.js';
-import { mapPayStructureTemplateDbToApi, mapWorkerPayStructureDbToApi } from '../utils/dtoMapper.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
+import dtoMapper from '../utils/dtoMapper.ts';
+import { mapPayStructureTemplateDbToApi, mapWorkerPayStructureDbToApi } from '../utils/dtoMapper.ts';
 
 class PayStructureRepository {
   constructor(database = null) {

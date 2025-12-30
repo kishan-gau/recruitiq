@@ -9,13 +9,13 @@
  */
 
 import express from 'express';
-import { authenticate } from '../middleware/auth.js';
-import FeatureAccessService from '../services/FeatureAccessService.js';
-import FeatureRepository from '../repositories/FeatureRepository.js';
-import FeatureGrantRepository from '../repositories/FeatureGrantRepository.js';
-import platformDb from '../shared/database/licenseManagerDb.js';
-import logger from '../utils/logger.js';
-import { ValidationError } from '../middleware/errorHandler.js';
+import { authenticate } from '../middleware/auth.ts';
+import FeatureAccessService from '../services/FeatureAccessService.ts';
+import FeatureRepository from '../repositories/FeatureRepository.ts';
+import FeatureGrantRepository from '../repositories/FeatureGrantRepository.ts';
+import platformDb from '../shared/database/licenseManagerDb.ts';
+import logger from '../utils/logger.ts';
+import { ValidationError } from '../middleware/errorHandler.ts';
 
 const router = express.Router();
 

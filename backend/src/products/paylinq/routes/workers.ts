@@ -4,14 +4,14 @@
  * Handles all worker types: W-2 employees, 1099 contractors, etc.
  */
 
-import express from 'express';
-import employeeRecordController from '../controllers/employeeRecordController.js';
-import { validate  } from '../../../middleware/validation.js';
-import { requirePermission } from '../../../middleware/auth.js';
-import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
+import express, { Router } from 'express';
+import employeeRecordController from '../controllers/employeeRecordController.ts';
+import { validate  } from '../../../middleware/validation.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
+import { createEndpointLimiter  } from '../../../middleware/rateLimit.ts';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Note: Authentication (authenticateTenant, requireProductAccess, requireOrganization) 
 // is already applied at parent router level in routes/routes.js

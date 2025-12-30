@@ -9,8 +9,8 @@
  * );
  */
 
-import { ValidationError } from './errorHandler.js';
-import logger from '../utils/logger.js';
+import { ValidationError } from './errorHandler.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Creates middleware that validates request body against a Joi schema

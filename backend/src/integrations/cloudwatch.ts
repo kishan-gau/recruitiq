@@ -4,8 +4,8 @@
  * Integrates with AWS CloudWatch for metrics and logs.
  */
 
-import logger from '../utils/logger.js';
-import config from '../config/index.js';
+import logger from '../utils/logger.ts';
+import config from '../config/index.ts';
 
 /**
  * CloudWatch client wrapper

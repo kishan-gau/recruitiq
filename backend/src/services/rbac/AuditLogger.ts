@@ -9,8 +9,8 @@
  * Created: November 30, 2025
  */
 
-import logger from '../../utils/logger.js';
-import { query } from '../../config/database.js';
+import logger from '../../utils/logger.ts';
+import { query } from '../../config/database.ts';
 
 /**
  * RBAC-specific security event types

@@ -11,10 +11,10 @@
  */
 
 // Re-export database connection for convenience
-export { default as db } from '../../shared/database/licenseManagerDb.js';
+export { default as db } from '../../shared/database/licenseManagerDb.ts';
 
 // Re-export routes
-export { default as adminRoutes } from './routes/admin.js';
-export { default as validationRoutes } from './routes/validation.js';
-export { default as telemetryRoutes } from './routes/telemetry.js';
-export { default as tierRoutes } from './routes/tiers.js';
+export { default as adminRoutes } from './routes/admin.ts';
+export { default as validationRoutes } from './routes/validation.ts';
+export { default as telemetryRoutes } from './routes/telemetry.ts';
+export { default as tierRoutes } from './routes/tiers.ts';

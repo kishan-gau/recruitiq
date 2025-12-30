@@ -1,8 +1,8 @@
 import { createClient } from 'redis';
 import { rateLimit } from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
-import config from '../config/index.js';
-import logger from '../utils/logger.js';
+import config from '../config/index.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Enhanced rate limiting with Redis support

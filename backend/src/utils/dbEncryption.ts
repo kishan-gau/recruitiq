@@ -17,8 +17,8 @@
  * - Use decryptAfterLoad() as a post-load hook
  */
 
-import encryption from '../services/encryption.js';
-import logger from '../utils/logger.js';
+import encryption from '../services/encryption.ts';
+import logger from '../utils/logger.ts';
 
 // ============================================================================
 // SENSITIVE FIELD DEFINITIONS
