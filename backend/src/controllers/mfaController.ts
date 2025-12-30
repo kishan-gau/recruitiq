@@ -671,7 +671,7 @@ export const getMFAStatus = async (req, res) => {
       }
     }
 
-    const response = {
+    const response: any = {
       ...status,
       required: mfaRequired, // Organization policy
       enforcementDate: mfaEnforcementDate,

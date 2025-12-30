@@ -4,10 +4,12 @@
 
 export interface JWTPayload {
   id: string;
+  userId?: string; // Alternative ID field for compatibility
   email: string;
   organizationId: string;
   role: UserRole;
   permissions?: string[];
+  type?: 'platform' | 'tenant' | 'access' | 'refresh'; // Token type for routing
   iat?: number;
   exp?: number;
 }

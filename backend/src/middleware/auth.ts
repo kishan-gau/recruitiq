@@ -1,9 +1,24 @@
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import PlatformUser from '../models/PlatformUser.js';
 import TenantUser from '../models/TenantUser.js';
 import db from '../config/database.js';
 import logger from '../utils/logger.js';
 import UserRoleService from '../modules/rbac/services/UserRoleService.js';
+import { JWTPayload } from '../types/auth.types.js';
+
+/**
+ * Type guard to check if decoded token is a JwtPayload object
+ */
+function isJwtPayload(decoded: string | JwtPayload): decoded is JwtPayload {
+  return typeof decoded !== 'string';
+}
+
+/**
+ * Type guard to check if JwtPayload has our custom properties
+ */
+function isCustomJwtPayload(decoded: JwtPayload): decoded is JWTPayload {
+  return 'id' in decoded || 'userId' in decoded;
+}
 
 /**
  * New Authentication Middleware
@@ -456,22 +471,25 @@ export const authenticate = async (req, res, next) => {
     // Decode without verification to check type
     const decoded = jwt.decode(token);
     
-    if (!decoded) {
+    if (!decoded || !isJwtPayload(decoded)) {
       return res.status(401).json({
         success: false,
         message: 'Invalid token'
       });
     }
     
+    // Check if it's our custom payload with type field
+    const customPayload = decoded as JWTPayload;
+    
     // Route to appropriate authentication based on token type
-    if (decoded.type === 'platform') {
+    if (customPayload.type === 'platform') {
       return authenticatePlatform(req, res, next);
-    } else if (decoded.type === 'tenant') {
+    } else if (customPayload.type === 'tenant') {
       return authenticateTenant(req, res, next);
     } else {
       // Old token format - log warning for migration tracking
       logger.warn('Old token format detected - needs migration', {
-        userId: decoded.userId,
+        userId: customPayload.userId || customPayload.id,
         endpoint: req.originalUrl
       });
       
@@ -614,35 +632,48 @@ export const optionalAuth = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
+      // Type guard for decoded token
+      if (!isJwtPayload(decoded)) {
+        return next(); // Invalid token format, continue without user
+      }
+      
+      const payload = decoded as JWTPayload;
+      
       // Route based on token type
-      if (decoded.type === 'platform') {
-        const user = await PlatformUser.findById(decoded.id);
-        if (user && user.is_active) {
-          req.user = {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            permissions: user.permissions || [],
-            type: 'platform'
-          };
+      if (payload.type === 'platform') {
+        const userId = payload.id || payload.userId;
+        if (userId) {
+          const user = await PlatformUser.findById(userId);
+          if (user && user.is_active) {
+            req.user = {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              role: user.role,
+              permissions: user.permissions || [],
+              type: 'platform'
+            };
+          }
         }
-      } else if (decoded.type === 'tenant' && decoded.organizationId) {
+      } else if (payload.type === 'tenant' && payload.organizationId) {
         await db.query('SELECT set_config($1, $2, true)', [
           'app.current_organization_id',
-          decoded.organizationId
+          payload.organizationId
         ]);
         
-        const user = await TenantUser.findById(decoded.id, decoded.organizationId);
-        if (user && user.is_active) {
-          req.user = {
-            id: user.id,
-            email: user.email,
-            organizationId: user.organization_id,
-            enabledProducts: user.enabled_products || [],
-            productRoles: user.product_roles || {},
-            type: 'tenant'
-          };
+        const userId = payload.id || payload.userId;
+        if (userId) {
+          const user = await TenantUser.findById(userId, payload.organizationId);
+          if (user && user.is_active) {
+            req.user = {
+              id: user.id,
+              email: user.email,
+              organizationId: user.organization_id,
+              enabledProducts: user.enabled_products || [],
+              productRoles: user.product_roles || {},
+              type: 'tenant'
+            };
+          }
         }
       }
     } catch (error) {

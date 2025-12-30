@@ -35,8 +35,18 @@ class CloudWatchClient {
   async initializeClient() {
     try {
       // Dynamically import AWS SDK only if needed
-      const { CloudWatchClient: AWSCloudWatchClient, PutMetricDataCommand } = await import('@aws-sdk/client-cloudwatch');
-      const { CloudWatchLogsClient, PutLogEventsCommand } = await import('@aws-sdk/client-cloudwatch-logs');
+      // Note: Requires @aws-sdk/client-cloudwatch and @aws-sdk/client-cloudwatch-logs packages
+      const cloudwatchModule = await import('@aws-sdk/client-cloudwatch').catch(() => null);
+      const logsModule = await import('@aws-sdk/client-cloudwatch-logs').catch(() => null);
+      
+      if (!cloudwatchModule || !logsModule) {
+        logger.warn('AWS SDK v3 CloudWatch packages not installed. CloudWatch integration disabled.');
+        this.enabled = false;
+        return;
+      }
+      
+      const { CloudWatchClient: AWSCloudWatchClient, PutMetricDataCommand } = cloudwatchModule;
+      const { CloudWatchLogsClient, PutLogEventsCommand } = logsModule;
       
       this.metricsClient = new AWSCloudWatchClient({ region: this.region });
       this.logsClient = new CloudWatchLogsClient({ region: this.region });
