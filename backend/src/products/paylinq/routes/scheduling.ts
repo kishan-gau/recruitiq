@@ -2,14 +2,14 @@
  * Paylinq Scheduling Routes
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import schedulingController from '../controllers/schedulingController.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import { validate  } from '../../../middleware/validation.js';
 import Joi from 'joi';
 import { dateOnlyOptional } from '../../../validators/dateValidators.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Validation schemas
 // Accept both individual shift format and bulk schedule format

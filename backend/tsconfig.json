@@ -16,7 +16,7 @@
     "removeComments": false,
 
     // Strict Type-Checking (Industry Standard - Gradual Migration Approach)
-    // Start with less strict, gradually enable as codebase improves
+    // For large JavaScript-to-TypeScript migrations, start permissive and gradually tighten
     "strict": false,
     "noImplicitAny": false,
     "strictNullChecks": false,
@@ -33,6 +33,7 @@
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": false,
+    "noPropertyAccessFromIndexSignature": false,
 
     // Emit (Industry Standard)
     "esModuleInterop": true,

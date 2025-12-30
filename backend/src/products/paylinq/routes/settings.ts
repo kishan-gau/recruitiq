@@ -3,7 +3,7 @@
  * Company and payroll configuration endpoints
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import {
   getSettings,
   updateSettings,
@@ -22,7 +22,7 @@ import {
 import payPeriodController from '../controllers/payPeriodController.js';
 import { requirePermission } from '../../../middleware/auth.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Get all settings (company + payroll)
 router.get('/', requirePermission('settings:read'), getSettings);

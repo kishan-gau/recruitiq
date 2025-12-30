@@ -2,12 +2,12 @@
  * Paylinq Reports Routes
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import reportsController from '../controllers/reportsController.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Rate limiter for report generation (reports can be resource-intensive)
 const reportsLimiter = createEndpointLimiter({

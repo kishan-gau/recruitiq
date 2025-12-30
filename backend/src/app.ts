@@ -7,7 +7,7 @@
  * @module app
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import cookieParser from 'cookie-parser';
 
 // Import security middleware
@@ -74,7 +74,7 @@ import { timezoneMiddleware, timezoneHeaderMiddleware } from './middleware/timez
  * @param {Router} options.dynamicProductRouter - Optional pre-initialized product router
  * @returns {Express.Application} Configured Express app
  */
-export function createApp(options = {}) {
+export function createApp(options: any = {}) {
   const {
     config,
     logger,

@@ -3,7 +3,7 @@
  * Combines all Paylinq product routes with middleware
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticateTenant, requireProductAccess } from '../../../middleware/auth.js';
 import { requireOrganization } from '../../../middleware/requireOrganization.js';
 
@@ -36,7 +36,7 @@ import approvalRoutes from './approvals.js';
 import loontijdvakRoutes from './loontijdvak.js';
 import rbacRoutes from './rbac.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // DEBUG: Log all incoming requests to PayLinQ routes
 router.use((req, res, next) => {

@@ -3,14 +3,14 @@
  * Handles worker type template management endpoints
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import workerTypeController from '../controllers/workerTypeController.js';
 import { validate  } from '../../../middleware/validation.js';
 import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All routes require authentication
 

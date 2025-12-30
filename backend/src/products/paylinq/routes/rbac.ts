@@ -5,12 +5,12 @@
  * Allows organizations to manage roles and permissions within their tenant.
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { query } from '../../../config/database.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import logger from '../../../utils/logger.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // ============================================================================
 // ROLES MANAGEMENT

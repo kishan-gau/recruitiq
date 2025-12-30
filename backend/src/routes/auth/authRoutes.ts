@@ -1,9 +1,9 @@
-import express from 'express';
+import express, { Router } from 'express';
 import * as platformAuthController from '../../controllers/auth/platformAuthController.js';
 import * as tenantAuthController from '../../controllers/auth/tenantAuthController.js';
 import { authenticatePlatform, authenticateTenant } from '../../middleware/auth.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 /**
  * Platform Authentication Routes

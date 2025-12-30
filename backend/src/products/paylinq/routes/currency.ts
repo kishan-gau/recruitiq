@@ -1,11 +1,11 @@
-import express from 'express';
+import express, { Router } from 'express';
 import CurrencyService from '../services/currencyService.js';
 import { authenticateTenant, requirePermission } from '../../../middleware/auth.js';
 import { validate } from '../../../middleware/validation.js';
 import Joi from 'joi';
 import logger from '../../../utils/logger.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 const currencyService = new CurrencyService();
 
 // ================================================================

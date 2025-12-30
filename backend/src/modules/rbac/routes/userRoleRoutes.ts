@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticateTenant, requirePermission } from '../../../middleware/auth.js';
 import { requireUserManagement } from '../middleware/rbacEnforcement.js';
 import {
@@ -11,7 +11,7 @@ import {
   bulkAssignRoles
 } from '../controllers/userRoleController.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All routes require tenant authentication
 router.use(authenticateTenant);

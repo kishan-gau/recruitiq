@@ -1,10 +1,10 @@
-import express from 'express';
+import express, { Router } from 'express';
 import Joi from 'joi';
 import ApprovalService from '../services/approvalService.js';
 import logger from '../../../utils/logger.js';
 import { requirePermission } from '../../../middleware/auth.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 const approvalService = new ApprovalService();
 
 /**

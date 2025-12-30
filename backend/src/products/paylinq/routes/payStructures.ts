@@ -5,11 +5,11 @@
  * @module products/paylinq/routes/payStructures
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import * as payStructureController from '../controllers/payStructureController.js';
 import { requirePermission } from '../../../middleware/auth.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // ==================== TEMPLATE ROUTES ====================
 

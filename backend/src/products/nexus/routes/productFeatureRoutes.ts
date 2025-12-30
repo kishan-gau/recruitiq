@@ -3,11 +3,11 @@
  * API routes for product feature management
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { productFeatureController } from '../controllers/index.js';
 import { requirePlatformPermission } from '../../../middleware/auth.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Feature listing and query routes
 router.get(

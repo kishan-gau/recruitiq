@@ -3,11 +3,11 @@
  * API routes for product management
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { requirePlatformPermission } from '../../../middleware/auth.js';
 import { productController } from '../controllers/index.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Public routes (or with basic auth)
 router.get('/', requirePlatformPermission('products:read'), productController.getAllProducts.bind(productController));

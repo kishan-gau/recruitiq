@@ -2,14 +2,14 @@
  * Paylinq Pay Component Routes
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import payComponentController from '../controllers/payComponentController.js';
 import * as forfaitRuleController from '../controllers/forfaitRuleController.js';
 import { validate  } from '../../../middleware/validation.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Validation schemas
 // Accept proper camelCase field names per industry standards (Google, Microsoft, Stripe)

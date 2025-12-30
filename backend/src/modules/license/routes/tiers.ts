@@ -1,8 +1,8 @@
-import express from 'express'
+import express, { Router } from 'express'
 import { tierController } from '../controllers/tierController.js'
 import { authenticatePlatform, requirePlatformPermission } from '../../../middleware/auth.js'
 
-const router = express.Router()
+const router: Router = express.Router()
 
 // All tier management routes require authentication and license.tiers.manage permission
 router.use(authenticatePlatform)

@@ -3,9 +3,9 @@
  * Main router that combines all product-related routes
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticatePlatform } from '../../../middleware/auth.js';
-const router = express.Router();
+const router: Router = express.Router();
 
 import productRoutes from './productRoutes.js';
 import productPermissionRoutes from './productPermissionRoutes.js';

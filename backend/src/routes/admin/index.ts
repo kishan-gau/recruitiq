@@ -12,10 +12,10 @@
  * @module routes/admin
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticatePlatform } from '../../middleware/auth.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Apply platform authentication to all admin routes
 router.use(authenticatePlatform);

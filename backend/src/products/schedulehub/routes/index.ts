@@ -3,7 +3,7 @@
  * Defines all REST API endpoints for ScheduleHub workforce scheduling
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticateTenant, requireProductAccess, requirePermission } from '../../../middleware/auth.js';
 import WorkerController from '../controllers/workerController.js';
 import ScheduleController from '../controllers/scheduleController.js';
@@ -15,7 +15,7 @@ import RoleController from '../controllers/roleController.js';
 import StationController from '../controllers/stationController.js';
 import StatsController from '../controllers/statsController.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All ScheduleHub routes require tenant authentication and product access
 router.use(authenticateTenant);

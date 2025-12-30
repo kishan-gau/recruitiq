@@ -3,7 +3,7 @@
  * Handles employee payroll record endpoints
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import employeeRecordController from '../controllers/employeeRecordController.js';
 import userAccessController from '../controllers/userAccessController.js';
 import payComponentController from '../controllers/payComponentController.js';
@@ -12,7 +12,7 @@ import { requirePermission } from '../../../middleware/auth.js';
 import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
 import Joi from 'joi';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All routes require authentication
 

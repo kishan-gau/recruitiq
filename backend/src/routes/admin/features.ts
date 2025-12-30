@@ -8,7 +8,7 @@
  * Security: All actions are audit logged
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticatePlatform, requirePlatformPermission } from '../../middleware/auth.js';
 import FeatureService from '../../services/FeatureService.js';
 import FeatureTierService from '../../services/FeatureTierService.js';
@@ -19,7 +19,7 @@ import platformDb from '../../shared/database/licenseManagerDb.js';
 import logger from '../../utils/logger.js';
 import { ValidationError, NotFoundError } from '../../middleware/errorHandler.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Initialize services
 const featureService = new FeatureService();

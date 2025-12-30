@@ -2,12 +2,12 @@
  * Paylinq Dashboard Routes
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import dashboardController from '../controllers/dashboardController.js';
 import { requirePermission } from '../../../middleware/auth.js';
 import { createEndpointLimiter } from '../../../middleware/rateLimit.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Note: authenticateTenant and requireProductAccess are already applied at parent router level
 

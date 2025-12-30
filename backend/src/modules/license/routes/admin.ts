@@ -1,4 +1,4 @@
-import express from 'express'
+import express, { Router } from 'express'
 import { adminController } from '../controllers/adminController.js'
 import { customerController } from '../controllers/customerController.js'
 import { licenseController } from '../controllers/licenseController.js'
@@ -7,7 +7,7 @@ import { authenticatePlatform, requirePlatformPermission } from '../../../middle
 import { auditLog } from '../middleware/audit.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 
-const router = express.Router()
+const router: Router = express.Router()
 
 // Auth routes now handled by main auth system
 // Login will use main /api/auth/login endpoint

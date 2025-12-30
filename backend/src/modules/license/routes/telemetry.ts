@@ -1,8 +1,8 @@
-import express from 'express'
+import express, { Router } from 'express'
 import { telemetryController } from '../controllers/telemetryController.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 
-const router = express.Router()
+const router: Router = express.Router()
 
 // All telemetry endpoints are public (no authentication)
 // They will be called by RecruitIQ instances

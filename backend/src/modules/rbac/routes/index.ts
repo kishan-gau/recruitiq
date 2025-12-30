@@ -1,9 +1,9 @@
-import express from 'express';
+import express, { Router } from 'express';
 import roleRoutes from './roleRoutes.js';
 import permissionRoutes from './permissionRoutes.js';
 import userRoleRoutes from './userRoleRoutes.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Mount sub-routes
 router.use('/roles', roleRoutes);

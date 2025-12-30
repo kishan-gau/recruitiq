@@ -1,8 +1,8 @@
-import express from 'express';
+import express, { Router } from 'express';
 import formulaController from '../controllers/formulaController.js';
 import { requirePermission } from '../../../middleware/auth.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All formula routes require authentication
 

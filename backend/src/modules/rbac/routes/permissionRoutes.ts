@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticateTenant, requirePermission } from '../../../middleware/auth.js';
 import {
   listPermissions,
@@ -6,7 +6,7 @@ import {
   getPermissionsByProduct
 } from '../controllers/permissionController.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All routes require tenant authentication
 router.use(authenticateTenant);

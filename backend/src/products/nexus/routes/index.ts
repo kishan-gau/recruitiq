@@ -3,7 +3,7 @@
  * API routes for Nexus HRIS product
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import { authenticateTenant, requireProductAccess, requirePermission } from '../../../middleware/auth.js';
 import { requireOrganization } from '../../../middleware/requireOrganization.js';
 import EmployeeController from '../controllers/employeeController.js';
@@ -20,7 +20,7 @@ import * as userAccessController from '../controllers/userAccessController.js';
 import Joi from 'joi';
 import { validate } from '../../../middleware/validation.js';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // All Nexus routes require tenant authentication and product access
 router.use(authenticateTenant);
