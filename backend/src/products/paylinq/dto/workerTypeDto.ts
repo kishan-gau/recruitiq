@@ -16,7 +16,7 @@
  * @param {Object} dbWorkerType - Combined database record (snake_case)
  * @returns {Object|null} API-formatted worker type (camelCase)
  */
-export function mapWorkerTypeDbToApi(dbWorkerType) {
+export function mapWorkerTypeDbToApi(dbWorkerType: any): Record<string, any> | null {
   if (!dbWorkerType) return null;
 
   return {
@@ -58,7 +58,7 @@ export function mapWorkerTypeDbToApi(dbWorkerType) {
  * @param {Array} dbWorkerTypes - Array of database worker types
  * @returns {Array} Array of API-formatted worker types
  */
-export function mapWorkerTypesDbToApi(dbWorkerTypes) {
+export function mapWorkerTypesDbToApi(dbWorkerTypes: any): Record<string, any> | null {
   if (!Array.isArray(dbWorkerTypes)) return [];
   return dbWorkerTypes.map(mapWorkerTypeDbToApi);
 }
@@ -71,10 +71,10 @@ export function mapWorkerTypesDbToApi(dbWorkerTypes) {
  * @param {Object} apiData - API worker type data (camelCase)
  * @returns {Object} Flat database-formatted object (snake_case)
  */
-export function mapWorkerTypeApiToDb(apiData) {
+export function mapWorkerTypeApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // HRIS Worker Type fields (hris.worker_type)
   if (apiData.name !== undefined) {
@@ -124,7 +124,7 @@ export function mapWorkerTypeApiToDb(apiData) {
  * @param {Object} dbHistory - Database worker type history record (snake_case)
  * @returns {Object|null} API-formatted worker type history (camelCase)
  */
-export function mapAssignmentDbToApi(dbHistory) {
+export function mapAssignmentDbToApi(dbHistory: any): Record<string, any> | null {
   if (!dbHistory) return null;
 
   return {
@@ -163,7 +163,7 @@ export function mapAssignmentDbToApi(dbHistory) {
  * @param {Array} dbAssignments - Array of database worker type assignments
  * @returns {Array} Array of API-formatted worker type assignments
  */
-export function mapAssignmentsDbToApi(dbAssignments) {
+export function mapAssignmentsDbToApi(dbAssignments: any): Record<string, any> | null {
   if (!Array.isArray(dbAssignments)) return [];
   return dbAssignments.map(mapAssignmentDbToApi);
 }
@@ -173,10 +173,10 @@ export function mapAssignmentsDbToApi(dbAssignments) {
  * @param {Object} apiData - API worker type history data (camelCase)
  * @returns {Object} Database-formatted worker type history (snake_case)
  */
-export function mapAssignmentApiToDb(apiData) {
+export function mapAssignmentApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   if (apiData.employeeId !== undefined) {
     dbData.employee_id = apiData.employeeId;

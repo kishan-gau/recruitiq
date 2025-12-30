@@ -10,7 +10,7 @@
  * @param {Object} dbLocation - Location record from database (snake_case)
  * @returns {Object} Location in API format (camelCase)
  */
-export function mapLocationDbToApi(dbLocation) {
+export function mapLocationDbToApi(dbLocation: any): Record<string, any> | null {
   if (!dbLocation) return null;
 
   return {
@@ -40,7 +40,7 @@ export function mapLocationDbToApi(dbLocation) {
  * @param {Array} dbLocations - Array of location records
  * @returns {Array} Array of locations in API format
  */
-export function mapLocationsDbToApi(dbLocations) {
+export function mapLocationsDbToApi(dbLocations: any): Record<string, any> | null {
   if (!Array.isArray(dbLocations)) return [];
   return dbLocations.map(mapLocationDbToApi);
 }
@@ -50,10 +50,10 @@ export function mapLocationsDbToApi(dbLocations) {
  * @param {Object} apiData - Location data from API (camelCase)
  * @returns {Object} Location in database format (snake_case)
  */
-export function mapLocationApiToDb(apiData) {
+export function mapLocationApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.locationCode !== undefined) {

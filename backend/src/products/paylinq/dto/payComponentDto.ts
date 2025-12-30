@@ -20,7 +20,7 @@
  * @param {Object} dbComponent - Component record from database
  * @returns {Object} Component in API format
  */
-export function mapComponentDbToApi(dbComponent) {
+export function mapComponentDbToApi(dbComponent: any): Record<string, any> | null {
   if (!dbComponent) return null;
 
   return {
@@ -70,7 +70,7 @@ export function mapComponentDbToApi(dbComponent) {
  * @param {Array} dbComponents - Array of component records
  * @returns {Array} Array of components in API format
  */
-export function mapComponentsDbToApi(dbComponents) {
+export function mapComponentsDbToApi(dbComponents: any): Record<string, any> | null {
   if (!Array.isArray(dbComponents)) return [];
   
   return dbComponents.map(mapComponentDbToApi);
@@ -81,10 +81,10 @@ export function mapComponentsDbToApi(dbComponents) {
  * @param {Object} apiData - Component data from API request
  * @returns {Object} Component in database format
  */
-export function mapComponentApiToDb(apiData) {
+export function mapComponentApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields that are present in the API data
   if (apiData.componentCode !== undefined) {

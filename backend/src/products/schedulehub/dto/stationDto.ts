@@ -10,7 +10,7 @@
  * @param {Object} dbStation - Station record from database (snake_case)
  * @returns {Object} Station in API format (camelCase)
  */
-export function mapStationDbToApi(dbStation) {
+export function mapStationDbToApi(dbStation: any): Record<string, any> | null {
   if (!dbStation) return null;
 
   return {
@@ -40,7 +40,7 @@ export function mapStationDbToApi(dbStation) {
  * @param {Array} dbStations - Array of station records
  * @returns {Array} Array of stations in API format
  */
-export function mapStationsDbToApi(dbStations) {
+export function mapStationsDbToApi(dbStations: any): Record<string, any> | null {
   if (!Array.isArray(dbStations)) return [];
   return dbStations.map(mapStationDbToApi);
 }
@@ -50,10 +50,10 @@ export function mapStationsDbToApi(dbStations) {
  * @param {Object} apiData - Station data from API (camelCase)
  * @returns {Object} Station in database format (snake_case)
  */
-export function mapStationApiToDb(apiData) {
+export function mapStationApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.stationCode !== undefined) {

@@ -10,7 +10,7 @@
  * @param {Object} dbEmployee - Employee record from database (snake_case)
  * @returns {Object} Employee in API format (camelCase)
  */
-export function mapEmployeeDbToApi(dbEmployee) {
+export function mapEmployeeDbToApi(dbEmployee: any): Record<string, any> | null {
   if (!dbEmployee) return null;
 
   return {
@@ -48,7 +48,7 @@ export function mapEmployeeDbToApi(dbEmployee) {
  * @param {Array} dbEmployees - Array of employee records
  * @returns {Array} Array of employees in API format
  */
-export function mapEmployeesDbToApi(dbEmployees) {
+export function mapEmployeesDbToApi(dbEmployees: any): Record<string, any> | null {
   if (!Array.isArray(dbEmployees)) return [];
   return dbEmployees.map(mapEmployeeDbToApi);
 }
@@ -58,10 +58,10 @@ export function mapEmployeesDbToApi(dbEmployees) {
  * @param {Object} apiData - Employee data from API (camelCase)
  * @returns {Object} Employee in database format (snake_case)
  */
-export function mapEmployeeApiToDb(apiData) {
+export function mapEmployeeApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   // Support both camelCase (API) and snake_case (direct DB format)

@@ -10,7 +10,7 @@
  * @param {Object} dbRole - Role record from database (snake_case)
  * @returns {Object} Role in API format (camelCase)
  */
-export function mapRoleDbToApi(dbRole) {
+export function mapRoleDbToApi(dbRole: any): Record<string, any> | null {
   if (!dbRole) return null;
 
   return {
@@ -39,7 +39,7 @@ export function mapRoleDbToApi(dbRole) {
  * @param {Array} dbRoles - Array of role records from database
  * @returns {Array} Array of roles in API format
  */
-export function mapRolesDbToApi(dbRoles) {
+export function mapRolesDbToApi(dbRoles: any): Record<string, any> | null {
   if (!Array.isArray(dbRoles)) return [];
   return dbRoles.map(mapRoleDbToApi);
 }
@@ -49,10 +49,10 @@ export function mapRolesDbToApi(dbRoles) {
  * @param {Object} apiData - Role data from API (camelCase)
  * @returns {Object} Role in database format (snake_case)
  */
-export function mapRoleApiToDb(apiData) {
+export function mapRoleApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.organizationId !== undefined) {
@@ -122,7 +122,7 @@ export function mapRolesToSummary(dbRoles) {
  * @param {Object} dbWorker - Worker record from database (snake_case)
  * @returns {Object} Worker in API format (camelCase)
  */
-export function mapRoleWorkerDbToApi(dbWorker) {
+export function mapRoleWorkerDbToApi(dbWorker: any): Record<string, any> | null {
   if (!dbWorker) return null;
 
   return {
@@ -145,7 +145,7 @@ export function mapRoleWorkerDbToApi(dbWorker) {
  * @param {Array} dbWorkers - Array of worker records from database
  * @returns {Array} Array of workers in API format
  */
-export function mapRoleWorkersDbToApi(dbWorkers) {
+export function mapRoleWorkersDbToApi(dbWorkers: any): Record<string, any> | null {
   if (!Array.isArray(dbWorkers)) return [];
   return dbWorkers.map(mapRoleWorkerDbToApi);
 }

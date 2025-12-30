@@ -10,7 +10,7 @@
  * @param {Object} dbTemplate - Shift template record from database (snake_case)
  * @returns {Object} Shift template in API format (camelCase)
  */
-export function mapShiftTemplateDbToApi(dbTemplate) {
+export function mapShiftTemplateDbToApi(dbTemplate: any): Record<string, any> | null {
   if (!dbTemplate) return null;
 
   return {
@@ -106,7 +106,7 @@ function mapStationsFromJunctionTable(junctionData) {
  * @param {Array} dbTemplates - Array of shift template records from database
  * @returns {Array} Array of shift templates in API format
  */
-export function mapShiftTemplatesDbToApi(dbTemplates) {
+export function mapShiftTemplatesDbToApi(dbTemplates: any): Record<string, any> | null {
   if (!Array.isArray(dbTemplates)) return [];
   return dbTemplates.map(mapShiftTemplateDbToApi);
 }
@@ -116,10 +116,10 @@ export function mapShiftTemplatesDbToApi(dbTemplates) {
  * @param {Object} apiData - Shift template data from API (camelCase)
  * @returns {Object} Shift template in database format (snake_case)
  */
-export function mapShiftTemplateApiToDb(apiData) {
+export function mapShiftTemplateApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.organizationId !== undefined) {
@@ -183,7 +183,7 @@ export function mapShiftTemplateApiToDb(apiData) {
  * @param {Object} dbRole - Template role record from database (snake_case)
  * @returns {Object} Template role in API format (camelCase)
  */
-export function mapTemplateRoleDbToApi(dbRole) {
+export function mapTemplateRoleDbToApi(dbRole: any): Record<string, any> | null {
   if (!dbRole) return null;
 
   return {
@@ -215,7 +215,7 @@ export function mapTemplateRoleDbToApi(dbRole) {
  * @param {Array} dbRoles - Array of template role records from database
  * @returns {Array} Array of template roles in API format
  */
-export function mapTemplateRolesDbToApi(dbRoles) {
+export function mapTemplateRolesDbToApi(dbRoles: any): Record<string, any> | null {
   if (!Array.isArray(dbRoles)) return [];
   return dbRoles.map(mapTemplateRoleDbToApi);
 }
@@ -256,10 +256,10 @@ function convertProficiencyToInteger(proficiency) {
   return mapping[proficiency] || 1;
 }
 
-export function mapTemplateRoleApiToDb(apiData) {
+export function mapTemplateRoleApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   // Only include fields present in API data
   if (apiData.templateId !== undefined) {

@@ -6,7 +6,7 @@
 /**
  * Map tax rule set from database to API format
  */
-export function mapTaxRuleSetDbToApi(dbRule) {
+export function mapTaxRuleSetDbToApi(dbRule: any): Record<string, any> | null {
   if (!dbRule) return null;
   
   return {
@@ -35,7 +35,7 @@ export function mapTaxRuleSetDbToApi(dbRule) {
 /**
  * Map tax bracket from database to API format
  */
-export function mapTaxBracketDbToApi(dbBracket) {
+export function mapTaxBracketDbToApi(dbBracket: any): Record<string, any> | null {
   if (!dbBracket) return null;
   
   return {
@@ -57,10 +57,10 @@ export function mapTaxBracketDbToApi(dbBracket) {
 /**
  * Map API tax rule data to database format
  */
-export function mapTaxRuleSetApiToDb(apiData) {
+export function mapTaxRuleSetApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
   
-  const dbData = {};
+  const dbData: Record<string, any> = {};
   
   if (apiData.taxType !== undefined) dbData.tax_type = apiData.taxType;
   if (apiData.taxName !== undefined) dbData.tax_name = apiData.taxName;

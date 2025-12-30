@@ -10,7 +10,7 @@
  * @param {Object} dbRule - Forfait rule record from database (snake_case)
  * @returns {Object} Forfait rule in API format (camelCase)
  */
-export function mapForfaitRuleDbToApi(dbRule) {
+export function mapForfaitRuleDbToApi(dbRule: any): Record<string, any> | null {
   if (!dbRule) return null;
 
   return {
@@ -56,7 +56,7 @@ export function mapForfaitRuleDbToApi(dbRule) {
  * @param {Array} dbRules - Array of forfait rule records
  * @returns {Array} Array of forfait rules in API format
  */
-export function mapForfaitRulesDbToApi(dbRules) {
+export function mapForfaitRulesDbToApi(dbRules: any): Record<string, any> | null {
   if (!Array.isArray(dbRules)) return [];
   return dbRules.map(mapForfaitRuleDbToApi);
 }
@@ -66,10 +66,10 @@ export function mapForfaitRulesDbToApi(dbRules) {
  * @param {Object} apiData - Forfait rule data from API (camelCase)
  * @returns {Object} Forfait rule in database format (snake_case)
  */
-export function mapForfaitRuleApiToDb(apiData) {
+export function mapForfaitRuleApiToDb(apiData: any): Record<string, any> {
   if (!apiData) return null;
 
-  const dbData = {};
+  const dbData: Record<string, any> = {};
 
   if (apiData.ruleName !== undefined) {
     dbData.rule_name = apiData.ruleName;

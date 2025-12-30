@@ -75,7 +75,7 @@ export function mapComponentsToBreakdown(dbComponents) {
  * @param {Object} dbComponent - Database record (snake_case)
  * @returns {Object} API-formatted component (camelCase)
  */
-export function mapComponentDbToApi(dbComponent) {
+export function mapComponentDbToApi(dbComponent: any): Record<string, any> | null {
   if (!dbComponent) return null;
 
   return {
@@ -115,7 +115,7 @@ export function mapComponentDbToApi(dbComponent) {
  * @param {Array} dbComponents - Array of database records
  * @returns {Array} Array of API-formatted components
  */
-export function mapComponentsDbToApi(dbComponents) {
+export function mapComponentsDbToApi(dbComponents: any): Record<string, any> | null {
   if (!Array.isArray(dbComponents)) return [];
   return dbComponents.map(mapComponentDbToApi);
 }
@@ -125,7 +125,7 @@ export function mapComponentsDbToApi(dbComponents) {
  * @param {Object} apiData - API request data (camelCase)
  * @returns {Object} Database format (snake_case)
  */
-export function mapComponentApiToDb(apiData) {
+export function mapComponentApiToDb(apiData: any): Record<string, any> | null {
   if (!apiData) return null;
 
   return {
