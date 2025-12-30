@@ -197,7 +197,7 @@ constructor() {
     }
 
     // Support ternary operator: condition ? thenBranch : elseBranch
-    let expr = this.logicalOr();
+    const expr = this.logicalOr();
     
     if (this.match('OPERATOR', '?')) {
       const thenBranch = this.expression();

@@ -135,7 +135,7 @@ class UserRole {
    * @returns {Promise<Array>} Array of permission objects
    */
   static async getUserPermissions(userId, organizationId, product = null) {
-    let sql = `
+    const sql = `
       SELECT DISTINCT p.name as code, p.name, p.product, p.category, p.description
       FROM public.user_roles ur
       INNER JOIN public.roles r ON ur.role_id = r.id AND r.deleted_at IS NULL
@@ -164,7 +164,7 @@ class UserRole {
    * @returns {Promise<boolean>} True if user has permission
    */
   static async hasPermission(userId, permissionCode, organizationId, product = null) {
-    let sql = `
+    const sql = `
       SELECT EXISTS(
         SELECT 1
         FROM public.user_roles ur

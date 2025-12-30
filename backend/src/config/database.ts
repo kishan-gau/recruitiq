@@ -43,8 +43,8 @@ export const query = async (text, params, organizationId = null, metadata = {}) 
   const start = Date.now();
   
   // Declare these outside try block so they're accessible in catch
-  let modifiedText = text;
-  let modifiedParams = params || [];
+  const modifiedText = text;
+  const modifiedParams = params || [];
   
   try {
     // If organizationId is provided, add it to WHERE clause

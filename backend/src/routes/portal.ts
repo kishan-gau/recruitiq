@@ -79,7 +79,7 @@ router.post('/deployments/callback', async (req, res) => {
     // Update deployment record in database
     if (status === 'completed') {
       // Update by deployment ID first, then by organization ID as fallback
-      let updateResult = await platformDb.query(
+      const updateResult = await platformDb.query(
         `UPDATE instance_deployments 
          SET status = 'active', 
              access_url = $1,
@@ -122,7 +122,7 @@ router.post('/deployments/callback', async (req, res) => {
 
     } else if (status === 'failed') {
       // Update by deployment ID first, then by organization ID as fallback
-      let failedResult = await platformDb.query(
+      const failedResult = await platformDb.query(
         `UPDATE instance_deployments 
          SET status = 'failed', 
              error_message = $1,

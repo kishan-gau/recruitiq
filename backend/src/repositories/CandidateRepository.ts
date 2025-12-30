@@ -98,7 +98,7 @@ export class CandidateRepository extends BaseRepository {
       const queryParams = [organizationId];
       let paramIndex = 2;
       
-      let whereConditions = ['c.organization_id = $1', 'c.deleted_at IS NULL'];
+      const whereConditions = ['c.organization_id = $1', 'c.deleted_at IS NULL'];
 
       // Search by name, email, phone
       if (search) {

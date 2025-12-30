@@ -101,7 +101,7 @@ export function sanitizeText(text) {
   if (typeof text !== 'string') return '';
   
   // Remove script tags and event handlers
-  let sanitized = text
+  const sanitized = text
     .replace(/<script[^>]*>.*?<\/script>/gi, '')
     .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
     .replace(/javascript:/gi, '')

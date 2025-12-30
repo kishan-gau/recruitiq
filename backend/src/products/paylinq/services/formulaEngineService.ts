@@ -44,7 +44,7 @@ constructor() {
       this.validateFormula(formula);
 
       // Substitute variables
-      let expression = this.substituteVariables(formula, variables);
+      const expression = this.substituteVariables(formula, variables);
 
       // Evaluate expression (MVP: simple arithmetic)
       const result = this.evaluateExpression(expression);

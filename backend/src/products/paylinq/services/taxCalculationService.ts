@@ -745,7 +745,7 @@ class TaxCalculationService {
       );
 
       let federalTax = 0; // Surinamese Wage Tax
-      let stateTax = 0; // Not applicable for Suriname
+      const stateTax = 0; // Not applicable for Suriname
       let socialSecurity = 0; // AOV (Old Age Provision)
       let medicare = 0; // AWW (General Widow and Orphan Provision)
 

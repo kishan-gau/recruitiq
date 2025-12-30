@@ -262,7 +262,7 @@ export const dateOnly = (options: {
 } = {}): Joi.StringSchema => {
   const { required = false, min, max, pastOnly } = options;
 
-  let schema = Joi.string()
+  const schema = Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/)
     .custom((value, helpers) => {
       const date = new Date(value + 'T00:00:00.000Z');
@@ -344,7 +344,7 @@ export const integer = (options: {
  * });
  */
 export const positiveNumber = (required: boolean = true): Joi.NumberSchema => {
-  let schema = Joi.number().positive().messages({
+  const schema = Joi.number().positive().messages({
     'number.positive': 'Must be a positive number'
   });
 
@@ -405,7 +405,7 @@ export const enumField = (
   allowedValues: readonly string[],
   required: boolean = true
 ): Joi.StringSchema => {
-  let schema = Joi.string().valid(...allowedValues);
+  const schema = Joi.string().valid(...allowedValues);
 
   return required
     ? schema.required()
@@ -483,7 +483,7 @@ export const text = (options: {
 } = {}): Joi.StringSchema => {
   const { min = 10, max = 5000, required = true } = options;
 
-  let schema = Joi.string().trim().min(min).max(max);
+  const schema = Joi.string().trim().min(min).max(max);
 
   return required ? schema.required() : schema.optional().allow(null, '');
 };
@@ -502,7 +502,7 @@ export const text = (options: {
  * });
  */
 export const slug = (required: boolean = true): Joi.StringSchema => {
-  let schema = Joi.string()
+  const schema = Joi.string()
     .lowercase()
     .pattern(/^[a-z0-9_-]+$/)
     .messages({

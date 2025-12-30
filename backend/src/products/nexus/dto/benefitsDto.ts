@@ -52,7 +52,7 @@ export function mapPlanApiToDb(apiData: any): Record<string, any> | null {
   if (apiData.coverageLevels !== undefined || apiData.coverage_level !== undefined) {
     const rawCoverageLevel = apiData.coverage_level || apiData.coverageLevels;
     // Convert array to the first level and map frontend values to database values
-    let coverageLevel = Array.isArray(rawCoverageLevel) 
+    const coverageLevel = Array.isArray(rawCoverageLevel) 
       ? rawCoverageLevel[0] 
       : rawCoverageLevel;
     

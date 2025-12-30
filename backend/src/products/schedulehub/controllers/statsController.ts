@@ -16,7 +16,7 @@ class StatsController {
       const organizationId = req.user.organization_id;
 
       // Initialize default stats
-      let stats = {
+      const stats = {
         activeWorkers: 0,
         publishedSchedules: 0,
         pendingTimeOff: 0,
