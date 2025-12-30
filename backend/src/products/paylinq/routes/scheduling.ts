@@ -3,11 +3,11 @@
  */
 
 import express, { Router } from 'express';
-import schedulingController from '../controllers/schedulingController.ts';
-import { requirePermission } from '../../../middleware/auth.ts';
-import { validate  } from '../../../middleware/validation.ts';
+import schedulingController from '../controllers/schedulingController.js';
+import { requirePermission } from '../../../middleware/auth.js';
+import { validate  } from '../../../middleware/validation.js';
 import Joi from 'joi';
-import { dateOnlyOptional } from '../../../validators/dateValidators.ts';
+import { dateOnlyOptional } from '../../../validators/dateValidators.js';
 
 const router: Router = express.Router();
 

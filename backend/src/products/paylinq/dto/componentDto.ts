@@ -2,8 +2,8 @@
  * Component DTO (DEPRECATED)
  * 
  * @deprecated This file is deprecated. Use specific DTO files instead:
- * - For pay_components table: import from './payComponentDto.ts'
- * - For payroll.payroll_run_components table: import from './runComponentDto.ts'
+ * - For pay_components table: import from './payComponentDto.js'
+ * - For payroll.payroll_run_components table: import from './runComponentDto.js'
  * 
  * This file remains for backward compatibility but will be removed in a future version.
  * 
@@ -18,7 +18,7 @@ export {
   mapComponentToSummary,
   mapComponentsToSummary,
   groupComponentsByType
-} from './payComponentDto.ts';
+} from './payComponentDto.js';
 
 // Re-export RunComponent functions for backward compatibility
 export {
@@ -26,4 +26,4 @@ export {
   mapRunComponentsDbToApi,
   mapRunComponentApiToDb,
   mapRunComponentsToBreakdown
-} from './runComponentDto.ts';
+} from './runComponentDto.js';

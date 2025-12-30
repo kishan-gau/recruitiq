@@ -11,16 +11,16 @@ import {
   updateCompanySettings,
   getPayrollSettings,
   updatePayrollSettings,
-} from '../controllers/settingsController.ts';
+} from '../controllers/settingsController.js';
 import {
   getTaxRules,
   getTaxRule,
   createTaxRule,
   updateTaxRule,
   deleteTaxRule,
-} from '../controllers/taxRulesController.ts';
-import payPeriodController from '../controllers/payPeriodController.ts';
-import { requirePermission } from '../../../middleware/auth.ts';
+} from '../controllers/taxRulesController.js';
+import payPeriodController from '../controllers/payPeriodController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 
 const router: Router = express.Router();
 

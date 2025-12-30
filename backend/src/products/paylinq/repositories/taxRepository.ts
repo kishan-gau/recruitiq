@@ -3,7 +3,7 @@
  * Data access layer for tax-related operations
  */
 
-import pool from '../../../config/database.ts';
+import pool from '../../../config/database.js';
 
 class TaxRepository {
   /**

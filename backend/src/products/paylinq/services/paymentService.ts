@@ -11,9 +11,9 @@
  */
 
 import Joi from 'joi';
-import PaymentRepository from '../repositories/paymentRepository.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
+import PaymentRepository from '../repositories/paymentRepository.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
 
 class PaymentService {
   constructor() {

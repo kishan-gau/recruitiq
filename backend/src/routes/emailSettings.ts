@@ -11,9 +11,9 @@ import {
   saveEmailSettings,
   testEmailConfiguration,
   deleteEmailSettings,
-} from '../controllers/emailSettingsController.ts';
-import { authenticateTenant } from '../middleware/auth.ts';
-import { validate } from '../middleware/validation.ts';
+} from '../controllers/emailSettingsController.js';
+import { authenticateTenant } from '../middleware/auth.js';
+import { validate } from '../middleware/validation.js';
 
 const router = express.Router();
 

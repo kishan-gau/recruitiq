@@ -3,12 +3,12 @@
  * Implements all business rules and orchestrates repository calls
  */
 
-import { ApplicationRepository } from '../../repositories/ApplicationRepository.ts';
-import { JobRepository } from '../../repositories/JobRepository.ts';
-import { CandidateRepository } from '../../repositories/CandidateRepository.ts';
-import Organization from '../../models/Organization.ts';
-import logger from '../../utils/logger.ts';
-import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.ts';
+import { ApplicationRepository } from '../../repositories/ApplicationRepository.js';
+import { JobRepository } from '../../repositories/JobRepository.js';
+import { CandidateRepository } from '../../repositories/CandidateRepository.js';
+import Organization from '../../models/Organization.js';
+import logger from '../../utils/logger.js';
+import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.js';
 import Joi from 'joi';
 
 export class ApplicationService {

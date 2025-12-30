@@ -13,7 +13,7 @@
  */
 
 import crypto from 'crypto';
-import logger from './logger.ts';
+import logger from './logger.js';
 
 /**
  * Common weak passwords blacklist

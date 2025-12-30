@@ -3,9 +3,9 @@
  * Handles pay period configuration and calculations
  */
 
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.js';
 import Joi from 'joi';
 import { 
   parseDate, 
@@ -13,7 +13,7 @@ import {
   addDaysInTimezone,
   formatForDB,
   nowInTimezone 
-} from '../../../utils/dateUtils.ts';
+} from '../../../utils/dateUtils.js';
 
 class PayPeriodService {
   /**

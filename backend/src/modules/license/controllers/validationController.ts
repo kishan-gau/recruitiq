@@ -1,5 +1,5 @@
-import LicenseValidator from '../services/LicenseValidator.ts'
-import LicenseGenerator from '../services/LicenseGenerator.ts'
+import LicenseValidator from '../services/LicenseValidator.js'
+import LicenseGenerator from '../services/LicenseGenerator.js'
 
 export const validationController = {
   // Validate license key

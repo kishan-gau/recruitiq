@@ -4,8 +4,8 @@
  * Only handles HTTP concerns: request/response, status codes, error handling
  */
 
-import { InterviewService } from '../services/interviews/InterviewService.ts';
-import logger from '../utils/logger.ts';
+import { InterviewService } from '../services/interviews/InterviewService.js';
+import logger from '../utils/logger.js';
 
 const interviewService = new InterviewService();
 

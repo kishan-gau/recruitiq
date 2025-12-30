@@ -3,8 +3,8 @@
  * Handles all database operations for candidate entities
  */
 
-import { BaseRepository } from './BaseRepository.ts';
-import pool, { query } from '../config/database.ts';
+import { BaseRepository } from './BaseRepository.js';
+import pool, { query } from '../config/database.js';
 
 // Use the custom query function that supports organizationId filtering
 const db = { query };

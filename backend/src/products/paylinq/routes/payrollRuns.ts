@@ -3,9 +3,9 @@
  */
 
 import express, { Router } from 'express';
-import payrollRunController from '../controllers/payrollRunController.ts';
-import { validate  } from '../../../middleware/validation.ts';
-import { requirePermission } from '../../../middleware/auth.ts';
+import payrollRunController from '../controllers/payrollRunController.js';
+import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router: Router = express.Router();

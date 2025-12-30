@@ -1,5 +1,5 @@
-import PermissionService from '../services/PermissionService.ts';
-import logger from '../../../utils/logger.ts';
+import PermissionService from '../services/PermissionService.js';
+import logger from '../../../utils/logger.js';
 
 const permissionService = new PermissionService();
 

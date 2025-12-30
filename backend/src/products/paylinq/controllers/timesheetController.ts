@@ -3,9 +3,9 @@
  * Handles HTTP requests for timesheet management and rated time lines
  */
 
-import timeAttendanceService from '../services/timeAttendanceService.ts';
-import { mapApiToDb } from '../utils/dtoMapper.ts';
-import logger from '../../../utils/logger.ts';
+import timeAttendanceService from '../services/timeAttendanceService.js';
+import { mapApiToDb } from '../utils/dtoMapper.js';
+import logger from '../../../utils/logger.js';
 
 /**
  * Create a timesheet

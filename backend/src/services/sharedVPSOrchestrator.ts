@@ -12,8 +12,8 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import logger from '../utils/logger.ts';
-import pool from '../config/database.ts';
+import logger from '../utils/logger.js';
+import pool from '../config/database.js';
 
 const execAsync = promisify(exec);
 

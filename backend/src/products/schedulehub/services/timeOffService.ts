@@ -3,10 +3,10 @@
  * Business logic for time off request management
  */
 
-import pool from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import pool from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 import Joi from 'joi';
-import { dateOnlyRequired } from '../../../validators/dateValidators.ts';
+import { dateOnlyRequired } from '../../../validators/dateValidators.js';
 
 class TimeOffService {
   constructor() {

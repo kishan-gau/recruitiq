@@ -3,8 +3,8 @@
  * HTTP request handlers for schedule and shift management
  */
 
-import ScheduleService from '../services/scheduleService.ts';
-import logger from '../../../utils/logger.ts';
+import ScheduleService from '../services/scheduleService.js';
+import logger from '../../../utils/logger.js';
 
 class ScheduleController {
   constructor() {

@@ -3,7 +3,7 @@
  */
 
 import Joi from 'joi';
-import { containsSQLInjection, containsXSS, containsPathTraversal } from './sanitization.ts';
+import { containsSQLInjection, containsXSS, containsPathTraversal } from './sanitization.js';
 
 /**
  * Phone Number Extension

@@ -13,7 +13,7 @@
  */
 
 import express, { Router } from 'express';
-import { authenticatePlatform } from '../../middleware/auth.ts';
+import { authenticatePlatform } from '../../middleware/auth.js';
 
 const router: Router = express.Router();
 
@@ -21,13 +21,13 @@ const router: Router = express.Router();
 router.use(authenticatePlatform);
 
 // Import admin sub-routers
-import featuresRouter from './features.ts';
-import dashboardRouter from './dashboard.ts';
+import featuresRouter from './features.js';
+import dashboardRouter from './dashboard.js';
 // Import customer routes from license module for convenience
-import { customerController } from '../../modules/license/controllers/customerController.ts';
-import { requirePlatformPermission } from '../../middleware/auth.ts';
-import { asyncHandler } from '../../modules/license/middleware/errorHandler.ts';
-import { auditLog } from '../../modules/license/middleware/audit.ts';
+import { customerController } from '../../modules/license/controllers/customerController.js';
+import { requirePlatformPermission } from '../../middleware/auth.js';
+import { asyncHandler } from '../../modules/license/middleware/errorHandler.js';
+import { auditLog } from '../../modules/license/middleware/audit.js';
 
 // Mount admin sub-routers
 router.use('/features', featuresRouter);  // Creates /api/admin/features

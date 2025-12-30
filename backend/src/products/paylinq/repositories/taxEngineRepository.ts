@@ -11,8 +11,8 @@
  * @module products/paylinq/repositories/taxEngineRepository
  */
 
-import { query  } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import { query  } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 
 class TaxEngineRepository {
   constructor(database = null) {

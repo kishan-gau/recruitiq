@@ -8,9 +8,9 @@
  */
 
 import Joi from 'joi';
-import { ValidationError, NotFoundError, ConflictError } from '../../utils/errors.ts';
-import logger from '../../utils/logger.ts';
-import VPSRepository from '../../repositories/VPSRepository.ts';
+import { ValidationError, NotFoundError, ConflictError } from '../../utils/errors.js';
+import logger from '../../utils/logger.js';
+import VPSRepository from '../../repositories/VPSRepository.js';
 
 class VPSService {
   /**

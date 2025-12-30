@@ -6,7 +6,7 @@
  * This applies to all products: Nexus, PayLinq, Portal, etc.
  */
 
-import logger from '../utils/logger.ts';
+import logger from '../utils/logger.js';
 
 /**
  * Middleware to require organization_id for product access

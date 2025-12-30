@@ -1,4 +1,4 @@
-import { generateRequestId } from '../utils/logger.ts';
+import { generateRequestId } from '../utils/logger.js';
 
 /**
  * Middleware to add unique request ID to each request

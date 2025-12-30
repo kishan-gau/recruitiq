@@ -3,8 +3,8 @@
  * Provides endpoints to monitor cross-product integration health
  */
 
-import integrationErrorHandler from '../../shared/utils/integrationErrorHandler.ts';
-import logger from '../../utils/logger.ts';
+import integrationErrorHandler from '../../shared/utils/integrationErrorHandler.js';
+import logger from '../../utils/logger.js';
 
 class IntegrationHealthController {
   constructor() {

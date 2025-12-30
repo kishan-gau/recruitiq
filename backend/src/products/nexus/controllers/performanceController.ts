@@ -3,8 +3,8 @@
  * HTTP request handlers for performance management
  */
 
-import PerformanceService from '../services/performanceService.ts';
-import logger from '../../../utils/logger.ts';
+import PerformanceService from '../services/performanceService.js';
+import logger from '../../../utils/logger.js';
 
 class PerformanceController {
   constructor() {

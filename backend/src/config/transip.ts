@@ -19,7 +19,7 @@
  */
 
 import TransIP from 'transip-api';
-import logger from '../utils/logger.ts';
+import logger from '../utils/logger.js';
 
 /**
  * Validates TransIP configuration

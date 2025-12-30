@@ -3,8 +3,8 @@
  * Handles HTTP requests for work schedule management
  */
 
-import schedulingService from '../services/schedulingService.ts';
-import logger from '../../../utils/logger.ts';
+import schedulingService from '../services/schedulingService.js';
+import logger from '../../../utils/logger.js';
 import { 
   mapScheduleApiToDb, 
   mapScheduleDbToApi, 
@@ -12,7 +12,7 @@ import {
   mapScheduleChangeRequestApiToDb,
   mapScheduleChangeRequestDbToApi,
   mapScheduleChangeRequestsDbToApi 
-} from '../dto/schedulingDto.ts';
+} from '../dto/schedulingDto.js';
 
 /**
  * Create a work schedule

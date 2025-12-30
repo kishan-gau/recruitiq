@@ -16,7 +16,7 @@ import {
   VariableMetadata,
   ValidationResult,
   FormulaValidationError,
-} from './FormulaTypes.ts';
+} from './FormulaTypes.js';
 
 class FormulaValidator {
   constructor() {

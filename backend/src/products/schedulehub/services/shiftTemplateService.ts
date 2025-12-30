@@ -7,11 +7,11 @@
 
 import Joi from 'joi';
 import { v4 as uuidv4 } from 'uuid';
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError, ConflictError } from '../../../utils/errors.ts';
-import ShiftTemplateRepository from '../repositories/ShiftTemplateRepository.ts';
-import ShiftTemplateStationService from './ShiftTemplateStationService.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError, ConflictError } from '../../../utils/errors.js';
+import ShiftTemplateRepository from '../repositories/ShiftTemplateRepository.js';
+import ShiftTemplateStationService from './ShiftTemplateStationService.js';
 import {
   mapShiftTemplateDbToApi,
   mapShiftTemplatesDbToApi,
@@ -20,7 +20,7 @@ import {
   mapTemplateRolesDbToApi,
   mapTemplateRoleApiToDb,
   mapTemplatesToSummary
-} from '../dto/shiftTemplateDto.ts';
+} from '../dto/shiftTemplateDto.js';
 
 /**
  * Service for managing shift templates with station assignments

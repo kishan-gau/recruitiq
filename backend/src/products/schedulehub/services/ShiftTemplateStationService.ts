@@ -1,8 +1,8 @@
 import Joi from 'joi';
-import ShiftTemplateStationRepository from '../repositories/ShiftTemplateStationRepository.ts';
-import { mapShiftTemplateStationDbToApi, mapShiftTemplateStationsDbToApi } from '../dto/shiftTemplateStationDto.ts';
-import { ValidationError, NotFoundError, ConflictError } from '../../../utils/errors.ts';
-import logger from '../../../utils/logger.ts';
+import ShiftTemplateStationRepository from '../repositories/ShiftTemplateStationRepository.js';
+import { mapShiftTemplateStationDbToApi, mapShiftTemplateStationsDbToApi } from '../dto/shiftTemplateStationDto.js';
+import { ValidationError, NotFoundError, ConflictError } from '../../../utils/errors.js';
+import logger from '../../../utils/logger.js';
 
 /**
  * Service for managing shift template station associations

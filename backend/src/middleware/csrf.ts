@@ -17,8 +17,8 @@
  */
 
 import { Tokens } from 'csrf';
-import config from '../config/index.ts';
-import logger from '../utils/logger.ts';
+import config from '../config/index.js';
+import logger from '../utils/logger.js';
 
 // Create CSRF token generator
 const tokens = new Tokens();

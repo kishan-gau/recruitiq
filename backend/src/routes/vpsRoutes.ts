@@ -3,8 +3,8 @@
  */
 
 import express from 'express';
-import * as vpsController from '../controllers/vpsController.ts';
-import { requireRole } from '../middleware/auth.ts';
+import * as vpsController from '../controllers/vpsController.js';
+import { requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 

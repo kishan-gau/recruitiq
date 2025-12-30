@@ -6,10 +6,10 @@
  * Access control happens through organization_feature_grants
  */
 
-import { query } from '../config/database.ts';
-import logger from '../utils/logger.ts';
+import { query } from '../config/database.js';
+import logger from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
-import { mapDbToApi } from '../utils/dtoMapper.ts';
+import { mapDbToApi } from '../utils/dtoMapper.js';
 
 export class FeatureRepository {
   constructor() {

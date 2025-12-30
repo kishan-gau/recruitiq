@@ -3,15 +3,15 @@
  * Handles HTTP requests for payment reconciliation management
  */
 
-import reconciliationService from '../services/reconciliationService.ts';
+import reconciliationService from '../services/reconciliationService.js';
 import { 
   mapApiToDb, 
   mapReconciliationDbToApi,
   mapReconciliationDbArrayToApi,
   mapReconciliationItemDbToApi,
   mapReconciliationItemDbArrayToApi
-} from '../utils/dtoMapper.ts';
-import logger from '../../../utils/logger.ts';
+} from '../utils/dtoMapper.js';
+import logger from '../../../utils/logger.js';
 
 /**
  * Create a reconciliation record

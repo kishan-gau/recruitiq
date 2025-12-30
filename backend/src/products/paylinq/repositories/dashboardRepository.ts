@@ -6,8 +6,8 @@
  * @module products/paylinq/repositories/dashboardRepository
  */
 
-import db from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import db from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 
 class DashboardRepository {
   constructor(database = null) {

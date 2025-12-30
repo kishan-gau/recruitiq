@@ -3,7 +3,7 @@
  * HTTP handlers for product configuration endpoints
  */
 
-import { productConfigService } from '../services/index.ts';
+import { productConfigService } from '../services/index.js';
 
 class ProductConfigController {
   /**

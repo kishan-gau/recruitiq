@@ -5,10 +5,10 @@
  * This service is used by platform admins to manage the feature catalog
  */
 
-import FeatureRepository from '../repositories/FeatureRepository.ts';
-import FeatureGrantRepository from '../repositories/FeatureGrantRepository.ts';
-import logger from '../utils/logger.ts';
-import { ForbiddenError, NotFoundError, ValidationError } from '../middleware/errorHandler.ts';
+import FeatureRepository from '../repositories/FeatureRepository.js';
+import FeatureGrantRepository from '../repositories/FeatureGrantRepository.js';
+import logger from '../utils/logger.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 
 export class FeatureService {
   constructor() {

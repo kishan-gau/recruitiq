@@ -4,9 +4,9 @@
  * Connected to actual database via taxCalculationService
  */
 
-import taxCalculationService from '../services/taxCalculationService.ts';
-import logger from '../../../utils/logger.ts';
-import { mapTaxRuleSetDbToApi, mapTaxBracketDbToApi } from '../dto/taxRuleDto.ts';
+import taxCalculationService from '../services/taxCalculationService.js';
+import logger from '../../../utils/logger.js';
+import { mapTaxRuleSetDbToApi, mapTaxBracketDbToApi } from '../dto/taxRuleDto.js';
 
 /**
  * Get all tax rules with optional filtering

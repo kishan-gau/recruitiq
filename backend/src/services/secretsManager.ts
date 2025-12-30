@@ -21,8 +21,8 @@
  * - Supports secret versioning
  */
 
-import logger from '../utils/logger.ts';
-import config from '../config/index.ts';
+import logger from '../utils/logger.js';
+import config from '../config/index.js';
 
 // ============================================================================
 // SECRET PROVIDERS

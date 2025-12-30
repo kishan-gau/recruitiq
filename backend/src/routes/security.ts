@@ -5,12 +5,12 @@
  */
 
 import express from 'express';
-import securityMonitor from '../services/securityMonitor.ts';
-import { getSecurityMetrics, getSecurityMonitoringHealth } from '../middleware/securityMonitoring.ts';
-import { authenticatePlatform, requirePlatformRole } from '../middleware/auth.ts';
-import logger from '../utils/logger.ts';
-import encryption from '../services/encryption.ts';
-import tlsConfig from '../utils/tlsConfig.ts';
+import securityMonitor from '../services/securityMonitor.js';
+import { getSecurityMetrics, getSecurityMonitoringHealth } from '../middleware/securityMonitoring.js';
+import { authenticatePlatform, requirePlatformRole } from '../middleware/auth.js';
+import logger from '../utils/logger.js';
+import encryption from '../services/encryption.js';
+import tlsConfig from '../utils/tlsConfig.js';
 
 const router = express.Router();
 

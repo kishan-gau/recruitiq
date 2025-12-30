@@ -11,12 +11,12 @@
  */
 
 import Joi from 'joi';
-import TaxEngineRepository from '../repositories/taxEngineRepository.ts';
-import DeductionRepository from '../repositories/deductionRepository.ts';
-import AllowanceService from './AllowanceService.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
-import { query } from '../../../config/database.ts';
+import TaxEngineRepository from '../repositories/taxEngineRepository.js';
+import DeductionRepository from '../repositories/deductionRepository.js';
+import AllowanceService from './AllowanceService.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import { query } from '../../../config/database.js';
 
 class TaxCalculationService {
   /**

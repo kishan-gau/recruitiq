@@ -1,4 +1,4 @@
-import * as sanitization from '../sanitization.ts';
+import * as sanitization from '../sanitization.js';
 
 describe('Sanitization Utils', () => {
   describe('SQL Injection Prevention', () => {

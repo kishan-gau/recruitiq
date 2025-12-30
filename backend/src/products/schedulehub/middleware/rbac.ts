@@ -7,7 +7,7 @@
  * @module products/schedulehub/middleware/rbac
  */
 
-import { requirePermission, requireRole } from '../../../middleware/rbac.ts';
+import { requirePermission, requireRole } from '../../../middleware/rbac.js';
 
 /**
  * ScheduleHub Permission Middleware Factories
@@ -311,7 +311,7 @@ export const ScheduleHubPermissions = {
  * Export individual permission checks for direct use
  * 
  * @example
- * import { canCreateSchedule } from './middleware/rbac.ts';
+ * import { canCreateSchedule } from './middleware/rbac.js';
  * router.post('/schedules', authenticate, canCreateSchedule(), createSchedule);
  */
 export const {

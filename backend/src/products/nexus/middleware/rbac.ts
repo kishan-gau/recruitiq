@@ -7,7 +7,7 @@
  * @module products/nexus/middleware/rbac
  */
 
-import { requirePermission, requireRole } from '../../../middleware/rbac.ts';
+import { requirePermission, requireRole } from '../../../middleware/rbac.js';
 
 /**
  * Nexus Permission Middleware Factories
@@ -323,7 +323,7 @@ export const NexusPermissions = {
  * Export individual permission checks for direct use
  * 
  * @example
- * import { canCreateEmployee } from './middleware/rbac.ts';
+ * import { canCreateEmployee } from './middleware/rbac.js';
  * router.post('/employees', authenticate, canCreateEmployee(), createEmployee);
  */
 export const {

@@ -3,8 +3,8 @@
  * HTTP request handlers for reporting and analytics
  */
 
-import ReportsService from '../services/reportsService.ts';
-import logger from '../../../utils/logger.ts';
+import ReportsService from '../services/reportsService.js';
+import logger from '../../../utils/logger.js';
 
 class ReportsController {
   constructor() {

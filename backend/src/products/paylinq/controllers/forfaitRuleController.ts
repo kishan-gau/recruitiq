@@ -7,8 +7,8 @@
  * @module products/paylinq/controllers/forfaitRuleController
  */
 
-import ForfaitRuleService from '../services/ForfaitRuleService.ts';
-import logger from '../../../utils/logger.ts';
+import ForfaitRuleService from '../services/ForfaitRuleService.js';
+import logger from '../../../utils/logger.js';
 
 const service = new ForfaitRuleService();
 

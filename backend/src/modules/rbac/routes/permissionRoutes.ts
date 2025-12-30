@@ -1,10 +1,10 @@
 import express, { Router } from 'express';
-import { authenticateTenant, requirePermission } from '../../../middleware/auth.ts';
+import { authenticateTenant, requirePermission } from '../../../middleware/auth.js';
 import {
   listPermissions,
   getGroupedPermissions,
   getPermissionsByProduct
-} from '../controllers/permissionController.ts';
+} from '../controllers/permissionController.js';
 
 const router: Router = express.Router();
 

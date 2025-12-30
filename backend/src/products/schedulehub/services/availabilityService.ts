@@ -3,13 +3,13 @@
  * Business logic for worker availability management
  */
 
-import pool from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import pool from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 import Joi from 'joi';
 import { 
   mapAvailabilityDbToApi, 
   mapAvailabilitiesDbToApi 
-} from '../dto/availabilityDto.ts';
+} from '../dto/availabilityDto.js';
 
 class AvailabilityService {
   constructor(poolInstance = null) {

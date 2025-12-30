@@ -3,9 +3,9 @@
  * Dynamic product loading and route registry system
  */
 
-import productManager from './ProductManager.ts';
-import productLoader from './ProductLoader.ts';
-import routeRegistry from './RouteRegistry.ts';
+import productManager from './ProductManager.js';
+import productLoader from './ProductLoader.js';
+import routeRegistry from './RouteRegistry.js';
 
 export {
   productManager,

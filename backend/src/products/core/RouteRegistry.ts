@@ -4,8 +4,8 @@
  */
 
 import express from 'express';
-import logger from '../../utils/logger.ts';
-import productLoader from './ProductLoader.ts';
+import logger from '../../utils/logger.js';
+import productLoader from './ProductLoader.js';
 
 class RouteRegistry {
   constructor() {

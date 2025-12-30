@@ -8,9 +8,9 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
-import logger from '../utils/logger.ts';
-import transipService from './transip/TransIPService.ts';
-import pool from '../config/database.ts';
+import logger from '../utils/logger.js';
+import transipService from './transip/TransIPService.js';
+import pool from '../config/database.js';
 
 const execAsync = promisify(exec);
 

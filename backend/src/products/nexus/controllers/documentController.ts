@@ -3,8 +3,8 @@
  * HTTP request handlers for document management
  */
 
-import DocumentService from '../services/documentService.ts';
-import logger from '../../../utils/logger.ts';
+import DocumentService from '../services/documentService.js';
+import logger from '../../../utils/logger.js';
 
 class DocumentController {
   constructor() {

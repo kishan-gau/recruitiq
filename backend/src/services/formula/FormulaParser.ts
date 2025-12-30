@@ -32,7 +32,7 @@ import {
   Functions,
   Variables,
   FormulaParseError,
-} from './FormulaTypes.ts';
+} from './FormulaTypes.js';
 
 class FormulaParser {
   constructor() {

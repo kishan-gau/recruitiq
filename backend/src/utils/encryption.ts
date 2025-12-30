@@ -6,8 +6,8 @@
  */
 
 import crypto from 'crypto';
-import logger from './logger.ts';
-import config from '../config/index.ts';
+import logger from './logger.js';
+import config from '../config/index.js';
 
 const ALGORITHM = 'aes-256-cbc';
 const IV_LENGTH = 16;

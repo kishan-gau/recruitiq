@@ -25,9 +25,9 @@
  */
 
 import Joi from 'joi';
-import { ValidationError } from '../../../utils/errors.ts';
-import logger from '../../../utils/logger.ts';
-import LoontijdvakService from './loontijdvakService.ts';
+import { ValidationError } from '../../../utils/errors.js';
+import logger from '../../../utils/logger.js';
+import LoontijdvakService from './loontijdvakService.js';
 
 /**
  * Bonus Tax Service

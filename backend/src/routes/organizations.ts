@@ -5,10 +5,10 @@ import {
   getUsageStats,
   getSessionPolicy,
   updateSessionPolicy
-} from '../controllers/organizationController.ts';
-import { authenticate } from '../middleware/auth.ts';
-import { validate } from '../middleware/validation.ts';
-import { organizationSchemas } from '../utils/validationSchemas.ts';
+} from '../controllers/organizationController.js';
+import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validation.js';
+import { organizationSchemas } from '../utils/validationSchemas.js';
 
 const router = express.Router();
 

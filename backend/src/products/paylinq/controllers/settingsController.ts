@@ -3,7 +3,7 @@
  * Handles company and payroll configuration settings
  */
 
-import logger from '../../../utils/logger.ts';
+import logger from '../../../utils/logger.js';
 
 /**
  * Get organization settings for Paylinq

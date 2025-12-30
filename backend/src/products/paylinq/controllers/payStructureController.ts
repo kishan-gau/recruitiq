@@ -5,9 +5,9 @@
  * @module products/paylinq/controllers/payStructureController
  */
 
-import PayStructureService from '../services/payStructureService.ts';
-import logger from '../../../utils/logger.ts';
-import { mapWorkerOverrideDbArrayToApi } from '../utils/dtoMapper.ts';
+import PayStructureService from '../services/payStructureService.js';
+import logger from '../../../utils/logger.js';
+import { mapWorkerOverrideDbArrayToApi } from '../utils/dtoMapper.js';
 
 const payStructureService = new PayStructureService();
 

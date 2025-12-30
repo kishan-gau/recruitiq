@@ -11,8 +11,8 @@
  * 4. Fall back to UTC
  */
 
-import { isValidTimezone, DEFAULT_TIMEZONE } from '../utils/timezone.ts';
-import logger from '../utils/logger.ts';
+import { isValidTimezone, DEFAULT_TIMEZONE } from '../utils/timezone.js';
+import logger from '../utils/logger.js';
 
 /**
  * Timezone middleware

@@ -3,9 +3,9 @@
  * Database operations for ProductFeature model
  */
 
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import ProductFeature from '../models/ProductFeature.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import ProductFeature from '../models/ProductFeature.js';
 
 class ProductFeatureRepository {
   constructor(database = null) {

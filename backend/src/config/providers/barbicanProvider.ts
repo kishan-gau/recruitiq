@@ -11,7 +11,7 @@
  */
 
 import axios from 'axios';
-import logger from '../../utils/logger.ts';
+import logger from '../../utils/logger.js';
 
 /**
  * Barbican API Client

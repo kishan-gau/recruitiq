@@ -4,8 +4,8 @@ import fs from 'fs/promises';
 import { createReadStream } from 'fs';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import config from '../config/index.ts';
-import logger from './logger.ts';
+import config from '../config/index.js';
+import logger from './logger.js';
 
 /**
  * Secure file storage abstraction

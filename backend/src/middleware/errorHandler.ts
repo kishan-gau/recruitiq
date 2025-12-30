@@ -1,5 +1,5 @@
-import logger, { logSecurityEvent, SecurityEventType } from '../utils/logger.ts';
-import config from '../config/index.ts';
+import logger, { logSecurityEvent, SecurityEventType } from '../utils/logger.js';
+import config from '../config/index.js';
 
 // ============================================================================
 // CUSTOM ERROR CLASSES

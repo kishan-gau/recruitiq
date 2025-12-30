@@ -3,7 +3,7 @@
  * Business logic for managing employee benefits
  */
 
-import PayrollRepository from '../repositories/payrollRepository.ts';
+import PayrollRepository from '../repositories/payrollRepository.js';
 
 /**
  * Benefit types

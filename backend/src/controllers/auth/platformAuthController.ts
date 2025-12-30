@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
-import PlatformUser from '../../models/PlatformUser.ts';
-import platformDb from '../../shared/database/licenseManagerDb.ts'; // Platform database connection
+import PlatformUser from '../../models/PlatformUser.js';
+import platformDb from '../../shared/database/licenseManagerDb.js'; // Platform database connection
 import { v4 as uuidv4 } from 'uuid';
-import { getPlatformAccessCookieConfig, getPlatformRefreshCookieConfig, getClearCookieConfig } from '../../config/cookie.ts';
+import { getPlatformAccessCookieConfig, getPlatformRefreshCookieConfig, getClearCookieConfig } from '../../config/cookie.js';
 
 /**
  * Platform Authentication Controller

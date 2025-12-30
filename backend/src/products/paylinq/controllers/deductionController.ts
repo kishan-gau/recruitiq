@@ -3,9 +3,9 @@
  * Handles HTTP requests for employee deduction management
  */
 
-import taxCalculationService from '../services/taxCalculationService.ts';
-import logger from '../../../utils/logger.ts';
-import { mapDeductionApiToDb } from '../utils/dtoMapper.ts';
+import taxCalculationService from '../services/taxCalculationService.js';
+import logger from '../../../utils/logger.js';
+import { mapDeductionApiToDb } from '../utils/dtoMapper.js';
 
 /**
  * Create a deduction
