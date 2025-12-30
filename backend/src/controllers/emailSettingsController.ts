@@ -52,7 +52,7 @@ export async function getEmailSettings(req, res) {
       });
     }
 
-    const settings = result.rows[0];
+    const settings: any = result.rows[0];
 
     // Return settings without sensitive data (passwords/keys are not returned)
     res.status(200).json({
@@ -104,7 +104,7 @@ export async function saveEmailSettings(req, res) {
     logger.info('Saving email settings', { organizationId, provider });
 
     // Encrypt sensitive data
-    const encryptedData = {};
+    const encryptedData: any = {};
     
     if (provider === 'smtp' && smtp) {
       encryptedData.smtpPassword = encrypt(smtp.password);
@@ -300,10 +300,10 @@ export async function initializeEmailService(organizationId) {
       throw new Error('Email settings not configured');
     }
 
-    const settings = result.rows[0];
+    const settings: any = result.rows[0];
 
     // Decrypt sensitive data
-    const config = {
+    const config: any = {
       provider: settings.provider,
       fromEmail: settings.from_email,
       fromName: settings.from_name,
