@@ -18,15 +18,33 @@ import { ValidationError, NotFoundError, ConflictError  } from '../../../middlew
 import { nowUTC, toUTCDateString, formatForDatabase, parseDateInTimezone } from '../../../utils/timezone.js';
 import compensationService from '../../../shared/services/compensationService.js';
 import PayrollRunCalculationService from './PayrollRunCalculationService.js';
+import type {
+  EmployeeRecordData,
+  CompensationData,
+  PayrollRunData,
+  TimesheetData
+} from '../../../types/paylinq.types.js';
 
 class PayrollService {
+  payrollRepository: PayrollRepository;
+  deductionRepository: DeductionRepository;
+  taxCalculationService: typeof taxCalculationService;
+  payStructureService: PayStructureService;
+  payrollRunTypeService: PayrollRunTypeService;
+  payrollRunCalculationService: PayrollRunCalculationService;
+  employeeRecordSchema: Joi.ObjectSchema;
+  compensationSchema: Joi.ObjectSchema;
+  compensationUpdateSchema: Joi.ObjectSchema;
+  payrollRunSchema: Joi.ObjectSchema;
+  timesheetSchema: Joi.ObjectSchema;
+
   constructor(
-    payrollRepository = null,
-    deductionRepository = null,
-    taxCalcService = null,
-    payStructureService = null,
-    payrollRunTypeService = null,
-    payrollRunCalcService = null
+    payrollRepository: PayrollRepository | null = null,
+    deductionRepository: DeductionRepository | null = null,
+    taxCalcService: typeof taxCalculationService | null = null,
+    payStructureService: PayStructureService | null = null,
+    payrollRunTypeService: PayrollRunTypeService | null = null,
+    payrollRunCalcService: PayrollRunCalculationService | null = null
   ) {
     this.payrollRepository = payrollRepository || new PayrollRepository();
     this.deductionRepository = deductionRepository || new DeductionRepository();

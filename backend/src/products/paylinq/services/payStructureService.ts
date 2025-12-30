@@ -18,9 +18,21 @@ import {
   mapPayStructureDbToApi, 
   mapPayStructuresDbToApi 
 } from '../dto/payStructureDto.js';
+import type {
+  PayStructureTemplateData,
+  PayComponentData,
+  TemplateAssignmentData
+} from '../../../types/paylinq.types.js';
 
 class PayStructureService {
-  constructor(repository = null) {
+  repository: PayStructureRepository;
+  formulaEngine: FormulaEngineService;
+  temporalPatternService: typeof temporalPatternService;
+  createTemplateSchema: Joi.ObjectSchema;
+  addComponentSchema: Joi.ObjectSchema;
+  assignTemplateSchema: Joi.ObjectSchema;
+
+  constructor(repository: PayStructureRepository | null = null) {
     this.repository = repository || new PayStructureRepository();
     this.formulaEngine = new FormulaEngineService();
     this.temporalPatternService = temporalPatternService;
