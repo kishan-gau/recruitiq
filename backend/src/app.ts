@@ -151,7 +151,7 @@ export function createApp(options: any = {}) {
   // ============================================================================
   // Catch JSON parsing errors from express.json() middleware
   app.use((err, req, res, next) => {
-    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    if (err instanceof SyntaxError && (err as any).status === 400 && 'body' in err) {
       const errorId = `ERR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       logger.warn('JSON parsing error', {
@@ -223,7 +223,7 @@ export function createApp(options: any = {}) {
         }
       }
       
-      const health = {
+      const health: any = {
         status: 'ok',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),

@@ -285,7 +285,7 @@ async function loadFromBarbican(environment) {
     }
     
     // Store Barbican client for future use (secret rotation, etc.)
-    secrets._barbicanClient = barbicanClient;
+    (secrets as any)._barbicanClient = barbicanClient;
     
     if (errors.length > 0) {
       throw new Error(`Failed to load ${errors.length} secrets from Barbican`);
