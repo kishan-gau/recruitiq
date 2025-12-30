@@ -17,7 +17,12 @@ import logger from '../../utils/logger.js';
  * Barbican API Client
  */
 class BarbicanProvider {
-  constructor(config) {
+  config: any;
+  cache: Map<string, any>;
+  authToken: string | null;
+  tokenExpiry: number | null;
+  
+  constructor(config: any) {
     this.config = {
       endpoint: config.endpoint || process.env.BARBICAN_ENDPOINT,
       authEndpoint: config.authEndpoint || process.env.OPENSTACK_AUTH_URL,

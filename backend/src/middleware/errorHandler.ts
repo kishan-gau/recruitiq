@@ -9,7 +9,12 @@ import config from '../config/index.js';
  * Base API Error class with standard structure
  */
 export class APIError extends Error {
-  constructor(message, statusCode = 500, code = null, details = null) {
+  statusCode: number;
+  code: string | null;
+  details: any;
+  isOperational: boolean;
+  
+  constructor(message: string, statusCode = 500, code: string | null = null, details: any = null) {
     super(message);
     this.name = this.constructor.name;
     this.statusCode = statusCode;

@@ -12,7 +12,7 @@ const envFile = process.env.NODE_ENV === 'e2e' ? '.env.test' : '.env';
 dotenv.config({ path: path.join(__dirname, '../../', envFile) });
 
 // Load and validate all secrets (will be loaded during server startup)
-let secrets = {};
+let secrets: any = {};
 
 const config = {
   // Application
