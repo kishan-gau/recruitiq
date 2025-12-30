@@ -444,43 +444,6 @@ export interface BulkOperationResult {
 // ============================================================================
 // EXPORT ALL DTOs
 // ============================================================================
-
-export default {
-  // Pagination
-  PaginationParams,
-  PaginationMeta,
-  PaginatedResponse,
-
-  // Errors
-  ErrorResponse,
-  ERROR_CODES,
-
-  // Jobs
-  CreateJobRequest,
-  UpdateJobRequest,
-  JobResponse,
-  ListJobsResponse,
-  CreateJobResponse,
-
-  // Candidates
-  CreateCandidateRequest,
-  UpdateCandidateRequest,
-  CandidateResponse,
-  ListCandidatesResponse,
-
-  // Applications
-  CreateApplicationRequest,
-  ApplicationResponse,
-
-  // Filters & Sort
-  JobFilters,
-  CandidateFilters,
-  SortParams,
-
-  // Auth
-  LoginRequest,
-  LoginResponse,
-
-  // Bulk
-  BulkOperationResult,
-};
+// Note: All types are already exported individually above with 'export interface'
+// TypeScript interfaces and types cannot be exported as default object values
+// ERROR_CODES is already exported as a named export

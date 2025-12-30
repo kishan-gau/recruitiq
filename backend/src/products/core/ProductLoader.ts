@@ -14,6 +14,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class ProductLoader {
+  loadedProducts: Map<string, any>;
+  productRoutes: Map<string, any>;
+  productMiddleware: Map<string, any>;
+  productModules: Map<string, any>;
+
   constructor() {
     this.loadedProducts = new Map();
     this.productRoutes = new Map();
