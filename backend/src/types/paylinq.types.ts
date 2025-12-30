@@ -20,6 +20,15 @@ export type PayStructureStatus = 'draft' | 'active' | 'deprecated' | 'archived';
 export type ComponentCategory = 'earning' | 'deduction' | 'tax' | 'benefit' | 'employer_cost' | 'reimbursement';
 export type CalculationType = 'fixed' | 'percentage' | 'formula' | 'hourly_rate' | 'tiered' | 'external';
 export type AssignmentType = 'default' | 'department' | 'group' | 'custom' | 'temporary';
+export type TaxType = 'income' | 'wage' | 'social_security' | 'medicare' | 'state' | 'local';
+export type CalculationMethod = 'bracket' | 'flat_rate' | 'graduated';
+export type AllowanceType = 'personal' | 'dependent' | 'standard' | 'itemized' | 'other';
+export type DeductionType = 'benefit' | 'insurance' | 'pension' | 'garnishment' | 'loan' | 'union_dues' | 'other';
+export type BenefitType = 'health_insurance' | 'dental_insurance' | 'vision_insurance' | 'life_insurance' | 'retirement_401k' | 'hsa' | 'fsa';
+export type PlanType = 'health' | 'dental' | 'vision' | 'life' | 'retirement' | 'hsa' | 'fsa' | 'wellness';
+export type CoverageLevel = 'employee_only' | 'employee_spouse' | 'employee_children' | 'family';
+export type EmploymentStatus = 'active' | 'inactive' | 'terminated' | 'on_leave' | 'suspended';
+export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'temporary' | 'intern';
 
 // ==================== PayrollService Interfaces ====================
 
@@ -194,4 +203,158 @@ export interface PayStructureCalculationResult {
     netPay: number;
   };
   calculations: PaycheckComponent[];
+}
+
+// ==================== TaxCalculationService Interfaces ====================
+
+export interface TaxRuleSetData {
+  taxType: TaxType;
+  taxName: string;
+  country: string;
+  state?: string | null;
+  locality?: string | null;
+  effectiveFrom: Date | string;
+  effectiveTo?: Date | string | null;
+  isActive?: boolean;
+  annualCap?: number | null;
+  calculationMethod?: CalculationMethod;
+  description?: string | null;
+}
+
+export interface TaxBracketData {
+  taxRuleSetId: string;
+  bracketOrder: number;
+  incomeMin: number;
+  incomeMax?: number | null;
+  ratePercentage: number;
+  fixedAmount?: number;
+}
+
+export interface AllowanceData {
+  allowanceType: AllowanceType;
+  allowanceName: string;
+  country: string;
+  state?: string | null;
+  amount: number;
+  isPercentage?: boolean;
+  effectiveFrom: Date | string;
+  effectiveTo?: Date | string | null;
+  isActive?: boolean;
+  description?: string | null;
+}
+
+export interface DeductionData {
+  employeeRecordId: string;
+  deductionType: DeductionType;
+  deductionName?: string;
+  deductionCode?: string | null;
+  calculationType?: 'fixed_amount' | 'percentage' | 'tiered';
+  amount?: number;
+  percentageRate?: number | null;
+  startDate?: Date | string;
+  endDate?: Date | string | null;
+  frequency?: PayFrequency;
+  maxAnnual?: number | null;
+  maxPerPeriod?: number | null;
+  isPreTax?: boolean;
+  isActive?: boolean;
+  notes?: string | null;
+}
+
+export interface TaxCalculationParams {
+  grossIncome: number;
+  payFrequency: PayFrequency;
+  filingStatus?: TaxFilingStatus;
+  allowances?: number;
+  additionalWithholding?: number;
+  deductions?: DeductionData[];
+  taxYear?: number;
+}
+
+export interface TaxBreakdown {
+  taxType: TaxType;
+  taxName: string;
+  taxableAmount: number;
+  taxAmount: number;
+  effectiveRate: number;
+  bracketDetails?: Array<{
+    bracketMin: number;
+    bracketMax: number | null;
+    rate: number;
+    taxInBracket: number;
+  }>;
+}
+
+// ==================== BenefitsService Interfaces ====================
+
+export interface BenefitPlanData {
+  benefitPlanId?: string;
+  planName: string;
+  planType: PlanType;
+  planCode?: string | null;
+  description?: string | null;
+  providerId?: string | null;
+  providerName?: string | null;
+  coverageLevel?: CoverageLevel;
+  employeeCost?: number;
+  employerCost?: number;
+  calculationType?: 'fixed_amount' | 'percentage';
+  isPreTax?: boolean;
+  effectiveFrom: Date | string;
+  effectiveTo?: Date | string | null;
+  isActive?: boolean;
+}
+
+export interface BenefitEnrollmentData {
+  employeeRecordId: string;
+  benefitPlanId: string;
+  enrollmentDate: Date | string;
+  effectiveDate: Date | string;
+  terminationDate?: Date | string | null;
+  coverageLevel: CoverageLevel;
+  employeeContribution: number;
+  employerContribution: number;
+  dependents?: Array<{
+    dependentId: string;
+    relationship: string;
+  }>;
+  status: 'active' | 'pending' | 'terminated';
+}
+
+// ==================== EmployeeService Interfaces (Nexus HRIS) ====================
+
+export interface EmployeeData {
+  employeeId?: string;
+  employeeNumber?: string;
+  organizationId: string;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  preferredName?: string | null;
+  email: string;
+  phone?: string | null;
+  mobilePhone?: string | null;
+  hireDate: Date | string;
+  employmentStatus: EmploymentStatus;
+  employmentType: EmploymentType;
+  departmentId?: string | null;
+  locationId?: string | null;
+  managerId?: string | null;
+  jobTitle?: string | null;
+  dateOfBirth?: Date | string | null;
+  nationalId?: string | null;
+  address?: {
+    street?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+  };
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  terminationDate?: Date | string | null;
+  terminationReason?: string | null;
 }

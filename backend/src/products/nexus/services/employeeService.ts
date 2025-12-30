@@ -3,12 +3,15 @@
  * Business logic layer for employee management
  */
 
+import type { EmployeeData } from '../../../types/paylinq.types.js';
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import compensationService from '../../../shared/services/compensationService.js';
 import { mapEmployeeDbToApi, mapEmployeesDbToApi, mapEmployeeApiToDb } from '../dto/employeeDto.js';
 
 class EmployeeService {
+  logger: typeof logger;
+
   constructor() {
     this.logger = logger;
   }
@@ -16,7 +19,7 @@ class EmployeeService {
   /**
    * Create a new employee
    */
-  async createEmployee(employeeData, organizationId, userId) {
+  async createEmployee(employeeData: EmployeeData, organizationId: string, userId: string): Promise<EmployeeData> {
     try {
       this.logger.info('Creating employee', { 
         organizationId, 
