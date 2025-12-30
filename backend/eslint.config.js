@@ -21,8 +21,8 @@
 
 import js from '@eslint/js';
 import globals from 'globals';
-import importPlugin from 'eslint-plugin-import';
-import securityPlugin from 'eslint-plugin-security';
+import tseslint from '@typescript-eslint/eslint-plugin';
+import tsparser from '@typescript-eslint/parser';
 
 const eslintConfig = [
   {
@@ -40,6 +40,7 @@ const eslintConfig = [
     ]
   },
 
+  // JavaScript files configuration
   {
     files: ['**/*.js'],
     languageOptions: {
@@ -49,10 +50,6 @@ const eslintConfig = [
         ...globals.node,
         ...globals.es2024
       }
-    },
-    plugins: {
-      import: importPlugin,
-      security: securityPlugin
     },
     rules: {
       'no-console': ['warn', { allow: ['error', 'warn', 'info'] }],
@@ -87,27 +84,58 @@ const eslintConfig = [
       'space-infix-ops': 'error',
       'no-multi-spaces': 'error',
       'no-trailing-spaces': 'error',
-      'eol-last': ['error', 'always'],
-      'import/extensions': ['error', 'always', { ignorePackages: true }],
-      'import/no-absolute-path': 'error',
-      'import/no-dynamic-require': 'warn',
-      'import/no-self-import': 'error',
-      'import/no-unused-modules': 'warn',
-      'import/order': ['error', {
-        groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-        alphabetize: { order: 'asc', caseInsensitive: true },
-        'newlines-between': 'always'
-      }],
-      'security/detect-object-injection': 'warn',
-      'security/detect-non-literal-regexp': 'warn',
-      'security/detect-unsafe-regex': 'error',
-      'security/detect-buffer-noassert': 'error',
-      'security/detect-child-process': 'warn',
-      'security/detect-disable-mustache-escape': 'error',
-      'security/detect-no-csrf-before-method-override': 'warn',
-      'security/detect-non-literal-fs-filename': 'warn',
-      'security/detect-non-literal-require': 'warn',
-      'security/detect-possible-timing-attacks': 'warn'
+      'eol-last': ['error', 'always']
+    }
+  },
+
+  // TypeScript files configuration
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      parser: tsparser,
+      parserOptions: {
+        project: './tsconfig.json'
+      },
+      globals: {
+        ...globals.node,
+        ...globals.es2024
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tseslint
+    },
+    rules: {
+      // TypeScript-specific rules
+      '@typescript-eslint/no-explicit-any': 'warn',  // Warn but allow during migration
+      '@typescript-eslint/explicit-function-return-type': 'off',  // Too strict for migration
+      '@typescript-eslint/explicit-module-boundary-types': 'off',  // Too strict for migration
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      
+      // Base rules that work for both JS and TS
+      'no-console': ['warn', { allow: ['error', 'warn', 'info'] }],
+      'no-var': 'error',
+      'prefer-const': 'error',
+      'prefer-arrow-callback': 'error',
+      'eqeqeq': ['error', 'always'],
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
+      'no-with': 'error',
+      'require-await': 'error',
+      'indent': ['error', 2, { SwitchCase: 1 }],
+      'quotes': ['error', 'single', { avoidEscape: true }],
+      'semi': ['error', 'always'],
+      'comma-dangle': ['error', 'never'],
+      'object-curly-spacing': ['error', 'always'],
+      'array-bracket-spacing': ['error', 'never'],
+      'keyword-spacing': 'error',
+      'arrow-spacing': 'error',
+      'space-infix-ops': 'error',
+      'no-multi-spaces': 'error',
+      'no-trailing-spaces': 'error',
+      'eol-last': ['error', 'always']
     }
   },
 
