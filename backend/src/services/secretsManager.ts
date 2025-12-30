@@ -246,7 +246,7 @@ class AzureKeyVaultProvider extends SecretProvider {
     this.client = null;
   }
 
-  async _initClient() {
+  async _initClient(): Promise<void> {
     if (this.client) return;
     
     try {
@@ -254,10 +254,10 @@ class AzureKeyVaultProvider extends SecretProvider {
       const { DefaultAzureCredential } = await import('@azure/identity');
       
       const credential = new DefaultAzureCredential();
-      this.client = new SecretClient(this.vaultUrl, credential);
+      this.client = new SecretClient(this.vaultUrl!, credential);
       
       logger.info('Azure Key Vault client initialized', { vaultUrl: this.vaultUrl });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to initialize Azure Key Vault', {
         error: error.message,
       });
@@ -265,7 +265,7 @@ class AzureKeyVaultProvider extends SecretProvider {
     }
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     await this._initClient();
     
     try {
@@ -273,11 +273,11 @@ class AzureKeyVaultProvider extends SecretProvider {
       
       // Try to parse as JSON
       try {
-        return JSON.parse(secret.value);
+        return JSON.parse(secret.value || '');
       } catch {
         return secret.value;
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to retrieve secret from Azure', {
         secretName,
         error: error.name,
@@ -286,7 +286,7 @@ class AzureKeyVaultProvider extends SecretProvider {
     }
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     await this._initClient();
     
     try {
@@ -296,7 +296,7 @@ class AzureKeyVaultProvider extends SecretProvider {
       
       await this.client.setSecret(secretName, value);
       logger.info('Secret updated in Azure', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to update secret in Azure', {
         secretName,
         error: error.name,
@@ -305,13 +305,13 @@ class AzureKeyVaultProvider extends SecretProvider {
     }
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     await this._initClient();
     
     try {
       await this.client.beginDeleteSecret(secretName);
       logger.info('Secret deleted from Azure', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to delete secret from Azure', {
         secretName,
         error: error.name,
@@ -320,7 +320,7 @@ class AzureKeyVaultProvider extends SecretProvider {
     }
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     // Azure doesn't have built-in rotation, implement manual rotation
     throw new Error('Manual secret rotation required for Azure Key Vault');
   }
@@ -330,18 +330,22 @@ class AzureKeyVaultProvider extends SecretProvider {
  * HashiCorp Vault Provider
  */
 class VaultProvider extends SecretProvider {
-  constructor(options = {}) {
+  endpoint: string;
+  token: string | undefined;
+  namespace: string;
+
+  constructor(options: { endpoint?: string; token?: string; namespace?: string } = {}) {
     super('Vault');
     this.endpoint = options.endpoint || process.env.VAULT_ADDR || 'http://127.0.0.1:8200';
     this.token = options.token || process.env.VAULT_TOKEN;
     this.namespace = options.namespace || process.env.VAULT_NAMESPACE || 'secret';
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     try {
       const response = await fetch(`${this.endpoint}/v1/${this.namespace}/data/${secretName}`, {
         headers: {
-          'X-Vault-Token': this.token,
+          'X-Vault-Token': this.token || '',
         },
       });
       
@@ -351,7 +355,7 @@ class VaultProvider extends SecretProvider {
       
       const data = await response.json();
       return data.data.data;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to retrieve secret from Vault', {
         secretName,
         error: error.message,
@@ -360,12 +364,12 @@ class VaultProvider extends SecretProvider {
     }
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     try {
       const response = await fetch(`${this.endpoint}/v1/${this.namespace}/data/${secretName}`, {
         method: 'POST',
         headers: {
-          'X-Vault-Token': this.token,
+          'X-Vault-Token': this.token || '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -378,7 +382,7 @@ class VaultProvider extends SecretProvider {
       }
       
       logger.info('Secret updated in Vault', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to update secret in Vault', {
         secretName,
         error: error.message,
@@ -387,12 +391,12 @@ class VaultProvider extends SecretProvider {
     }
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     try {
       const response = await fetch(`${this.endpoint}/v1/${this.namespace}/metadata/${secretName}`, {
         method: 'DELETE',
         headers: {
-          'X-Vault-Token': this.token,
+          'X-Vault-Token': this.token || '',
         },
       });
       
@@ -401,7 +405,7 @@ class VaultProvider extends SecretProvider {
       }
       
       logger.info('Secret deleted from Vault', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to delete secret from Vault', {
         secretName,
         error: error.message,
@@ -410,7 +414,7 @@ class VaultProvider extends SecretProvider {
     }
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     // Vault supports versioning, create new version
     const currentSecret = await this.getSecret(secretName);
     // Implement custom rotation logic here
