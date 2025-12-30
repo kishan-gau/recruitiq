@@ -99,7 +99,7 @@ const SENSITIVE_FIELDS = [
  * Recursively redact sensitive fields from objects
  * Security: Prevents accidental logging of sensitive data
  */
-function redactSensitiveData(obj, depth = 0) {
+function redactSensitiveData(obj: any, depth: number = 0): any {
   // Prevent infinite recursion
   if (depth > 10) return '[Max Depth]';
   
@@ -111,7 +111,7 @@ function redactSensitiveData(obj, depth = 0) {
     return obj.map(item => redactSensitiveData(item, depth + 1));
   }
   
-  const redacted = {};
+  const redacted: Record<string, any> = {};
   for (const [key, value] of Object.entries(obj)) {
     const lowerKey = key.toLowerCase();
     
@@ -216,11 +216,30 @@ const jsonFormat = combine(
 // ============================================================================
 
 /**
+ * Options for DatabaseTransport
+ */
+interface DatabaseTransportOptions {
+  pool: any; // pg.Pool type (dynamic import)
+  tenantId: string;
+  instanceId: string;
+  batchSize?: number;
+  flushInterval?: number;
+}
+
+/**
  * Custom Winston transport that writes logs to PostgreSQL database
  * Only active for cloud deployments with central logging enabled
  */
 class DatabaseTransport extends Transport {
-  constructor(opts) {
+  pool: any; // pg.Pool type (dynamic import)
+  tenantId: string;
+  instanceId: string;
+  batchSize: number;
+  flushInterval: number;
+  buffer: any[]; // Array of Winston log info objects
+  flushTimer: NodeJS.Timeout | null;
+  
+  constructor(opts: DatabaseTransportOptions) {
     super(opts);
     this.pool = opts.pool;
     this.tenantId = opts.tenantId;
@@ -237,7 +256,7 @@ class DatabaseTransport extends Transport {
   /**
    * Log method called by Winston
    */
-  log(info, callback) {
+  log(info: any, callback: () => void): void {
     setImmediate(() => {
       this.emit('logged', info);
     });
@@ -256,7 +275,7 @@ class DatabaseTransport extends Transport {
   /**
    * Start periodic flush timer
    */
-  startPeriodicFlush() {
+  startPeriodicFlush(): void {
     this.flushTimer = setInterval(() => {
       if (this.buffer.length > 0) {
         this.flush();
@@ -267,7 +286,7 @@ class DatabaseTransport extends Transport {
   /**
    * Flush buffered logs to database
    */
-  async flush() {
+  async flush(): Promise<void> {
     if (this.buffer.length === 0) return;
     
     const logs = [...this.buffer];
@@ -312,8 +331,8 @@ class DatabaseTransport extends Transport {
   /**
    * Extract metadata from log info
    */
-  getMetadata(info) {
-    const metadata = {};
+  getMetadata(info: any): Record<string, unknown> {
+    const metadata: Record<string, unknown> = {};
     const excludeKeys = [
       'level', 'message', 'timestamp', 'requestId', 'userId',
       'ip', 'path', 'method', 'stack', 'code', 'service',
@@ -332,7 +351,7 @@ class DatabaseTransport extends Transport {
   /**
    * Escape SQL string values
    */
-  escapeSql(str) {
+  escapeSql(str: string | undefined): string {
     if (!str) return '';
     return str.toString().replace(/'/g, "''");
   }
@@ -340,7 +359,7 @@ class DatabaseTransport extends Transport {
   /**
    * Close transport and flush remaining logs
    */
-  async close() {
+  async close(): Promise<void> {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
     }
@@ -523,11 +542,23 @@ export const SecurityEventType = {
 };
 
 /**
+ * Security event details interface
+ */
+interface SecurityEventDetails {
+  severity?: string;
+  [key: string]: any;
+}
+
+/**
  * Log security events for compliance and monitoring
  * Security: Separate logging for audit trails
  */
-export function logSecurityEvent(eventType, details = {}, req = null) {
-  const event = {
+export function logSecurityEvent(
+  eventType: string, 
+  details: SecurityEventDetails = {}, 
+  req: any = null
+): void {
+  const event: Record<string, any> = {
     securityEvent: true,
     eventType,
     timestamp: new Date().toISOString(),
@@ -554,9 +585,9 @@ export function logSecurityEvent(eventType, details = {}, req = null) {
 /**
  * Track failed login attempts for brute force detection
  */
-const failedLoginAttempts = new Map();
+const failedLoginAttempts = new Map<string, number[]>();
 
-export function trackFailedLogin(identifier, req) {
+export function trackFailedLogin(identifier: string, req: any): number {
   const key = `${identifier}:${req.ip}`;
   const attempts = failedLoginAttempts.get(key) || [];
   attempts.push(Date.now());
@@ -586,14 +617,14 @@ export function trackFailedLogin(identifier, req) {
 /**
  * Generate unique request ID for tracing
  */
-export function generateRequestId() {
+export function generateRequestId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 /**
  * Add request ID to logger context
  */
-export function createRequestLogger(requestId, userId = null) {
+export function createRequestLogger(requestId: string, userId: string | null = null): any {
   return logger.child({ requestId, userId });
 }
 
@@ -602,9 +633,21 @@ export function createRequestLogger(requestId, userId = null) {
 // ============================================================================
 
 /**
+ * Performance log details interface
+ */
+interface PerformanceDetails {
+  threshold?: number;
+  [key: string]: any;
+}
+
+/**
  * Log slow queries and operations
  */
-export function logPerformance(operation, duration, details = {}) {
+export function logPerformance(
+  operation: string, 
+  duration: number, 
+  details: PerformanceDetails = {}
+): void {
   const threshold = details.threshold || 1000; // Default 1 second
   
   if (duration > threshold) {
@@ -630,7 +673,12 @@ export function logPerformance(operation, duration, details = {}) {
 /**
  * Log with request context
  */
-export function logWithContext(level, message, req, meta = {}) {
+export function logWithContext(
+  level: string, 
+  message: string, 
+  req: any, 
+  meta: Record<string, any> = {}
+): void {
   const context = {
     requestId: req.id,
     userId: req.user?.id,
@@ -646,7 +694,11 @@ export function logWithContext(level, message, req, meta = {}) {
 /**
  * Log database errors without exposing sensitive information
  */
-export function logDatabaseError(error, query = null, params = null) {
+export function logDatabaseError(
+  error: any, 
+  query: string | null = null, 
+  params: any = null
+): void {
   logger.error('Database error', {
     code: error.code,
     message: error.message,
