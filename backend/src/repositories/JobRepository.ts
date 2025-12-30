@@ -127,7 +127,7 @@ export class JobRepository extends BaseRepository {
       const queryParams = [organizationId];
       let paramIndex = 2;
       
-      let whereConditions = ['j.organization_id = $1', 'j.deleted_at IS NULL'];
+      const whereConditions = ['j.organization_id = $1', 'j.deleted_at IS NULL'];
 
       // Search by title, description
       if (search) {
@@ -287,7 +287,7 @@ export class JobRepository extends BaseRepository {
     try {
       const { location, department, employment_type, limit = 50 } = filters;
       
-      let whereConditions = [
+      const whereConditions = [
         'j.organization_id = $1',
         'j.is_published = true',
         'j.deleted_at IS NULL',
@@ -365,7 +365,7 @@ export class JobRepository extends BaseRepository {
   async generateUniqueSlug(title, jobId = null) {
     try {
       // Create base slug from title
-      let slug = title
+      const slug = title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');

@@ -16,12 +16,12 @@
  * - CSRF tokens as secondary defense layer
  */
 
-import { Tokens } from 'csrf';
+import csrf from 'csrf';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 
 // Create CSRF token generator
-const tokens = new Tokens();
+const tokens = new csrf();
 
 // Generate secret on startup
 const csrfSecret = tokens.secretSync();
@@ -169,7 +169,7 @@ export function csrfErrorHandler(err, req, res, next) {
   
   // Track security event
   if (req.user) {
-    logger.logSecurityEvent('CSRF_VIOLATION', {
+    logger.warn('CSRF_VIOLATION', {
       userId: req.user.id,
       email: req.user.email,
       ip: req.ip,

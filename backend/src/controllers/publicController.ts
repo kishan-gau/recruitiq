@@ -336,7 +336,7 @@ export async function submitApplication(req, res, next) {
     
     // Handle resume file (store as base64 in application_data for now)
     if (value.resume) {
-      applicationData.resume = {
+      (applicationData as any).resume = {
         filename: value.resume.filename,
         contentType: value.resume.contentType,
         size: value.resume.size,

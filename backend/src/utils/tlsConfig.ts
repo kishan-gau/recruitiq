@@ -69,7 +69,7 @@ const TLS_OPTIONS = {
   
   // Disable older protocols
   secureOptions:
-    // eslint-disable-next-line no-bitwise
+     
     tls.SSL_OP_NO_SSLv2 |
     tls.SSL_OP_NO_SSLv3 |
     tls.SSL_OP_NO_TLSv1 |

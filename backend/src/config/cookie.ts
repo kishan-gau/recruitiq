@@ -18,9 +18,9 @@ import config from './index.js';
  * @param {Object} options - Optional overrides
  * @returns {Object} Cookie configuration object
  */
-export function getCookieConfig(type = 'access', options = {}) {
+export function getCookieConfig(type = 'access', options: any = {}) {
   // Base configuration (common to all cookies)
-  const baseConfig = {
+  const baseConfig: any = {
     httpOnly: true, // Prevent XSS attacks
     secure: config.cookie.secure,
     sameSite: config.cookie.sameSite,
@@ -33,7 +33,7 @@ export function getCookieConfig(type = 'access', options = {}) {
   }
 
   // Token-specific configurations
-  const typeConfigs = {
+  const typeConfigs: any = {
     // Tenant access token (short-lived)
     access: {
       maxAge: 15 * 60 * 1000 // 15 minutes
@@ -71,7 +71,7 @@ export function getCookieConfig(type = 'access', options = {}) {
  * Get tenant access token cookie configuration
  * @param {Object} options - Optional overrides
  */
-export function getTenantAccessCookieConfig(options = {}) {
+export function getTenantAccessCookieConfig(options: any = {}) {
   return getCookieConfig('access', options);
 }
 
@@ -80,7 +80,7 @@ export function getTenantAccessCookieConfig(options = {}) {
  * @param {boolean} rememberMe - Whether to extend expiration
  * @param {Object} options - Optional overrides
  */
-export function getTenantRefreshCookieConfig(rememberMe = false, options = {}) {
+export function getTenantRefreshCookieConfig(rememberMe = false, options: any = {}) {
   return getCookieConfig('refresh', { rememberMe, ...options });
 }
 
@@ -88,7 +88,7 @@ export function getTenantRefreshCookieConfig(rememberMe = false, options = {}) {
  * Get platform access token cookie configuration
  * @param {Object} options - Optional overrides
  */
-export function getPlatformAccessCookieConfig(options = {}) {
+export function getPlatformAccessCookieConfig(options: any = {}) {
   return getCookieConfig('platform_access', options);
 }
 
@@ -97,7 +97,7 @@ export function getPlatformAccessCookieConfig(options = {}) {
  * @param {boolean} rememberMe - Whether to extend expiration
  * @param {Object} options - Optional overrides
  */
-export function getPlatformRefreshCookieConfig(rememberMe = false, options = {}) {
+export function getPlatformRefreshCookieConfig(rememberMe = false, options: any = {}) {
   return getCookieConfig('platform_refresh', { rememberMe, ...options });
 }
 

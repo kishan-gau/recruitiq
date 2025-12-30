@@ -29,6 +29,7 @@ let secrets: Secrets = {};
 const config = {
   // Application
   env: process.env.NODE_ENV || 'development',
+  nodeEnv: process.env.NODE_ENV || 'development', // Alias for env (industry standard)
   port: parseInt(process.env.PORT, 10) || 4000,
   apiVersion: process.env.API_VERSION || 'v1',
   appName: process.env.APP_NAME || 'RecruitIQ',
@@ -49,6 +50,8 @@ const config = {
       // max: 100 allows handling up to ~100 concurrent requests
       min: parseInt(process.env.DATABASE_POOL_MIN, 10) || 20,
       max: parseInt(process.env.DATABASE_POOL_MAX, 10) || 100,
+      idleTimeoutMillis: parseInt(process.env.DATABASE_IDLE_TIMEOUT, 10) || 30000,
+      connectionTimeoutMillis: parseInt(process.env.DATABASE_CONNECTION_TIMEOUT, 10) || 2000,
     },
   },
   

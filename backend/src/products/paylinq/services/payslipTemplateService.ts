@@ -71,8 +71,8 @@ class PayslipTemplateService {
     try {
       const { status, layoutType, isDefault } = filters;
       
-      let whereClauses = ['pt.organization_id = $1', 'pt.deleted_at IS NULL'];
-      let params = [organizationId];
+      const whereClauses = ['pt.organization_id = $1', 'pt.deleted_at IS NULL'];
+      const params = [organizationId];
       let paramIndex = 2;
 
       if (status) {

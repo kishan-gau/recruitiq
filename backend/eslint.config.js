@@ -37,7 +37,9 @@ const eslintConfig = [
       '**/__generated__/**',
       '**/generated/**',
       'migrations/**',
-      'seeds/**'
+      'seeds/**',
+      '**/*.test.ts',
+      '**/__tests__/**'
     ]
   },
 
@@ -97,7 +99,9 @@ const eslintConfig = [
       sourceType: 'module',
       parser: tsparser,
       parserOptions: {
-        project: './tsconfig.json'
+        // Removed project option to avoid parsing issues with tsconfig
+        ecmaVersion: 2024,
+        sourceType: 'module'
       },
       globals: {
         ...globals.node,

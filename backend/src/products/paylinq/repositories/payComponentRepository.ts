@@ -311,7 +311,7 @@ constructor(database = null) {
    * @returns {Promise<Array>} Global components
    */
   async findGlobalComponents(filters = {}) {
-    let whereClauses = ['organization_id IS NULL', 'deleted_at IS NULL'];
+    const whereClauses = ['organization_id IS NULL', 'deleted_at IS NULL'];
     const values = [];
     let paramCount = 0;
 
@@ -444,7 +444,7 @@ constructor(database = null) {
    * @returns {Promise<Array>} Employee's component assignments
    */
   async findEmployeeComponents(employeeId, organizationId, filters = {}) {
-    let whereClauses = [
+    const whereClauses = [
       'ea.employee_id = $1',
       'ea.organization_id = $2',
       'ea.deleted_at IS NULL',
@@ -649,7 +649,7 @@ constructor(database = null) {
    * @returns {Promise<Object>} Component statistics
    */
   async getComponentStatistics(organizationId, filters = {}) {
-    let whereClauses = ['organization_id = $1', 'deleted_at IS NULL'];
+    const whereClauses = ['organization_id = $1', 'deleted_at IS NULL'];
     const values = [organizationId];
     let paramCount = 1;
 

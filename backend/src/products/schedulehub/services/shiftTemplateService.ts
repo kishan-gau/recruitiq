@@ -466,8 +466,8 @@ class ShiftTemplateService {
    */
   async getAll(organizationId, filters = {}) {
     try {
-      let whereConditions = ['st.organization_id = $1', 'st.deleted_at IS NULL'];
-      let queryParams = [organizationId];
+      const whereConditions = ['st.organization_id = $1', 'st.deleted_at IS NULL'];
+      const queryParams = [organizationId];
       let paramCount = 1;
 
       // Apply filters
@@ -917,8 +917,8 @@ class ShiftTemplateService {
    */
   async getSummaries(organizationId, filters = {}) {
     try {
-      let whereConditions = ['st.organization_id = $1', 'st.deleted_at IS NULL', 'st.is_active = true'];
-      let queryParams = [organizationId];
+      const whereConditions = ['st.organization_id = $1', 'st.deleted_at IS NULL', 'st.is_active = true'];
+      const queryParams = [organizationId];
       let paramCount = 1;
 
       if (filters.stationId) {
@@ -961,8 +961,8 @@ class ShiftTemplateService {
    * Checks for duplicate template name
    */
   async _checkDuplicateName(templateName, organizationId, excludeId = null) {
-    let whereConditions = ['organization_id = $1', 'LOWER(template_name) = $2', 'deleted_at IS NULL'];
-    let queryParams = [organizationId, templateName.toLowerCase()];
+    const whereConditions = ['organization_id = $1', 'LOWER(template_name) = $2', 'deleted_at IS NULL'];
+    const queryParams = [organizationId, templateName.toLowerCase()];
     let paramCount = 2;
 
     if (excludeId) {

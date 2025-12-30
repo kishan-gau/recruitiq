@@ -40,7 +40,7 @@ export function requireRole(...allowedRoles) {
 
     // Check if user's role is in allowed roles
     if (!allowedRoles.includes(role)) {
-      logger.logSecurityEvent('forbidden_access_role', {
+      logger.warn('forbidden_access_role', {
         userId,
         userRole: role,
         requiredRoles: allowedRoles,
@@ -102,7 +102,7 @@ export function requirePermission(...requiredPermissions) {
         (perm) => !permissions.includes(perm)
       );
 
-      logger.logSecurityEvent('forbidden_access_permission', {
+      logger.warn('forbidden_access_permission', {
         userId,
         requiredPermissions,
         missingPermissions,
@@ -181,7 +181,7 @@ export function checkResourceOwnership(resourceIdParam, getResourceOwnerId) {
 
       // Check if user is the owner
       if (ownerId !== userId) {
-        logger.logSecurityEvent('forbidden_access_ownership', {
+        logger.warn('forbidden_access_ownership', {
           userId,
           resourceId,
           resourceOwnerId: ownerId,
@@ -229,7 +229,7 @@ export function checkOrganizationAccess(req, res, next) {
 
   // If request specifies an organization, ensure it matches user's organization
   if (organizationId && organizationId !== userOrgId) {
-    logger.logSecurityEvent('forbidden_cross_org_access', {
+    logger.warn('forbidden_cross_org_access', {
       userId: req.user.id,
       requestedOrgId: organizationId,
       userOrgId,
@@ -263,14 +263,14 @@ export function combineAuth(...middleware) {
   return async (req, res, next) => {
     let index = 0;
 
-    const dispatch = (err) => {
+    const dispatch = (err?: any) => {
       if (err) return next(err);
       const fn = middleware[index++];
       if (!fn) return next();
       fn(req, res, dispatch);
     };
 
-    dispatch();
+    dispatch(undefined);
   };
 }
 

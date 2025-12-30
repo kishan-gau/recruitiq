@@ -160,7 +160,7 @@ export async function updateSessionPolicy(req, res, next) {
     }
 
     // Update organization
-    const updateData = {
+    const updateData: any = {
       session_policy: value.sessionPolicy
     };
 
