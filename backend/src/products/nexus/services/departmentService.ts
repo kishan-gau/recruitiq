@@ -7,8 +7,11 @@ import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import { mapDepartmentDbToApi, mapDepartmentsDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.js';
 import EmployeeService from './employeeService.js';
+import type { DepartmentData, DepartmentSearchFilters } from '../../../types/nexus.types.js';
 
 class DepartmentService {
+  logger: typeof logger;
+  
   constructor() {
     this.logger = logger;
   }

@@ -5,8 +5,11 @@
 
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import type { EmploymentHistoryData } from '../../../types/nexus.types.js';
 
 class EmploymentHistoryService {
+  logger: typeof logger;
+  
   constructor() {
     this.logger = logger;
   }

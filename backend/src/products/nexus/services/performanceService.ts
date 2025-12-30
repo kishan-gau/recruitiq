@@ -5,8 +5,11 @@
 
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
+import type { PerformanceReviewData, PerformanceGoal } from '../../../types/nexus.types.js';
 
 class PerformanceService {
+  logger: typeof logger;
+  
   constructor() {
     this.logger = logger;
   }
