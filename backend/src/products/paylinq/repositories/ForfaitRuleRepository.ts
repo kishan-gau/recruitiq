@@ -3,7 +3,7 @@
  * Handles data access for forfait rules
  */
 
-import { query } from '../../../config/database.ts';
+import { query } from '../../../config/database.js';
 
 class ForfaitRuleRepository {
   /**

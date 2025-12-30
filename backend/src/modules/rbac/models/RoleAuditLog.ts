@@ -1,4 +1,4 @@
-import { query } from '../../../config/database.ts';
+import { query } from '../../../config/database.js';
 
 /**
  * RoleAuditLog Model

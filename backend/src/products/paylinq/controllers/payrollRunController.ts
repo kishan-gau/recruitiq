@@ -3,16 +3,16 @@
  * Handles HTTP requests for payroll run management
  */
 
-import PayrollService from '../services/payrollService.ts';
+import PayrollService from '../services/payrollService.js';
 
 const payrollService = new PayrollService();
-import PayrollRepository from '../repositories/payrollRepository.ts';
-import { mapPayrollRunApiToDb, mapPayrollRunUpdateApiToDb, mapPayrollRunDbToApi } from '../utils/dtoMapper.ts';
-import { mapPaychecksToDto } from '../dto/paycheckDto.ts';
-import logger from '../../../utils/logger.ts';
-import emailService from '../../../services/emailService.ts';
-import { initializeEmailService } from '../../../controllers/emailSettingsController.ts';
-import db from '../../../config/database.ts';
+import PayrollRepository from '../repositories/payrollRepository.js';
+import { mapPayrollRunApiToDb, mapPayrollRunUpdateApiToDb, mapPayrollRunDbToApi } from '../utils/dtoMapper.js';
+import { mapPaychecksToDto } from '../dto/paycheckDto.js';
+import logger from '../../../utils/logger.js';
+import emailService from '../../../services/emailService.js';
+import { initializeEmailService } from '../../../controllers/emailSettingsController.js';
+import db from '../../../config/database.js';
 
 // Initialize repository instance for component fetching
 const payrollRepository = new PayrollRepository();

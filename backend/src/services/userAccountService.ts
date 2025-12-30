@@ -9,8 +9,8 @@
 
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import userAccountRepository from '../repositories/userAccountRepository.ts';
-import logger from '../utils/logger.ts';
+import userAccountRepository from '../repositories/userAccountRepository.js';
+import logger from '../utils/logger.js';
 
 class UserAccountService {
   /**

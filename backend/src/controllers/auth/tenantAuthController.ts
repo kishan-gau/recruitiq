@@ -1,10 +1,10 @@
 import jwt from 'jsonwebtoken';
-import TenantUser from '../../models/TenantUser.ts';
-import UserRole from '../../modules/rbac/models/UserRole.ts';
-import db from '../../config/database.ts';
+import TenantUser from '../../models/TenantUser.js';
+import UserRole from '../../modules/rbac/models/UserRole.js';
+import db from '../../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
-import { getTenantAccessCookieConfig, getTenantRefreshCookieConfig } from '../../config/cookie.ts';
-import logger from '../../utils/logger.ts';
+import { getTenantAccessCookieConfig, getTenantRefreshCookieConfig } from '../../config/cookie.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Tenant Authentication Controller

@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import logger from './logger.ts';
+import logger from './logger.js';
 
 const execPromise = promisify(exec);
 

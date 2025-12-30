@@ -4,7 +4,7 @@
  * for cross-product integrations in monolithic architecture
  */
 
-import logger from '../../utils/logger.ts';
+import logger from '../../utils/logger.js';
 
 class IntegrationErrorHandler {
   constructor() {

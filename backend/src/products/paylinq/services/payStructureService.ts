@@ -8,19 +8,31 @@
  */
 
 import Joi from 'joi';
-import PayStructureRepository from '../repositories/payStructureRepository.ts';
-import FormulaEngineService from './formulaEngineService.ts';
-import temporalPatternService from './temporalPatternService.ts';
-import dtoMapper from '../utils/dtoMapper.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError, ConflictError } from '../../../middleware/errorHandler.ts';
+import PayStructureRepository from '../repositories/payStructureRepository.js';
+import FormulaEngineService from './formulaEngineService.js';
+import temporalPatternService from './temporalPatternService.js';
+import dtoMapper from '../utils/dtoMapper.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError, ConflictError } from '../../../middleware/errorHandler.js';
 import { 
   mapPayStructureDbToApi, 
   mapPayStructuresDbToApi 
-} from '../dto/payStructureDto.ts';
+} from '../dto/payStructureDto.js';
+import type {
+  PayStructureTemplateData,
+  PayComponentData,
+  TemplateAssignmentData
+} from '../../../types/paylinq.types.js';
 
 class PayStructureService {
-  constructor(repository = null) {
+  repository: PayStructureRepository;
+  formulaEngine: FormulaEngineService;
+  temporalPatternService: typeof temporalPatternService;
+  createTemplateSchema: Joi.ObjectSchema;
+  addComponentSchema: Joi.ObjectSchema;
+  assignTemplateSchema: Joi.ObjectSchema;
+
+  constructor(repository: PayStructureRepository | null = null) {
     this.repository = repository || new PayStructureRepository();
     this.formulaEngine = new FormulaEngineService();
     this.temporalPatternService = temporalPatternService;

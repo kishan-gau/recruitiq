@@ -21,8 +21,8 @@
  * - Supports secret versioning
  */
 
-import logger from '../utils/logger.ts';
-import config from '../config/index.ts';
+import logger from '../utils/logger.js';
+import config from '../config/index.js';
 
 // ============================================================================
 // SECRET PROVIDERS
@@ -32,23 +32,25 @@ import config from '../config/index.ts';
  * Base Secret Provider Interface
  */
 class SecretProvider {
-  constructor(name) {
+  name: string;
+
+  constructor(name: string) {
     this.name = name;
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     throw new Error(`getSecret not implemented for ${this.name}`);
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     throw new Error(`setSecret not implemented for ${this.name}`);
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     throw new Error(`deleteSecret not implemented for ${this.name}`);
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     throw new Error(`rotateSecret not implemented for ${this.name}`);
   }
 }
@@ -61,7 +63,7 @@ class EnvironmentProvider extends SecretProvider {
     super('Environment');
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     const value = process.env[secretName];
     
     if (!value) {
@@ -71,18 +73,18 @@ class EnvironmentProvider extends SecretProvider {
     return value;
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     process.env[secretName] = secretValue;
     logger.warn('Setting secrets via environment provider (development only)', {
       secretName,
     });
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     delete process.env[secretName];
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     throw new Error('Secret rotation not supported for environment variables');
   }
 }
@@ -91,7 +93,14 @@ class EnvironmentProvider extends SecretProvider {
  * AWS Secrets Manager Provider
  */
 class AWSSecretsProvider extends SecretProvider {
-  constructor(options = {}) {
+  region: string;
+  client: any; // AWS SDK client - using any as it's dynamically imported
+  GetSecretValueCommand: any;
+  PutSecretValueCommand: any;
+  DeleteSecretCommand: any;
+  RotateSecretCommand: any;
+
+  constructor(options: { region?: string } = {}) {
     super('AWS');
     this.region = options.region || config.aws?.region || 'us-east-1';
     this.client = null;
@@ -125,7 +134,7 @@ class AWSSecretsProvider extends SecretProvider {
     }
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     await this._initClient();
     
     try {
@@ -151,7 +160,7 @@ class AWSSecretsProvider extends SecretProvider {
       }
       
       throw new Error('Secret has no value');
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to retrieve secret from AWS', {
         secretName,
         error: error.name,
@@ -160,7 +169,7 @@ class AWSSecretsProvider extends SecretProvider {
     }
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     await this._initClient();
     
     try {
@@ -175,7 +184,7 @@ class AWSSecretsProvider extends SecretProvider {
       
       await this.client.send(command);
       logger.info('Secret updated in AWS', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to update secret in AWS', {
         secretName,
         error: error.name,
@@ -184,7 +193,7 @@ class AWSSecretsProvider extends SecretProvider {
     }
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     await this._initClient();
     
     try {
@@ -195,7 +204,7 @@ class AWSSecretsProvider extends SecretProvider {
       
       await this.client.send(command);
       logger.info('Secret deleted from AWS', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to delete secret from AWS', {
         secretName,
         error: error.name,
@@ -204,7 +213,7 @@ class AWSSecretsProvider extends SecretProvider {
     }
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     await this._initClient();
     
     try {
@@ -214,7 +223,7 @@ class AWSSecretsProvider extends SecretProvider {
       
       await this.client.send(command);
       logger.info('Secret rotation initiated in AWS', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to rotate secret in AWS', {
         secretName,
         error: error.name,
@@ -228,13 +237,16 @@ class AWSSecretsProvider extends SecretProvider {
  * Azure Key Vault Provider
  */
 class AzureKeyVaultProvider extends SecretProvider {
-  constructor(options = {}) {
+  vaultUrl: string | undefined;
+  client: any; // Azure SDK client - using any as it's dynamically imported
+
+  constructor(options: { vaultUrl?: string } = {}) {
     super('Azure');
     this.vaultUrl = options.vaultUrl || process.env.AZURE_KEY_VAULT_URL;
     this.client = null;
   }
 
-  async _initClient() {
+  async _initClient(): Promise<void> {
     if (this.client) return;
     
     try {
@@ -242,10 +254,10 @@ class AzureKeyVaultProvider extends SecretProvider {
       const { DefaultAzureCredential } = await import('@azure/identity');
       
       const credential = new DefaultAzureCredential();
-      this.client = new SecretClient(this.vaultUrl, credential);
+      this.client = new SecretClient(this.vaultUrl!, credential);
       
       logger.info('Azure Key Vault client initialized', { vaultUrl: this.vaultUrl });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to initialize Azure Key Vault', {
         error: error.message,
       });
@@ -253,7 +265,7 @@ class AzureKeyVaultProvider extends SecretProvider {
     }
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     await this._initClient();
     
     try {
@@ -261,11 +273,11 @@ class AzureKeyVaultProvider extends SecretProvider {
       
       // Try to parse as JSON
       try {
-        return JSON.parse(secret.value);
+        return JSON.parse(secret.value || '');
       } catch {
         return secret.value;
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to retrieve secret from Azure', {
         secretName,
         error: error.name,
@@ -274,7 +286,7 @@ class AzureKeyVaultProvider extends SecretProvider {
     }
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     await this._initClient();
     
     try {
@@ -284,7 +296,7 @@ class AzureKeyVaultProvider extends SecretProvider {
       
       await this.client.setSecret(secretName, value);
       logger.info('Secret updated in Azure', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to update secret in Azure', {
         secretName,
         error: error.name,
@@ -293,13 +305,13 @@ class AzureKeyVaultProvider extends SecretProvider {
     }
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     await this._initClient();
     
     try {
       await this.client.beginDeleteSecret(secretName);
       logger.info('Secret deleted from Azure', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to delete secret from Azure', {
         secretName,
         error: error.name,
@@ -308,7 +320,7 @@ class AzureKeyVaultProvider extends SecretProvider {
     }
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     // Azure doesn't have built-in rotation, implement manual rotation
     throw new Error('Manual secret rotation required for Azure Key Vault');
   }
@@ -318,18 +330,22 @@ class AzureKeyVaultProvider extends SecretProvider {
  * HashiCorp Vault Provider
  */
 class VaultProvider extends SecretProvider {
-  constructor(options = {}) {
+  endpoint: string;
+  token: string | undefined;
+  namespace: string;
+
+  constructor(options: { endpoint?: string; token?: string; namespace?: string } = {}) {
     super('Vault');
     this.endpoint = options.endpoint || process.env.VAULT_ADDR || 'http://127.0.0.1:8200';
     this.token = options.token || process.env.VAULT_TOKEN;
     this.namespace = options.namespace || process.env.VAULT_NAMESPACE || 'secret';
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<string | undefined> {
     try {
       const response = await fetch(`${this.endpoint}/v1/${this.namespace}/data/${secretName}`, {
         headers: {
-          'X-Vault-Token': this.token,
+          'X-Vault-Token': this.token || '',
         },
       });
       
@@ -339,7 +355,7 @@ class VaultProvider extends SecretProvider {
       
       const data = await response.json();
       return data.data.data;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to retrieve secret from Vault', {
         secretName,
         error: error.message,
@@ -348,12 +364,12 @@ class VaultProvider extends SecretProvider {
     }
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: string): Promise<void> {
     try {
       const response = await fetch(`${this.endpoint}/v1/${this.namespace}/data/${secretName}`, {
         method: 'POST',
         headers: {
-          'X-Vault-Token': this.token,
+          'X-Vault-Token': this.token || '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -366,7 +382,7 @@ class VaultProvider extends SecretProvider {
       }
       
       logger.info('Secret updated in Vault', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to update secret in Vault', {
         secretName,
         error: error.message,
@@ -375,12 +391,12 @@ class VaultProvider extends SecretProvider {
     }
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     try {
       const response = await fetch(`${this.endpoint}/v1/${this.namespace}/metadata/${secretName}`, {
         method: 'DELETE',
         headers: {
-          'X-Vault-Token': this.token,
+          'X-Vault-Token': this.token || '',
         },
       });
       
@@ -389,7 +405,7 @@ class VaultProvider extends SecretProvider {
       }
       
       logger.info('Secret deleted from Vault', { secretName });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to delete secret from Vault', {
         secretName,
         error: error.message,
@@ -398,7 +414,7 @@ class VaultProvider extends SecretProvider {
     }
   }
 
-  async rotateSecret(secretName) {
+  async rotateSecret(secretName: string): Promise<void> {
     // Vault supports versioning, create new version
     const currentSecret = await this.getSecret(secretName);
     // Implement custom rotation logic here

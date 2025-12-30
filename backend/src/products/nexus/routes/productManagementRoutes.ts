@@ -4,13 +4,13 @@
  */
 
 import express, { Router } from 'express';
-import { authenticatePlatform } from '../../../middleware/auth.ts';
+import { authenticatePlatform } from '../../../middleware/auth.js';
 const router: Router = express.Router();
 
-import productRoutes from './productRoutes.ts';
-import productPermissionRoutes from './productPermissionRoutes.ts';
-import productFeatureRoutes from './productFeatureRoutes.ts';
-import productConfigRoutes from './productConfigRoutes.ts';
+import productRoutes from './productRoutes.js';
+import productPermissionRoutes from './productPermissionRoutes.js';
+import productFeatureRoutes from './productFeatureRoutes.js';
+import productConfigRoutes from './productConfigRoutes.js';
 
 // Apply platform authentication to ALL product management routes
 router.use(authenticatePlatform);

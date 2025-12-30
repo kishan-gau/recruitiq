@@ -6,9 +6,9 @@
  */
 
 import express, { Router } from 'express';
-import loontijdvakController from '../controllers/loontijdvakController.ts';
-import { requirePermission } from '../../../middleware/auth.ts';
-import { validate } from '../../../middleware/validation.ts';
+import loontijdvakController from '../controllers/loontijdvakController.js';
+import { requirePermission } from '../../../middleware/auth.js';
+import { validate } from '../../../middleware/validation.js';
 import Joi from 'joi';
 
 const router: Router = express.Router();

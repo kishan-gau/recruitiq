@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
-import formulaController from '../controllers/formulaController.ts';
-import { requirePermission } from '../../../middleware/auth.ts';
+import formulaController from '../controllers/formulaController.js';
+import { requirePermission } from '../../../middleware/auth.js';
 
 const router: Router = express.Router();
 

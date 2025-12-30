@@ -4,8 +4,8 @@
  * Integrates security monitoring into the request/response cycle.
  */
 
-import securityMonitor, { SecurityEventType } from '../services/securityMonitor.ts';
-import logger from '../utils/logger.ts';
+import securityMonitor, { SecurityEventType } from '../services/securityMonitor.js';
+import logger from '../utils/logger.js';
 
 /**
  * Track failed login attempts

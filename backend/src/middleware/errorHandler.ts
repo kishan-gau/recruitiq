@@ -1,5 +1,5 @@
-import logger, { logSecurityEvent, SecurityEventType } from '../utils/logger.ts';
-import config from '../config/index.ts';
+import logger, { logSecurityEvent, SecurityEventType } from '../utils/logger.js';
+import config from '../config/index.js';
 
 // ============================================================================
 // CUSTOM ERROR CLASSES
@@ -9,7 +9,12 @@ import config from '../config/index.ts';
  * Base API Error class with standard structure
  */
 export class APIError extends Error {
-  constructor(message, statusCode = 500, code = null, details = null) {
+  statusCode: number;
+  code: string | null;
+  details: unknown;
+  isOperational: boolean;
+
+  constructor(message: string, statusCode = 500, code: string | null = null, details: unknown = null) {
     super(message);
     this.name = this.constructor.name;
     this.statusCode = statusCode;
@@ -19,7 +24,7 @@ export class APIError extends Error {
     Error.captureStackTrace(this, this.constructor);
   }
 
-  toJSON() {
+  toJSON(): Record<string, unknown> {
     return {
       error: {
         type: this.name,
@@ -36,7 +41,7 @@ export class APIError extends Error {
  * 400 Bad Request - Invalid input
  */
 export class ValidationError extends APIError {
-  constructor(message = 'Validation failed', details = null) {
+  constructor(message = 'Validation failed', details: unknown = null) {
     super(message, 400, 'VALIDATION_ERROR', details);
   }
 }
@@ -63,7 +68,7 @@ export class ForbiddenError extends APIError {
  * 404 Not Found - Resource not found
  */
 export class NotFoundError extends APIError {
-  constructor(message = 'Resource not found', resourceType = null) {
+  constructor(message = 'Resource not found', resourceType: string | null = null) {
     super(message, 404, 'NOT_FOUND', resourceType ? { resourceType } : null);
   }
 }
@@ -72,7 +77,7 @@ export class NotFoundError extends APIError {
  * 409 Conflict - Resource already exists
  */
 export class ConflictError extends APIError {
-  constructor(message = 'Resource conflict', details = null) {
+  constructor(message = 'Resource conflict', details: unknown = null) {
     super(message, 409, 'CONFLICT', details);
   }
 }
@@ -81,7 +86,7 @@ export class ConflictError extends APIError {
  * 422 Unprocessable Entity - Business logic error
  */
 export class BusinessLogicError extends APIError {
-  constructor(message, details = null) {
+  constructor(message: string, details: unknown = null) {
     super(message, 422, 'BUSINESS_LOGIC_ERROR', details);
   }
 }

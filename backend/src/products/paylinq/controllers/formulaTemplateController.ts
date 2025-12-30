@@ -4,8 +4,8 @@
  * HTTP handlers for formula template management
  */
 
-import formulaTemplateService from '../services/FormulaTemplateService.ts';
-import { ValidationError } from '../../../middleware/errorHandler.ts';
+import formulaTemplateService from '../services/FormulaTemplateService.js';
+import { ValidationError } from '../../../middleware/errorHandler.js';
 
 /**
  * Get all templates with optional filtering

@@ -3,8 +3,8 @@
  * Business logic for payroll compliance and regulatory requirements
  */
 
-import ComplianceRepository from '../repositories/complianceRepository.ts';
-import PayrollRepository from '../repositories/payrollRepository.ts';
+import ComplianceRepository from '../repositories/complianceRepository.js';
+import PayrollRepository from '../repositories/payrollRepository.js';
 import {
   mapComplianceRuleToDto,
   mapComplianceRulesToDto,
@@ -12,7 +12,7 @@ import {
   mapComplianceViolationsToDto,
   mapAuditLogToDto,
   mapAuditLogsToDto
-} from '../dto/complianceDto.ts';
+} from '../dto/complianceDto.js';
 
 class ComplianceService {
   constructor(complianceRepository = null, payrollRepository = null) {

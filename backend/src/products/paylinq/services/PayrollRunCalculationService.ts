@@ -13,9 +13,9 @@
  * @module PayrollRunCalculationService
  */
 
-import LoontijdvakService from './loontijdvakService.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError } from '../../../middleware/errorHandler.ts';
+import LoontijdvakService from './loontijdvakService.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError } from '../../../middleware/errorHandler.js';
 
 class PayrollRunCalculationService {
   constructor(loontijdvakService = null) {

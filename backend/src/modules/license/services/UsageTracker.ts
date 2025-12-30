@@ -1,6 +1,6 @@
-import UsageEvent from '../models/UsageEvent.ts'
-import Instance from '../models/Instance.ts'
-import License from '../models/License.ts'
+import UsageEvent from '../models/UsageEvent.js'
+import Instance from '../models/Instance.js'
+import License from '../models/License.js'
 
 class UsageTracker {
   /**

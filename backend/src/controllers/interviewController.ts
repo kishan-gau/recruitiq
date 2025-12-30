@@ -1,9 +1,9 @@
 import Joi from 'joi';
 import { v4 as uuidv4 } from 'uuid';
-import db from '../config/database.ts';
-import { NotFoundError, ValidationError, ForbiddenError } from '../middleware/errorHandler.ts';
-import logger from '../utils/logger.ts';
-import { futureDate } from '../validators/dateValidators.ts';
+import db from '../config/database.js';
+import { NotFoundError, ValidationError, ForbiddenError } from '../middleware/errorHandler.js';
+import logger from '../utils/logger.js';
+import { futureDate } from '../validators/dateValidators.js';
 
 // Validation schemas
 const scheduleInterviewSchema = Joi.object({

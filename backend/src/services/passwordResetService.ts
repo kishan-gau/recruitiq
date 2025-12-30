@@ -5,9 +5,9 @@
 
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import pool from '../config/database.ts';
-import logger from '../utils/logger.ts';
-import tokenBlacklist from './tokenBlacklist.ts';
+import pool from '../config/database.js';
+import logger from '../utils/logger.js';
+import tokenBlacklist from './tokenBlacklist.js';
 
 class PasswordResetService {
   /**

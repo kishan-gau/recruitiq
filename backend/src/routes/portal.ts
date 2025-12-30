@@ -9,10 +9,10 @@
  */
 
 import express from 'express';
-import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.ts';
-import { queryCentralDb } from '../config/centralDatabase.ts';
-import platformDb from '../shared/database/licenseManagerDb.ts';
-import logger from '../utils/logger.ts';
+import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
+import { queryCentralDb } from '../config/centralDatabase.js';
+import platformDb from '../shared/database/licenseManagerDb.js';
+import logger from '../utils/logger.js';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();

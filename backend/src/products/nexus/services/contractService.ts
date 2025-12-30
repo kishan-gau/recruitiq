@@ -3,10 +3,13 @@
  * Business logic layer for employment contract management
  */
 
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import type { ContractData } from '../../../types/nexus.types.js';
 
 class ContractService {
+  logger: typeof logger;
+  
   constructor() {
     this.logger = logger;
   }

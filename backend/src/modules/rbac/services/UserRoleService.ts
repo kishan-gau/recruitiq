@@ -1,9 +1,9 @@
 import Joi from 'joi';
-import UserRole from '../models/UserRole.ts';
-import Role from '../models/Role.ts';
-import RoleAuditLog from '../models/RoleAuditLog.ts';
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import UserRole from '../models/UserRole.js';
+import Role from '../models/Role.js';
+import RoleAuditLog from '../models/RoleAuditLog.js';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 
 /**
  * UserRoleService

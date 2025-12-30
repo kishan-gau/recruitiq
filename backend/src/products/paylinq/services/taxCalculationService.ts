@@ -11,20 +11,34 @@
  */
 
 import Joi from 'joi';
-import TaxEngineRepository from '../repositories/taxEngineRepository.ts';
-import DeductionRepository from '../repositories/deductionRepository.ts';
-import AllowanceService from './AllowanceService.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
-import { query } from '../../../config/database.ts';
+import type { TaxRuleSetData, TaxBracketData, AllowanceData, DeductionData, TaxCalculationParams, TaxBreakdown } from '../../../types/paylinq.types.js';
+import TaxEngineRepository from '../repositories/taxEngineRepository.js';
+import DeductionRepository from '../repositories/deductionRepository.js';
+import AllowanceService from './AllowanceService.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import { query } from '../../../config/database.js';
 
 class TaxCalculationService {
+  taxEngineRepository: TaxEngineRepository;
+  deductionRepository: DeductionRepository;
+  allowanceService: AllowanceService;
+  taxRuleSetSchema: Joi.ObjectSchema;
+  taxBracketSchema: Joi.ObjectSchema;
+  allowanceSchema: Joi.ObjectSchema;
+  deductionSchema: Joi.ObjectSchema;
+  calculationSchema: Joi.ObjectSchema;
+
   /**
-   * @param {TaxEngineRepository} taxEngineRepository - Optional for testing
-   * @param {DeductionRepository} deductionRepository - Optional for testing
-   * @param {AllowanceService} allowanceService - Optional for testing
+   * @param taxEngineRepository - Optional for testing
+   * @param deductionRepository - Optional for testing
+   * @param allowanceService - Optional for testing
    */
-  constructor(taxEngineRepository = null, deductionRepository = null, allowanceService = null) {
+  constructor(
+    taxEngineRepository: TaxEngineRepository | null = null,
+    deductionRepository: DeductionRepository | null = null,
+    allowanceService: AllowanceService | null = null
+  ) {
     this.taxEngineRepository = taxEngineRepository || new TaxEngineRepository();
     this.deductionRepository = deductionRepository || new DeductionRepository();
     this.allowanceService = allowanceService || new AllowanceService();

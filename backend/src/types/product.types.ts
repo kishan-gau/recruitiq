@@ -3,7 +3,7 @@
  */
 
 import { Router } from 'express';
-import { Middleware } from './request.types.ts';
+import { Middleware } from './request.types.js';
 
 export interface ProductConfig {
   name: string;

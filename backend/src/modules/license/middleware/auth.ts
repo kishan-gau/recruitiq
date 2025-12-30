@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken'
-import AdminUser from '../models/AdminUser.ts'
+import AdminUser from '../models/AdminUser.js'
 
 /**
  * Middleware to verify JWT token and authenticate admin users

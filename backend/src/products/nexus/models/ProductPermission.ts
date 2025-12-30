@@ -3,14 +3,36 @@
  * Represents an organization's permission/access to a product
  */
 
+import { ProductPermissionData, AccessLevel } from '../../../types/models.types.js';
+
 class ProductPermission {
-  constructor(data = {}) {
+  id?: string;
+  organizationId?: string;
+  productId?: string;
+  isEnabled?: boolean;
+  accessLevel: AccessLevel;
+  licenseKey?: string;
+  licenseExpiresAt?: Date | string;
+  maxUsers?: number;
+  maxResources?: number;
+  enabledFeatures?: string[];
+  disabledFeatures?: string[];
+  usersCount: number;
+  resourcesCount: number;
+  lastAccessedAt?: Date | string;
+  grantedAt?: Date | string;
+  grantedBy?: string;
+  revokedAt?: Date | string;
+  revokedBy?: string;
+  notes?: string;
+
+  constructor(data: ProductPermissionData = {}) {
     this.id = data.id;
     this.organizationId = data.organization_id || data.organizationId;
     this.productId = data.product_id || data.productId;
     
     this.isEnabled = data.is_enabled !== undefined ? data.is_enabled : data.isEnabled;
-    this.accessLevel = data.access_level || data.accessLevel || 'none';
+    this.accessLevel = (data.access_level || data.accessLevel || 'none') as AccessLevel;
     
     this.licenseKey = data.license_key || data.licenseKey;
     this.licenseExpiresAt = data.license_expires_at || data.licenseExpiresAt;

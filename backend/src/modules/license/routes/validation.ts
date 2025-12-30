@@ -1,6 +1,6 @@
 import express, { Router } from 'express'
-import { validationController } from '../controllers/validationController.ts'
-import { asyncHandler } from '../middleware/errorHandler.ts'
+import { validationController } from '../controllers/validationController.js'
+import { asyncHandler } from '../middleware/errorHandler.js'
 
 const router: Router = express.Router()
 

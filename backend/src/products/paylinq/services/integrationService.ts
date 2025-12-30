@@ -4,10 +4,10 @@
  * Direct service-to-service calls for monolithic architecture
  */
 
-import pool, { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import integrationErrorHandler from '../../../shared/utils/integrationErrorHandler.ts';
-import PayrollRepository from '../repositories/payrollRepository.ts';
+import pool, { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import integrationErrorHandler from '../../../shared/utils/integrationErrorHandler.js';
+import PayrollRepository from '../repositories/payrollRepository.js';
 
 class PaylinqIntegrationService {
   constructor() {

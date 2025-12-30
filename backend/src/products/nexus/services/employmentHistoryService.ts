@@ -3,10 +3,13 @@
  * Business logic for employee lifecycle management (hire, terminate, rehire)
  */
 
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import type { EmploymentHistoryData } from '../../../types/nexus.types.js';
 
 class EmploymentHistoryService {
+  logger: typeof logger;
+  
   constructor() {
     this.logger = logger;
   }

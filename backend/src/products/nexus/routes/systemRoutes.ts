@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
-import productManager from '../../core/ProductManager.ts';
-import { authenticatePlatform, requirePermission } from '../../../middleware/auth.ts';
+import productManager from '../../core/ProductManager.js';
+import { authenticatePlatform, requirePermission } from '../../../middleware/auth.js';
 
 const router: Router = express.Router();
 

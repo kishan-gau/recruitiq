@@ -3,16 +3,16 @@
  * Handles HTTP requests for employee compensation management
  */
 
-import PayrollService from '../services/payrollService.ts';
-import compensationService from '../../../shared/services/compensationService.ts';
+import PayrollService from '../services/payrollService.js';
+import compensationService from '../../../shared/services/compensationService.js';
 
 const payrollService = new PayrollService();
 import { 
   mapCompensationApiToDb, 
   mapCompensationDbToApi, 
   mapCompensationDbArrayToApi 
-} from '../utils/dtoMapper.ts';
-import logger from '../../../utils/logger.ts';
+} from '../utils/dtoMapper.js';
+import logger from '../../../utils/logger.js';
 
 /**
  * Create compensation record for an employee

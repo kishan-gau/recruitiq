@@ -12,10 +12,10 @@
  */
 
 import Joi from 'joi';
-import TimeAttendanceRepository from '../repositories/timeAttendanceRepository.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.ts';
-import { query as defaultQuery } from '../../../config/database.ts';
+import TimeAttendanceRepository from '../repositories/timeAttendanceRepository.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.js';
+import { query as defaultQuery } from '../../../config/database.js';
 
 class TemporalPatternService {
   constructor(timeAttendanceRepository = null, queryFn = null) {

@@ -1,4 +1,4 @@
-import db from '../../../shared/database/licenseManagerDb.ts'
+import db from '../../../shared/database/licenseManagerDb.js'
 import bcrypt from 'bcryptjs'
 
 class AdminUser {

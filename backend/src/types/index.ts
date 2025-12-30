@@ -2,9 +2,9 @@
  * Application-wide type definitions
  */
 
-export * from './auth.types.ts';
-export * from './database.types.ts';
-export * from './api.types.ts';
-export * from './errors.types.ts';
-export * from './request.types.ts';
-export * from './product.types.ts';
+export * from './auth.types.js';
+export * from './database.types.js';
+export * from './api.types.js';
+export * from './errors.types.js';
+export * from './request.types.js';
+export * from './product.types.js';

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { readFileSync, existsSync } from 'fs';
-import logger from '../../utils/logger.ts';
+import logger from '../../utils/logger.js';
 
 /**
  * TransIP API client with test mode support

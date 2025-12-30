@@ -1,6 +1,6 @@
-import transipClient from './TransIPClient.ts';
-import logger from '../../utils/logger.ts';
-import { ValidationError, NotFoundError } from '../../utils/errors.ts';
+import transipClient from './TransIPClient.js';
+import logger from '../../utils/logger.js';
+import { ValidationError, NotFoundError } from '../../utils/errors.js';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 

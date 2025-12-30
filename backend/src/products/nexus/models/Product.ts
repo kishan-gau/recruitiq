@@ -3,19 +3,48 @@
  * Represents a product in the multi-product platform (Nexus, RecruitIQ, ScheduleHub, PayLinQ, etc.)
  */
 
+import { ProductData, ProductStatus } from '../../../types/models.types.js';
+
 class Product {
-  constructor(data = {}) {
+  id?: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  slug: string;
+  version: string;
+  npmPackage?: string;
+  repositoryUrl?: string;
+  documentationUrl?: string;
+  status: ProductStatus;
+  isCore?: boolean;
+  requiresLicense?: boolean;
+  basePath?: string;
+  apiPrefix?: string;
+  defaultPort?: number;
+  minTier?: string;
+  resourceRequirements?: Record<string, unknown>;
+  features?: string[];
+  defaultFeatures?: string[];
+  icon?: string;
+  color?: string;
+  uiConfig?: Record<string, unknown>;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  createdBy?: string;
+  deletedAt?: Date | string | null;
+
+  constructor(data: ProductData = {}) {
     this.id = data.id;
-    this.name = data.name;
+    this.name = data.name || '';
     this.displayName = data.display_name || data.displayName;
     this.description = data.description;
-    this.slug = data.slug;
-    this.version = data.version;
+    this.slug = data.slug || '';
+    this.version = data.version || '';
     this.npmPackage = data.npm_package || data.npmPackage;
     this.repositoryUrl = data.repository_url || data.repositoryUrl;
     this.documentationUrl = data.documentation_url || data.documentationUrl;
     
-    this.status = data.status || 'active';
+    this.status = (data.status as ProductStatus) || 'active';
     this.isCore = data.is_core !== undefined ? data.is_core : data.isCore;
     this.requiresLicense = data.requires_license !== undefined ? data.requires_license : data.requiresLicense;
     

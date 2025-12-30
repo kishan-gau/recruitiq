@@ -1,5 +1,5 @@
-import PayComponentService from '../services/payComponentService.ts';
-import logger from '../../../utils/logger.ts';
+import PayComponentService from '../services/payComponentService.js';
+import logger from '../../../utils/logger.js';
 
 const payComponentService = new PayComponentService();
 

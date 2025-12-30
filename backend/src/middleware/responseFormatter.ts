@@ -11,7 +11,7 @@
  * res.sendError(error);
  */
 
-import logger from '../utils/logger.ts';
+import logger from '../utils/logger.js';
 
 /**
  * Middleware that adds response helper methods to res object

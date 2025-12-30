@@ -3,9 +3,9 @@
  * Handles HTTP requests for payslip template management
  */
 
-import payslipTemplateService from '../services/payslipTemplateService.ts';
-import payslipPdfService from '../services/payslipPdfService.ts';
-import logger from '../../../utils/logger.ts';
+import payslipTemplateService from '../services/payslipTemplateService.js';
+import payslipPdfService from '../services/payslipPdfService.js';
+import logger from '../../../utils/logger.js';
 
 /**
  * Get all templates

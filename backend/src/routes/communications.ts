@@ -4,8 +4,8 @@ import {
   getApplicationCommunications,
   markAsRead,
   deleteCommunication
-} from '../controllers/communicationController.ts';
-import { authenticate } from '../middleware/auth.ts';
+} from '../controllers/communicationController.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 

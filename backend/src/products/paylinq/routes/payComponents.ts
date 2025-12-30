@@ -3,10 +3,10 @@
  */
 
 import express, { Router } from 'express';
-import payComponentController from '../controllers/payComponentController.ts';
-import * as forfaitRuleController from '../controllers/forfaitRuleController.ts';
-import { validate  } from '../../../middleware/validation.ts';
-import { requirePermission } from '../../../middleware/auth.ts';
+import payComponentController from '../controllers/payComponentController.js';
+import * as forfaitRuleController from '../controllers/forfaitRuleController.js';
+import { validate  } from '../../../middleware/validation.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router: Router = express.Router();

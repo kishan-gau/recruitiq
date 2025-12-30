@@ -5,8 +5,8 @@
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { v4 as uuidv4 } from 'uuid';
-import { InterviewService } from '../InterviewService.ts';
-import { ValidationError, BusinessRuleError, NotFoundError } from '../../../middleware/errorHandler.ts';
+import { InterviewService } from '../InterviewService.js';
+import { ValidationError, BusinessRuleError, NotFoundError } from '../../../middleware/errorHandler.js';
 
 // Mock dependencies at top level
 jest.mock('../../../config/database.ts');

@@ -1,4 +1,4 @@
-import logger, { logPerformance } from '../utils/logger.ts';
+import logger, { logPerformance } from '../utils/logger.js';
 
 /**
  * Enhanced request logging middleware with security and performance tracking

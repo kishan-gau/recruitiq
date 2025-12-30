@@ -13,8 +13,8 @@
  */
 
 import validator from 'validator';
-import { ValidationError } from './errorHandler.ts';
-import logger from '../utils/logger.ts';
+import { ValidationError } from './errorHandler.js';
+import logger from '../utils/logger.js';
 
 /**
  * Dangerous patterns based on OWASP recommendations

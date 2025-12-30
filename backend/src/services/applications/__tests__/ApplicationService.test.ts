@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { ApplicationService } from '../ApplicationService.ts';
-import { ValidationError, BusinessRuleError, NotFoundError } from '../../../middleware/errorHandler.ts';
+import { ApplicationService } from '../ApplicationService.js';
+import { ValidationError, BusinessRuleError, NotFoundError } from '../../../middleware/errorHandler.js';
 
 // Mock dependencies at top level
 jest.mock('../../../config/database.ts');

@@ -3,13 +3,18 @@
  * Business logic for worker management (synced from Nexus HRIS)
  */
 
-import pool from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError } from '../../../utils/errors.ts';
+import pool from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import type { WorkerData, WorkerSearchFilters, WorkerAvailabilityData } from '../../../types/schedulehub.types.js';
+import { ValidationError } from '../../../utils/errors.js';
 import Joi from 'joi';
-import { mapWorkerDbToApi, mapWorkersDbToApi, mapWorkerApiToDb } from '../dto/workerDto.ts';
+import { mapWorkerDbToApi, mapWorkersDbToApi, mapWorkerApiToDb } from '../dto/workerDto.js';
 
 class WorkerService {
+  logger: typeof logger;
+  createWorkerSchema: Joi.ObjectSchema;
+  updateWorkerSchema: Joi.ObjectSchema;
+
   constructor() {
     this.logger = logger;
   }

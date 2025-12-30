@@ -3,7 +3,7 @@
  * HTTP handlers for product management endpoints
  */
 
-import { productService } from '../services/index.ts';
+import { productService } from '../services/index.js';
 
 class ProductController {
   /**

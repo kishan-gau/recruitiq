@@ -4,9 +4,9 @@
  * Direct service-to-service calls for monolithic architecture
  */
 
-import pool from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import integrationErrorHandler from '../../../shared/utils/integrationErrorHandler.ts';
+import pool from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import integrationErrorHandler from '../../../shared/utils/integrationErrorHandler.js';
 
 class ScheduleHubIntegrationService {
   constructor() {

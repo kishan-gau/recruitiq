@@ -1,5 +1,5 @@
-import TierManagement from '../services/TierManagement.ts'
-import TierPreset from '../models/TierPreset.ts'
+import TierManagement from '../services/TierManagement.js'
+import TierPreset from '../models/TierPreset.js'
 
 export const tierController = {
   /**

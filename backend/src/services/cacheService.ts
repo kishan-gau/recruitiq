@@ -11,7 +11,7 @@
  * 
  * Usage:
  * ```javascript
- * import cacheService from './services/cacheService.ts';
+ * import cacheService from './services/cacheService.js';
  * 
  * // Get from cache
  * const user = await cacheService.get('user:123');
@@ -28,7 +28,7 @@
  */
 
 import { createClient } from 'redis';
-import logger from '../utils/logger.ts';
+import logger from '../utils/logger.js';
 
 class CacheService {
   constructor() {

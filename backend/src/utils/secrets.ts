@@ -5,14 +5,14 @@
  * with fallback to environment variables during development.
  * 
  * Usage:
- *   import { loadSecret, loadSecrets } from './utils/secrets.ts';
+ *   import { loadSecret, loadSecrets } from './utils/secrets.js';
  *   
  *   const dbPassword = await loadSecret('DATABASE_PASSWORD');
  *   const { JWT_SECRET } = await loadSecrets(['JWT_SECRET']);
  */
 
-import secretsManager from '../services/secretsManager.ts';
-import logger from './logger.ts';
+import secretsManager from '../services/secretsManager.js';
+import logger from './logger.js';
 
 /**
  * Load a single secret

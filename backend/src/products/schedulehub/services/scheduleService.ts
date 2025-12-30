@@ -3,21 +3,26 @@
  * Business logic for schedule and shift management
  */
 
-import pool, { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import pool, { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import type { ScheduleData, ShiftData, ScheduleSearchFilters, ShiftConflict } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';
-import { ConflictError, ValidationError } from '../../../utils/errors.ts';
-import { dateOnlyRequired } from '../../../validators/dateValidators.ts';
-import { mapScheduleDbToApi, mapSchedulesDbToApi, mapScheduleApiToDb } from '../dto/scheduleDto.ts';
-import { mapShiftsDbToApi } from '../dto/shiftDto.ts';
-import ShiftTemplateService from './shiftTemplateService.ts';
+import { ConflictError, ValidationError } from '../../../utils/errors.js';
+import { dateOnlyRequired } from '../../../validators/dateValidators.js';
+import { mapScheduleDbToApi, mapSchedulesDbToApi, mapScheduleApiToDb } from '../dto/scheduleDto.js';
+import { mapShiftsDbToApi } from '../dto/shiftDto.js';
+import ShiftTemplateService from './shiftTemplateService.js';
 
 class ScheduleService {
-  constructor(shiftTemplateService = null) {
+  logger: typeof logger;
+  shiftTemplateService: ShiftTemplateService;
+  sessionShifts: Map<string, Array<{date: string; startTime: string; endTime: string}>>;
+
+  constructor(shiftTemplateService: ShiftTemplateService | null = null) {
     this.logger = logger;
     this.shiftTemplateService = shiftTemplateService || new ShiftTemplateService();
     // Session-aware conflict tracking for overlapping shift prevention
-    this.sessionShifts = new Map(); // Map<employeeId, Array<{date, startTime, endTime}>>
+    this.sessionShifts = new Map();
   }
 
   /**

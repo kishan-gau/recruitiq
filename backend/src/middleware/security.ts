@@ -13,8 +13,8 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import config from '../config/index.ts';
-import logger from '../utils/logger.ts';
+import config from '../config/index.js';
+import logger from '../utils/logger.js';
 
 /**
  * Adds security headers to all responses

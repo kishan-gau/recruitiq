@@ -4,8 +4,8 @@
  */
 
 import express, { Router } from 'express';
-import { requirePlatformPermission } from '../../../middleware/auth.ts';
-import { productController } from '../controllers/index.ts';
+import { requirePlatformPermission } from '../../../middleware/auth.js';
+import { productController } from '../controllers/index.js';
 
 const router: Router = express.Router();
 

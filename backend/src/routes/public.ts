@@ -5,8 +5,8 @@ import {
   submitApplication,
   getApplicationStatus,
   uploadDocument
-} from '../controllers/publicController.ts';
-import { applicationLimiter, publicLimiter } from '../middleware/rateLimit.ts';
+} from '../controllers/publicController.js';
+import { applicationLimiter, publicLimiter } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 

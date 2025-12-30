@@ -3,9 +3,9 @@
  * HTTP request handlers for benefits management
  */
 
-import BenefitsService from '../services/benefitsService.ts';
-import { mapPlanApiToDb, mapPlanDbToApi, mapPlansDbToApi } from '../dto/benefitsDto.ts';
-import logger from '../../../utils/logger.ts';
+import BenefitsService from '../services/benefitsService.js';
+import { mapPlanApiToDb, mapPlanDbToApi, mapPlansDbToApi } from '../dto/benefitsDto.js';
+import logger from '../../../utils/logger.js';
 
 class BenefitsController {
   constructor() {

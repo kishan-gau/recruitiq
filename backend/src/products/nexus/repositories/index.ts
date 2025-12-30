@@ -2,10 +2,10 @@
  * Product Repositories Export
  */
 
-import ProductRepository from './productRepository.ts';
-import ProductPermissionRepository from './productPermissionRepository.ts';
-import ProductConfigRepository from './productConfigRepository.ts';
-import ProductFeatureRepository from './productFeatureRepository.ts';
+import ProductRepository from './productRepository.js';
+import ProductPermissionRepository from './productPermissionRepository.js';
+import ProductConfigRepository from './productConfigRepository.js';
+import ProductFeatureRepository from './productFeatureRepository.js';
 
 // Instantiate repositories as singletons
 const productRepository = new ProductRepository();

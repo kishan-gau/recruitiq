@@ -3,16 +3,16 @@
  * Handles Multi-Factor Authentication endpoints
  */
 
-import mfaService from '../services/mfaService.ts';
-import tokenBlacklist from '../services/tokenBlacklist.ts';
-import logger from '../utils/logger.ts';
+import mfaService from '../services/mfaService.js';
+import tokenBlacklist from '../services/tokenBlacklist.js';
+import logger from '../utils/logger.js';
 import jwt from 'jsonwebtoken';
-import config from '../config/index.ts';
+import config from '../config/index.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import pool from '../config/database.ts';
-import RefreshToken from '../models/RefreshToken.ts';
-import Organization from '../models/Organization.ts';
+import pool from '../config/database.js';
+import RefreshToken from '../models/RefreshToken.js';
+import Organization from '../models/Organization.js';
 
 /**
  * POST /api/auth/mfa/setup

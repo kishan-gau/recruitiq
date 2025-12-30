@@ -9,7 +9,7 @@
  * - Environment-aware: automatically adjusts for dev/prod
  */
 
-import config from './index.ts';
+import config from './index.js';
 
 /**
  * Get cookie configuration based on token type

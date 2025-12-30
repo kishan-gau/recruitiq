@@ -11,8 +11,8 @@
  * - Use raw SQL: For simple queries, performance-critical operations
  */
 
-import db from '../config/knex.ts';
-import logger from '../utils/logger.ts';
+import db from '../config/knex.js';
+import logger from '../utils/logger.js';
 
 class BaseKnexRepository {
   /**

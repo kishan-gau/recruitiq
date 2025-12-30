@@ -3,8 +3,8 @@
  * Manages product permissions and access control
  */
 
-import db from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import db from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 
 class ProductPermissionService {
   async getProductPermissions(productId) {

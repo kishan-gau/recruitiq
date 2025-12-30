@@ -11,8 +11,8 @@ import type { Request, Response, NextFunction } from 'express';
 import type { ObjectSchema } from 'joi';
 import Joi from 'joi';
 import validator from 'validator';
-import { ValidationError } from '../utils/errors.ts';
-import { logger } from '../utils/logger.ts';
+import { ValidationError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Validation options

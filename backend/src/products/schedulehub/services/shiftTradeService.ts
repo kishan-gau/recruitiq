@@ -3,11 +3,15 @@
  * Business logic for shift swapping and marketplace
  */
 
-import pool from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import pool from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import type { ShiftTradeData } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';
 
 class ShiftTradeService {
+  logger: typeof logger;
+  createOfferSchema: Joi.ObjectSchema;
+
   constructor() {
     this.logger = logger;
   }

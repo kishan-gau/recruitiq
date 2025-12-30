@@ -13,8 +13,8 @@ import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import pool from '../config/database.ts';
-import logger from '../utils/logger.ts';
+import pool from '../config/database.js';
+import logger from '../utils/logger.js';
 
 class MFAService {
   /**

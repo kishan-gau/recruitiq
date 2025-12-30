@@ -3,9 +3,9 @@
  * Data access layer for attendance records
  */
 
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
 
 class AttendanceRepository {
   constructor(database = null) {

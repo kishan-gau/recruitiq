@@ -3,17 +3,28 @@
  * Implements all business rules and orchestrates repository calls
  */
 
-import { CandidateRepository } from '../../repositories/CandidateRepository.ts';
-import { ApplicationRepository } from '../../repositories/ApplicationRepository.ts';
-import Organization from '../../models/Organization.ts';
-import logger from '../../utils/logger.ts';
-import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.ts';
+import type { CandidateData, CandidateSearchFilters, PaginatedResponse } from '../../types/recruitment.types.js';
+import { CandidateRepository } from '../../repositories/CandidateRepository.js';
+import { ApplicationRepository } from '../../repositories/ApplicationRepository.js';
+import Organization from '../../models/Organization.js';
+import logger from '../../utils/logger.js';
+import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.js';
 import Joi from 'joi';
 
 export class CandidateService {
-  constructor() {
-    this.candidateRepository = new CandidateRepository();
-    this.applicationRepository = new ApplicationRepository();
+  candidateRepository: CandidateRepository;
+  applicationRepository: ApplicationRepository;
+  logger: typeof logger;
+  
+  static createSchema: Joi.ObjectSchema;
+  static updateSchema: Joi.ObjectSchema;
+  
+  constructor(
+    candidateRepository: CandidateRepository | null = null,
+    applicationRepository: ApplicationRepository | null = null
+  ) {
+    this.candidateRepository = candidateRepository || new CandidateRepository();
+    this.applicationRepository = applicationRepository || new ApplicationRepository();
     this.logger = logger;
   }
 

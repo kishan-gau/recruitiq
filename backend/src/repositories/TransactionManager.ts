@@ -9,7 +9,7 @@
  */
 
 import { Pool, PoolClient } from 'pg';
-import logger from '../utils/logger.ts';
+import logger from '../utils/logger.js';
 
 /**
  * Transaction error class

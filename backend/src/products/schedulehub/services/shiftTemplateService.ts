@@ -7,11 +7,12 @@
 
 import Joi from 'joi';
 import { v4 as uuidv4 } from 'uuid';
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError, ConflictError } from '../../../utils/errors.ts';
-import ShiftTemplateRepository from '../repositories/ShiftTemplateRepository.ts';
-import ShiftTemplateStationService from './ShiftTemplateStationService.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import type { ShiftTemplateData, TemplateRoleData, TemplateStationData } from '../../../types/schedulehub.types.js';
+import { ValidationError, NotFoundError, ConflictError } from '../../../utils/errors.js';
+import ShiftTemplateRepository from '../repositories/ShiftTemplateRepository.js';
+import ShiftTemplateStationService from './ShiftTemplateStationService.js';
 import {
   mapShiftTemplateDbToApi,
   mapShiftTemplatesDbToApi,
@@ -20,18 +21,21 @@ import {
   mapTemplateRolesDbToApi,
   mapTemplateRoleApiToDb,
   mapTemplatesToSummary
-} from '../dto/shiftTemplateDto.ts';
+} from '../dto/shiftTemplateDto.js';
 
 /**
  * Service for managing shift templates with station assignments
  */
 class ShiftTemplateService {
+  repository: ShiftTemplateRepository;
+  shiftTemplateStationService: ShiftTemplateStationService;
+
   /**
    * Constructor with dependency injection
-   * @param {ShiftTemplateRepository} repository - Shift template repository instance
-   * @param {ShiftTemplateStationService} shiftTemplateStationService - Station assignment service instance
+   * @param repository - Shift template repository instance
+   * @param shiftTemplateStationService - Station assignment service instance
    */
-  constructor(repository = null, shiftTemplateStationService = null) {
+  constructor(repository: ShiftTemplateRepository | null = null, shiftTemplateStationService: ShiftTemplateStationService | null = null) {
     this.repository = repository || new ShiftTemplateRepository();
     this.shiftTemplateStationService = shiftTemplateStationService || new ShiftTemplateStationService();
   }

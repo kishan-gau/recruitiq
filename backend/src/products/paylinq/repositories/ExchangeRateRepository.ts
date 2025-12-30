@@ -1,5 +1,5 @@
-import pool from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import pool from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
 
 /**
  * Repository for exchange rate database operations

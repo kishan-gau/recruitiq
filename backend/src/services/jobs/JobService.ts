@@ -3,15 +3,23 @@
  * Implements all business rules and orchestrates repository calls
  */
 
-import { JobRepository } from '../../repositories/JobRepository.ts';
-import Organization from '../../models/Organization.ts';
-import logger from '../../utils/logger.ts';
-import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.ts';
+import type { JobData, JobSearchFilters, JobStatistics, PaginatedResponse } from '../../types/recruitment.types.js';
+import { JobRepository } from '../../repositories/JobRepository.js';
+import Organization from '../../models/Organization.js';
+import logger from '../../utils/logger.js';
+import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.js';
 import Joi from 'joi';
 
 export class JobService {
-  constructor() {
-    this.jobRepository = new JobRepository();
+  jobRepository: JobRepository;
+  logger: typeof logger;
+  
+  static createSchema: Joi.ObjectSchema;
+  static updateSchema: Joi.ObjectSchema;
+  static searchSchema: Joi.ObjectSchema;
+  
+  constructor(jobRepository: JobRepository | null = null) {
+    this.jobRepository = jobRepository || new JobRepository();
     this.logger = logger;
   }
 

@@ -8,9 +8,9 @@
  * @module products/paylinq/repositories/payComponentRepository
  */
 
-import { query  } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import { ValidationError } from '../../../middleware/errorHandler.ts';
+import { query  } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import { ValidationError } from '../../../middleware/errorHandler.js';
 
 class PayComponentRepository {
   constructor(database = null) {

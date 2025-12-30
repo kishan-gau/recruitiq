@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import RefreshToken from '../RefreshToken.ts';
+import RefreshToken from '../RefreshToken.js';
 
 describe('RefreshToken Model - Utility Functions', () => {
   describe('generateDeviceFingerprint', () => {

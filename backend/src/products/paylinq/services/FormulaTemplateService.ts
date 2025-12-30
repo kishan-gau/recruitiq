@@ -5,9 +5,9 @@
  * Supports global templates (available to all orgs) and org-specific custom templates.
  */
 
-import pool from '../../../config/database.ts';
-import formulaEngine from '../../../services/formula/FormulaEngine.ts';
-import { ValidationError, NotFoundError, ForbiddenError } from '../../../middleware/errorHandler.ts';
+import pool from '../../../config/database.js';
+import formulaEngine from '../../../services/formula/FormulaEngine.js';
+import { ValidationError, NotFoundError, ForbiddenError } from '../../../middleware/errorHandler.js';
 
 class FormulaTemplateService {
   /**

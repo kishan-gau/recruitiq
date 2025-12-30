@@ -5,7 +5,7 @@
  * Ensures formulas work correctly after security fix.
  */
 
-import FormulaEngineService from '../formulaEngineService.ts';
+import FormulaEngineService from '../formulaEngineService.js';
 
 describe('FormulaEngineService', () => {
   let service;

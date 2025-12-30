@@ -1,14 +1,10 @@
-/**
- * Benefits Service
- * Business logic for managing employee benefits
- */
-
-import PayrollRepository from '../repositories/payrollRepository.ts';
+import type { BenefitType, BenefitPlanData, BenefitEnrollmentData, PlanType, CoverageLevel } from '../../../types/paylinq.types.js';
+import PayrollRepository from '../repositories/payrollRepository.js';
 
 /**
  * Benefit types
  */
-export const BENEFIT_TYPES = {
+export const BENEFIT_TYPES: Record<string, BenefitType> = {
   HEALTH_INSURANCE: 'health_insurance',
   DENTAL_INSURANCE: 'dental_insurance',
   VISION_INSURANCE: 'vision_insurance',
@@ -18,10 +14,10 @@ export const BENEFIT_TYPES = {
   FSA: 'fsa'
 };
 
-const VALID_PLAN_TYPES = ['health', 'dental', 'vision', 'life', 'retirement', 'hsa', 'fsa', 'wellness'];
-const VALID_COVERAGE_LEVELS = ['employee_only', 'employee_spouse', 'employee_children', 'family'];
+const VALID_PLAN_TYPES: PlanType[] = ['health', 'dental', 'vision', 'life', 'retirement', 'hsa', 'fsa', 'wellness'];
+const VALID_COVERAGE_LEVELS: CoverageLevel[] = ['employee_only', 'employee_spouse', 'employee_children', 'family'];
 
-const COVERAGE_MULTIPLIERS = {
+const COVERAGE_MULTIPLIERS: Record<CoverageLevel, number> = {
   employee_only: 1,
   employee_spouse: 1.5,
   employee_children: 1.75,
@@ -29,16 +25,18 @@ const COVERAGE_MULTIPLIERS = {
 };
 
 class BenefitsService {
-  constructor(payrollRepository = null) {
+  payrollRepository: PayrollRepository;
+
+  constructor(payrollRepository: PayrollRepository | null = null) {
     this.payrollRepository = payrollRepository || new PayrollRepository();
   }
 
   /**
    * Create a new benefit
    */
-  async createBenefit(benefitData, organizationId, userId) {
+  async createBenefit(benefitData: BenefitPlanData, organizationId: string, userId: string): Promise<BenefitPlanData> {
     // Validate benefit type
-    if (!Object.values(BENEFIT_TYPES).includes(benefitData.benefit_type)) {
+    if (!Object.values(BENEFIT_TYPES).includes(benefitData.planType as BenefitType)) {
       throw new Error('Invalid benefit type');
     }
 
@@ -48,13 +46,13 @@ class BenefitsService {
       ...benefitData,
       organization_id: organizationId,
       created_by: userId
-    };
+    } as BenefitPlanData;
   }
 
   /**
    * Get benefit by ID
    */
-  async getBenefitById(benefitId, organizationId) {
+  async getBenefitById(benefitId: string, organizationId: string): Promise<BenefitPlanData | null> {
     // Implementation would go here
     return null;
   }
@@ -62,7 +60,7 @@ class BenefitsService {
   /**
    * Get all benefits for employee
    */
-  async getEmployeeBenefits(employeeId, organizationId) {
+  async getEmployeeBenefits(employeeId: string, organizationId: string): Promise<BenefitEnrollmentData[]> {
     // Implementation would go here
     return [];
   }
@@ -70,7 +68,7 @@ class BenefitsService {
   /**
    * Calculate benefit deduction
    */
-  calculateBenefitDeduction(benefit, grossPay) {
+  calculateBenefitDeduction(benefit: { calculation_type: string; employee_contribution: number }, grossPay: number): number {
     if (benefit.calculation_type === 'percentage') {
       return (grossPay * benefit.employee_contribution) / 100;
     }

@@ -25,10 +25,10 @@
 
 import Joi from 'joi';
 import { v4 as uuidv4 } from 'uuid';
-import logger from '../../../utils/logger.ts';
-import { ValidationError, NotFoundError } from '../../../utils/errors.ts';
-import PayComponentRepository from '../repositories/payComponentRepository.ts';
-import FormulaEngineService from './formulaEngineService.ts';
+import logger from '../../../utils/logger.js';
+import { ValidationError, NotFoundError } from '../../../utils/errors.js';
+import PayComponentRepository from '../repositories/payComponentRepository.js';
+import FormulaEngineService from './formulaEngineService.js';
 
 class ForfaitairBenefitsService {
   constructor(repository = null, formulaEngine = null) {

@@ -6,9 +6,9 @@
  */
 
 import express, { Router } from 'express';
-import { query } from '../../../config/database.ts';
-import { requirePermission } from '../../../middleware/auth.ts';
-import logger from '../../../utils/logger.ts';
+import { query } from '../../../config/database.js';
+import { requirePermission } from '../../../middleware/auth.js';
+import logger from '../../../utils/logger.js';
 
 const router: Router = express.Router();
 

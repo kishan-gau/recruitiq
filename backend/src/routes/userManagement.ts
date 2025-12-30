@@ -4,9 +4,9 @@
  */
 
 import express from 'express';
-import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.ts';
-import pool from '../config/database.ts';
-import logger from '../utils/logger.ts';
+import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
+import pool from '../config/database.js';
+import logger from '../utils/logger.js';
 import bcrypt from 'bcryptjs';
 
 const router = express.Router();

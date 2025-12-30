@@ -5,8 +5,8 @@
  */
 
 import { createClient } from 'redis';
-import config from '../config/index.ts';
-import logger from '../utils/logger.ts';
+import config from '../config/index.js';
+import logger from '../utils/logger.js';
 
 // Configuration
 const IP_HISTORY_MAX_COUNT = 10; // Keep last 10 IPs

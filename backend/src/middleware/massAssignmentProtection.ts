@@ -9,8 +9,8 @@
  * Based on OWASP recommendations for secure parameter handling
  */
 
-import logger from '../utils/logger.ts';
-import { ValidationError } from './errorHandler.ts';
+import logger from '../utils/logger.js';
+import { ValidationError } from './errorHandler.js';
 
 /**
  * Protected fields that should never be mass-assigned

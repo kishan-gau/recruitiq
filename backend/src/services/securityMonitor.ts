@@ -19,11 +19,11 @@
  * - Slack/Teams integration
  */
 
-import logger from '../utils/logger.ts';
-import config from '../config/index.ts';
+import logger from '../utils/logger.js';
+import config from '../config/index.js';
 import EventEmitter from 'events';
-import cloudWatchClient from '../integrations/cloudwatch.ts';
-import datadogClient from '../integrations/datadog.ts';
+import cloudWatchClient from '../integrations/cloudwatch.js';
+import datadogClient from '../integrations/datadog.js';
 
 // ============================================================================
 // CENTRAL MONITORING DATABASE

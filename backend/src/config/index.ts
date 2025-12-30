@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { loadSecrets } from './secrets.ts';
+import { loadSecrets } from './secrets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,8 +11,20 @@ const __dirname = path.dirname(__filename);
 const envFile = process.env.NODE_ENV === 'e2e' ? '.env.test' : '.env';
 dotenv.config({ path: path.join(__dirname, '../../', envFile) });
 
+// Secrets interface
+interface Secrets {
+  JWT_SECRET?: string;
+  JWT_REFRESH_SECRET?: string;
+  DATABASE_PASSWORD?: string;
+  REDIS_PASSWORD?: string;
+  SESSION_SECRET?: string;
+  ENCRYPTION_MASTER_KEY?: string;
+  AWS_SECRET_ACCESS_KEY?: string;
+  [key: string]: string | undefined;
+}
+
 // Load and validate all secrets (will be loaded during server startup)
-let secrets = {};
+let secrets: Secrets = {};
 
 const config = {
   // Application

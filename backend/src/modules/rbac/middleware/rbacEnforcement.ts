@@ -1,5 +1,5 @@
-import Role from '../models/Role.ts';
-import logger from '../../../utils/logger.ts';
+import Role from '../models/Role.js';
+import logger from '../../../utils/logger.js';
 
 /**
  * RBAC Enforcement Middleware

@@ -6,10 +6,10 @@
  * @module products/paylinq/controllers/dashboardController
  */
 
-import DashboardService from '../services/dashboardService.ts';
+import DashboardService from '../services/dashboardService.js';
 
 const dashboardService = new DashboardService();
-import logger from '../../../utils/logger.ts';
+import logger from '../../../utils/logger.js';
 
 /**
  * Get dashboard overview statistics

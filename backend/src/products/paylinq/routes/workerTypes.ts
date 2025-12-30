@@ -4,10 +4,10 @@
  */
 
 import express, { Router } from 'express';
-import workerTypeController from '../controllers/workerTypeController.ts';
-import { validate  } from '../../../middleware/validation.ts';
-import { createEndpointLimiter  } from '../../../middleware/rateLimit.ts';
-import { requirePermission } from '../../../middleware/auth.ts';
+import workerTypeController from '../controllers/workerTypeController.js';
+import { validate  } from '../../../middleware/validation.js';
+import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
+import { requirePermission } from '../../../middleware/auth.js';
 import Joi from 'joi';
 
 const router: Router = express.Router();

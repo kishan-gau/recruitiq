@@ -4,10 +4,10 @@
  */
 
 import express from 'express';
-import * as mfaController from '../controllers/mfaController.ts';
-import { authenticate } from '../middleware/auth.ts';
-import { createEndpointLimiter } from '../middleware/rateLimit.ts';
-import { checkFeature } from '../middleware/checkFeature.ts';
+import * as mfaController from '../controllers/mfaController.js';
+import { authenticate } from '../middleware/auth.js';
+import { createEndpointLimiter } from '../middleware/rateLimit.js';
+import { checkFeature } from '../middleware/checkFeature.js';
 
 const router = express.Router();
 

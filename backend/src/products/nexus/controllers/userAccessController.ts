@@ -3,8 +3,8 @@
  * Handles granting and revoking system access for employees in Nexus
  */
 
-import EmployeeService from '../services/employeeService.ts';
-import logger from '../../../utils/logger.ts';
+import EmployeeService from '../services/employeeService.js';
+import logger from '../../../utils/logger.js';
 
 const employeeService = new EmployeeService();
 

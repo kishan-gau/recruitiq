@@ -3,9 +3,9 @@
  * Database operations for ProductPermission model
  */
 
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
-import ProductPermission from '../models/ProductPermission.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import ProductPermission from '../models/ProductPermission.js';
 
 class ProductPermissionRepository {
   constructor(database = null) {

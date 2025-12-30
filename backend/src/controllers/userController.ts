@@ -1,7 +1,7 @@
 import Joi from 'joi';
-import User from '../models/User.ts';
-import logger from '../utils/logger.ts';
-import { ValidationError, NotFoundError, ForbiddenError } from '../middleware/errorHandler.ts';
+import User from '../models/User.js';
+import logger from '../utils/logger.js';
+import { ValidationError, NotFoundError, ForbiddenError } from '../middleware/errorHandler.js';
 
 // Validation schemas
 const createUserSchema = Joi.object({

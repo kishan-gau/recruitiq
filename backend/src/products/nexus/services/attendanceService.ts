@@ -3,10 +3,13 @@
  * Business logic layer for employee attendance tracking
  */
 
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import type { AttendanceRecordData, AttendanceSummary, AttendanceSearchFilters } from '../../../types/nexus.types.js';
 
 class AttendanceService {
+  logger: typeof logger;
+  
   constructor() {
     this.logger = logger;
   }

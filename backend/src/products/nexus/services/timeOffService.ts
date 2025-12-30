@@ -3,10 +3,13 @@
  * Business logic layer for time-off request management
  */
 
-import { query } from '../../../config/database.ts';
-import logger from '../../../utils/logger.ts';
+import { query } from '../../../config/database.js';
+import logger from '../../../utils/logger.js';
+import type { TimeOffRequestData, TimeOffBalance, TimeOffSearchFilters } from '../../../types/nexus.types.js';
 
 class TimeOffService {
+  logger: typeof logger;
+  
   constructor() {
     this.logger = logger;
   }
