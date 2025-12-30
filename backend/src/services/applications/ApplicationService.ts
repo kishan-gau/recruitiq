@@ -3,6 +3,7 @@
  * Implements all business rules and orchestrates repository calls
  */
 
+import type { ApplicationData, ApplicationSearchFilters, PaginatedResponse } from '../../types/recruitment.types.js';
 import { ApplicationRepository } from '../../repositories/ApplicationRepository.js';
 import { JobRepository } from '../../repositories/JobRepository.js';
 import { CandidateRepository } from '../../repositories/CandidateRepository.js';
@@ -12,10 +13,22 @@ import { ValidationError, BusinessRuleError, NotFoundError } from '../../middlew
 import Joi from 'joi';
 
 export class ApplicationService {
-  constructor() {
-    this.applicationRepository = new ApplicationRepository();
-    this.jobRepository = new JobRepository();
-    this.candidateRepository = new CandidateRepository();
+  applicationRepository: ApplicationRepository;
+  jobRepository: JobRepository;
+  candidateRepository: CandidateRepository;
+  logger: typeof logger;
+  
+  static createSchema: Joi.ObjectSchema;
+  static updateSchema: Joi.ObjectSchema;
+  
+  constructor(
+    applicationRepository: ApplicationRepository | null = null,
+    jobRepository: JobRepository | null = null,
+    candidateRepository: CandidateRepository | null = null
+  ) {
+    this.applicationRepository = applicationRepository || new ApplicationRepository();
+    this.jobRepository = jobRepository || new JobRepository();
+    this.candidateRepository = candidateRepository || new CandidateRepository();
     this.logger = logger;
   }
 

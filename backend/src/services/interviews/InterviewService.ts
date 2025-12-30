@@ -3,6 +3,7 @@
  * Implements all business rules and orchestrates repository calls
  */
 
+import type { InterviewData, InterviewFeedbackData, SchedulingConflict } from '../../types/recruitment.types.js';
 import { InterviewRepository } from '../../repositories/InterviewRepository.js';
 import { ApplicationRepository } from '../../repositories/ApplicationRepository.js';
 import logger from '../../utils/logger.js';
@@ -10,9 +11,20 @@ import { ValidationError, BusinessRuleError, NotFoundError } from '../../middlew
 import Joi from 'joi';
 
 export class InterviewService {
-  constructor() {
-    this.interviewRepository = new InterviewRepository();
-    this.applicationRepository = new ApplicationRepository();
+  interviewRepository: InterviewRepository;
+  applicationRepository: ApplicationRepository;
+  logger: typeof logger;
+  
+  static createSchema: Joi.ObjectSchema;
+  static updateSchema: Joi.ObjectSchema;
+  static feedbackSchema: Joi.ObjectSchema;
+  
+  constructor(
+    interviewRepository: InterviewRepository | null = null,
+    applicationRepository: ApplicationRepository | null = null
+  ) {
+    this.interviewRepository = interviewRepository || new InterviewRepository();
+    this.applicationRepository = applicationRepository || new ApplicationRepository();
     this.logger = logger;
   }
 
