@@ -1,15 +1,17 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import ProfileMenu from '@shared/components/ProfileMenu';
 import { 
   Users, 
   Briefcase, 
   DollarSign, 
   Calendar,
   Menu,
-  X,
-  LogOut,
-  User
+  X
 } from 'lucide-react';
 import { useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+
+import { useAuth } from '@recruitiq/auth';
+
 
 const navigation = [
   { name: 'Recruitment', path: '/recruitment', icon: Briefcase },
@@ -20,7 +22,17 @@ const navigation = [
 
 export function MainLayout() {
   const location = useLocation();
+  const { isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -62,18 +74,9 @@ export function MainLayout() {
           })}
         </nav>
 
-        <div className="border-t border-border p-4">
-          <div className="flex items-center gap-3 px-4 py-2 mb-2">
-            <User className="h-5 w-5 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">John Doe</p>
-              <p className="text-xs text-muted-foreground truncate">john@example.com</p>
-            </div>
-          </div>
-          <button className="flex items-center gap-3 px-4 py-2 w-full rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
-            <LogOut className="h-5 w-5" />
-            <span>Logout</span>
-          </button>
+        {/* User profile in sidebar (mobile) - hidden on desktop */}
+        <div className="border-t border-border p-4 lg:hidden">
+          <ProfileMenu />
         </div>
       </aside>
 
@@ -95,7 +98,8 @@ export function MainLayout() {
 
             <div className="flex-1" />
 
-            {/* Add theme toggle, notifications, etc. here */}
+            {/* User Profile Menu */}
+            <ProfileMenu />
           </div>
         </header>
 

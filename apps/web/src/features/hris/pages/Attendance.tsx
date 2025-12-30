@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import {
-  useAttendanceRecords,
-  useAttendanceStatistics,
-  useDeleteAttendanceRecord,
-} from '../hooks/useAttendance';
+
 import type {
   AttendanceRecord,
   AttendanceFilters,
   AttendanceStatus,
 } from '@/types/attendance.types';
+
+import {
+  useAttendanceRecords,
+  useAttendanceStatistics,
+  useDeleteAttendanceRecord,
+} from '../hooks/useAttendance';
 
 export default function AttendancePage() {
   const [filters, setFilters] = useState<AttendanceFilters>({});

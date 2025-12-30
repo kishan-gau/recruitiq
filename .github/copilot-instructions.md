@@ -161,11 +161,8 @@ pnpm dev
 pnpm dev:backend    # Backend API (port 3001)
 pnpm dev:web        # Unified Web App (port 5177) - all product modules
 
-# Legacy individual apps (deprecated, use web instead)
-# pnpm dev:paylinq    # PayLinQ app (port 5174)
-# pnpm dev:portal     # Admin portal (port 5173)
-# pnpm dev:recruitiq  # RecruitIQ app (port 5176)
-# pnpm dev:nexus      # Nexus app (port 5175)
+# All development should use the unified web app (legacy apps have been removed)
+
 
 # Build all apps
 pnpm build

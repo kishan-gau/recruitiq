@@ -28,7 +28,11 @@
       "@/*": ["./src/*"],
       "@features/*": ["./src/features/*"],
       "@shared/*": ["./src/shared/*"],
-      "@core/*": ["./src/core/*"]
+      "@core/*": ["./src/core/*"],
+      "@recruitiq/api-client": ["../packages/api-client"],
+      "@recruitiq/auth": ["../packages/auth"],
+      "@recruitiq/ui": ["../packages/ui"],
+      "@recruitiq/utils": ["../packages/utils"]
     }
   },
   "include": ["src"],

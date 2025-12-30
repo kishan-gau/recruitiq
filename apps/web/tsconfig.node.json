@@ -8,8 +8,10 @@
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "emitDeclarationOnly": true,
     "isolatedModules": true,
     "moduleDetection": "force",
+    "jsx": "react-jsx",
     // Project references require composite and cannot disable emit
     "composite": true,
 

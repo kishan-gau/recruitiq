@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import RolesManagement from './RolesManagement';
-import RoleForm from './RoleForm';
-import RoleDetails from './RoleDetails';
+
 import AssignWorkersToRole from './AssignWorkersToRole';
+import RoleDetails from './RoleDetails';
+import RoleForm from './RoleForm';
+import RolesManagement from './RolesManagement';
 
 const RolesList: React.FC = () => {
   const navigate = useNavigate();

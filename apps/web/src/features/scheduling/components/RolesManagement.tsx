@@ -1,5 +1,3 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Plus, 
@@ -12,9 +10,12 @@ import {
   DollarSign,
   Award
 } from 'lucide-react';
-import { useRoles, useDeleteRole, useDepartments } from '../hooks';
-import { Role } from '../types';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
+import { useRoles, useDeleteRole, useDepartments } from '../hooks';
+import type { Role } from '../types';
 
 interface RolesManagementProps {
   onCreateRole?: () => void;
@@ -53,8 +54,7 @@ const RolesManagement: React.FC<RolesManagementProps> = ({
   });
 
   // Filtered roles
-  const filteredRoles = useMemo(() => {
-    return roles.filter((role) => {
+  const filteredRoles = useMemo(() => roles.filter((role) => {
       const matchesSearch = !searchTerm || 
         role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         role.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -63,8 +63,7 @@ const RolesManagement: React.FC<RolesManagementProps> = ({
       const matchesActive = !showActiveOnly || role.isActive;
       
       return matchesSearch && matchesDepartment && matchesActive;
-    });
-  }, [roles, searchTerm, selectedDepartment, showActiveOnly]);
+    }), [roles, searchTerm, selectedDepartment, showActiveOnly]);
 
   // Event handlers
   const handleCreateRole = () => {
@@ -130,7 +129,7 @@ const RolesManagement: React.FC<RolesManagementProps> = ({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400" />
       </div>
     );
   }

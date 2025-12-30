@@ -79,7 +79,7 @@ services:
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-recruitiq_dev}
       SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-in-production}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5177}
     ports:
       - "3001:3001"
     volumes:
@@ -123,113 +123,11 @@ services:
   #     - recruitiq_dev_network
   #   command: ["npm", "run", "dev"]
 
-  # Nexus Frontend (Development)
-  nexus:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      target: development
-      args:
-        APP_NAME: nexus
-    container_name: recruitiq_nexus_dev
-    restart: unless-stopped
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./apps/nexus:/app/apps/nexus
-      - ./packages:/app/packages:ro
-      - ./package.json:/app/package.json:ro
-      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
-      - /app/node_modules
-      - /app/apps/nexus/node_modules
-    networks:
-      - recruitiq_dev_network
-    environment:
-      - VITE_API_URL=http://localhost:3001
-      - VITE_APP_ENV=development
-    command: ["pnpm", "dev", "--host", "0.0.0.0"]
-
-  # PayLinQ Frontend (Development)
-  paylinq:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      target: development
-      args:
-        APP_NAME: paylinq
-    container_name: recruitiq_paylinq_dev
-    restart: unless-stopped
-    ports:
-      - "5174:5174"
-    volumes:
-      - ./apps/paylinq:/app/apps/paylinq
-      - ./packages:/app/packages:ro
-      - ./package.json:/app/package.json:ro
-      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
-      - /app/node_modules
-      - /app/apps/paylinq/node_modules
-    networks:
-      - recruitiq_dev_network
-    environment:
-      - VITE_API_URL=http://localhost:3001
-      - VITE_APP_ENV=development
-    command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5174"]
-
-  # Portal Frontend (Development)
-  portal:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      target: development
-      args:
-        APP_NAME: portal
-    container_name: recruitiq_portal_dev
-    restart: unless-stopped
-    ports:
-      - "5175:5175"
-    volumes:
-      - ./apps/portal:/app/apps/portal
-      - ./packages:/app/packages:ro
-      - ./package.json:/app/package.json:ro
-      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
-      - /app/node_modules
-      - /app/apps/portal/node_modules
-    networks:
-      - recruitiq_dev_network
-    environment:
-      - VITE_API_URL=http://localhost:3001
-      - VITE_APP_ENV=development
-    command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5175"]
-
-  # RecruitIQ Frontend (Development)
-  recruitiq:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      target: development
-      args:
-        APP_NAME: recruitiq
-    container_name: recruitiq_app_dev
-    restart: unless-stopped
-    ports:
-      - "5176:5176"
-    volumes:
-      - ./apps/recruitiq:/app/apps/recruitiq
-      - ./packages:/app/packages:ro
-      - ./package.json:/app/package.json:ro
-      - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
-      - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
-      - /app/node_modules
-      - /app/apps/recruitiq/node_modules
-    networks:
-      - recruitiq_dev_network
-    environment:
-      - VITE_API_URL=http://localhost:3001
-      - VITE_APP_ENV=development
-    command: ["pnpm", "dev", "--host", "0.0.0.0", "--port", "5176"]
+  # Legacy Frontend Applications (DEPRECATED - Use unified 'web' app below)
+  # Individual apps are maintained for backward compatibility and migration testing only
+  # 
+  # Note: Legacy apps (nexus, paylinq, portal, recruitiq) have been removed.
+  # Use the unified web app (apps/web) for all development.
 
   # Web Frontend (Unified - Development)
   web:

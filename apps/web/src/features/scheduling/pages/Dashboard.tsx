@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import { TrendingUp, MapPin, Users, Calendar, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function SchedulingDashboard() {
   // Placeholder data - replace with actual hooks when implemented

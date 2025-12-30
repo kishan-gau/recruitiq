@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+
 import {
   useContracts,
   useContract,
@@ -7,6 +8,7 @@ import {
   useDeleteContract,
 } from '@/features/hris/hooks/useContracts';
 import { getErrorMessage, getValidationErrors } from '@/utils/errorHandler';
+
 import { formatDate } from '../../../utils/formatDate';
 
 const statusLabels: Record<string, string> = {
@@ -374,9 +376,7 @@ function ContractForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string>('');
 
-  const isValidUuidV4 = (value: string) => {
-    return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
-  };
+  const isValidUuidV4 = (value: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};

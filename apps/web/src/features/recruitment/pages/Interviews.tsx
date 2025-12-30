@@ -1,9 +1,12 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { interviewsService } from '../services/interviews.service';
+
+import { useToast } from '@/contexts/ToastContext';
+
 import { candidatesService } from '../services/candidates.service';
-import { useToast } from '@/hooks/useToast';
+import { interviewsService } from '../services/interviews.service';
+
 
 // ================================================================================
 // TYPES
@@ -304,7 +307,7 @@ export default function InterviewsPage() {
   if (loadingInterviews || loadingCandidates) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
       </div>
     );
   }
@@ -403,7 +406,7 @@ export default function InterviewsPage() {
               <div className="space-y-4">
                 {/* Day Headers */}
                 <div className="grid grid-cols-8 gap-2">
-                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400"></div>
+                  <div className="text-xs font-medium text-slate-500 dark:text-slate-400" />
                   {DAYS_OF_WEEK.map(day => (
                     <div key={day} className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center">
                       {day}
@@ -412,8 +415,7 @@ export default function InterviewsPage() {
                 </div>
               
                 {/* Time Slots and Days */}
-                {TIMES.map((time, timeIndex) => {
-                  return (
+                {TIMES.map((time, timeIndex) => (
                     <div key={time} className="grid grid-cols-8 gap-2">
                       {/* Time Label */}
                       <div className="text-xs text-slate-500 dark:text-slate-400 py-2">
@@ -483,8 +485,7 @@ export default function InterviewsPage() {
                         );
                       })}
                     </div>
-                  );
-                })}
+                  ))}
               </div>
             </div>
             

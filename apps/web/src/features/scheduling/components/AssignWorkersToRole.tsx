@@ -1,16 +1,19 @@
-import React, { useState, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Search, Users, Check, X, Building2 } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+
 import { Modal, Button, Input } from '@recruitiq/ui';
+
 import { useToast } from '@/contexts/ToastContext';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+
+import { useDepartments } from '../hooks/useDepartments';
 import { 
   useWorkers, 
   useRoleWorkers, 
   useAssignWorkerToRole, 
   useUnassignRole 
 } from '../hooks/useWorkers';
-import { useDepartments } from '../hooks/useDepartments';
 import type { Worker, Role } from '../types';
 
 interface AssignWorkersToRoleProps {
@@ -53,14 +56,10 @@ const AssignWorkersToRole: React.FC<AssignWorkersToRoleProps> = ({
   }, [departments]);
 
   // Get assigned worker IDs for filtering
-  const assignedWorkerIds = useMemo(() => {
-    return new Set(assignedWorkers.map((worker) => worker.id));
-  }, [assignedWorkers]);
+  const assignedWorkerIds = useMemo(() => new Set(assignedWorkers.map((worker) => worker.id)), [assignedWorkers]);
 
   // Filter available workers (not already assigned to this role)
-  const availableWorkers = useMemo(() => {
-    return allWorkers.filter((worker) => !assignedWorkerIds.has(worker.id));
-  }, [allWorkers, assignedWorkerIds]);
+  const availableWorkers = useMemo(() => allWorkers.filter((worker) => !assignedWorkerIds.has(worker.id)), [allWorkers, assignedWorkerIds]);
 
   // Filter workers by search term
   const filteredAvailableWorkers = useMemo(() => {

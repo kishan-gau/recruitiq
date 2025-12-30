@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), dts({ include: 'src' })],
   resolve: {
     alias: {
       '@recruitiq/auth': resolve(__dirname, '../auth/src/index.ts'),

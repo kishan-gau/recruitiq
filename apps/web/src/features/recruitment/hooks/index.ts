@@ -4,7 +4,6 @@ export * from './useCandidates';
 export * from './usePipeline';
 export * from './useInterviews';
 
-// Utility Hooks
-export * from './usePagination';
-export * from './useDebounce';
-export * from './useSearchFilters';
+// Shared/Utility Hooks - Common hooks used across multiple features
+// These are located in the shared hooks directory since they're reused across features
+export { useDebounce, usePagination, useSearchFilters } from '@/utils/hooks';

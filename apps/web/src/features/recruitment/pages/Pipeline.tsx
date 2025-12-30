@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
+
+import { ApplicationSourceBadge } from '../components/shared';
 import { useJobs, useCandidates } from '../hooks';
-import { ApplicationSourceBadge } from '../../../../../../packages/ui/src/recruitment/ApplicationSourceBadge';
 
 // Mock for now - we'll need to implement these properly
 interface FlowTemplate {
@@ -112,16 +113,14 @@ const CandidateFlowProgress: React.FC<{ candidateId: string; jobId: string; comp
   candidateId,
   jobId,
   compact = false,
-}) => {
-  return (
+}) => (
     <div className={`${compact ? 'text-xs' : 'text-sm'} text-slate-500 dark:text-slate-400`}>
       <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+        <div className="w-2 h-2 bg-emerald-500 rounded-full" />
         <span>In Progress</span>
       </div>
     </div>
   );
-};
 
 export default function Pipeline() {
   const { data: jobs = [], isLoading: jobsLoading, error: jobsError } = useJobs({});
@@ -161,9 +160,7 @@ export default function Pipeline() {
     return stageData.map(s => s.name);
   }, [jobs, flowTemplates]);
   
-  const stageData = useMemo(() => {
-    return getAllStagesFromTemplates(jobs, flowTemplates);
-  }, [jobs, flowTemplates]);
+  const stageData = useMemo(() => getAllStagesFromTemplates(jobs, flowTemplates), [jobs, flowTemplates]);
 
   function move(id: string, dir: number) {
     const application = applications.find(a => a.id === id);
@@ -213,7 +210,7 @@ export default function Pipeline() {
         </div>
         <div className="flex items-center justify-center py-12">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             <div className="text-sm text-slate-500 dark:text-slate-400">Loading pipeline...</div>
           </div>
         </div>

@@ -1,5 +1,3 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Edit, 
@@ -14,10 +12,14 @@ import {
   Trash2,
   Loader
 } from 'lucide-react';
-import { useRole, useRoleWorkers } from '../hooks';
+import React, { useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+
 import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
-import RoleForm from './RoleForm';
+import { useRole, useRoleWorkers } from '../hooks';
+
 import AssignWorkersToRole from './AssignWorkersToRole';
+import RoleForm from './RoleForm';
 
 interface RoleDetailsProps {
   roleId?: string;

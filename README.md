@@ -24,11 +24,8 @@ RecruitIQ follows a layered architecture pattern:
 ┌─────────────────────────────────────────┐
 │          Frontend (React)               │
 │  - Unified Web App (apps/web)           │
-│    • Admin Portal Features              │
-│    • RecruitIQ Public Features          │
-│    • Nexus HRIS Features                │
-│    • PayLinQ Payroll Features           │
-│    • ScheduleHub Features               │
+│    • All Product Modules                │
+│      (Recruitment, HRIS, Payroll, Scheduling)|
 └─────────────────────────────────────────┘
                   │ HTTP/REST
 ┌─────────────────────────────────────────┐
@@ -145,7 +142,7 @@ Backend will be available at `http://localhost:3001`
 
 #### Unified Web App (Recommended)
 
-The unified web app consolidates all product features (Portal, RecruitIQ, Nexus, PayLinQ, ScheduleHub) into a single application:
+The unified web app consolidates all product features (HRIS/Nexus, Payroll/PayLinQ, Recruitment/RecruitIQ, Scheduling/ScheduleHub) into a single application:
 
 ```bash
 # From project root (uses pnpm workspace)
@@ -166,18 +163,6 @@ pnpm dev
 ```
 
 Web app will be available at `http://localhost:5177`
-
-#### Legacy Individual Apps (Deprecated)
-
-**Note:** Individual product apps (portal, recruitiq, nexus, paylinq) are deprecated in favor of the unified web app. Use apps/web for new development.
-
-```bash
-# Portal (Admin) - http://localhost:5173
-cd apps/portal && pnpm dev
-
-# RecruitIQ (Public) - http://localhost:5174
-cd apps/recruitiq && pnpm dev
-```
 
 ## ⚙️ Configuration
 
@@ -222,12 +207,6 @@ Create `.env` file in `apps/web` directory:
 ```env
 VITE_API_URL=http://localhost:3001/api
 VITE_APP_NAME=RecruitIQ Web
-```
-
-For legacy individual apps, create `.env` files in `apps/portal` and `apps/recruitiq` directories:
-
-```env
-VITE_API_URL=http://localhost:3001/api
 ```
 
 ## 🐳 Docker Development Setup
@@ -349,7 +328,7 @@ npm run test:security
 ### Frontend Tests
 
 ```bash
-cd portal  # or cd recruitiq
+cd apps/web
 
 # Run unit tests
 npm test
@@ -398,13 +377,8 @@ cd backend
 npm run build
 NODE_ENV=production npm start
 
-# Frontend (Portal)
-cd portal
-npm run build
-# Serve dist/ folder with nginx or similar
-
-# Frontend (RecruitIQ)
-cd recruitiq
+# Frontend (Unified Web App)
+cd apps/web
 npm run build
 # Serve dist/ folder with nginx or similar
 ```
@@ -474,18 +448,26 @@ recruitiq/
 │   │   ├── repositories/   # Data access layer
 │   │   ├── middleware/     # Express middleware
 │   │   ├── routes/         # API routes
+│   │   ├── products/       # Dynamic product modules
 │   │   ├── utils/          # Utility functions
 │   │   └── database/       # Database config & migrations
 │   └── tests/              # Test suites
-├── portal/                  # Admin portal (React)
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── contexts/       # React contexts
-│   │   ├── services/       # API services
-│   │   └── utils/          # Utility functions
-├── recruitiq/               # Public application (React)
-│   └── src/                # Similar structure to portal
+├── apps/
+│   ├── web/                # Unified React application
+│   │   ├── src/
+│   │   │   ├── components/  # Reusable React components
+│   │   │   ├── pages/       # Product module pages
+│   │   │   ├── contexts/    # React contexts
+│   │   │   ├── services/    # API service layer
+│   │   │   └── utils/       # Utility functions
+│   │   └── tests/           # Component tests
+│   └── portal/              # Deprecated (merged into web)
+├── packages/                # Shared packages
+│   ├── api-client/         # Centralized API client
+│   ├── auth/               # Authentication utilities
+│   ├── types/              # TypeScript type definitions
+│   ├── ui/                 # Shared UI components
+│   └── utils/              # Shared utilities
 ├── docs/                    # Documentation
 │   ├── BACKEND_STANDARDS.md
 │   ├── FRONTEND_STANDARDS.md

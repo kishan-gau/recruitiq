@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+
 import type { EmployeeDeduction } from '@recruitiq/types';
-import { useDeductions } from '../hooks/useDeductions';
+
 import { handleApiError } from '@/utils/errorHandler';
+
+import { useDeductions } from '../hooks/useDeductions';
 
 // Deduction Type Badge
 function DeductionTypeBadge({ type }: { type: string }) {
@@ -336,7 +339,7 @@ export default function DeductionsPage() {
       {/* Loading State */}
       {isLoadingDeductions && (
         <div className="text-center py-12">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
           <p className="mt-2 text-sm text-gray-600">Aftrekken laden...</p>
         </div>
       )}

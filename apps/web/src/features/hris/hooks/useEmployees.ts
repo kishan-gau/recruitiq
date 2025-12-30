@@ -4,7 +4,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
-import { employeesService } from '../services/employees.service';
+
+import type { ApiError } from '@/types/common.types';
 import type {
   Employee,
   CreateEmployeeDTO,
@@ -18,7 +19,8 @@ import type {
   EmploymentHistoryEntry,
   RehireEligibility,
 } from '@/types/employee.types';
-import type { ApiError } from '@/types/common.types';
+
+import { employeesService } from '../services/employees.service';
 
 // Query keys for employees
 export const employeeKeys = {

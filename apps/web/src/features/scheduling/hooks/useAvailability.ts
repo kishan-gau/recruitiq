@@ -6,10 +6,12 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { availabilityService } from '../services';
-import { WorkerAvailability, AvailabilityException } from '../types';
+
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useToast } from '@/hooks/useToast';
+
+import { availabilityService } from '../services';
+import { WorkerAvailability, AvailabilityException } from '../types';
 
 // ==================== Query Keys ====================
 

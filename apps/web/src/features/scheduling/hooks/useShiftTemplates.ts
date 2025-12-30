@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { 
+
+import { useToast } from '@/hooks/useToast';
+import { handleApiError } from '@/utils/errorHandler';
+
+import { templatesService } from '../services';
+import type { 
   ShiftTemplate,
   ShiftTemplateDetails,
   ShiftTemplateFilters,
@@ -9,9 +14,6 @@ import {
   CloneShiftTemplateRequest,
   ValidationResult,
 } from '../types';
-import { templatesService } from '../services';
-import { useToast } from '@/hooks/useToast';
-import { handleApiError } from '@/utils/errorHandler';
 
 /**
  * Normalizes time format to HH:MM (backend expects no seconds)
@@ -272,17 +274,17 @@ export function useShiftTemplateSummaries(filters?: ShiftTemplateFilters) {
 export function useShiftTemplateUsage(id: string, enabled = true) {
   return useQuery({
     queryKey: shiftTemplateKeys.usage(id),
-    queryFn: async (): Promise<ShiftTemplateUsage> => {
+    queryFn: async (): Promise<ShiftTemplateUsage> => 
       // Return placeholder data structure matching expected ShiftTemplateUsage type
       // TODO: Implement getUsageStats() in backend and ScheduleHubClient
-      return {
+       ({
         lastUsed: null,
         createdShifts: 0,
         upcomingShifts: 0,
         totalHours: 0,
         averageFillRate: 0,
-      };
-    },
+      })
+    ,
     enabled: enabled && !!id,
   });
 }
@@ -529,16 +531,16 @@ export function usePrefetchShiftTemplate() {
     prefetchUsage: (id: string) => {
       queryClient.prefetchQuery({
         queryKey: shiftTemplateKeys.usage(id),
-        queryFn: async (): Promise<ShiftTemplateUsage> => {
+        queryFn: async (): Promise<ShiftTemplateUsage> => 
           // Stub implementation until backend getUsageStats() is implemented
-          return {
+           ({
             lastUsed: null,
             createdShifts: 0,
             upcomingShifts: 0,
             totalHours: 0,
             averageFillRate: 0,
-          };
-        },
+          })
+        ,
       });
     },
   };

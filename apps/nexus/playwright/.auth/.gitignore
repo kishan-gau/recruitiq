@@ -1,3 +1,0 @@
-# Ignore authentication state files (contain session cookies)
-# These are generated during test runs and should not be committed
-*.json

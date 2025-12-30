@@ -6,9 +6,11 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+
 import { statsService } from '../services';
 import { ScheduleStatistics } from '../types';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 // ==================== Query Keys ====================
 

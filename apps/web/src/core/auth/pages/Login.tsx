@@ -7,7 +7,7 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Placeholder: hook up to real auth later
-    // eslint-disable-next-line no-alert
+     
     alert(`Login attempted for: ${email}`);
   };
 

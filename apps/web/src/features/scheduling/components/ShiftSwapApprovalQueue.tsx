@@ -5,8 +5,6 @@
  * Features include advanced filtering, search, bulk approve/reject, and detailed swap views.
  */
 
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -16,6 +14,10 @@ import {
   AlertTriangle,
   Users,
 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import {
   usePendingSwaps,
   useApproveSwap,
@@ -24,17 +26,16 @@ import {
   useBulkRejectSwaps,
 } from '../hooks';
 import { schedulingService } from '../services';
-import { useErrorHandler } from '../../../hooks/useErrorHandler';
 import type { ShiftSwap, ShiftSwapStatus } from '../types';
 
 // UI Components
-const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
     {children}
-  </div>
-);
+  </div>;
+}
 
-const Button = ({ 
+function Button({ 
   children, 
   onClick, 
   variant = 'primary', 
@@ -49,7 +50,7 @@ const Button = ({
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   className?: string;
-}) => {
+}) {
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variantClasses = {
@@ -75,9 +76,9 @@ const Button = ({
       {children}
     </button>
   );
-};
+}
 
-const Badge = ({ 
+function Badge({ 
   children, 
   variant = 'default', 
   size = 'md' 
@@ -85,7 +86,7 @@ const Badge = ({
   children: React.ReactNode; 
   variant?: 'default' | 'green' | 'yellow' | 'red' | 'blue';
   size?: 'sm' | 'md';
-}) => {
+}) {
   const baseClasses = 'inline-flex items-center font-medium rounded-full';
   
   const variantClasses = {
@@ -106,7 +107,7 @@ const Badge = ({
       {children}
     </span>
   );
-};
+}
 
 interface ShiftSwapApprovalQueueProps {
   className?: string;
@@ -150,8 +151,7 @@ export const ShiftSwapApprovalQueue: React.FC<ShiftSwapApprovalQueueProps> = ({
   const pagination = swapData?.pagination;
 
   // Filtered swaps
-  const filteredSwaps = useMemo(() => {
-    return swaps.filter((swap: ShiftSwap) => {
+  const filteredSwaps = useMemo(() => swaps.filter((swap: ShiftSwap) => {
       const matchesSearch = searchTerm === '' || 
         swap.shift?.role?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         swap.shift?.station?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -165,8 +165,7 @@ export const ShiftSwapApprovalQueue: React.FC<ShiftSwapApprovalQueueProps> = ({
         (priorityFilter === 'normal' && !swap.isUrgent);
 
       return matchesSearch && matchesStatus && matchesPriority;
-    });
-  }, [swaps, searchTerm, statusFilter, priorityFilter]);
+    }), [swaps, searchTerm, statusFilter, priorityFilter]);
 
   // Selection handlers
   const toggleSwapSelection = (swapId: string) => {

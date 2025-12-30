@@ -12,12 +12,15 @@
  * @component
  */
 
-import React, { useState, useEffect } from 'react';
 import { X, User, CheckCircle, AlertTriangle } from 'lucide-react';
-import type { Shift, Worker, WorkerAvailability } from '../types';
+import React, { useState, useEffect } from 'react';
+
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+
 import { useAssignShift, useUnassignShift } from '../hooks';
 import { schedulingService } from '../services';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
+import type { Shift, Worker, WorkerAvailability } from '../types';
+
 
 interface WorkerWithAvailability extends Worker {
   availability?: WorkerAvailability & {
@@ -140,13 +143,11 @@ export function ShiftAssignmentModal({
     const start = new Date(startTime);
     const end = new Date(endTime);
     
-    const formatTime = (date: Date) => {
-      return date.toLocaleTimeString('en-US', { 
+    const formatTime = (date: Date) => date.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
         hour12: true 
       });
-    };
     
     return `${formatTime(start)} - ${formatTime(end)}`;
   };
@@ -242,7 +243,7 @@ export function ShiftAssignmentModal({
 
               {isLoading ? (
                 <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading available workers...</p>
                 </div>
               ) : availableWorkers.length === 0 ? (

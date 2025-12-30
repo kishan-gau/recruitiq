@@ -1,5 +1,3 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
 import { 
   Calendar,
   Users,
@@ -13,9 +11,12 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
+import React from 'react';
+import { Link } from 'react-router-dom';
+
 import { ScheduleAnalytics } from '../../features/scheduling/components';
-import { useScheduleStats, useStations } from '../../hooks/scheduling';
 import { useErrorHandler } from '../../hooks/common';
+import { useScheduleStats, useStations } from '../../hooks/scheduling';
 
 export default function ScheduleHubPage() {
   const { data: stats, isLoading: statsLoading, error: statsError } = useScheduleStats();
@@ -150,7 +151,7 @@ export default function ScheduleHubPage() {
   if (statsLoading || stationsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     );
   }

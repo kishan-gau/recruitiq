@@ -1,9 +1,10 @@
-import { Route, Navigate } from 'react-router-dom';
-import { MainLayout } from '@shared/layouts/MainLayout';
+import { ProtectedRoute } from '@core/routing/ProtectedRoute';
 import { AuthLayout } from '@shared/layouts/AuthLayout';
+import { MainLayout } from '@shared/layouts/MainLayout';
 
 // Lazy load feature modules
 import { lazy } from 'react';
+import { Route, Navigate } from 'react-router-dom';
 
 // Auth pages
 const Login = lazy(() => import('@core/auth/pages/Login'));
@@ -45,10 +46,27 @@ const ScheduleTimeOffPage = lazy(() => import('@features/scheduling/pages/TimeOf
 const TemplatesPage = lazy(() => import('@features/scheduling/pages/TemplatesPage'));
 const ScheduleReportsPage = lazy(() => import('@features/scheduling/pages/ReportsPage'));
 const RolesPage = lazy(() => import('@features/scheduling/pages/RolesPage'));
-const SettingsPage = lazy(() => import('@features/scheduling/pages/SettingsPage'));
+const ScheduleSettingsPage = lazy(() => import('@features/scheduling/pages/SettingsPage'));
 
-// Migration validation
-const ScheduleHubMigrationValidation = lazy(() => import('@/validation/ScheduleHubMigrationValidation'));
+// User Settings
+const UserSettingsPage = lazy(() => import('@features/settings/pages/UserSettingsPage'));
+
+// Product Settings Hubs
+const PayrollSettingsHub = lazy(() => import('@features/payroll/pages/settings/PayrollSettingsHub'));
+const HRISSettingsHub = lazy(() => import('@features/hris/pages/settings/HRISSettingsHub'));
+const RecruitmentSettingsHub = lazy(() => import('@features/recruitment/pages/settings/RecruitmentSettingsHub'));
+
+// PayLinQ Settings Pages
+const GeneralSettings = lazy(() => import('@features/payroll/pages/settings/GeneralSettings'));
+const EmailSettings = lazy(() => import('@features/payroll/pages/settings/EmailSettings'));
+const NotificationSettings = lazy(() => import('@features/payroll/pages/settings/NotificationSettings'));
+const PayrollDefaultsSettings = lazy(() => import('@features/payroll/pages/settings/PayrollDefaultsSettings'));
+const LoontijdvakSettings = lazy(() => import('@features/payroll/pages/settings/LoontijdvakSettings'));
+const PayrollRolesPermissions = lazy(() => import('@features/payroll/pages/settings/RolesPermissions'));
+
+// HRIS Settings Pages  
+const HRISRolesPermissions = lazy(() => import('@features/hris/pages/settings/RolesPermissions'));
+const BulkUserAccessManagement = lazy(() => import('@features/hris/pages/settings/BulkUserAccessManagement'));
 
 /**
  * Application routes
@@ -64,8 +82,15 @@ export const routes = (
       <Route index element={<Navigate to="/auth/login" replace />} />
     </Route>
 
-    {/* Main app routes */}
-    <Route path="/" element={<MainLayout />}>
+    {/* Main app routes - Protected */}
+    <Route
+      path="/"
+      element={
+        <ProtectedRoute>
+          <MainLayout />
+        </ProtectedRoute>
+      }
+    >
       <Route index element={<Navigate to="/recruitment" replace />} />
       
       {/* Recruitment module */}
@@ -75,6 +100,8 @@ export const routes = (
         <Route path="candidates" element={<CandidatesPage />} />
         <Route path="pipeline" element={<PipelinePage />} />
         <Route path="interviews" element={<InterviewsPage />} />
+        {/* Recruitment Settings */}
+        <Route path="settings" element={<RecruitmentSettingsHub />} />
       </Route>
 
       {/* HRIS module */}
@@ -87,6 +114,10 @@ export const routes = (
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="benefits" element={<BenefitsPage />} />
         <Route path="performance" element={<PerformancePage />} />
+        {/* HRIS Settings */}
+        <Route path="settings" element={<HRISSettingsHub />} />
+        <Route path="settings/roles" element={<HRISRolesPermissions />} />
+        <Route path="settings/bulk-users" element={<BulkUserAccessManagement />} />
         <Route path="contracts" element={<ContractsPage />} />
         <Route path="documents" element={<DocumentsPage />} />
       </Route>
@@ -95,6 +126,14 @@ export const routes = (
       <Route path="payroll">
         <Route index element={<PayrollDashboard />} />
         <Route path="runs" element={<PayrollRunsPage />} />
+        {/* Payroll Settings */}
+        <Route path="settings" element={<PayrollSettingsHub />} />
+        <Route path="settings/general" element={<GeneralSettings />} />
+        <Route path="settings/email" element={<EmailSettings />} />
+        <Route path="settings/notifications" element={<NotificationSettings />} />
+        <Route path="settings/payroll-defaults" element={<PayrollDefaultsSettings />} />
+        <Route path="settings/loontijdvak" element={<LoontijdvakSettings />} />
+        <Route path="settings/roles" element={<PayrollRolesPermissions />} />
         <Route path="compensation" element={<CompensationPage />} />
         <Route path="tax" element={<TaxPage />} />
         <Route path="deductions" element={<DeductionsPage />} />
@@ -113,8 +152,11 @@ export const routes = (
         <Route path="templates" element={<TemplatesPage />} />
         <Route path="reports" element={<ScheduleReportsPage />} />
         <Route path="roles" element={<RolesPage />} />
-        <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings" element={<ScheduleSettingsPage />} />
       </Route>
+
+      {/* User Settings (accessible from profile menu) */}
+      <Route path="settings" element={<UserSettingsPage />} />
     </Route>
   </>
 );

@@ -1,5 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+
 import {
   useEmployees,
   employeeKeys,
@@ -21,8 +23,8 @@ import type {
   TerminateEmployeeDTO,
   RehireEmployeeDTO,
 } from '@/types/employee.types';
+
 import { getErrorMessage, handleApiError } from '../../../utils/errorHandler';
-import { useQueryClient } from '@tanstack/react-query';
 
 const statusLabels: Record<EmploymentStatus, string> = {
   active: 'Actief',

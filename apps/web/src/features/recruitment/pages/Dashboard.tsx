@@ -1,7 +1,8 @@
-import React from 'react'
-import { useJobs } from '../hooks/useJobs'
-import { useCandidates } from '../hooks/useCandidates'
-import { useDashboard } from '../hooks/useDashboard'
+import React from 'react';
+
+import { useCandidates } from '../hooks/useCandidates';
+import { useDashboard } from '../hooks/useDashboard';
+import { useJobs } from '../hooks/useJobs';
 
 interface DashboardMetrics {
   totalJobs: number
@@ -16,18 +17,18 @@ interface DashboardMetrics {
 
 export default function RecruitmentDashboard() {
   // Data hooks
-  const { data: jobs = [], isLoading: jobsLoading } = useJobs()
-  const { data: candidates = [], isLoading: candidatesLoading } = useCandidates()
-  const { data: metrics, isLoading: metricsLoading } = useDashboard()
+  const { data: jobs = [], isLoading: jobsLoading } = useJobs();
+  const { data: candidates = [], isLoading: candidatesLoading } = useCandidates();
+  const { data: metrics, isLoading: metricsLoading } = useDashboard();
 
   // Calculate totals safely from direct data or metrics
-  const totalOpenings = metrics?.openJobs ?? jobs.filter((j: any) => j.status === 'open').length
-  const totalCandidates = metrics?.totalCandidates ?? candidates.length
-  const totalHired = metrics?.totalHired ?? candidates.filter((c: any) => c.stage === 'Hired').length
-  const conversionRate = metrics?.conversionRate ?? 0
+  const totalOpenings = metrics?.openJobs ?? jobs.filter((j: any) => j.status === 'open').length;
+  const totalCandidates = metrics?.totalCandidates ?? candidates.length;
+  const totalHired = metrics?.totalHired ?? candidates.filter((c: any) => c.stage === 'Hired').length;
+  const conversionRate = metrics?.conversionRate ?? 0;
 
   // Loading state
-  const isLoading = jobsLoading || candidatesLoading || metricsLoading
+  const isLoading = jobsLoading || candidatesLoading || metricsLoading;
 
   return (
     <div className="p-6">
@@ -61,7 +62,7 @@ export default function RecruitmentDashboard() {
           <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Open Roles</div>
           <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
             {isLoading ? (
-              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
+              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
             ) : (
               totalOpenings.toLocaleString()
             )}
@@ -75,7 +76,7 @@ export default function RecruitmentDashboard() {
           <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Candidates</div>
           <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
             {isLoading ? (
-              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
+              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
             ) : (
               totalCandidates.toLocaleString()
             )}
@@ -89,7 +90,7 @@ export default function RecruitmentDashboard() {
           <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Hires</div>
           <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
             {isLoading ? (
-              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
+              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
             ) : (
               totalHired.toLocaleString()
             )}
@@ -103,7 +104,7 @@ export default function RecruitmentDashboard() {
           <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Conversion Rate</div>
           <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
             {isLoading ? (
-              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
+              <div className="w-16 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
             ) : (
               `${conversionRate.toFixed(1)}%`
             )}
@@ -123,10 +124,10 @@ export default function RecruitmentDashboard() {
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded-full"></div>
+                  <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 animate-pulse rounded-full" />
                   <div className="flex-1">
-                    <div className="w-3/4 h-4 bg-slate-200 dark:bg-slate-700 animate-pulse rounded mb-1"></div>
-                    <div className="w-1/2 h-3 bg-slate-200 dark:bg-slate-700 animate-pulse rounded"></div>
+                    <div className="w-3/4 h-4 bg-slate-200 dark:bg-slate-700 animate-pulse rounded mb-1" />
+                    <div className="w-1/2 h-3 bg-slate-200 dark:bg-slate-700 animate-pulse rounded" />
                   </div>
                 </div>
               ))}

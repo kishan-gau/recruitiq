@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+
 import { type Station } from '../types';
 
 export interface StationDropdownFilterProps {
@@ -118,7 +119,7 @@ const StationDropdownFilter: React.FC<StationDropdownFilterProps> = ({
             </div>
 
             {/* Divider */}
-            <div className="border-t border-gray-200 dark:border-gray-600 my-2"></div>
+            <div className="border-t border-gray-200 dark:border-gray-600 my-2" />
 
             {/* Individual Station Options */}
             {stations.map((station) => {

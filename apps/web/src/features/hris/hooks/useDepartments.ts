@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
-import { departmentsService } from '../services/departments.service';
+
 import type {
   ApiError,
   Department,
@@ -7,6 +7,8 @@ import type {
   CreateDepartmentDTO,
   UpdateDepartmentDTO,
 } from '@/types/department.types';
+
+import { departmentsService } from '../services/departments.service';
 
 export const departmentKeys = {
   all: ['departments'] as const,

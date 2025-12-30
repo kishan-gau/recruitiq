@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { format, startOfWeek, addDays, getWeeksInMonth, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { ChevronLeft, ChevronRight, User } from 'lucide-react';
-import { formatTime } from '../utils';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+
+import { useStationCoverage, useShiftTemplates, useTemplateBasedTimeSlots } from '../hooks';
 import { 
   type Shift, 
   type Station, 
@@ -10,7 +11,8 @@ import {
   type CalendarTimeSlot,
   type ViewType 
 } from '../types';
-import { useStationCoverage, useShiftTemplates, useTemplateBasedTimeSlots } from '../hooks';
+import { formatTime } from '../utils';
+
 import StationDropdownFilter from './StationDropdownFilter';
 import TemplateTimeSlots from './TemplateTimeSlots';
 
@@ -290,22 +292,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
-  const getFilteredShifts = (day: Date) => {
-    return shifts.filter(shift => {
+  const getFilteredShifts = (day: Date) => shifts.filter(shift => {
       const shiftDate = new Date(shift.shiftDate);
       const dateMatches = shiftDate.toDateString() === day.toDateString();
       const stationMatches = selectedStations.size === 0 || 
         (shift.stationId && selectedStations.has(shift.stationId));
       return dateMatches && stationMatches;
     });
-  };
 
   // Week view content generation
   const weekViewContent = useMemo(() => (
     <div className="grid grid-cols-8 gap-1 mt-4">
       {/* Time column */}
       <div className="space-y-px">
-        <div className="h-16 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded"></div>
+        <div className="h-16 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded" />
         {timeSlots.filter((_, i) => i % 4 === 0).map(slot => (
           <div 
             key={slot.time} 
@@ -546,15 +546,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           {/* Legend */}
           <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-300">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-100 border border-red-300 dark:bg-red-900/20 dark:border-red-700 rounded"></div>
+              <div className="w-4 h-4 bg-red-100 border border-red-300 dark:bg-red-900/20 dark:border-red-700 rounded" />
               <span>Scheduling Gap</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-100 border border-blue-300 dark:bg-blue-900/20 dark:border-blue-700 rounded"></div>
+              <div className="w-4 h-4 bg-blue-100 border border-blue-300 dark:bg-blue-900/20 dark:border-blue-700 rounded" />
               <span>Scheduled</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-gray-50 dark:bg-gray-700/50 rounded"></div>
+              <div className="w-4 h-4 bg-gray-50 dark:bg-gray-700/50 rounded" />
               <span>Outside Operating Hours</span>
             </div>
           </div>

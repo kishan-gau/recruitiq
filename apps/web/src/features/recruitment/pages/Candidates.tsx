@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useCandidates, useCreateCandidate, useUpdateCandidate, useDeleteCandidate } from '../hooks/useCandidates';
-import { useJobs } from '../hooks/useJobs';
+
 import { 
   FilterChips, 
   Pagination, 
@@ -9,6 +8,9 @@ import {
   ApplicationSourceBadge,
   type Filter 
 } from '@recruitiq/ui';
+
+import { useCandidates, useCreateCandidate, useUpdateCandidate, useDeleteCandidate } from '../hooks/useCandidates';
+import { useJobs } from '../hooks/useJobs';
 
 /**
  * Candidates Page - Unified Frontend Migration
@@ -118,9 +120,7 @@ export default function CandidatesPage() {
     return stageData.map((s: any) => s.name);
   }, [jobs]);
   
-  const stageData = useMemo(() => {
-    return getAllStagesFromJobs(jobs);
-  }, [jobs]);
+  const stageData = useMemo(() => getAllStagesFromJobs(jobs), [jobs]);
   
   // Active filters for chips
   const activeFilters = useMemo(() => {
@@ -194,7 +194,7 @@ export default function CandidatesPage() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           <div className="text-sm text-slate-500 dark:text-slate-400">Loading candidates...</div>
         </div>
       </div>

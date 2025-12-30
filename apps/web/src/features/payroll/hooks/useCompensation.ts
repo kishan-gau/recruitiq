@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 import { compensationService } from '../services/compensation.service';
 
 export function useCompensation(filters?: any) {

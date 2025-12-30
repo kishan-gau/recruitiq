@@ -30,7 +30,7 @@ describe('PortManagementService', () => {
 
     it('should have default port ranges', () => {
       expect(service.portRanges.backend).toEqual({ start: 3001, end: 3100 });
-      expect(service.portRanges.frontend).toEqual({ start: 5173, end: 5273 });
+      expect(service.portRanges.frontend).toEqual({ start: 5177, end: 5277 });
       expect(service.portRanges.database).toEqual({ start: 5432, end: 5532 });
     });
 

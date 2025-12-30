@@ -11,6 +11,10 @@ export default defineConfig({
       '@features': path.resolve(__dirname, './src/features'),
       '@shared': path.resolve(__dirname, './src/shared'),
       '@core': path.resolve(__dirname, './src/core'),
+      '@recruitiq/api-client': path.resolve(__dirname, '../packages/api-client'),
+      '@recruitiq/auth': path.resolve(__dirname, '../packages/auth'),
+      '@recruitiq/ui': path.resolve(__dirname, '../packages/ui'),
+      '@recruitiq/utils': path.resolve(__dirname, '../packages/utils'),
     },
   },
   server: {

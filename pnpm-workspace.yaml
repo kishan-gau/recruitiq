@@ -1,3 +1,6 @@
 packages:
-  - 'apps/*'
+  - 'apps/web'
+  - 'apps/portal'
+  - 'backend'
+  - 'deployment-service'
   - 'packages/*'

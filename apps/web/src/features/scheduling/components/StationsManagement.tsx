@@ -1,8 +1,3 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  useStations, 
-  useDeleteStation 
-} from '../hooks';
 import { 
   Plus, 
   Search, 
@@ -15,7 +10,13 @@ import {
   Building2,
   Clock
 } from 'lucide-react';
-import { Station } from '../types';
+import React, { useState, useMemo } from 'react';
+
+import { 
+  useStations, 
+  useDeleteStation 
+} from '../hooks';
+import type { Station } from '../types';
 
 interface StationsManagementProps {
   onCreateStation?: () => void;
@@ -79,7 +80,7 @@ export default function StationsManagement({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     );
   }

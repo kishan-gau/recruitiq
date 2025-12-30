@@ -11,8 +11,6 @@
  * @component
  */
 
-import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { 
   BarChart, 
   LineChart, 
@@ -31,9 +29,12 @@ import {
   RefreshCw,
   ChevronDown
 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+
+import { useRoles } from '@/hooks/schedulehub/useRoles';
 import { useScheduleStats } from '@/hooks/schedulehub/useScheduleStats';
 import { useStations } from '@/hooks/schedulehub/useStations';
-import { useRoles } from '@/hooks/schedulehub/useRoles';
 import { useErrorHandler } from '@/utils/errorHandler';
 
 interface AnalyticsTimeframe {
@@ -133,7 +134,7 @@ export default function ScheduleAnalytics() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
       </div>
     );
   }

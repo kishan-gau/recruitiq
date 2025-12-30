@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { 
   Users, 
   FileText, 
@@ -11,6 +10,8 @@ import {
   Plus,
   ArrowRight,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
 import { useEmployees, useContracts, useTimeOff, usePerformance, useDepartments } from '../hooks';
 
 interface StatCardProps {
@@ -33,7 +34,7 @@ function StatCard({ title, value, icon: Icon, iconColor, iconBgColor, trend, loa
         <div className="flex-1">
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{title}</p>
           {loading ? (
-            <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"></div>
+            <div className="h-8 w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
           ) : (
             <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
           )}

@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, UserPlus, AlertCircle, Trash2, Users } from 'lucide-react';
+import React, { useState } from 'react';
+
 import { Modal, Button, Select } from '@recruitiq/ui';
+
 import { useToast } from '@/contexts/ToastContext';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+
 import { useRoles, useAssignRole, useUnassignRole } from '../hooks/useRoles';
 import type { Worker, Role } from '../types';
 
@@ -194,10 +197,10 @@ const WorkerRoleAssignment: React.FC<WorkerRoleAssignmentProps> = ({
                   <Select.Value 
                     placeholder={
                       rolesLoading 
-                        ? "Loading roles..."
+                        ? 'Loading roles...'
                         : availableRoles.length === 0
-                        ? "No roles available"
-                        : "Select a role..."
+                        ? 'No roles available'
+                        : 'Select a role...'
                     }
                   />
                 </Select.Trigger>

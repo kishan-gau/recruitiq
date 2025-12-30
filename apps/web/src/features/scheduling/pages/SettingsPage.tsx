@@ -1,5 +1,5 @@
-import React from 'react';
 import { Settings, Clock, Users, Calendar, Shield, FileText, AlertTriangle } from 'lucide-react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 interface SettingsGroup {

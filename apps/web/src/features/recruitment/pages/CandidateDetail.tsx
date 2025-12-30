@@ -14,12 +14,13 @@
  * - Dark mode support
  */
 
+import { motion, AnimatePresence } from 'framer-motion';
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+
+import { ApplicationSourceBadge } from '../../../components/ui/ApplicationSourceBadge';
 import { useCandidate, useDeleteCandidate } from '../hooks/useCandidates';
 import { useJobs } from '../hooks/useJobs';
-import { ApplicationSourceBadge } from '../../../components/ui/ApplicationSourceBadge';
-import { motion, AnimatePresence } from 'framer-motion';
 
 // ============================================================================
 // TypeScript Interfaces

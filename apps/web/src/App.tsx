@@ -1,8 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Toaster } from 'react-hot-toast';
-import { Suspense } from 'react';
 import { routes } from '@core/routing/router';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Suspense } from 'react';
+import { Toaster } from 'react-hot-toast';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 function App() {
   return (

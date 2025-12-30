@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { attendanceService } from '../services/attendance.service';
+
 import type {
   AttendanceRecord,
   AttendanceFilters,
@@ -7,6 +7,8 @@ import type {
   CreateAttendanceRecordDTO,
   UpdateAttendanceRecordDTO,
 } from '@/types/attendance.types';
+
+import { attendanceService } from '../services/attendance.service';
 
 export function useAttendanceRecords(filters?: AttendanceFilters) {
   return useQuery<AttendanceRecord[]>({

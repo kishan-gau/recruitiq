@@ -5,6 +5,8 @@
  */
 
 import { NexusClient, APIClient } from '@recruitiq/api-client';
+
+import type { PaginatedResponse } from '@/types/common.types';
 import type {
   Employee,
   CreateEmployeeDTO,
@@ -18,7 +20,6 @@ import type {
   EmploymentHistoryEntry,
   RehireEligibility,
 } from '@/types/employee.types';
-import type { PaginatedResponse } from '@/types/common.types';
 
 // Create singleton instance for service-level usage
 const apiClient = new APIClient();

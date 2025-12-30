@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+
 import type { TaxRule, CreateVersionRequest } from '@recruitiq/types';
-import { useTax } from '../hooks/useTax';
+
 import { handleApiError } from '@/utils/errorHandler';
+
+import { useTax } from '../hooks/useTax';
 
 // Tax Type Badge
 function TaxTypeBadge({ type }: { type: string }) {
@@ -273,7 +276,7 @@ export default function TaxPage() {
       {/* Loading State */}
       {isLoadingRules && (
         <div className="text-center py-12">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
           <p className="mt-2 text-sm text-gray-600">Belastingregels laden...</p>
         </div>
       )}

@@ -1,4 +1,3 @@
-import { useState, useMemo } from 'react';
 import { 
   FileText, 
   Upload, 
@@ -18,9 +17,13 @@ import {
   Plus,
   Edit3,
 } from 'lucide-react';
-import { useDocuments } from '../hooks';
-import { handleApiError } from '@/utils/errorHandler';
+import { useState, useMemo } from 'react';
+
 import { useToast } from '@/contexts/ToastContext';
+import { handleApiError } from '@/utils/errorHandler';
+
+import { useDocuments } from '../hooks';
+
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -180,15 +183,13 @@ export default function DocumentsPage() {
   const { mutate: deleteDocument } = useDocuments().deleteMutation;
   const { mutate: downloadDocument } = useDocuments().downloadMutation;
 
-  const filteredDocuments = useMemo(() => {
-    return documents.filter((doc: any) => {
+  const filteredDocuments = useMemo(() => documents.filter((doc: any) => {
       const matchesSearch = doc.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           doc.description?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = typeFilter === 'all' || doc.documentType === typeFilter;
       const matchesCategory = categoryFilter === 'all' || doc.category === categoryFilter;
       return matchesSearch && matchesType && matchesCategory;
-    });
-  }, [documents, searchQuery, typeFilter, categoryFilter]);
+    }), [documents, searchQuery, typeFilter, categoryFilter]);
 
   const handleUpload = (data: any) => {
     uploadDocument(data, {
@@ -248,7 +249,7 @@ export default function DocumentsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
       </div>
     );
   }

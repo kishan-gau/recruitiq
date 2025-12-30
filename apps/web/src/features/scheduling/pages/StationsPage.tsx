@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { StationManagement } from '../../features/scheduling/components';
 
 export default function StationsPage() {

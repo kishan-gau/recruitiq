@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+
+import { Pagination, SearchInput, FilterChips } from '@recruitiq/ui';
+
 import { useJobs } from '@/features/recruitment/hooks/useJobs';
-import { usePagination } from '@/features/recruitment/hooks/usePagination';
-import { useDebounce } from '@/features/recruitment/hooks/useDebounce';
-import { useSearchFilters } from '@/features/recruitment/hooks/useSearchFilters';
-import Pagination from '@/packages/ui/src/recruitment/Pagination';
-import SearchInput from '@/packages/ui/src/recruitment/SearchInput';
-import FilterChips from '@/packages/ui/src/recruitment/FilterChips';
+import { useDebounce, usePagination, useSearchFilters } from '@/utils/hooks';
 
 interface Job {
   id: string;
@@ -18,7 +16,7 @@ interface Job {
   status: 'draft' | 'open' | 'closed';
 }
 
-interface JobFilters {
+interface JobFilters extends Record<string, string> {
   search: string;
   status: string;
   location: string;
@@ -69,7 +67,7 @@ export default function JobsPage() {
   const totalPages = getTotalPages(total);
   
   // Handle filter removal
-  const handleRemoveFilter = (key: string) => {
+  const handleRemoveFilter = (key: keyof JobFilters) => {
     if (key === 'search') {
       setSearchInput('');
     }
@@ -94,7 +92,7 @@ export default function JobsPage() {
         </div>
         <div className="flex items-center justify-center py-12">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             <div className="text-sm text-slate-500 dark:text-slate-400">Loading jobs...</div>
           </div>
         </div>
@@ -160,7 +158,7 @@ export default function JobsPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           <SearchInput
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchInput(e.target.value)}
             placeholder="Search by title, location, or type..."
             isSearching={isLoading && debouncedSearch !== ''}
             className="flex-1"

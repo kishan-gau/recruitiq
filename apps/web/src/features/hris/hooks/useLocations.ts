@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
-import { locationsService } from '../services/locations.service';
+
 import type {
   ApiError,
   Location,
@@ -7,6 +7,8 @@ import type {
   CreateLocationDTO,
   UpdateLocationDTO,
 } from '@/types/location.types';
+
+import { locationsService } from '../services/locations.service';
 
 export const locationKeys = {
   all: ['locations'] as const,

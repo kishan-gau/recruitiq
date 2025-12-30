@@ -6,21 +6,24 @@ export default {
   transform: {},
 
   // Global setup and teardown
-  globalSetup: './tests/setup.js',
-  globalTeardown: './tests/teardown.js',
+  globalSetup: './tests/setup.ts',
+  globalTeardown: './tests/teardown.ts',
 
   // Coverage configuration
   collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/server.js',
+    'src/**/*.ts',
+    '!src/server.ts',
     '!src/**/__tests__/**',
-    '!src/**/*.test.js',
+    '!src/**/*.test.ts',
+    '!src/**/*.spec.ts',
+    '!dist/**',
   ],
 
   // Test match patterns
   testMatch: [
-    '**/__tests__/**/*.js',
-    '**/*.test.js',
+    '**/__tests__/**/*.ts',
+    '**/*.test.ts',
+    '**/*.spec.ts',
   ],
 
   // Clear mocks between tests

@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+
 import { Modal, Button, Input } from '@recruitiq/ui';
+
 import { Label } from '@/components/ui/Label';
 import { Switch } from '@/components/ui/Switch';
 import { useToast } from '@/contexts/ToastContext';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+
 import { workersService } from '../services';
 import type { Worker, WorkerSchedulingConfig as WorkerConfig } from '../types';
 

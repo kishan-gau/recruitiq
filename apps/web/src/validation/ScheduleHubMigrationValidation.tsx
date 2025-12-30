@@ -1,5 +1,3 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -15,6 +13,8 @@ import {
   Template,
   Coffee
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 /**
  * Comprehensive ScheduleHub Migration Validation Component
@@ -458,7 +458,7 @@ export default function ScheduleHubMigrationValidation() {
   };
 
   const getStatusBadge = (status: ValidationResult['status']) => {
-    const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
+    const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
     switch (status) {
       case 'success':
         return `${baseClasses} bg-green-100 text-green-800`;
@@ -517,7 +517,7 @@ export default function ScheduleHubMigrationValidation() {
               
               {overallStatus === 'running' && (
                 <div className="flex items-center space-x-2 text-blue-600">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
                   <span className="font-medium">Running validation...</span>
                 </div>
               )}

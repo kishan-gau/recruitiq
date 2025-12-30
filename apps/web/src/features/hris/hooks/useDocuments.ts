@@ -4,8 +4,9 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { documentsService, type Document, type DocumentFolder, type DocumentFilters } from '../services/documents.service';
 import { toast } from 'react-hot-toast';
+
+import { documentsService, type Document, type DocumentFolder, type DocumentFilters } from '../services/documents.service';
 
 /**
  * Query keys for documents

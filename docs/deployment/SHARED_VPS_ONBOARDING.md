@@ -421,7 +421,7 @@ apt install -y certbot python3-certbot-nginx
 ```bash
 docker-compose up -d
 # Backend on port 3001
-# Frontend on port 5173
+# Frontend on port 5177
 # PostgreSQL on port 5432
 ```
 

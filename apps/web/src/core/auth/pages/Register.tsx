@@ -7,7 +7,7 @@ export default function Register() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Placeholder: hook up to real register later
-    // eslint-disable-next-line no-alert
+     
     alert(`Registratie poging voor: ${email}`);
   };
 

@@ -1,0 +1,346 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { PaylinqClient, APIClient } from '@recruitiq/api-client';
+
+import { useToast } from '@/contexts/ToastContext';
+import { handleApiError, getValidationErrors } from '@/utils/errorHandler';
+
+/**
+ * ============================================================================
+ * WORKER TYPE TEMPLATES
+ * ============================================================================
+ */
+
+/**
+ * Fetches all worker type templates
+ */
+export function useWorkerTypeTemplates() {
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+
+  return useQuery({
+    queryKey: ['workerTypeTemplates'],
+    queryFn: async () => {
+      const response = await paylinqClient.getWorkerTypeTemplates();
+      return response.data.templates || response.data;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Fetches a single worker type template
+ */
+export function useWorkerTypeTemplate(templateId: string) {
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+
+  return useQuery({
+    queryKey: ['workerTypeTemplate', templateId],
+    queryFn: async () => {
+      const response = await paylinqClient.getWorkerTypeTemplate(templateId);
+      return response.data.template || response.data;
+    },
+    enabled: !!templateId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Creates a new worker type template
+ */
+export function useCreateWorkerTypeTemplate() {
+  const toast = useToast();
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      try {
+        const response = await paylinqClient.createWorkerTypeTemplate(data);
+        return response.data.template || response.data;
+      } catch (error: any) {
+        const validationErrors = getValidationErrors(error);
+        if (validationErrors) {
+          throw { validationErrors };
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workerTypeTemplates'] });
+      toast.success('Worker type template created successfully');
+    },
+    onError: (error: any) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to create worker type template',
+      });
+    },
+  });
+}
+
+/**
+ * Updates a worker type template
+ */
+export function useUpdateWorkerTypeTemplate() {
+  const toast = useToast();
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ templateId, data }: { templateId: string; data: any }) => {
+      try {
+        const response = await paylinqClient.updateWorkerTypeTemplate(templateId, data);
+        return response.data.template || response.data;
+      } catch (error: any) {
+        const validationErrors = getValidationErrors(error);
+        if (validationErrors) {
+          throw { validationErrors };
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { templateId }) => {
+      queryClient.invalidateQueries({ queryKey: ['workerTypeTemplates'] });
+      queryClient.invalidateQueries({ queryKey: ['workerTypeTemplate', templateId] });
+      toast.success('Worker type template updated successfully');
+    },
+    onError: (error: any) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to update worker type template',
+      });
+    },
+  });
+}
+
+/**
+ * Deletes a worker type template
+ */
+export function useDeleteWorkerTypeTemplate() {
+  const toast = useToast();
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      await paylinqClient.deleteWorkerTypeTemplate(templateId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workerTypeTemplates'] });
+      toast.success('Worker type template deleted successfully');
+    },
+    onError: (error: any) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to delete worker type template',
+      });
+    },
+  });
+}
+
+/**
+ * ============================================================================
+ * WORKER TYPE ASSIGNMENTS
+ * ============================================================================
+ */
+
+/**
+ * Fetches worker type assignments for an employee
+ */
+export function useEmployeeWorkerTypeAssignments(employeeId: string) {
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+
+  return useQuery({
+    queryKey: ['employeeWorkerTypeAssignments', employeeId],
+    queryFn: async () => {
+      const response = await paylinqClient.getEmployeeWorkerTypeAssignments(employeeId);
+      return response.data.assignments || response.data;
+    },
+    enabled: !!employeeId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Assigns a worker type to an employee
+ */
+export function useAssignWorkerType() {
+  const toast = useToast();
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      employeeId,
+      workerTypeId,
+      effectiveDate,
+      config,
+    }: {
+      employeeId: string;
+      workerTypeId: string;
+      effectiveDate: string;
+      config?: any;
+    }) => {
+      const response = await paylinqClient.assignWorkerType(employeeId, {
+        workerTypeId,
+        effectiveDate,
+        config,
+      });
+      return response.data;
+    },
+    onSuccess: (_, { employeeId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ['employeeWorkerTypeAssignments', employeeId],
+      });
+      toast.success('Worker type assigned successfully');
+    },
+    onError: (error: any) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to assign worker type',
+      });
+    },
+  });
+}
+
+/**
+ * Terminates a worker type assignment
+ */
+export function useTerminateWorkerTypeAssignment() {
+  const toast = useToast();
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      employeeId,
+      assignmentId,
+      terminationDate,
+    }: {
+      employeeId: string;
+      assignmentId: string;
+      terminationDate: string;
+    }) => {
+      const response = await paylinqClient.terminateWorkerTypeAssignment(
+        employeeId,
+        assignmentId,
+        terminationDate
+      );
+      return response.data;
+    },
+    onSuccess: (_, { employeeId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ['employeeWorkerTypeAssignments', employeeId],
+      });
+      toast.success('Worker type assignment terminated');
+    },
+    onError: (error: any) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to terminate worker type assignment',
+      });
+    },
+  });
+}
+
+/**
+ * ============================================================================
+ * WORKER TYPE UPGRADES
+ * ============================================================================
+ */
+
+/**
+ * Previews a worker type upgrade
+ */
+export function usePreviewWorkerTypeUpgrade() {
+  const toast = useToast();
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+
+  return useMutation({
+    mutationFn: async ({
+      employeeId,
+      currentWorkerTypeId,
+      targetWorkerTypeId,
+      effectiveDate,
+    }: {
+      employeeId: string;
+      currentWorkerTypeId: string;
+      targetWorkerTypeId: string;
+      effectiveDate: string;
+    }) => {
+      const response = await paylinqClient.previewWorkerTypeUpgrade(employeeId, {
+        currentWorkerTypeId,
+        targetWorkerTypeId,
+        effectiveDate,
+      });
+      return response.data;
+    },
+    onError: (error: any) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to preview upgrade',
+      });
+    },
+  });
+}
+
+/**
+ * Executes a worker type upgrade
+ */
+export function useExecuteWorkerTypeUpgrade() {
+  const toast = useToast();
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      employeeId,
+      currentWorkerTypeId,
+      targetWorkerTypeId,
+      effectiveDate,
+    }: {
+      employeeId: string;
+      currentWorkerTypeId: string;
+      targetWorkerTypeId: string;
+      effectiveDate: string;
+    }) => {
+      try {
+        const response = await paylinqClient.executeWorkerTypeUpgrade(employeeId, {
+          currentWorkerTypeId,
+          targetWorkerTypeId,
+          effectiveDate,
+        });
+        return response.data;
+      } catch (error: any) {
+        const validationErrors = getValidationErrors(error);
+        if (validationErrors) {
+          throw { validationErrors };
+        }
+        throw error;
+      }
+    },
+    onSuccess: (_, { employeeId }) => {
+      queryClient.invalidateQueries({
+        queryKey: ['employeeWorkerTypeAssignments', employeeId],
+      });
+      toast.success('Worker type upgraded successfully');
+    },
+    onError: (error: any) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to upgrade worker type',
+      });
+    },
+  });
+}

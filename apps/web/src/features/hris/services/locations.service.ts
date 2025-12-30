@@ -1,4 +1,5 @@
 import { NexusClient, APIClient } from '@recruitiq/api-client';
+
 import type { Location, CreateLocationDTO, UpdateLocationDTO } from '@/types/location.types';
 
 const apiClient = new APIClient();

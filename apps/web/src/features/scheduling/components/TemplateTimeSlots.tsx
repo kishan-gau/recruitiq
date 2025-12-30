@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
 import { Clock, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import React, { useMemo } from 'react';
+
 import { type Station, type Shift, type ShiftTemplate, type Worker } from '../types';
 import { formatTime, formatDuration, isTimeInRange, parseTimeSlot } from '../utils';
 

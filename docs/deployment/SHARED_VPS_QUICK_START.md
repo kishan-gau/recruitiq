@@ -140,7 +140,7 @@ curl -fsSL https://get.docker.com | sh
 # Start services
 docker-compose up -d
 # Backend on port 3001
-# Frontend on port 5173
+# Frontend on port 5177
 # PostgreSQL on port 5432
 ```
 

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 import { benefitsService } from '../services/benefits.service';
 
 export function useBenefitPlans(filters?: any) {
@@ -68,10 +69,10 @@ export function useEnrollEmployee() {
 
 export function useCheckEligibility() {
   return useMutation({
-    mutationFn: async (_params: { employeeId: string; planId: string }) => {
+    mutationFn: async (_params: { employeeId: string; planId: string }) => 
       // TODO: Implement checkEligibility in backend NexusClient
       // return benefitsService.checkEligibility(_params.employeeId, _params.planId);
-      return { eligible: false, reason: 'Eligibility checking not yet implemented' };
-    },
+       ({ eligible: false, reason: 'Eligibility checking not yet implemented' })
+    ,
   });
 }

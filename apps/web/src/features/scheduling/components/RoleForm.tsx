@@ -1,5 +1,3 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import { 
   X, 
   Save, 
@@ -10,14 +8,17 @@ import {
   CheckCircle,
   AlertCircle
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+
+import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
 import { 
   useRole, 
   useCreateRole, 
   useUpdateRole, 
   useDepartments 
 } from '../hooks';
-import { Role } from '../types';
-import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
+import type { Role } from '../types';
 
 interface RoleFormData {
   name: string;

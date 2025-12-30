@@ -30,18 +30,13 @@ This guide provides a comprehensive, step-by-step approach to implementing **Sin
 
 ### Current State
 
-**Problem:** Users must login separately for each product application:
-- PayLinQ (port 5174)
-- Nexus (port 5175)
-- ScheduleHub (port 5176)
-- RecruitIQ (port 5174)
-- Portal (port 5173)
+**Problem:** Users need seamless access across all product modules within the unified web application
 
 **Impact:**
-- Poor user experience
-- Multiple authentication flows
-- Inconsistent session management
-- No cross-app session sharing
+- Single authentication point for all product modules
+- Unified session management across RecruitIQ, Nexus, PayLinQ, and ScheduleHub modules
+- Consistent user experience
+- Cross-module session sharing
 
 ### Target State
 
@@ -1777,11 +1772,10 @@ interface Product {
 }
 
 const PRODUCTS: Product[] = [
-  { name: 'Nexus', slug: 'nexus', url: 'http://localhost:5175', icon: '🏢' },
-  { name: 'PayLinQ', slug: 'paylinq', url: 'http://localhost:5174', icon: '💰' },
-  { name: 'ScheduleHub', slug: 'schedulehub', url: 'http://localhost:5176', icon: '📅' },
-  { name: 'RecruitIQ', slug: 'recruitiq', url: 'http://localhost:5177', icon: '👥' },
-  { name: 'Portal', slug: 'portal', url: 'http://localhost:5173', icon: '⚙️' }
+  { name: 'RecruitIQ', slug: 'recruitment', url: 'http://localhost:5177/recruitment', icon: '👥' },
+  { name: 'Nexus', slug: 'hris', url: 'http://localhost:5177/hris', icon: '🏢' },
+  { name: 'PayLinQ', slug: 'payroll', url: 'http://localhost:5177/payroll', icon: '💰' },
+  { name: 'ScheduleHub', slug: 'scheduling', url: 'http://localhost:5177/scheduling', icon: '📅' }
 ];
 
 export default function ProductSwitcher({ currentProduct }: { currentProduct: string }) {

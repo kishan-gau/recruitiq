@@ -1,11 +1,3 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { 
-  useStation,
-  useCreateStation,
-  useUpdateStation
-} from '../hooks';
-import { useLocations } from '../hooks/useLocations';
 import { 
   Save, 
   X, 
@@ -18,7 +10,16 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { Station } from '../types';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+
+import { 
+  useStation,
+  useCreateStation,
+  useUpdateStation
+} from '../hooks';
+import { useLocations } from '../hooks/useLocations';
+import type { Station } from '../types';
 
 interface StationFormData {
   stationCode: string;
@@ -220,7 +221,7 @@ export default function StationForm({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     );
   }

@@ -46,12 +46,10 @@ export const formatDate = (dateString: string): string => {
 /**
  * Formats a date to short format (MMM DD)
  */
-export const formatShortDate = (date: Date): string => {
-  return date.toLocaleDateString('en-US', {
+export const formatShortDate = (date: Date): string => date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric'
   });
-};
 
 /**
  * Gets the start of the week for a given date (Sunday)
@@ -98,11 +96,9 @@ export const getEndOfMonth = (date: Date): Date => {
 /**
  * Checks if two dates are the same day
  */
-export const isSameDay = (date1: Date, date2: Date): boolean => {
-  return date1.getFullYear() === date2.getFullYear() &&
+export const isSameDay = (date1: Date, date2: Date): boolean => date1.getFullYear() === date2.getFullYear() &&
          date1.getMonth() === date2.getMonth() &&
          date1.getDate() === date2.getDate();
-};
 
 /**
  * Gets all days in a given month
