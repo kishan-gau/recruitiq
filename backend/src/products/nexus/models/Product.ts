@@ -4,7 +4,34 @@
  */
 
 class Product {
-  constructor(data = {}) {
+  id: any;
+  name: any;
+  displayName: any;
+  description: any;
+  slug: any;
+  version: any;
+  npmPackage: any;
+  repositoryUrl: any;
+  documentationUrl: any;
+  status: any;
+  isCore: any;
+  requiresLicense: any;
+  basePath: any;
+  apiPrefix: any;
+  defaultPort: any;
+  minTier: any;
+  resourceRequirements: any;
+  features: any;
+  defaultFeatures: any;
+  icon: any;
+  color: any;
+  uiConfig: any;
+  createdAt: any;
+  updatedAt: any;
+  createdBy: any;
+  deletedAt: any;
+  
+  constructor(data: any = {}) {
     this.id = data.id;
     this.name = data.name;
     this.displayName = data.display_name || data.displayName;

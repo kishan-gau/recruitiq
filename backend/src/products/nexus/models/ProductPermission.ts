@@ -4,7 +4,27 @@
  */
 
 class ProductPermission {
-  constructor(data = {}) {
+  id: any;
+  organizationId: any;
+  productId: any;
+  isEnabled: any;
+  accessLevel: any;
+  licenseKey: any;
+  licenseExpiresAt: any;
+  maxUsers: any;
+  maxResources: any;
+  enabledFeatures: any;
+  disabledFeatures: any;
+  usersCount: any;
+  resourcesCount: any;
+  lastAccessedAt: any;
+  grantedAt: any;
+  grantedBy: any;
+  revokedAt: any;
+  revokedBy: any;
+  notes: any;
+  
+  constructor(data: any = {}) {
     this.id = data.id;
     this.organizationId = data.organization_id || data.organizationId;
     this.productId = data.product_id || data.productId;

@@ -32,19 +32,21 @@ import config from '../config/index.js';
  * Base Secret Provider Interface
  */
 class SecretProvider {
-  constructor(name) {
+  name: string;
+  
+  constructor(name: string) {
     this.name = name;
   }
 
-  async getSecret(secretName) {
+  async getSecret(secretName: string): Promise<any> {
     throw new Error(`getSecret not implemented for ${this.name}`);
   }
 
-  async setSecret(secretName, secretValue) {
+  async setSecret(secretName: string, secretValue: any): Promise<void> {
     throw new Error(`setSecret not implemented for ${this.name}`);
   }
 
-  async deleteSecret(secretName) {
+  async deleteSecret(secretName: string): Promise<void> {
     throw new Error(`deleteSecret not implemented for ${this.name}`);
   }
 

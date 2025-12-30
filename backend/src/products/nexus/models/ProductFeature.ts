@@ -4,7 +4,24 @@
  */
 
 class ProductFeature {
-  constructor(data = {}) {
+  id: any;
+  productId: any;
+  featureKey: any;
+  featureName: any;
+  description: any;
+  status: any;
+  isDefault: any;
+  minTier: any;
+  requiresFeatures: any;
+  configSchema: any;
+  defaultConfig: any;
+  rolloutPercentage: any;
+  targetOrganizations: any;
+  createdAt: any;
+  updatedAt: any;
+  createdBy: any;
+  
+  constructor(data: any = {}) {
     this.id = data.id;
     this.productId = data.product_id || data.productId;
     
