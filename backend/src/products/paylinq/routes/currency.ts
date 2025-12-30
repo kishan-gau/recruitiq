@@ -1,9 +1,9 @@
 import express, { Router } from 'express';
-import CurrencyService from '../services/currencyService.js';
-import { authenticateTenant, requirePermission } from '../../../middleware/auth.js';
-import { validate } from '../../../middleware/validation.js';
+import CurrencyService from '../services/currencyService.ts';
+import { authenticateTenant, requirePermission } from '../../../middleware/auth.ts';
+import { validate } from '../../../middleware/validation.ts';
 import Joi from 'joi';
-import logger from '../../../utils/logger.js';
+import logger from '../../../utils/logger.ts';
 
 const router: Router = express.Router();
 const currencyService = new CurrencyService();

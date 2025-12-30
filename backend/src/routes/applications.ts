@@ -6,8 +6,8 @@ import {
   updateApplication,
   trackApplication,
   deleteApplication
-} from '../controllers/applicationController.refactored.js';
-import { authenticate, optionalAuth } from '../middleware/auth.js';
+} from '../controllers/applicationController.refactored.ts';
+import { authenticate, optionalAuth } from '../middleware/auth.ts';
 
 const router: Router = express.Router();
 

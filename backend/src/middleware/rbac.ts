@@ -7,9 +7,9 @@
  * @module middleware/rbac
  */
 
-import { query } from '../config/database.js';
-import { ForbiddenError } from '../utils/errors.js';
-import logger from '../utils/logger.js';
+import { query } from '../config/database.ts';
+import { ForbiddenError } from '../utils/errors.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * RBAC middleware - checks if user has required permission(s)

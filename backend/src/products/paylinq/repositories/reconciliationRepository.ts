@@ -10,8 +10,8 @@
  * @module products/paylinq/repositories/reconciliationRepository
  */
 
-import { query  } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { query  } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 
 class ReconciliationRepository {
   constructor(database = null) {

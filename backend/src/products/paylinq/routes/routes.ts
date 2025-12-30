@@ -4,37 +4,37 @@
  */
 
 import express, { Router } from 'express';
-import { authenticateTenant, requireProductAccess } from '../../../middleware/auth.js';
-import { requireOrganization } from '../../../middleware/requireOrganization.js';
+import { authenticateTenant, requireProductAccess } from '../../../middleware/auth.ts';
+import { requireOrganization } from '../../../middleware/requireOrganization.ts';
 
 // Import route modules
-import dashboardRoutes from './dashboard.js';
-import workerTypeRoutes from './workerTypes.js';
-import workerRoutes from './workers.js';
-import employeeRoutes from './employees.js';
-import compensationRoutes from './compensation.js';
-import payComponentRoutes from './payComponents.js';
-import payStructureRoutes from './payStructures.js';
-import formulaRoutes from './formulas.js';
-import formulaTemplateRoutes from './formula-templates.js';
-import timeAttendanceRoutes from './timeAttendance.js';
-import timesheetRoutes from './timesheets.js';
-import schedulingRoutes from './scheduling.js';
-import payrollRunRoutes from './payrollRuns.js';
-import payrollRunTypeRoutes from './payrollRunTypes.js';
-import paycheckRoutes from './paychecks.js';
-import deductionRoutes from './deductions.js';
-import reconciliationRoutes from './reconciliation.js';
-import taxRateRoutes from './taxRates.js';
-import paymentRoutes from './payments.js';
-import reportsRoutes from './reports.js';
-import settingsRoutes from './settings.js';
-import payslipTemplateRoutes from './payslipTemplates.js';
-import temporalPatternRoutes from './temporalPatterns.js';
-import currencyRoutes from './currency.js';
-import approvalRoutes from './approvals.js';
-import loontijdvakRoutes from './loontijdvak.js';
-import rbacRoutes from './rbac.js';
+import dashboardRoutes from './dashboard.ts';
+import workerTypeRoutes from './workerTypes.ts';
+import workerRoutes from './workers.ts';
+import employeeRoutes from './employees.ts';
+import compensationRoutes from './compensation.ts';
+import payComponentRoutes from './payComponents.ts';
+import payStructureRoutes from './payStructures.ts';
+import formulaRoutes from './formulas.ts';
+import formulaTemplateRoutes from './formula-templates.ts';
+import timeAttendanceRoutes from './timeAttendance.ts';
+import timesheetRoutes from './timesheets.ts';
+import schedulingRoutes from './scheduling.ts';
+import payrollRunRoutes from './payrollRuns.ts';
+import payrollRunTypeRoutes from './payrollRunTypes.ts';
+import paycheckRoutes from './paychecks.ts';
+import deductionRoutes from './deductions.ts';
+import reconciliationRoutes from './reconciliation.ts';
+import taxRateRoutes from './taxRates.ts';
+import paymentRoutes from './payments.ts';
+import reportsRoutes from './reports.ts';
+import settingsRoutes from './settings.ts';
+import payslipTemplateRoutes from './payslipTemplates.ts';
+import temporalPatternRoutes from './temporalPatterns.ts';
+import currencyRoutes from './currency.ts';
+import approvalRoutes from './approvals.ts';
+import loontijdvakRoutes from './loontijdvak.ts';
+import rbacRoutes from './rbac.ts';
 
 const router: Router = express.Router();
 

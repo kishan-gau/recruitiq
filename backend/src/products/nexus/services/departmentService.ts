@@ -3,10 +3,10 @@
  * Business logic layer for department management
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
-import { mapDepartmentDbToApi, mapDepartmentsDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.js';
-import EmployeeService from './employeeService.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
+import { mapDepartmentDbToApi, mapDepartmentsDbToApi, mapDepartmentApiToDb } from '../dto/departmentDto.ts';
+import EmployeeService from './employeeService.ts';
 
 class DepartmentService {
   constructor() {

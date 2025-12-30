@@ -10,8 +10,8 @@
  * - Passes all errors to next(error) for error middleware
  */
 
-import { JobService } from '../services/jobs/JobService.js';
-import logger from '../utils/logger.js';
+import { JobService } from '../services/jobs/JobService.ts';
+import logger from '../utils/logger.ts';
 
 const jobService = new JobService();
 

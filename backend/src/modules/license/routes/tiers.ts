@@ -1,6 +1,6 @@
 import express, { Router } from 'express'
-import { tierController } from '../controllers/tierController.js'
-import { authenticatePlatform, requirePlatformPermission } from '../../../middleware/auth.js'
+import { tierController } from '../controllers/tierController.ts'
+import { authenticatePlatform, requirePlatformPermission } from '../../../middleware/auth.ts'
 
 const router: Router = express.Router()
 

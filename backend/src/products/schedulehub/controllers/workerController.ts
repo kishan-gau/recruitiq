@@ -3,8 +3,8 @@
  * HTTP request handlers for worker management
  */
 
-import WorkerService from '../services/workerService.js';
-import logger from '../../../utils/logger.js';
+import WorkerService from '../services/workerService.ts';
+import logger from '../../../utils/logger.ts';
 
 class WorkerController {
   constructor() {

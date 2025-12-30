@@ -3,9 +3,9 @@
  * Orchestrates product loading, route registration, and lifecycle management
  */
 
-import logger from '../../utils/logger.js';
-import productLoader from './ProductLoader.js';
-import routeRegistry from './RouteRegistry.js';
+import logger from '../../utils/logger.ts';
+import productLoader from './ProductLoader.ts';
+import routeRegistry from './RouteRegistry.ts';
 
 class ProductManager {
   constructor() {

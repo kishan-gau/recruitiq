@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import IntegrationHealthController from '../controllers/integrationHealthController.js';
+import IntegrationHealthController from '../controllers/integrationHealthController.ts';
 
 const router = express.Router();
 const controller = new IntegrationHealthController();

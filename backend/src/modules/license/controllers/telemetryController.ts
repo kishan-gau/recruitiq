@@ -1,5 +1,5 @@
-import UsageTracker from '../services/UsageTracker.js'
-import UsageEvent from '../models/UsageEvent.js'
+import UsageTracker from '../services/UsageTracker.ts'
+import UsageEvent from '../models/UsageEvent.ts'
 
 export const telemetryController = {
   // Report usage event

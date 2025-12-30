@@ -3,11 +3,11 @@
  * Handles HTTP requests for employee payroll records management
  */
 
-import PayrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.ts';
 
 const payrollService = new PayrollService();
-import { mapApiToDb, mapEmployeeDbToApi, mapEmployeeDbArrayToApi } from '../utils/dtoMapper.js';
-import logger from '../../../utils/logger.js';
+import { mapApiToDb, mapEmployeeDbToApi, mapEmployeeDbArrayToApi } from '../utils/dtoMapper.ts';
+import logger from '../../../utils/logger.ts';
 
 /**
  * Create a new employee payroll record

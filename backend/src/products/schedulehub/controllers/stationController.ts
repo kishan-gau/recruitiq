@@ -3,8 +3,8 @@
  * HTTP request handlers for station and role requirement management
  */
 
-import StationService from '../services/stationService.js';
-import logger from '../../../utils/logger.js';
+import StationService from '../services/stationService.ts';
+import logger from '../../../utils/logger.ts';
 
 class StationController {
   constructor() {

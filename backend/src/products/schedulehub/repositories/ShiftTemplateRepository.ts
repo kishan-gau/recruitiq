@@ -5,9 +5,9 @@
  * @module products/schedulehub/repositories/ShiftTemplateRepository
  */
 
-import { BaseRepository } from '../../../repositories/BaseRepository.js';
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { BaseRepository } from '../../../repositories/BaseRepository.ts';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 import { v4 as uuidv4 } from 'uuid';
 
 class ShiftTemplateRepository extends BaseRepository {

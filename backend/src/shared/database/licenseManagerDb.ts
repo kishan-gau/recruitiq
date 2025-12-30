@@ -7,8 +7,8 @@
 
 import pkg from 'pg';
 const { Pool } = pkg;
-import logger from '../../utils/logger.js';
-import config from '../../config/index.js';
+import logger from '../../utils/logger.ts';
+import config from '../../config/index.ts';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';

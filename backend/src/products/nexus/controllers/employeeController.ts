@@ -3,9 +3,9 @@
  * HTTP request handlers for employee management
  */
 
-import EmployeeService from '../services/employeeService.js';
-import EmploymentHistoryService from '../services/employmentHistoryService.js';
-import logger from '../../../utils/logger.js';
+import EmployeeService from '../services/employeeService.ts';
+import EmploymentHistoryService from '../services/employmentHistoryService.ts';
+import logger from '../../../utils/logger.ts';
 
 class EmployeeController {
   constructor() {

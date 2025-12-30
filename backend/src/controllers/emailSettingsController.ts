@@ -4,10 +4,10 @@
  * Handle email configuration management
  */
 
-import logger from '../utils/logger.js';
-import emailService from '../services/emailService.js';
-import { encrypt, decrypt } from '../utils/encryption.js';
-import { query } from '../config/database.js';
+import logger from '../utils/logger.ts';
+import emailService from '../services/emailService.ts';
+import { encrypt, decrypt } from '../utils/encryption.ts';
+import { query } from '../config/database.ts';
 
 /**
  * GET /api/settings/email

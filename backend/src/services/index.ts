@@ -8,8 +8,8 @@
  */
 
 // Base service and utilities
-export { BaseService, serviceOptions } from './BaseService.js';
-export type { ServiceOptions, ValidationResult } from './BaseService.js';
+export { BaseService, serviceOptions } from './BaseService.ts';
+export type { ServiceOptions, ValidationResult } from './BaseService.ts';
 
 // Validation schemas
 export {
@@ -33,15 +33,15 @@ export {
   slug,
   boolean,
   createPartialSchema
-} from './validationSchemas.js';
+} from './validationSchemas.ts';
 
 // Job service
-export { JobService } from './jobs/JobService.js';
-export type { Job, CreateJobInput, UpdateJobInput } from './jobs/JobService.js';
+export { JobService } from './jobs/JobService.ts';
+export type { Job, CreateJobInput, UpdateJobInput } from './jobs/JobService.ts';
 
 // Candidate service
-export { CandidateService } from './candidates/CandidateService.js';
-export type { Candidate, CreateCandidateInput, UpdateCandidateInput } from './candidates/CandidateService.js';
+export { CandidateService } from './candidates/CandidateService.ts';
+export type { Candidate, CreateCandidateInput, UpdateCandidateInput } from './candidates/CandidateService.ts';
 
 // Service factory
 export {
@@ -49,8 +49,8 @@ export {
   initializeServiceFactory,
   getServiceFactory,
   getService
-} from './ServiceFactory.js';
-export type { ServiceFactoryConfig } from './ServiceFactory.js';
+} from './ServiceFactory.ts';
+export type { ServiceFactoryConfig } from './ServiceFactory.ts';
 
 /**
  * Quick reference: Common import patterns

@@ -3,9 +3,9 @@
  * Business logic layer for employee benefits management
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
-import IntegrationService from '../../paylinq/services/integrationService.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
+import IntegrationService from '../../paylinq/services/integrationService.ts';
 
 class BenefitsService {
   /**

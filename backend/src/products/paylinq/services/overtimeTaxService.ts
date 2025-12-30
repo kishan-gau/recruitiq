@@ -24,8 +24,8 @@
  */
 
 import Joi from 'joi';
-import { ValidationError } from '../../../utils/errors.js';
-import logger from '../../../utils/logger.js';
+import { ValidationError } from '../../../utils/errors.ts';
+import logger from '../../../utils/logger.ts';
 
 /**
  * Overtime tax brackets per Article 17c

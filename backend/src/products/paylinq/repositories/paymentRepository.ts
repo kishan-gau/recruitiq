@@ -10,8 +10,8 @@
  * @module products/paylinq/repositories/paymentRepository
  */
 
-import { query  } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { query  } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 
 class PaymentRepository {
   constructor(database = null) {

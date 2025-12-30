@@ -6,8 +6,8 @@
  */
 
 import express, { Router } from 'express';
-import * as payStructureController from '../controllers/payStructureController.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import * as payStructureController from '../controllers/payStructureController.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 
 const router: Router = express.Router();
 

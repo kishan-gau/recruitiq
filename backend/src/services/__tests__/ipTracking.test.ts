@@ -35,10 +35,10 @@ const mockLogger = {
 jest.unstable_mockModule('redis', () => ({
   createClient: mockCreateClient,
 }));
-jest.unstable_mockModule('../../config/index.js', () => ({
+jest.unstable_mockModule('../../config/index.ts', () => ({
   default: mockConfig,
 }));
-jest.unstable_mockModule('../../utils/logger.js', () => ({
+jest.unstable_mockModule('../../utils/logger.ts', () => ({
   default: mockLogger,
 }));
 

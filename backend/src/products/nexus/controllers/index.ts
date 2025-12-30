@@ -2,10 +2,10 @@
  * Product Controllers Export
  */
 
-import productController from './productController.js';
-import productPermissionController from './productPermissionController.js';
-import productConfigController from './productConfigController.js';
-import productFeatureController from './productFeatureController.js';
+import productController from './productController.ts';
+import productPermissionController from './productPermissionController.ts';
+import productConfigController from './productConfigController.ts';
+import productFeatureController from './productFeatureController.ts';
 
 export {
   productController,

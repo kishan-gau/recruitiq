@@ -8,9 +8,9 @@
  */
 
 import Joi from 'joi';
-import SchedulingRepository from '../repositories/schedulingRepository.js';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import SchedulingRepository from '../repositories/schedulingRepository.ts';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
 
 /**
  * Calculate duration in hours between two times, accounting for breaks

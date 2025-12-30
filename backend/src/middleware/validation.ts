@@ -3,8 +3,8 @@
  * Validates request data against Joi schemas
  */
 
-import logger from '../utils/logger.js';
-import { sanitizeObject } from '../utils/sanitization.js';
+import logger from '../utils/logger.ts';
+import { sanitizeObject } from '../utils/sanitization.ts';
 
 /**
  * Validate request data against a Joi schema

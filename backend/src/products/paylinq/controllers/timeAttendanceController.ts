@@ -3,9 +3,9 @@
  * Handles HTTP requests for time tracking and attendance management
  */
 
-import TimeAttendanceService from '../services/timeAttendanceService.js';
-import { mapApiToDb } from '../utils/dtoMapper.js';
-import logger from '../../../utils/logger.js';
+import TimeAttendanceService from '../services/timeAttendanceService.ts';
+import { mapApiToDb } from '../utils/dtoMapper.ts';
+import logger from '../../../utils/logger.ts';
 
 // Instantiate service
 const timeAttendanceService = new TimeAttendanceService();

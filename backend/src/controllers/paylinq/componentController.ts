@@ -7,10 +7,10 @@
  * @module controllers/paylinq/componentController
  */
 
-import PayrollRepository from '../../products/paylinq/repositories/payrollRepository.js';
-import { mapComponentsDbToApi } from '../../dto/componentDto.js';
-import logger from '../../utils/logger.js';
-import { NotFoundError } from '../../middleware/errorHandler.js';
+import PayrollRepository from '../../products/paylinq/repositories/payrollRepository.ts';
+import { mapComponentsDbToApi } from '../../dto/componentDto.ts';
+import logger from '../../utils/logger.ts';
+import { NotFoundError } from '../../middleware/errorHandler.ts';
 
 const payrollRepository = new PayrollRepository();
 

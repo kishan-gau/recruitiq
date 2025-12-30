@@ -3,8 +3,8 @@
  * HTTP request handlers for attendance tracking
  */
 
-import AttendanceService from '../services/attendanceService.js';
-import logger from '../../../utils/logger.js';
+import AttendanceService from '../services/attendanceService.ts';
+import logger from '../../../utils/logger.ts';
 
 class AttendanceController {
   constructor() {

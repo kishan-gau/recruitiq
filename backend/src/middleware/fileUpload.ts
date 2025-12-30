@@ -1,8 +1,8 @@
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
-import logger from '../utils/logger.js';
-import { validateFileUploadSecurity, getAllowedFileTypes, sanitizeFilename } from '../utils/fileValidator.js';
-import virusScanner from '../utils/virusScanner.js';
+import logger from '../utils/logger.ts';
+import { validateFileUploadSecurity, getAllowedFileTypes, sanitizeFilename } from '../utils/fileValidator.ts';
+import virusScanner from '../utils/virusScanner.ts';
 
 /**
  * Secure file upload middleware using Multer

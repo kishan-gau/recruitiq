@@ -8,12 +8,12 @@
  */
 
 import Joi from 'joi';
-import WorkerTypeRepository from '../repositories/workerTypeRepository.js';
-import PayStructureRepository from '../repositories/payStructureRepository.js';
-import productConfig from '../config/product.config.js';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError, ForbiddenError  } from '../../../middleware/errorHandler.js';
-import { query  } from '../../../config/database.js';
+import WorkerTypeRepository from '../repositories/workerTypeRepository.ts';
+import PayStructureRepository from '../repositories/payStructureRepository.ts';
+import productConfig from '../config/product.config.ts';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError, ForbiddenError  } from '../../../middleware/errorHandler.ts';
+import { query  } from '../../../config/database.ts';
 import { 
   mapWorkerTypeDbToApi, 
   mapWorkerTypesDbToApi, 
@@ -21,7 +21,7 @@ import {
   mapAssignmentDbToApi,
   mapAssignmentsDbToApi,
   mapAssignmentApiToDb
-} from '../dto/workerTypeDto.js';
+} from '../dto/workerTypeDto.ts';
 
 class WorkerTypeService {
   constructor(repository = null, payStructureRepository = null) {

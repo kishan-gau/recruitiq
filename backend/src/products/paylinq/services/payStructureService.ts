@@ -8,16 +8,16 @@
  */
 
 import Joi from 'joi';
-import PayStructureRepository from '../repositories/payStructureRepository.js';
-import FormulaEngineService from './formulaEngineService.js';
-import temporalPatternService from './temporalPatternService.js';
-import dtoMapper from '../utils/dtoMapper.js';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError } from '../../../middleware/errorHandler.js';
+import PayStructureRepository from '../repositories/payStructureRepository.ts';
+import FormulaEngineService from './formulaEngineService.ts';
+import temporalPatternService from './temporalPatternService.ts';
+import dtoMapper from '../utils/dtoMapper.ts';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError } from '../../../middleware/errorHandler.ts';
 import { 
   mapPayStructureDbToApi, 
   mapPayStructuresDbToApi 
-} from '../dto/payStructureDto.js';
+} from '../dto/payStructureDto.ts';
 
 class PayStructureService {
   constructor(repository = null) {

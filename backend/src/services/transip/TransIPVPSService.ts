@@ -18,8 +18,8 @@
  * @module services/transip/TransIPVPSService
  */
 
-import { getTransIPClient, getSSHKeys, validateSSHKey } from '../../config/transip.js';
-import logger from '../../utils/logger.js';
+import { getTransIPClient, getSSHKeys, validateSSHKey } from '../../config/transip.ts';
+import logger from '../../utils/logger.ts';
 
 class TransIPVPSService {
   constructor(client = null) {

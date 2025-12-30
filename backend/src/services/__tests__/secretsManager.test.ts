@@ -11,8 +11,8 @@ const mockConfig = {
   aws: { region: 'us-east-1' },
 };
 
-jest.unstable_mockModule('../../utils/logger.js', () => ({ default: mockLogger }));
-jest.unstable_mockModule('../../config/index.js', () => ({ default: mockConfig }));
+jest.unstable_mockModule('../../utils/logger.ts', () => ({ default: mockLogger }));
+jest.unstable_mockModule('../../config/index.ts', () => ({ default: mockConfig }));
 
 const { default: secretsManager } = await import('../secretsManager');
 

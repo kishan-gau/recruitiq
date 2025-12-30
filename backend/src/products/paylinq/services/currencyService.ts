@@ -1,9 +1,9 @@
-import ExchangeRateRepository from '../repositories/ExchangeRateRepository.js';
-import ApprovalService from './approvalService.js';
-import logger from '../../../utils/logger.js';
+import ExchangeRateRepository from '../repositories/ExchangeRateRepository.ts';
+import ApprovalService from './approvalService.ts';
+import logger from '../../../utils/logger.ts';
 import NodeCache from 'node-cache';
 import { createClient } from 'redis';
-import pool from '../../../config/database.js';
+import pool from '../../../config/database.ts';
 
 /**
  * Currency Service - Handles all currency conversion operations

@@ -1,8 +1,8 @@
 import express, { Router } from 'express';
 import Joi from 'joi';
-import ApprovalService from '../services/approvalService.js';
-import logger from '../../../utils/logger.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import ApprovalService from '../services/approvalService.ts';
+import logger from '../../../utils/logger.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 
 const router: Router = express.Router();
 const approvalService = new ApprovalService();

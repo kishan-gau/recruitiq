@@ -11,11 +11,11 @@
  */
 
 import Joi from 'joi';
-import TimeAttendanceRepository from '../repositories/timeAttendanceRepository.js';
-import PayComponentRepository from '../repositories/payComponentRepository.js';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
-import { nowUTC, toUTCDateString, calculateHours, formatForDatabase } from '../../../utils/timezone.js';
+import TimeAttendanceRepository from '../repositories/timeAttendanceRepository.ts';
+import PayComponentRepository from '../repositories/payComponentRepository.ts';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
+import { nowUTC, toUTCDateString, calculateHours, formatForDatabase } from '../../../utils/timezone.ts';
 
 class TimeAttendanceService {
   constructor(timeAttendanceRepository = null, payComponentRepository = null) {

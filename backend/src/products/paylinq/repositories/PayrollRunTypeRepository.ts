@@ -8,8 +8,8 @@
  * - No shared run types between organizations
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 
 class PayrollRunTypeRepository {
   constructor(database = null) {

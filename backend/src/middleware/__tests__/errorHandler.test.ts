@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 
 // Mock dependencies BEFORE importing module under test
-jest.unstable_mockModule('../../utils/logger.js', () => ({
+jest.unstable_mockModule('../../utils/logger.ts', () => ({
   default: {
     error: jest.fn(),
     warn: jest.fn(),
@@ -16,7 +16,7 @@ jest.unstable_mockModule('../../utils/logger.js', () => ({
   },
 }));
 
-jest.unstable_mockModule('../../config/index.js', () => ({
+jest.unstable_mockModule('../../config/index.ts', () => ({
   default: {
     env: 'test',
   },

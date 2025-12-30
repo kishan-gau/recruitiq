@@ -7,8 +7,8 @@
  * @module products/paylinq/repositories/payrollRepository
  */
 
-import { query as dbQuery } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { query as dbQuery } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 
 class PayrollRepository {
   constructor(database = null, queryFn = null) {

@@ -10,8 +10,8 @@
  * @module products/paylinq/repositories/WorkerTypeRepository
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 
 class WorkerTypeRepository {
   constructor(database = null) {

@@ -10,8 +10,8 @@
  * );
  */
 
-import { ForbiddenError } from './errorHandler.js';
-import logger from '../utils/logger.js';
+import { ForbiddenError } from './errorHandler.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Middleware that checks if user has required role(s)

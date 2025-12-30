@@ -4,7 +4,7 @@
  * Exports routes, middleware, and configuration for the Nexus HRIS product
  */
 
-import nexusRoutes from './routes/index.js';
+import nexusRoutes from './routes/index.ts';
 
 /**
  * Product module configuration

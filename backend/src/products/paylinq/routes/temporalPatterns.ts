@@ -7,9 +7,9 @@
 
 import express, { Router } from 'express';
 import Joi from 'joi';
-import temporalPatternService from '../services/temporalPatternService.js';
-import { ValidationError } from '../../../middleware/errorHandler.js';
-import logger from '../../../utils/logger.js';
+import temporalPatternService from '../services/temporalPatternService.ts';
+import { ValidationError } from '../../../middleware/errorHandler.ts';
+import logger from '../../../utils/logger.ts';
 
 const router: Router = express.Router();
 

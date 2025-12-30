@@ -3,7 +3,7 @@
  * HTTP handlers for product feature management endpoints
  */
 
-import { productFeatureService } from '../services/index.js';
+import { productFeatureService } from '../services/index.ts';
 
 class ProductFeatureController {
   /**

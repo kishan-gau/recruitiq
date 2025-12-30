@@ -6,10 +6,10 @@
  * @module products/paylinq/controllers/userAccessController
  */
 
-import PayrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.ts';
 
 const payrollService = new PayrollService();
-import logger from '../../../utils/logger.js';
+import logger from '../../../utils/logger.ts';
 
 /**
  * Grant system access to an employee

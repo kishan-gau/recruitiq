@@ -4,8 +4,8 @@
  */
 
 import cors from 'cors';
-import config from '../config/index.js';
-import logger from '../utils/logger.js';
+import config from '../config/index.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Validate origin against whitelist

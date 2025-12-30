@@ -3,7 +3,7 @@
  * Uses Joi with custom extensions for comprehensive input validation
  */
 
-import Joi from '../utils/joiExtensions.js';
+import Joi from '../utils/joiExtensions.ts';
 
 // ============================================================================
 // COMMON/REUSABLE SCHEMAS

@@ -3,8 +3,8 @@
  * HTTP request handlers for contract management
  */
 
-import ContractService from '../services/contractService.js';
-import logger from '../../../utils/logger.js';
+import ContractService from '../services/contractService.ts';
+import logger from '../../../utils/logger.ts';
 
 class ContractController {
   constructor() {

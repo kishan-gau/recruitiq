@@ -3,9 +3,9 @@
  */
 
 import express, { Router } from 'express';
-import dashboardController from '../controllers/dashboardController.js';
-import { requirePermission } from '../../../middleware/auth.js';
-import { createEndpointLimiter } from '../../../middleware/rateLimit.js';
+import dashboardController from '../controllers/dashboardController.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
+import { createEndpointLimiter } from '../../../middleware/rateLimit.ts';
 
 const router: Router = express.Router();
 

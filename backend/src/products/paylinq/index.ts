@@ -4,7 +4,7 @@
  * Exports routes, middleware, and configuration for the Paylinq Payroll product
  */
 
-import paylinqRoutes from './routes/routes.js';
+import paylinqRoutes from './routes/routes.ts';
 
 /**
  * Product module configuration

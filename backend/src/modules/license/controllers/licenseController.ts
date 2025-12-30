@@ -1,6 +1,6 @@
-import License from '../models/License.js'
-import Customer from '../models/Customer.js'
-import LicenseGenerator from '../services/LicenseGenerator.js'
+import License from '../models/License.ts'
+import Customer from '../models/Customer.ts'
+import LicenseGenerator from '../services/LicenseGenerator.ts'
 import { addMonths } from 'date-fns'
 
 export const licenseController = {

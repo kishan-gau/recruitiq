@@ -1,7 +1,7 @@
 import pg from 'pg';
-import config from './index.js';
-import logger from '../utils/logger.js';
-import { logQuery, logSlowQuery, logQueryError, analyzeQuery } from '../middleware/queryLogger.js';
+import config from './index.ts';
+import logger from '../utils/logger.ts';
+import { logQuery, logSlowQuery, logQueryError, analyzeQuery } from '../middleware/queryLogger.ts';
 
 const { Pool } = pg;
 

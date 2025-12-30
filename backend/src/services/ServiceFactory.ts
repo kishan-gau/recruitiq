@@ -12,11 +12,11 @@
  */
 
 import { Pool } from 'pg';
-import { JobService } from './jobs/JobService.js';
-import { CandidateService } from './candidates/CandidateService.js';
-import { JobRepository } from '../repositories/jobs/JobRepository.js';
-import { CandidateRepository } from '../repositories/candidates/CandidateRepository.js';
-import logger from '../utils/logger.js';
+import { JobService } from './jobs/JobService.ts';
+import { CandidateService } from './candidates/CandidateService.ts';
+import { JobRepository } from '../repositories/jobs/JobRepository.ts';
+import { CandidateRepository } from '../repositories/candidates/CandidateRepository.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Service Factory

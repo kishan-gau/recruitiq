@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import db from '../shared/database/licenseManagerDb.js'; // Platform database pool
+import db from '../shared/database/licenseManagerDb.ts'; // Platform database pool
 import { v4 as uuidv4 } from 'uuid';
 
 /**

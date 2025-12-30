@@ -5,10 +5,10 @@
  */
 
 import express, { Router } from 'express';
-import employeeRecordController from '../controllers/employeeRecordController.js';
-import { validate  } from '../../../middleware/validation.js';
-import { requirePermission } from '../../../middleware/auth.js';
-import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
+import employeeRecordController from '../controllers/employeeRecordController.ts';
+import { validate  } from '../../../middleware/validation.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
+import { createEndpointLimiter  } from '../../../middleware/rateLimit.ts';
 import Joi from 'joi';
 
 const router: Router = express.Router();

@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
-import { authenticate } from '../../../middleware/auth.js';
-import { getDepartments, getDepartment, createDepartment, updateDepartment, deleteDepartment } from '../controllers/departmentController.js';
+import { authenticate } from '../../../middleware/auth.ts';
+import { getDepartments, getDepartment, createDepartment, updateDepartment, deleteDepartment } from '../controllers/departmentController.ts';
 
 const router: Router = express.Router();
 

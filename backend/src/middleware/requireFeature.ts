@@ -6,9 +6,9 @@
  * Uses the new Feature Management System with caching and proper access control
  */
 
-import FeatureAccessService from '../services/FeatureAccessService.js';
-import logger from '../utils/logger.js';
-import { query } from '../config/database.js';
+import FeatureAccessService from '../services/FeatureAccessService.ts';
+import logger from '../utils/logger.ts';
+import { query } from '../config/database.ts';
 
 const accessService = new FeatureAccessService();
 

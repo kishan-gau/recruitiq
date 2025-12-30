@@ -10,10 +10,10 @@
  * @see https://martinfowler.com/eaaCatalog/repository.html
  */
 
-import pool, { query } from '../config/database.js';
-import logger from '../utils/logger.js';
+import pool, { query } from '../config/database.ts';
+import logger from '../utils/logger.ts';
 import { v4 as uuidv4 } from 'uuid';
-import { mapDbToApi, mapApiToDb } from '../utils/dtoMapper.js';
+import { mapDbToApi, mapApiToDb } from '../utils/dtoMapper.ts';
 
 // Use the custom query function that supports organizationId filtering
 const db = { query };

@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
-import roleRoutes from './roleRoutes.js';
-import permissionRoutes from './permissionRoutes.js';
-import userRoleRoutes from './userRoleRoutes.js';
+import roleRoutes from './roleRoutes.ts';
+import permissionRoutes from './permissionRoutes.ts';
+import userRoleRoutes from './userRoleRoutes.ts';
 
 const router: Router = express.Router();
 

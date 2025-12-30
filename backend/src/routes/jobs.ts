@@ -9,8 +9,8 @@ import {
   deleteJob,
   publishJob,
   updatePortalSettings
-} from '../controllers/jobController.js';
-import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.js';
+} from '../controllers/jobController.ts';
+import { authenticate, optionalAuth, requirePermission } from '../middleware/auth.ts';
 
 const router = express.Router();
 

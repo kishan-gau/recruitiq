@@ -12,11 +12,11 @@
 
 import crypto from 'crypto';
 import Joi from 'joi';
-import PayComponentRepository from '../repositories/payComponentRepository.js';
-import { mapComponentDbToApi, mapComponentsDbToApi, mapComponentApiToDb } from '../dto/payComponentDto.js';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
-import formulaEngine from '../../../services/formula/FormulaEngine.js';
+import PayComponentRepository from '../repositories/payComponentRepository.ts';
+import { mapComponentDbToApi, mapComponentsDbToApi, mapComponentApiToDb } from '../dto/payComponentDto.ts';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
+import formulaEngine from '../../../services/formula/FormulaEngine.ts';
 
 class PayComponentService {
   constructor(repository = null) {

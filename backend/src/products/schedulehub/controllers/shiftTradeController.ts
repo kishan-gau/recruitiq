@@ -3,8 +3,8 @@
  * HTTP request handlers for shift swapping and trade management
  */
 
-import ShiftTradeService from '../services/shiftTradeService.js';
-import logger from '../../../utils/logger.js';
+import ShiftTradeService from '../services/shiftTradeService.ts';
+import logger from '../../../utils/logger.ts';
 
 class ShiftTradeController {
   constructor() {

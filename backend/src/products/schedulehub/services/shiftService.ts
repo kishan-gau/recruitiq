@@ -4,9 +4,9 @@
  * Integrates with Paylinq for time entry recording
  */
 
-import pool from '../../../config/database.js';
-import PaylinqIntegrationService from '../../paylinq/services/integrationService.js';
-import logger from '../../../utils/logger.js';
+import pool from '../../../config/database.ts';
+import PaylinqIntegrationService from '../../paylinq/services/integrationService.ts';
+import logger from '../../../utils/logger.ts';
 import Joi from 'joi';
 
 class ShiftService {

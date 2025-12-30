@@ -4,7 +4,7 @@ import {
   isDangerousExtension,
   sanitizeFilename,
   getAllowedFileTypes,
-} from '../fileValidator.js';
+} from '../fileValidator.ts';
 
 describe('File Validator', () => {
   describe('detectFileType', () => {

@@ -3,8 +3,8 @@
  * HTTP request handlers for shift template management
  */
 
-import ShiftTemplateService from '../services/shiftTemplateService.js';
-import logger from '../../../utils/logger.js';
+import ShiftTemplateService from '../services/shiftTemplateService.ts';
+import logger from '../../../utils/logger.ts';
 
 class ShiftTemplateController {
   constructor() {

@@ -14,8 +14,8 @@
  */
 
 import { create, all } from 'mathjs';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
 
 // Create a limited math.js instance with only safe functions
 const math = create(all, {

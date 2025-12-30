@@ -1,9 +1,9 @@
 import jwt from 'jsonwebtoken';
-import PlatformUser from '../models/PlatformUser.js';
-import TenantUser from '../models/TenantUser.js';
-import db from '../config/database.js';
-import logger from '../utils/logger.js';
-import UserRoleService from '../modules/rbac/services/UserRoleService.js';
+import PlatformUser from '../models/PlatformUser.ts';
+import TenantUser from '../models/TenantUser.ts';
+import db from '../config/database.ts';
+import logger from '../utils/logger.ts';
+import UserRoleService from '../modules/rbac/services/UserRoleService.ts';
 
 /**
  * New Authentication Middleware

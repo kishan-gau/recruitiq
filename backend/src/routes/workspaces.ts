@@ -8,10 +8,10 @@ import {
   getWorkspaceMembers,
   addWorkspaceMember,
   removeWorkspaceMember
-} from '../controllers/workspaceController.js';
-import { authenticate } from '../middleware/auth.js';
-import { validate, validateMultiple } from '../middleware/validation.js';
-import { workspaceSchemas, commonSchemas } from '../utils/validationSchemas.js';
+} from '../controllers/workspaceController.ts';
+import { authenticate } from '../middleware/auth.ts';
+import { validate, validateMultiple } from '../middleware/validation.ts';
+import { workspaceSchemas, commonSchemas } from '../utils/validationSchemas.ts';
 import Joi from 'joi';
 
 const router = express.Router();

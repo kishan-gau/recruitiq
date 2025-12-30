@@ -7,8 +7,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import logger from '../../utils/logger.js';
-import { productService } from '../nexus/services/index.js';
+import logger from '../../utils/logger.ts';
+import { productService } from '../nexus/services/index.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -172,14 +172,14 @@ class ProductLoader {
     const possiblePaths = [
       // PRIORITY 1: Standard product module entry point
       // backend/src/products/{slug}/index.js
-      path.join(__dirname, '..', product.slug, 'index.js'),
+      path.join(__dirname, '..', product.slug, 'index.ts'),
       
       // PRIORITY 2: Legacy direct routes (backwards compatibility)
       // backend/src/products/{slug}/routes/index.js
-      path.join(__dirname, '..', product.slug, 'routes', 'index.js'),
+      path.join(__dirname, '..', product.slug, 'routes', 'index.ts'),
       
       // PRIORITY 3: Development path if specified
-      product.basePath ? path.join(process.cwd(), 'src', 'products', product.slug, 'index.js') : null
+      product.basePath ? path.join(process.cwd(), 'src', 'products', product.slug, 'index.ts') : null
     ].filter(Boolean);
 
     for (const possiblePath of possiblePaths) {

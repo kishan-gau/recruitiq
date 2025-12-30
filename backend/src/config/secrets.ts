@@ -10,7 +10,7 @@
  * - 'barbican': Load from Barbican API (production)
  */
 
-import logger from '../utils/logger.js';
+import logger from '../utils/logger.ts';
 
 /**
  * Secret definitions with validation rules

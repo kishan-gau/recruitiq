@@ -8,8 +8,8 @@
  */
 
 import express, { Router } from 'express';
-import * as controller from '../controllers/PayrollRunTypeController.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import * as controller from '../controllers/PayrollRunTypeController.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 
 const router: Router = express.Router();
 

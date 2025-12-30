@@ -3,7 +3,7 @@
  * Exports routes for the Dynamic Product Loader
  */
 
-import routes from './routes.js';
+import routes from './routes.ts';
 
 // Export routes as default for ProductLoader
 export default {

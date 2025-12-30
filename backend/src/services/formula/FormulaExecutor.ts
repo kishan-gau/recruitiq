@@ -11,7 +11,7 @@ import {
   ExecutionResult,
   FormulaExecutionError,
   DivisionByZeroError,
-} from './FormulaTypes.js';
+} from './FormulaTypes.ts';
 
 class FormulaExecutor {
   /**

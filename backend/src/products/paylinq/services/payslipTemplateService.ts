@@ -7,10 +7,10 @@
  * @module products/paylinq/services/payslipTemplateService
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
 import Joi from 'joi';
-import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.js';
+import { ValidationError, NotFoundError } from '../../../middleware/errorHandler.ts';
 
 class PayslipTemplateService {
   // Validation schemas

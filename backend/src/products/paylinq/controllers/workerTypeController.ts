@@ -3,9 +3,9 @@
  * Handles HTTP requests for worker type/classification management
  */
 
-import WorkerTypeService from '../services/workerTypeService.js';
-import { mapApiToDb } from '../utils/dtoMapper.js';
-import logger from '../../../utils/logger.js';
+import WorkerTypeService from '../services/workerTypeService.ts';
+import { mapApiToDb } from '../utils/dtoMapper.ts';
+import logger from '../../../utils/logger.ts';
 
 // Instantiate service
 const workerTypeService = new WorkerTypeService();

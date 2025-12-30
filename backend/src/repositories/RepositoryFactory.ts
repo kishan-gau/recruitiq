@@ -8,8 +8,8 @@
  */
 
 import { Pool } from 'pg';
-import { BaseRepository } from './BaseRepository.js';
-import logger from '../utils/logger.js';
+import { BaseRepository } from './BaseRepository.ts';
+import logger from '../utils/logger.ts';
 
 /**
  * Repository factory class
@@ -144,7 +144,7 @@ let globalFactory: RepositoryFactory | undefined;
  * 
  * @example
  * ```typescript
- * import { initializeRepositoryFactory } from './repositories/RepositoryFactory.js';
+ * import { initializeRepositoryFactory } from './repositories/RepositoryFactory.ts';
  * 
  * const pool = new Pool({ ...config });
  * initializeRepositoryFactory(pool);

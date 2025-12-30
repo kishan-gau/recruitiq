@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
-import { authenticateTenant, requirePermission } from '../../../middleware/auth.js';
-import { requireUserManagement } from '../middleware/rbacEnforcement.js';
+import { authenticateTenant, requirePermission } from '../../../middleware/auth.ts';
+import { requireUserManagement } from '../middleware/rbacEnforcement.ts';
 import {
   assignRole,
   revokeRole,
@@ -9,7 +9,7 @@ import {
   getUserPermissions,
   checkPermission,
   bulkAssignRoles
-} from '../controllers/userRoleController.js';
+} from '../controllers/userRoleController.ts';
 
 const router: Router = express.Router();
 

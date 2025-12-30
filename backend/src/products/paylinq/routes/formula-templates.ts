@@ -3,8 +3,8 @@
  */
 
 import express, { Router } from 'express';
-import formulaTemplateController from '../controllers/formulaTemplateController.js';
-import { requirePermission } from '../../../middleware/auth.js';
+import formulaTemplateController from '../controllers/formulaTemplateController.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
 
 const router: Router = express.Router();
 

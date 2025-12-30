@@ -3,8 +3,8 @@
  */
 
 import express, { Router } from 'express';
-import timesheetController from '../controllers/timesheetController.js';
-import { validate  } from '../../../middleware/validation.js';
+import timesheetController from '../controllers/timesheetController.ts';
+import { validate  } from '../../../middleware/validation.ts';
 import Joi from 'joi';
 
 const router: Router = express.Router();

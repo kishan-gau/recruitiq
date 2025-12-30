@@ -6,10 +6,10 @@
  * whether an organization can use a specific feature
  */
 
-import { query } from '../config/database.js';
-import logger from '../utils/logger.js';
+import { query } from '../config/database.ts';
+import logger from '../utils/logger.ts';
 import { v4 as uuidv4 } from 'uuid';
-import { mapDbToApi } from '../utils/dtoMapper.js';
+import { mapDbToApi } from '../utils/dtoMapper.ts';
 
 export class FeatureGrantRepository {
   constructor() {

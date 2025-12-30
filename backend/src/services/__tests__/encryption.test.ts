@@ -4,7 +4,7 @@
 
 import { jest } from '@jest/globals';
 import crypto from 'crypto';
-import encryption from '../encryption.js';
+import encryption from '../encryption.ts';
 
 describe('Encryption Service', () => {
   const originalEnv = process.env.ENCRYPTION_MASTER_KEY;

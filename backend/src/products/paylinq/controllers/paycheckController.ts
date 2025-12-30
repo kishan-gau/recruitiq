@@ -3,14 +3,14 @@
  * Handles HTTP requests for paycheck/pay stub management
  */
 
-import PayrollService from '../services/payrollService.js';
+import PayrollService from '../services/payrollService.ts';
 
 const payrollService = new PayrollService();
-import payslipPdfService from '../services/payslipPdfService.js';
-import emailService from '../../../services/emailService.js';
-import { query as db } from '../../../config/database.js';
-import { mapApiToDb, mapPaycheckDbToApi, mapPaycheckDbArrayToApi } from '../utils/dtoMapper.js';
-import logger from '../../../utils/logger.js';
+import payslipPdfService from '../services/payslipPdfService.ts';
+import emailService from '../../../services/emailService.ts';
+import { query as db } from '../../../config/database.ts';
+import { mapApiToDb, mapPaycheckDbToApi, mapPaycheckDbArrayToApi } from '../utils/dtoMapper.ts';
+import logger from '../../../utils/logger.ts';
 
 /**
  * Get all paychecks

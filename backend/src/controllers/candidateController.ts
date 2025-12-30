@@ -5,8 +5,8 @@
  * Phase 5 Refactored: Uses response helpers, proper user context, resource-specific keys
  */
 
-import { CandidateService } from '../services/candidates/CandidateService.js';
-import logger from '../utils/logger.js';
+import { CandidateService } from '../services/candidates/CandidateService.ts';
+import logger from '../utils/logger.ts';
 
 const candidateService = new CandidateService();
 

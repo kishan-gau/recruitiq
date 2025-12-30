@@ -3,14 +3,14 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { JobService } from '../JobService.js';
-import { ValidationError, NotFoundError, BusinessRuleError } from '../../../middleware/errorHandler.js';
+import { JobService } from '../JobService.ts';
+import { ValidationError, NotFoundError, BusinessRuleError } from '../../../middleware/errorHandler.ts';
 
 // Mock dependencies before imports
-jest.mock('../../../config/database.js');
-jest.mock('../../../utils/logger.js');
-jest.mock('../../../repositories/JobRepository.js');
-jest.mock('../../../models/Organization.js');
+jest.mock('../../../config/database.ts');
+jest.mock('../../../utils/logger.ts');
+jest.mock('../../../repositories/JobRepository.ts');
+jest.mock('../../../models/Organization.ts');
 
 describe('JobService', () => {
   let jobService;

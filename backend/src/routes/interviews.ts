@@ -6,8 +6,8 @@ import {
   updateInterview,
   submitFeedback,
   cancelInterview
-} from '../controllers/interviewController.refactored.js';
-import { authenticate } from '../middleware/auth.js';
+} from '../controllers/interviewController.refactored.ts';
+import { authenticate } from '../middleware/auth.ts';
 
 const router = express.Router();
 

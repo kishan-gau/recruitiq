@@ -4,12 +4,12 @@
  */
 
 import express, { Router } from 'express';
-import employeeRecordController from '../controllers/employeeRecordController.js';
-import userAccessController from '../controllers/userAccessController.js';
-import payComponentController from '../controllers/payComponentController.js';
-import { validate  } from '../../../middleware/validation.js';
-import { requirePermission } from '../../../middleware/auth.js';
-import { createEndpointLimiter  } from '../../../middleware/rateLimit.js';
+import employeeRecordController from '../controllers/employeeRecordController.ts';
+import userAccessController from '../controllers/userAccessController.ts';
+import payComponentController from '../controllers/payComponentController.ts';
+import { validate  } from '../../../middleware/validation.ts';
+import { requirePermission } from '../../../middleware/auth.ts';
+import { createEndpointLimiter  } from '../../../middleware/rateLimit.ts';
 import Joi from 'joi';
 
 const router: Router = express.Router();

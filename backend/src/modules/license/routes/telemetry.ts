@@ -1,6 +1,6 @@
 import express, { Router } from 'express'
-import { telemetryController } from '../controllers/telemetryController.js'
-import { asyncHandler } from '../middleware/errorHandler.js'
+import { telemetryController } from '../controllers/telemetryController.ts'
+import { asyncHandler } from '../middleware/errorHandler.ts'
 
 const router: Router = express.Router()
 

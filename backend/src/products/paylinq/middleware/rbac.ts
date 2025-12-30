@@ -7,7 +7,7 @@
  * @module products/paylinq/middleware/rbac
  */
 
-import { requirePermission, requireRole } from '../../../middleware/rbac.js';
+import { requirePermission, requireRole } from '../../../middleware/rbac.ts';
 
 /**
  * PayLinQ Permission Middleware Factories
@@ -227,7 +227,7 @@ export const PayLinQPermissions = {
  * Export individual permission checks for direct use
  * 
  * @example
- * import { canCreatePayrollRun } from './middleware/rbac.js';
+ * import { canCreatePayrollRun } from './middleware/rbac.ts';
  * router.post('/payroll-runs', authenticate, canCreatePayrollRun(), createPayrollRun);
  */
 export const {

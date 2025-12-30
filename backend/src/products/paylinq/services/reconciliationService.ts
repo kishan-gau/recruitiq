@@ -11,9 +11,9 @@
  */
 
 import Joi from 'joi';
-import ReconciliationRepository from '../repositories/reconciliationRepository.js';
-import logger from '../../../utils/logger.js';
-import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.js';
+import ReconciliationRepository from '../repositories/reconciliationRepository.ts';
+import logger from '../../../utils/logger.ts';
+import { ValidationError, NotFoundError, ConflictError  } from '../../../middleware/errorHandler.ts';
 
 class ReconciliationService {
   constructor() {

@@ -3,10 +3,10 @@
  * Business logic layer for employee management
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
-import compensationService from '../../../shared/services/compensationService.js';
-import { mapEmployeeDbToApi, mapEmployeesDbToApi, mapEmployeeApiToDb } from '../dto/employeeDto.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
+import compensationService from '../../../shared/services/compensationService.ts';
+import { mapEmployeeDbToApi, mapEmployeesDbToApi, mapEmployeeApiToDb } from '../dto/employeeDto.ts';
 
 class EmployeeService {
   constructor() {

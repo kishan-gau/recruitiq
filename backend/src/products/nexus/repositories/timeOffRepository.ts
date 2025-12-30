@@ -3,9 +3,9 @@
  * Data access layer for time-off requests and balances
  */
 
-import { query } from '../../../config/database.js';
-import logger from '../../../utils/logger.js';
-import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.js';
+import { query } from '../../../config/database.ts';
+import logger from '../../../utils/logger.ts';
+import { mapDbToApi, mapApiToDb } from '../../../utils/dtoMapper.ts';
 
 class TimeOffRepository {
   constructor(database = null) {

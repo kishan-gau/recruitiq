@@ -2,10 +2,10 @@
  * Product Models Export
  */
 
-import Product from './Product.js';
-import ProductPermission from './ProductPermission.js';
-import ProductConfig from './ProductConfig.js';
-import ProductFeature from './ProductFeature.js';
+import Product from './Product.ts';
+import ProductPermission from './ProductPermission.ts';
+import ProductConfig from './ProductConfig.ts';
+import ProductFeature from './ProductFeature.ts';
 
 export {
   Product,
