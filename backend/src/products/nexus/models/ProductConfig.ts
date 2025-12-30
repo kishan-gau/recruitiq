@@ -4,7 +4,20 @@
  */
 
 class ProductConfig {
-  constructor(data = {}) {
+  id: any;
+  organizationId: any;
+  productId: any;
+  configKey: any;
+  configValue: any;
+  configType: any;
+  isEncrypted: any;
+  isSensitive: any;
+  description: any;
+  createdAt: any;
+  updatedAt: any;
+  updatedBy: any;
+  
+  constructor(data: any = {}) {
     this.id = data.id;
     this.organizationId = data.organization_id || data.organizationId;
     this.productId = data.product_id || data.productId;
