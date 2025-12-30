@@ -14,10 +14,6 @@ class StationService {
   createStationSchema: Joi.ObjectSchema;
   addRoleRequirementSchema: Joi.ObjectSchema;
 
-  
-
-  logger: any;
-
 constructor() {
     this.logger = logger;
   }

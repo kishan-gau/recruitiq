@@ -20,10 +20,6 @@ class RoleService {
   logger: typeof logger;
   createRoleSchema: Joi.ObjectSchema;
 
-  
-
-  logger: any;
-
 constructor() {
     this.logger = logger;
   }

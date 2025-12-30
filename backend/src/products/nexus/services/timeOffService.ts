@@ -9,10 +9,6 @@ import type { TimeOffRequestData, TimeOffBalance, TimeOffSearchFilters } from '.
 
 class TimeOffService {
   logger: typeof logger;
-  
-  
-  
-  logger: any;
 
 constructor() {
     this.logger = logger;

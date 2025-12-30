@@ -8,6 +8,9 @@ import productLoader from './ProductLoader.js';
 import routeRegistry from './RouteRegistry.js';
 
 class ProductManager {
+  initialized: boolean;
+  initializationError: Error | null;
+
   constructor() {
     this.initialized = false;
     this.initializationError = null;

@@ -15,13 +15,6 @@ export class FeatureGrantRepository {
   protected tableName: string;
   protected logger: typeof logger;
 
-  
-
-  logger: any;
-
-
-  tableName: string;
-
 constructor() {
     this.tableName = 'organization_feature_grants';
     this.logger = logger;

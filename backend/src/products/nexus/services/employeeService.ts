@@ -12,10 +12,6 @@ import { mapEmployeeDbToApi, mapEmployeesDbToApi, mapEmployeeApiToDb } from '../
 class EmployeeService {
   logger: typeof logger;
 
-  
-
-  logger: any;
-
 constructor() {
     this.logger = logger;
   }

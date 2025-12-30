@@ -9,10 +9,6 @@ import type { ContractData } from '../../../types/nexus.types.js';
 
 class ContractService {
   logger: typeof logger;
-  
-  
-  
-  logger: any;
 
 constructor() {
     this.logger = logger;

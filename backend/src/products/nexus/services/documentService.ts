@@ -9,10 +9,6 @@ import type { DocumentData } from '../../../types/nexus.types.js';
 
 class DocumentService {
   logger: typeof logger;
-  
-  
-  
-  logger: any;
 
 constructor() {
     this.logger = logger;

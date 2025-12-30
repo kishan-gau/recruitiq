@@ -8,6 +8,10 @@ import logger from '../../utils/logger.js';
 import productLoader from './ProductLoader.js';
 
 class RouteRegistry {
+  mainRouter: express.Router;
+  registeredRoutes: Map<string, any>;
+  routeMetadata: Map<string, any>;
+
   constructor() {
     this.mainRouter = express.Router();
     this.registeredRoutes = new Map();
