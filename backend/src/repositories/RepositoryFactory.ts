@@ -143,10 +143,12 @@ let globalFactory: RepositoryFactory | undefined;
  * @param pool - Database connection pool
  * 
  * @example
+ * ```typescript
  * import { initializeRepositoryFactory } from './repositories/RepositoryFactory.js';
  * 
- * const pool = new Pool({ /* config */ });
+ * const pool = new Pool({ ...config });
  * initializeRepositoryFactory(pool);
+ * ```
  */
 export function initializeRepositoryFactory(pool: Pool): RepositoryFactory {
   globalFactory = new RepositoryFactory(pool);
