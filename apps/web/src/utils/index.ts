@@ -8,3 +8,6 @@ export * from './errorHandler';
 
 // Date formatting
 export * from './formatDate';
+
+// Time and duration formatting
+export * from './timeFormat';
