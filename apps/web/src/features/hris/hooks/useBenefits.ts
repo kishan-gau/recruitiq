@@ -76,3 +76,6 @@ export function useCheckEligibility() {
     ,
   });
 }
+
+// Alias for backward compatibility
+export { useBenefitPlans as useBenefits };

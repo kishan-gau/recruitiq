@@ -66,3 +66,54 @@ export function useExecutePayrollRun() {
     },
   });
 }
+
+/**
+ * Hook for calculating a payroll run
+ */
+export function useCalculatePayroll() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // TODO: Implement calculate payroll API endpoint
+      throw new Error('Calculate payroll not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrollRuns'] });
+    },
+  });
+}
+
+/**
+ * Hook for approving a payroll run
+ */
+export function useApprovePayroll() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // TODO: Implement approve payroll API endpoint
+      throw new Error('Approve payroll not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrollRuns'] });
+    },
+  });
+}
+
+/**
+ * Hook for processing a payroll run  
+ */
+export function useProcessPayroll() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // TODO: Implement process payroll API endpoint
+      throw new Error('Process payroll not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrollRuns'] });
+    },
+  });
+}
