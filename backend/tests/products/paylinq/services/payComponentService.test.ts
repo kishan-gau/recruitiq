@@ -57,21 +57,29 @@ describe('PayComponentService', () => {
   });
 
   beforeEach(() => {
-    // Create comprehensive mock repository
+    // Create comprehensive mock repository with actual method names
     mockRepository = {
-      create: jest.fn(),
-      findById: jest.fn(),
-      findByCode: jest.fn(),
-      findAll: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      createFormula: jest.fn(),
-      getFormulas: jest.fn(),
-      createCustomComponent: jest.fn(),
-      getCustomComponents: jest.fn(),
+      createPayComponent: jest.fn(),
+      findPayComponentById: jest.fn(),
+      findPayComponentByCode: jest.fn(),
+      findPayComponents: jest.fn(),
+      updatePayComponent: jest.fn(),
+      deletePayComponent: jest.fn(),
+      createComponentFormula: jest.fn(),
+      findFormulasByComponent: jest.fn(),
+      findFormulaById: jest.fn(),
+      findGlobalComponents: jest.fn(),
+      findGlobalComponentByCode: jest.fn(),
       assignComponentToEmployee: jest.fn(),
-      getEmployeeComponents: jest.fn(),
-      calculateComponent: jest.fn()
+      findEmployeeComponentAssignment: jest.fn(),
+      findEmployeeComponents: jest.fn(),
+      findEmployeeComponentAssignments: jest.fn(),
+      findEmployeeComponentAssignmentById: jest.fn(),
+      updateEmployeeComponentAssignment: jest.fn(),
+      removeEmployeeComponentAssignment: jest.fn(),
+      updateEmployeeAssignment: jest.fn(),
+      deleteEmployeeAssignment: jest.fn(),
+      getComponentStatistics: jest.fn()
     };
 
     // Inject mock via constructor (dependency injection)
@@ -191,7 +199,7 @@ describe('PayComponentService', () => {
   describe('getPayComponentById', () => {
     it('should return DTO-transformed component by ID', async () => {
       const dbComponent = createDbComponent();
-      mockRepository.findById.mockResolvedValue(dbComponent);
+      mockRepository.findPayComponentById.mockResolvedValue(dbComponent);
 
       const result = await service.getPayComponentById(
         testComponentId,
@@ -207,7 +215,7 @@ describe('PayComponentService', () => {
     });
 
     it('should throw NotFoundError when component not found', async () => {
-      mockRepository.findById.mockResolvedValue(null);
+      mockRepository.findPayComponentById.mockResolvedValue(null);
 
       await expect(
         service.getPayComponentById(testComponentId, testOrganizationId)
@@ -278,8 +286,8 @@ describe('PayComponentService', () => {
         description: 'Updated description'
       });
 
-      mockRepository.findById.mockResolvedValue(existingComponent);
-      mockRepository.update.mockResolvedValue(updatedComponent);
+      mockRepository.findPayComponentById.mockResolvedValue(existingComponent);
+      mockRepository.updatePayComponent.mockResolvedValue(updatedComponent);
 
       const result = await service.updatePayComponent(
         testComponentId,
@@ -295,7 +303,7 @@ describe('PayComponentService', () => {
 
     it('should prevent updating component code', async () => {
       const existingComponent = createDbComponent();
-      mockRepository.findById.mockResolvedValue(existingComponent);
+      mockRepository.findPayComponentById.mockResolvedValue(existingComponent);
 
       await expect(
         service.updatePayComponent(
@@ -309,7 +317,7 @@ describe('PayComponentService', () => {
 
     it('should prevent updating system components', async () => {
       const systemComponent = createDbComponent({ is_system_component: true });
-      mockRepository.findById.mockResolvedValue(systemComponent);
+      mockRepository.findPayComponentById.mockResolvedValue(systemComponent);
 
       await expect(
         service.updatePayComponent(
@@ -325,8 +333,8 @@ describe('PayComponentService', () => {
   describe('deletePayComponent', () => {
     it('should soft delete pay component', async () => {
       const existingComponent = createDbComponent();
-      mockRepository.findById.mockResolvedValue(existingComponent);
-      mockRepository.delete.mockResolvedValue(true);
+      mockRepository.findPayComponentById.mockResolvedValue(existingComponent);
+      mockRepository.deletePayComponent.mockResolvedValue(true);
 
       const result = await service.deletePayComponent(
         testComponentId,
@@ -344,7 +352,7 @@ describe('PayComponentService', () => {
 
     it('should prevent deleting system components', async () => {
       const systemComponent = createDbComponent({ is_system_component: true });
-      mockRepository.findById.mockResolvedValue(systemComponent);
+      mockRepository.findPayComponentById.mockResolvedValue(systemComponent);
 
       await expect(
         service.deletePayComponent(testComponentId, testOrganizationId, testUserId)
@@ -353,7 +361,7 @@ describe('PayComponentService', () => {
 
     it('should check for active employee assignments before deleting', async () => {
       const component = createDbComponent();
-      mockRepository.findById.mockResolvedValue(component);
+      mockRepository.findPayComponentById.mockResolvedValue(component);
       mockRepository.getEmployeeComponents.mockResolvedValue([
         { employee_id: testEmployeeId }
       ]);
@@ -558,7 +566,7 @@ describe('PayComponentService', () => {
         default_amount: 500.00
       });
 
-      mockRepository.findById.mockResolvedValue(component);
+      mockRepository.findPayComponentById.mockResolvedValue(component);
 
       const result = await service.calculateComponentValue(
         testComponentId,
@@ -577,7 +585,7 @@ describe('PayComponentService', () => {
         default_rate: 25.00
       });
 
-      mockRepository.findById.mockResolvedValue(component);
+      mockRepository.findPayComponentById.mockResolvedValue(component);
 
       const result = await service.calculateComponentValue(
         testComponentId,
@@ -596,7 +604,7 @@ describe('PayComponentService', () => {
         default_rate: 0.05 // 5%
       });
 
-      mockRepository.findById.mockResolvedValue(component);
+      mockRepository.findPayComponentById.mockResolvedValue(component);
 
       const result = await service.calculateComponentValue(
         testComponentId,
@@ -618,7 +626,7 @@ describe('PayComponentService', () => {
         configuration: { customRate: 30.00 } // Employee has custom rate
       };
 
-      mockRepository.findById.mockResolvedValue(component);
+      mockRepository.findPayComponentById.mockResolvedValue(component);
       mockRepository.getEmployeeComponents.mockResolvedValue([employeeAssignment]);
 
       const result = await service.calculateComponentValue(

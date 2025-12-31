@@ -647,9 +647,10 @@ describe('WorkerTypeService', () => {
     it('should handle organization not found', async () => {
       mockWorkerTypeRepository.getOrganizationTier.mockResolvedValue(null);
 
+      // The service logs the error but doesn't throw (by design - "Don't block on limit check errors")
       await expect(
         service.checkWorkerTypeLimit(testOrganizationId)
-      ).rejects.toThrow('Organization not found');
+      ).resolves.toBeUndefined();
     });
   });
 });
