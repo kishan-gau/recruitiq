@@ -14,8 +14,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Development stage
 FROM base AS development
 
-# Enable corepack and install pnpm
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+# Install pnpm globally using npm (more reliable than corepack)
+RUN npm install -g pnpm@8.15.0
 
 # Copy monorepo workspace files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -47,8 +47,8 @@ CMD ["./backend/scripts/startup.sh"]
 # Production builder stage
 FROM base AS builder
 
-# Enable corepack and install pnpm
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+# Install pnpm globally using npm (more reliable than corepack)
+RUN npm install -g pnpm@8.15.0
 
 # Copy monorepo workspace files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

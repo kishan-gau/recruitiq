@@ -7,8 +7,8 @@ FROM node:20-alpine AS base
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+# Install pnpm globally using npm (more reliable than corepack)
+RUN npm install -g pnpm@8.15.0
 
 # Development stage
 FROM base AS development
@@ -50,8 +50,8 @@ FROM base AS builder
 ARG APP_NAME
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+# Install pnpm globally using npm (more reliable than corepack)
+RUN npm install -g pnpm@8.15.0
 
 # Copy workspace configuration
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
