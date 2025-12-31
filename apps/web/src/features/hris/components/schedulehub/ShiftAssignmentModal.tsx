@@ -1,5 +1,5 @@
 import { X, User, Clock, MapPin, Badge, AlertTriangle, CheckCircle } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 import { formatTime, formatTimeSlot } from '@/utils';
 

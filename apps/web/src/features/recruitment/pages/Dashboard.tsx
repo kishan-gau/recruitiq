@@ -1,4 +1,3 @@
-import React from 'react';
 
 import { useCandidates } from '../hooks/useCandidates';
 import { useDashboard } from '../hooks/useDashboard';

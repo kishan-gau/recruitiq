@@ -12,7 +12,6 @@ import {
   UserPlus,
   User
 } from 'lucide-react';
-import React from 'react';
 
 import type { Station } from '../types';
 

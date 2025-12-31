@@ -3,7 +3,7 @@
  * Displays list of feedback for an employee
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 import { useEmployeeFeedback } from '@/hooks';
 import { formatDate } from '@/utils';
