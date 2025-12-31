@@ -80,7 +80,7 @@ constructor() {
       });
 
       return transaction;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error initiating payment', { error: err.message, organizationId });
       throw err;
     }
@@ -95,7 +95,7 @@ constructor() {
   async getPaymentTransactions(organizationId, filters = {}) {
     try {
       return await this.paymentRepository.findPaymentTransactions(filters, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching payment transactions', { error: err.message, organizationId });
       throw err;
     }
@@ -119,7 +119,7 @@ constructor() {
       }
 
       return transaction;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching payment transaction', { error: err.message, transactionId });
       throw err;
     }
@@ -157,7 +157,7 @@ constructor() {
       });
 
       return transaction;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating payment status', { error: err.message, transactionId });
       throw err;
     }
@@ -198,7 +198,7 @@ constructor() {
       });
 
       return processed;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error processing payment', { error: err.message, transactionId });
       throw err;
     }
@@ -229,7 +229,7 @@ constructor() {
       });
 
       return transaction;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error handling payment failure', { error: err.message, transactionId });
       throw err;
     }
@@ -271,7 +271,7 @@ constructor() {
 
       // Attempt to process again
       return await this.processPayment(transactionId, organizationId, userId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error retrying payment', { error: err.message, transactionId });
       throw err;
     }
@@ -299,7 +299,7 @@ constructor() {
       });
 
       return transaction;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error reconciling payment', { error: err.message, transactionId });
       throw err;
     }
@@ -314,7 +314,7 @@ constructor() {
   async getPendingPayments(organizationId, scheduledBefore = null) {
     try {
       return await this.paymentRepository.findPendingPayments(organizationId, scheduledBefore);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching pending payments', { error: err.message, organizationId });
       throw err;
     }
@@ -338,7 +338,7 @@ constructor() {
         ...stats,
         methodBreakdown
       };
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching payment statistics', { error: err.message, payrollRunId });
       throw err;
     }
@@ -359,7 +359,7 @@ constructor() {
         try {
           const result = await this.initiatePayment(transaction, organizationId, userId);
           results.push({ success: true, data: result });
-        } catch (_err) {
+        } catch (err) {
           results.push({
             success: false,
             error: err.message,
@@ -376,7 +376,7 @@ constructor() {
       });
 
       return results;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error in bulk payment initiation', { error: err.message, organizationId });
       throw err;
     }
@@ -404,7 +404,7 @@ constructor() {
         try {
           await this.processPayment(payment.id, organizationId, userId);
           results.processed++;
-        } catch (_err) {
+        } catch (err) {
           results.failed++;
           results.errors.push({
             transactionId: payment.id,
@@ -426,7 +426,7 @@ constructor() {
       });
 
       return results;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error processing scheduled payments', { error: err.message, organizationId });
       throw err;
     }

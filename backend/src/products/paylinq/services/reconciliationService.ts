@@ -106,7 +106,7 @@ constructor() {
       });
 
       return reconciliation;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error starting reconciliation', { error: err.message, organizationId });
       throw err;
     }
@@ -121,7 +121,7 @@ constructor() {
   async getReconciliations(organizationId, filters = {}) {
     try {
       return await this.reconciliationRepository.findReconciliations(filters, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching reconciliations', { error: err.message, organizationId });
       throw err;
     }
@@ -164,7 +164,7 @@ constructor() {
         ...reconciliation,
         summary
       };
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching reconciliation', { error: err.message, reconciliationId });
       throw err;
     }
@@ -195,7 +195,7 @@ constructor() {
       });
 
       return reconciliation;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating reconciliation', { error: err.message, reconciliationId });
       throw err;
     }
@@ -227,7 +227,7 @@ constructor() {
       });
 
       return deleted;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error deleting reconciliation', { error: err.message, reconciliationId });
       throw err;
     }
@@ -294,7 +294,7 @@ constructor() {
       });
 
       return reconciliation;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error completing reconciliation', { error: err.message, reconciliationId });
       throw err;
     }
@@ -347,7 +347,7 @@ constructor() {
       });
 
       return item;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error adding reconciliation item', { error: err.message, organizationId });
       throw err;
     }
@@ -382,7 +382,7 @@ constructor() {
         organizationId,
         filters
       );
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching reconciliation items', { error: err.message, reconciliationId });
       throw err;
     }
@@ -413,7 +413,7 @@ constructor() {
       });
 
       return item;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating reconciliation item', { error: err.message, itemId });
       throw err;
     }
@@ -448,7 +448,7 @@ constructor() {
       });
 
       return item;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error resolving reconciliation item', { error: err.message, itemId });
       throw err;
     }
@@ -484,7 +484,7 @@ constructor() {
       });
 
       return adjustment;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating payroll adjustment', { error: err.message, organizationId });
       throw err;
     }
@@ -499,7 +499,7 @@ constructor() {
   async getAdjustmentsByRun(payrollRunId, organizationId) {
     try {
       return await this.reconciliationRepository.findAdjustmentsByRun(payrollRunId, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching adjustments by run', { error: err.message, payrollRunId });
       throw err;
     }
@@ -527,7 +527,7 @@ constructor() {
       });
 
       return adjustment;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error applying payroll adjustment', { error: err.message, adjustmentId });
       throw err;
     }
@@ -546,7 +546,7 @@ constructor() {
         organizationId,
         { hasVariance: true }
       );
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error identifying discrepancies', { error: err.message, reconciliationId });
       throw err;
     }

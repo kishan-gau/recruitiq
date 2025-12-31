@@ -112,7 +112,7 @@ constructor(repository = null, payStructureRepository = null) {
       });
 
       return mapWorkerTypeDbToApi(dbTemplate);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating worker type template', { error: err.message, organizationId });
       throw err;
     }
@@ -145,7 +145,7 @@ constructor(repository = null, payStructureRepository = null) {
         workerTypes: mapWorkerTypesDbToApi(result.workerTypes),
         pagination: result.pagination,
       };
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching worker types', { error: err.message, organizationId });
       throw err;
     }
@@ -161,7 +161,7 @@ constructor(repository = null, payStructureRepository = null) {
     try {
       const dbTemplates = await this.workerTypeRepository.findAll(organizationId, filters);
       return mapWorkerTypesDbToApi(dbTemplates);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching worker type templates', { error: err.message, organizationId });
       throw err;
     }
@@ -182,7 +182,7 @@ constructor(repository = null, payStructureRepository = null) {
       }
       
       return mapWorkerTypeDbToApi(dbTemplate);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching worker type template', { error: err.message, templateId });
       throw err;
     }
@@ -251,7 +251,7 @@ constructor(repository = null, payStructureRepository = null) {
       });
 
       return mapWorkerTypeDbToApi(dbTemplate);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating worker type template', { error: err.message, templateId });
       throw err;
     }
@@ -290,7 +290,7 @@ constructor(repository = null, payStructureRepository = null) {
       }
 
       return deleted;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error deleting worker type template', { error: err.message, templateId });
       throw err;
     }
@@ -465,7 +465,7 @@ constructor(repository = null, payStructureRepository = null) {
       }
 
       return mapAssignmentDbToApi(dbAssignment);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error assigning worker type', { error: err.message, organizationId });
       throw err;
     }
@@ -481,7 +481,7 @@ constructor(repository = null, payStructureRepository = null) {
     try {
       const dbAssignment = await this.workerTypeRepository.findCurrentWorkerType(employeeRecordId, organizationId);
       return mapAssignmentDbToApi(dbAssignment);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching current worker type', { error: err.message, employeeRecordId });
       throw err;
     }
@@ -497,7 +497,7 @@ constructor(repository = null, payStructureRepository = null) {
     try {
       const dbHistory = await this.workerTypeRepository.findWorkerTypeHistory(employeeRecordId, organizationId);
       return mapAssignmentsDbToApi(dbHistory);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching worker type history', { error: err.message, employeeRecordId });
       throw err;
     }
@@ -518,7 +518,7 @@ constructor(repository = null, payStructureRepository = null) {
         try {
           const result = await this.assignWorkerType(assignment, organizationId, userId);
           results.push({ success: true, data: result });
-        } catch (_err) {
+        } catch (err) {
           results.push({ 
             success: false, 
             error: err.message, 
@@ -535,7 +535,7 @@ constructor(repository = null, payStructureRepository = null) {
       });
 
       return results;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error in bulk worker type assignment', { error: err.message, organizationId });
       throw err;
     }
@@ -549,7 +549,7 @@ constructor(repository = null, payStructureRepository = null) {
   async getEmployeeCountByWorkerType(organizationId) {
     try {
       return await this.workerTypeRepository.countEmployeesByWorkerType(organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching employee count by worker type', { error: err.message, organizationId });
       throw err;
     }
@@ -570,7 +570,7 @@ constructor(repository = null, payStructureRepository = null) {
         organizationId,
         pagination
       );
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching employees by worker type', { 
         error: err.message, 
         workerTypeId, 
@@ -622,7 +622,7 @@ constructor(repository = null, payStructureRepository = null) {
         );
       }
 
-    } catch (_err) {
+    } catch (err) {
       if (err.message.includes('Worker type limit reached')) {
         throw err;
       }
@@ -688,7 +688,7 @@ constructor(repository = null, payStructureRepository = null) {
           needsUpgrade: true
         }))
       };
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error getting upgrade status', { 
         error: err.message, 
         workerTypeId, 
@@ -827,7 +827,7 @@ constructor(repository = null, payStructureRepository = null) {
         client.release();
       }
 
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error upgrading workers to template', {
         error: err.message,
         workerTypeId,
@@ -1006,7 +1006,7 @@ constructor(repository = null, payStructureRepository = null) {
         detailedChanges: changes // Keep detailed breakdown if needed
       };
 
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error previewing template upgrade', {
         error: err.message,
         workerTypeId,
@@ -1118,7 +1118,7 @@ constructor(repository = null, payStructureRepository = null) {
         modified
       };
 
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error comparing templates', {
         error: err.message,
         fromTemplateId,
@@ -1152,7 +1152,7 @@ constructor(repository = null, payStructureRepository = null) {
       }
       
       return true;
-    } catch (_err) {
+    } catch (err) {
       if (err instanceof ValidationError) throw err;
       
       logger.error('Error validating template code', {

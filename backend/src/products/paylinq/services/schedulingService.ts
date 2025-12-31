@@ -143,7 +143,7 @@ constructor() {
       });
       
       return createdSchedules;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating bulk schedules', { error: err.message, organizationId });
       throw err;
     }
@@ -209,7 +209,7 @@ constructor() {
       });
 
       return schedule;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating work schedule', { error: err.message, organizationId });
       throw err;
     }
@@ -224,7 +224,7 @@ constructor() {
   async getWorkSchedules(organizationId, filters = {}) {
     try {
       return await this.schedulingRepository.findWorkSchedules(filters, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching work schedules', { error: err.message, organizationId });
       throw err;
     }
@@ -257,7 +257,7 @@ constructor() {
       // No pagination - return all matching schedules
       const schedules = await this.getWorkSchedules(organizationId, filters);
       return schedules;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching schedules by organization', { 
         error: err.message, 
         organizationId 
@@ -279,7 +279,7 @@ constructor() {
         { ...filters, employeeId },
         organizationId
       );
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching schedules by employee', { 
         error: err.message, 
         employeeId,
@@ -312,7 +312,7 @@ constructor() {
         throw new NotFoundError('Work schedule not found');
       }
       return schedule;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching work schedule', { error: err.message, scheduleId });
       throw err;
     }
@@ -360,7 +360,7 @@ constructor() {
       });
 
       return schedule;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating work schedule', { error: err.message, scheduleId });
       throw err;
     }
@@ -386,7 +386,7 @@ constructor() {
       }
 
       return deleted;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error deleting work schedule', { error: err.message, scheduleId });
       throw err;
     }
@@ -407,7 +407,7 @@ constructor() {
         try {
           const result = await this.createWorkSchedule(schedule, organizationId, userId);
           results.push({ success: true, data: result });
-        } catch (_err) {
+        } catch (err) {
           results.push({
             success: false,
             error: err.message,
@@ -425,7 +425,7 @@ constructor() {
       });
 
       return results;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error in bulk schedule creation', { error: err.message, organizationId });
       throw err;
     }
@@ -445,7 +445,7 @@ constructor() {
         endDate,
         organizationId
       );
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching schedule statistics', { error: err.message, organizationId });
       throw err;
     }
@@ -491,7 +491,7 @@ constructor() {
       });
 
       return request;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating schedule change request', { error: err.message, organizationId });
       throw err;
     }
@@ -524,7 +524,7 @@ constructor() {
       // No pagination - return all matching requests
       const requests = await this.schedulingRepository.findScheduleChangeRequests(filters, organizationId);
       return requests;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching schedule change requests', { error: err.message, organizationId });
       throw err;
     }
@@ -594,7 +594,7 @@ constructor() {
       });
 
       return request;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error approving schedule change request', { error: err.message, requestId });
       throw err;
     }
@@ -623,7 +623,7 @@ constructor() {
       });
 
       return request;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error rejecting schedule change request', { error: err.message, requestId });
       throw err;
     }

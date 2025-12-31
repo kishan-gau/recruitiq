@@ -392,7 +392,7 @@ class PayrollService {
       });
 
       return enrichedRecord;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating employee record', { error: err.message, organizationId });
       throw err;
     }
@@ -415,7 +415,7 @@ class PayrollService {
       
       // Legacy: return array directly for backward compatibility
       return Array.isArray(result) ? result : result.employees || [];
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching employees', { error: err.message, organizationId });
       throw err;
     }
@@ -447,7 +447,7 @@ class PayrollService {
       };
 
       return enrichedRecord;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching employee record', {
         error: err.message,
         employeeRecordId,
@@ -488,7 +488,7 @@ class PayrollService {
       });
 
       return true;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error deleting employee record', {
         error: err.message,
         employeeRecordId,
@@ -525,7 +525,7 @@ class PayrollService {
       );
 
       return history;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching employee payroll history', {
         error: err.message,
         employeeRecordId,
@@ -754,7 +754,7 @@ class PayrollService {
       });
 
       return updatedRecord;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating employee record', { error: err.message, employeeRecordId });
       throw err;
     }
@@ -795,7 +795,7 @@ class PayrollService {
       });
 
       return compensation;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating compensation', { error: err.message, organizationId });
       throw err;
     }
@@ -810,7 +810,7 @@ class PayrollService {
   async getCurrentCompensation(employeeRecordId, organizationId) {
     try {
       return await this.payrollRepository.findCurrentCompensation(employeeRecordId, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching current compensation', { error: err.message, employeeRecordId });
       throw err;
     }
@@ -825,7 +825,7 @@ class PayrollService {
   async getCompensationById(compensationId, organizationId) {
     try {
       return await this.payrollRepository.findCompensationById(compensationId, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching compensation by ID', { error: err.message, compensationId });
       throw err;
     }
@@ -840,7 +840,7 @@ class PayrollService {
   async getCompensationHistory(employeeRecordId, organizationId) {
     try {
       return await this.payrollRepository.findCompensationHistory(employeeRecordId, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching compensation history', { error: err.message, employeeRecordId });
       throw err;
     }
@@ -875,7 +875,7 @@ class PayrollService {
       }
 
       return summary;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching compensation summary', { error: err.message, employeeRecordId });
       throw err;
     }
@@ -908,7 +908,7 @@ class PayrollService {
       }
       
       return updated;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating compensation', { error: err.message, compensationId });
       throw err;
     }
@@ -934,7 +934,7 @@ class PayrollService {
       }
       
       return deleted;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error deleting compensation', { error: err.message, compensationId });
       throw err;
     }
@@ -969,7 +969,7 @@ class PayrollService {
         runTypeName: runType.typeName,
         organizationId
       });
-    } catch (_err) {
+    } catch (err) {
       if (err instanceof ValidationError) {
         throw err;
       }
@@ -1004,7 +1004,7 @@ class PayrollService {
       });
 
       return payrollRun;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating payroll run', { error: err.message, organizationId });
       throw err;
     }
@@ -1059,7 +1059,7 @@ class PayrollService {
           payrollRunId,
           organizationId
         });
-      } catch (_err) {
+      } catch (err) {
         logger.warn('Failed to resolve run type components, will include all components', {
           runType: payrollRun.run_type,
           error: err.message,
@@ -1710,7 +1710,7 @@ class PayrollService {
         paychecks
       };
 
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error calculating payroll', { error: err.message, payrollRunId });
       throw err;
     }
@@ -1726,7 +1726,7 @@ class PayrollService {
     try {
       // FIX: Repository expects (organizationId, filters) not (filters, organizationId)
       return await this.payrollRepository.findPayrollRuns(organizationId, filters);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching payroll runs', { error: err.message, organizationId });
       throw err;
     }
@@ -1747,7 +1747,7 @@ class PayrollService {
       }
       
       return await this.payrollRepository.findPaychecksByRun(payrollRunId, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching paychecks', { error: err.message, payrollRunId });
       throw err;
     }
@@ -1794,7 +1794,7 @@ class PayrollService {
       });
 
       return timesheet;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating timesheet', { error: err.message, organizationId });
       throw err;
     }
@@ -1823,7 +1823,7 @@ class PayrollService {
       });
 
       return timesheet;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error approving timesheet', { error: err.message, timesheetId });
       throw err;
     }
@@ -1852,7 +1852,7 @@ class PayrollService {
       });
 
       return timesheet;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error rejecting timesheet', { error: err.message, timesheetId });
       throw err;
     }
@@ -1867,7 +1867,7 @@ class PayrollService {
   async getTimesheetsForApproval(organizationId, filters = {}) {
     try {
       return await this.payrollRepository.findTimesheetsForApproval(filters, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching timesheets for approval', { error: err.message, organizationId });
       throw err;
     }
@@ -1900,7 +1900,7 @@ class PayrollService {
       }
 
       return payrollRun;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching payroll run', { error: err.message, payrollRunId, organizationId });
       throw err;
     }
@@ -1929,7 +1929,7 @@ class PayrollService {
 
       logger.info('Payroll run updated', { payrollRunId, organizationId });
       return payrollRun;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating payroll run', { error: err.message, payrollRunId, organizationId });
       throw err;
     }
@@ -1971,7 +1971,7 @@ class PayrollService {
 
       logger.info('Payroll run marked for review', { payrollRunId, organizationId, userId });
       return updated;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error marking payroll run for review', { error: err.message, payrollRunId, organizationId });
       throw err;
     }
@@ -2008,7 +2008,7 @@ class PayrollService {
 
       logger.info('Payroll run finalized', { payrollRunId, organizationId, userId });
       return finalized;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error finalizing payroll run', { error: err.message, payrollRunId, organizationId });
       throw err;
     }
@@ -2041,7 +2041,7 @@ class PayrollService {
 
       logger.info('Payroll run deleted', { payrollRunId, organizationId, userId });
       return deleted;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error deleting payroll run', { error: err.message, payrollRunId, organizationId });
       throw err;
     }
