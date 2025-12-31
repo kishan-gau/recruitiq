@@ -180,6 +180,8 @@ export interface Shift {
   actualEndTime?: string;
   createdAt: string;
   updatedAt: string;
+  assignedWorkerId?: string; // Alias for employeeId for backward compatibility
+  title?: string; // Display title for the shift
   
   // Nested objects from JOINs (DTO transformed)
   worker?: {
@@ -394,12 +396,20 @@ export interface ShiftTemplate {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // CamelCase aliases for UI components
+  templateName?: string;
+  startTime?: string;
+  endTime?: string;
+  roleRequirements?: any[]; // For compatibility with components expecting roles array
+  roles?: any[]; // Alternative name for role requirements
+  stationName?: string; // For display purposes
 }
 
 export interface ShiftTemplateDetails extends ShiftTemplate {
   roles: ShiftTemplateRole[];
   stations: Station[];
   usageCount?: number;
+  roleRequirements?: ShiftTemplateRole[]; // Alias for roles
 }
 
 export interface ShiftTemplateSummary {
