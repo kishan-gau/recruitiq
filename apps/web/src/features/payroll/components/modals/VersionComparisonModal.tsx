@@ -1,7 +1,6 @@
 import { Plus, Minus, Edit } from 'lucide-react';
 
-import Badge from '@recruitiq/ui';
-import { Dialog } from '@recruitiq/ui';
+import { StatusBadge, Dialog } from '@recruitiq/ui';
 import { useCompareVersions } from '@/hooks/useCompareVersions';
 
 
@@ -110,7 +109,7 @@ export default function VersionComparisonModal({
               <p className="text-xs text-gray-600 dark:text-gray-400 uppercase mb-1">From Version</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">v{(comparison.fromVersion || comparison.from).versionString}</p>
               <div className="flex items-center gap-2 mt-2">
-                <Badge variant="gray">{(comparison.fromVersion || comparison.from).status.toUpperCase()}</Badge>
+                <StatusBadge variant="gray">{(comparison.fromVersion || comparison.from).status.toUpperCase()}</StatusBadge>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {(comparison.fromVersion || comparison.from).componentCount || (comparison.fromVersion || comparison.from).componentsCount} components
                 </span>
@@ -121,7 +120,7 @@ export default function VersionComparisonModal({
               <p className="text-xs text-gray-600 dark:text-gray-400 uppercase mb-1">To Version</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">v{(comparison.toVersion || comparison.to).versionString}</p>
               <div className="flex items-center gap-2 mt-2">
-                <Badge variant="gray">{(comparison.toVersion || comparison.to).status.toUpperCase()}</Badge>
+                <StatusBadge variant="gray">{(comparison.toVersion || comparison.to).status.toUpperCase()}</StatusBadge>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {(comparison.toVersion || comparison.to).componentCount || (comparison.toVersion || comparison.to).componentsCount} components
                 </span>
@@ -134,15 +133,15 @@ export default function VersionComparisonModal({
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Summary of Changes</p>
               <div className="flex gap-3">
-                <Badge variant="green">
+                <StatusBadge variant="green">
                   {comparison.summary.addedCount || 0} Added
-                </Badge>
-                <Badge variant="yellow">
+                </StatusBadge>
+                <StatusBadge variant="yellow">
                   {comparison.summary.modifiedCount || 0} Modified
-                </Badge>
-                <Badge variant="red">
+                </StatusBadge>
+                <StatusBadge variant="red">
                   {comparison.summary.removedCount || 0} Removed
-                </Badge>
+                </StatusBadge>
               </div>
             </div>
           )}
@@ -165,9 +164,9 @@ export default function VersionComparisonModal({
                             <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
                               {change.componentCode}
                             </span>
-                            <Badge variant={getChangeVariant(change.changeType)}>
+                            <StatusBadge variant={getChangeVariant(change.changeType)}>
                               {change.changeType.toUpperCase()}
-                            </Badge>
+                            </StatusBadge>
                           </div>
                           <p className="text-sm text-gray-700 dark:text-gray-300">{change.componentName}</p>
                           

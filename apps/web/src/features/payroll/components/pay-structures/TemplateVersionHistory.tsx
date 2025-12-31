@@ -6,8 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import CreateVersionModal from '@/components/modals/CreateVersionModal';
 import UpgradeWorkersModal from '@/components/modals/UpgradeWorkersModal';
 import VersionComparisonModal from '@/components/modals/VersionComparisonModal';
-import Badge from '@recruitiq/ui';
-import ConfirmDialog from '@recruitiq/ui';
+import { StatusBadge, Dialog } from '@recruitiq/ui';
 import { useDeletePayStructureTemplate } from '@/hooks';
 import { useTemplateVersions } from '@/hooks/useTemplateVersions';
 
@@ -185,9 +184,9 @@ export default function TemplateVersionHistory({
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge variant={getStatusVariant(version.status)}>
+                    <StatusBadge variant={getStatusVariant(version.status)}>
                       {version.status.toUpperCase()}
-                    </Badge>
+                    </StatusBadge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {version.componentCount || version.componentsCount || 0}

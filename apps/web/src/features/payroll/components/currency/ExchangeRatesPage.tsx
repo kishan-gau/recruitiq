@@ -7,7 +7,7 @@ import {
   useExchangeRates,
   useDeleteExchangeRate
 } from '@/hooks';
-import Button from '@recruitiq/ui';
+import { Button } from '@recruitiq/ui';
 import { CURRENCY_SYMBOLS } from '../shared/CurrencyDisplay';
 import Modal from '../ui/Modal';
 

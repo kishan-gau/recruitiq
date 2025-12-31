@@ -4,9 +4,7 @@ import { useState, useEffect } from 'react';
 import type { ShiftType } from '@recruitiq/types';
 import { handleFormError } from '@recruitiq/utils';
 
-import Button from '@recruitiq/ui';
-import { Dialog } from '@recruitiq/ui';
-import { FormField, Input, TextArea, Select } from '@recruitiq/ui';
+import { Button, Dialog, FormField, Input, Select } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 
 interface ShiftTypeFormModalProps {
