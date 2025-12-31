@@ -79,7 +79,6 @@ export {
   useOptimisticShiftTemplateUpdate,
   useBulkShiftTemplateOperations,
   useShiftTemplateUsage,
-  useInvalidateShiftTemplates,
   usePrefetchShiftTemplate,
 } from './useShiftTemplates';
 

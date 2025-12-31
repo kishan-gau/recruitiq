@@ -2,7 +2,7 @@ import { AlertTriangle, ArrowRight, Calendar, CheckCircle, Users, XCircle } from
 import { useState, useMemo } from 'react';
 
 import { Dialog } from '@recruitiq/ui';
-import { useWorkerTypeUpgradeStatus, usePreviewWorkerTypeUpgrade, useUpgradeWorkersToTemplate } from '@/hooks';
+import { useWorkerTypeUpgradeStatus, usePreviewWorkerTypeUpgrade, useExecuteWorkerTypeUpgrade } from '@/hooks';
 
 
 interface UpgradeWorkersModalProps {
@@ -30,7 +30,7 @@ export default function UpgradeWorkersModal({
     workerTypeId,
     showPreview
   );
-  const upgradeMutation = useUpgradeWorkersToTemplate();
+  const upgradeMutation = useExecuteWorkerTypeUpgrade();
 
   const handleUpgrade = async () => {
     if (!upgradeStatus) return;

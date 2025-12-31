@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { StationManagement } from '@features/scheduling/components';
+import { StationsManagement } from '@features/scheduling/components';
 
 export default function StationsPage() {
   return (
@@ -19,7 +19,7 @@ export default function StationsPage() {
 
       {/* Station Management Component */}
       <div className="min-h-[600px]">
-        <StationManagement />
+        <StationsManagement />
       </div>
     </div>
   );

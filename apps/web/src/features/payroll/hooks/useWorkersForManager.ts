@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { usePaylinqAPI } from './usePaylinqAPI';
 
-interface UseWorkersForManagerOptions {
+export interface UseWorkersForManagerOptions {
   excludeId?: string; // Exclude this worker ID (prevent self-assignment as manager)
   status?: string;
 }
