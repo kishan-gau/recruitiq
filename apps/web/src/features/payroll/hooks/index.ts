@@ -6,6 +6,8 @@ export * from './usePayrollRuns';
 export * from './useWorkers';
 export * from './useDepartments';
 export * from './useLocations';
+export * from './usePayments';
+export * from './useTemplateVersions';
 
 // Migrated from legacy shared/hooks/paylinq
 // API hook
