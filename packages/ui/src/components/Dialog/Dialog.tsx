@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import Modal, { type ModalProps } from './Modal';
+import { Modal, type ModalProps } from '../Modal';
 
 export interface DialogProps extends ModalProps {
   footer?: React.ReactNode;

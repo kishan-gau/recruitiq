@@ -6,9 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "composite": true,
-    // Override root bundler settings to allow declaration emit
-    "emitDeclarationOnly": true,
-    "declarationDir": "./dist",
+    // Override root bundler settings to emit declarations
+    "emitDeclarationOnly": false,
     "moduleResolution": "node",
     "module": "ES2020"
   },
