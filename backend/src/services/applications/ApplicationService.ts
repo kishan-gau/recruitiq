@@ -18,9 +18,6 @@ export class ApplicationService {
   candidateRepository: CandidateRepository;
   logger: typeof logger;
   
-  static createSchema: Joi.ObjectSchema;
-  static updateSchema: Joi.ObjectSchema;
-  
   constructor(
     applicationRepository: ApplicationRepository | null = null,
     jobRepository: JobRepository | null = null,

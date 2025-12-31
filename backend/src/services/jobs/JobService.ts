@@ -14,10 +14,6 @@ export class JobService {
   jobRepository: JobRepository;
   logger: typeof logger;
   
-  static createSchema: Joi.ObjectSchema;
-  static updateSchema: Joi.ObjectSchema;
-  static searchSchema: Joi.ObjectSchema;
-  
   constructor(jobRepository: JobRepository | null = null) {
     this.jobRepository = jobRepository || new JobRepository();
     this.logger = logger;

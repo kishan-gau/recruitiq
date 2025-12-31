@@ -15,10 +15,6 @@ export class InterviewService {
   applicationRepository: ApplicationRepository;
   logger: typeof logger;
   
-  static createSchema: Joi.ObjectSchema;
-  static updateSchema: Joi.ObjectSchema;
-  static feedbackSchema: Joi.ObjectSchema;
-  
   constructor(
     interviewRepository: InterviewRepository | null = null,
     applicationRepository: ApplicationRepository | null = null
