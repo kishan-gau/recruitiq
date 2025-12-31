@@ -18,8 +18,8 @@ import {
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-import { FormSection, FormGrid, FormField } from '@recruitiq/ui';
-import { SelectWithSearch } from '@recruitiq/ui';
+import { FormField } from "@recruitiq/ui";
+import { Select } from '@recruitiq/ui';
 import { Input } from '@recruitiq/ui';
 
 import { useToast } from '@/contexts/ToastContext';
@@ -218,14 +218,14 @@ export default function EmailSettings() {
       )}
 
       {/* Email Provider */}
-      <FormSection
+      <section
         title="Email Provider"
         description="Configure your email service provider"
         icon={<Mail className="h-5 w-5" />}
       >
         <div className="space-y-4">
           <FormField label="Email Provider" required>
-            <SelectWithSearch
+            <Select
               options={[
                 { value: 'smtp', label: 'SMTP (Generic Email Server)' },
                 { value: 'sendgrid', label: 'SendGrid' },
@@ -242,7 +242,7 @@ export default function EmailSettings() {
             <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <h4 className="text-sm font-medium text-gray-900 dark:text-white">SMTP Configuration</h4>
               
-              <FormGrid>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField label="SMTP Host" required>
                   <Input
                     type="text"
@@ -280,7 +280,7 @@ export default function EmailSettings() {
                 </FormField>
 
                 <FormField label="Security" required>
-                  <SelectWithSearch
+                  <Select
                     options={[
                       { value: 'tls', label: 'TLS (Recommended - Port 587)' },
                       { value: 'ssl', label: 'SSL (Port 465)' },
@@ -291,7 +291,7 @@ export default function EmailSettings() {
                     placeholder="Select security protocol"
                   />
                 </FormField>
-              </FormGrid>
+              </div>
             </div>
           )}
 
@@ -316,9 +316,9 @@ export default function EmailSettings() {
             <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <h4 className="text-sm font-medium text-gray-900 dark:text-white">AWS SES Configuration</h4>
               
-              <FormGrid>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField label="AWS Region" required>
-                  <SelectWithSearch
+                  <Select
                     options={[
                       { value: 'us-east-1', label: 'US East (N. Virginia)' },
                       { value: 'us-west-2', label: 'US West (Oregon)' },
@@ -348,19 +348,19 @@ export default function EmailSettings() {
                     placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
                   />
                 </FormField>
-              </FormGrid>
+              </div>
             </div>
           )}
         </div>
-      </FormSection>
+      </section>
 
       {/* Email Settings */}
-      <FormSection
+      <section
         title="Sender Information"
         description="Configure sender information and reply-to address"
         icon={<Send className="h-5 w-5" />}
       >
-        <FormGrid>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="From Email Address" required helpText="Email address that will appear in the 'From' field">
             <Input
               type="email"
@@ -387,7 +387,7 @@ export default function EmailSettings() {
               placeholder="support@company.com"
             />
           </FormField>
-        </FormGrid>
+        </div>
 
         <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <div className="flex">
@@ -416,7 +416,7 @@ export default function EmailSettings() {
             {isLoading ? 'Sending...' : 'Send Test Email'}
           </button>
         </div>
-      </FormSection>
+      </section>
     </div>
   );
 }

@@ -35,7 +35,7 @@ import { Link } from 'react-router-dom';
 import { useRoles } from '@/hooks';
 import { useScheduleStats } from '@/hooks';
 import { useStations } from '@/hooks';
-import { useErrorHandler } from '@/utils/errorHandler';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 interface AnalyticsTimeframe {
   label: string;

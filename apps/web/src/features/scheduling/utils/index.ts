@@ -302,6 +302,46 @@ export function getNextDayOccurrence(dayOfWeek: number, fromDate: Date = new Dat
   return addDays(fromDate, daysToAdd === 0 ? 7 : daysToAdd);
 }
 
+/**
+ * Parses time slot string and returns start and end times
+ * Format expected: "HH:MM-HH:MM" or similar
+ */
+export function parseTimeSlot(timeSlot: string, date: Date): { startTime: Date; endTime: Date } {
+  // Handle different time slot formats
+  const match = timeSlot.match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
+  
+  if (!match) {
+    // Return default values if parse fails
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    return { startTime: start, endTime: end };
+  }
+  
+  const [, startHour, startMin, endHour, endMin] = match.map(Number);
+  
+  const startTime = new Date(date);
+  startTime.setHours(startHour, startMin, 0, 0);
+  
+  const endTime = new Date(date);
+  endTime.setHours(endHour, endMin, 0, 0);
+  
+  // Handle overnight shifts
+  if (endTime < startTime) {
+    endTime.setDate(endTime.getDate() + 1);
+  }
+  
+  return { startTime, endTime };
+}
+
+/**
+ * Checks if a time is within a range
+ */
+export function isTimeInRange(time: Date, rangeStart: Date, rangeEnd: Date): boolean {
+  return time >= rangeStart && time <= rangeEnd;
+}
+
 // =============================================================================
 // STATUS AND DISPLAY UTILITIES
 // =============================================================================

@@ -650,6 +650,7 @@ export function useBulkShiftTemplateOperations() {
     bulkDeactivate,
   };
 }
+
 /**
  * Hook to get shift template usage statistics
  */
