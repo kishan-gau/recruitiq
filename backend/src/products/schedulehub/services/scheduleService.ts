@@ -2431,6 +2431,7 @@ class ScheduleService {
    * Update and regenerate an existing schedule with new template configuration
    */
   async updateScheduleGeneration(scheduleId, updateData, organizationId, userId) {
+    this.logger.info('Updating and regenerating schedule', {
       scheduleId,
       templateIds: updateData.templateIds,
       templateDayMapping: JSON.stringify(updateData.templateDayMapping, null, 2),

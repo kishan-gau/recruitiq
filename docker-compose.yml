@@ -5,6 +5,8 @@ services:
     container_name: recruitiq_postgres_dev
     restart: unless-stopped
     command: ["postgres", "-c", "listen_addresses=*"]
+    env_file:
+      - .env.development
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
