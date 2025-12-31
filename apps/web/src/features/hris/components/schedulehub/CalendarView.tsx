@@ -2,10 +2,11 @@ import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, Clock, User, MapPin, ChevronDown, Check } from 'lucide-react';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
+import { formatTime } from '@/utils';
+
 import { useShiftTemplates } from '../../hooks/schedulehub/useShiftTemplates';
 import { useStationCoverage } from '../../hooks/schedulehub/useStationCoverage';
 import type { Shift, CalendarTimeSlot, ShiftTemplate } from '../../types/schedulehub';
-import { formatTime } from '@/utils';
 import { useTemplateBasedTimeSlots, TimeSlotPresets } from '../../utils/time-slot-generator';
 
 interface StationDropdownFilterProps {

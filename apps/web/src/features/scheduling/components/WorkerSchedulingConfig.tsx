@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Modal, Button, Input } from '@recruitiq/ui';
-
 import { Label } from '@recruitiq/ui';
 import { Switch } from '@recruitiq/ui';
-import { useToast } from '@/hooks/useToast';
+
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useToast } from '@/hooks/useToast';
 
 import { workersService } from '../services';
 import type { Worker, WorkerSchedulingConfig as WorkerConfig } from '../types';

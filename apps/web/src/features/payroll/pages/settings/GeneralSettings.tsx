@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { FormSection, FormGrid, FormField } from '@recruitiq/ui';
 import { SelectWithSearch } from '@recruitiq/ui';
 import { Input } from '@recruitiq/ui';
+
 import { useToast } from '@/contexts/ToastContext';
 
 type Currency = 'SRD' | 'USD' | 'EUR';

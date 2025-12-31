@@ -13,12 +13,13 @@ import {
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { useLocations } from '@/hooks'; // was: from '../hooks/useLocations';
+
 import { 
   useStation,
   useCreateStation,
   useUpdateStation
 } from '../hooks';
-import { useLocations } from '@/hooks' // was: from '../hooks/useLocations';
 import type { Station } from '../types';
 
 interface StationFormData {

@@ -2,9 +2,9 @@ import { Clock, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 import type { ShiftType } from '@recruitiq/types';
+import { Button, Dialog, FormField, Input, Select } from '@recruitiq/ui';
 import { handleFormError } from '@recruitiq/utils';
 
-import { Button, Dialog, FormField, Input, Select } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 
 interface ShiftTypeFormModalProps {

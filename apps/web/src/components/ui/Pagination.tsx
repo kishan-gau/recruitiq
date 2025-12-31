@@ -9,8 +9,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPageChange }) => {
-  return (
+export const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPageChange }) => (
     <div className="flex justify-center gap-2 mt-4">
       <button 
         onClick={() => onPageChange(currentPage - 1)}
@@ -31,6 +30,5 @@ export const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages,
       </button>
     </div>
   );
-};
 
 export default Pagination;

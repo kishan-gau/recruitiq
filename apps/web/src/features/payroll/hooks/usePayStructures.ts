@@ -912,10 +912,10 @@ export interface WorkerOverride {
 export function useWorkerOverrides(workerId: string) {
   return useQuery({
     queryKey: ['worker-overrides', workerId],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement worker overrides API
-      return [] as WorkerOverride[];
-    },
+       [] as WorkerOverride[]
+    ,
     enabled: !!workerId,
   });
 }

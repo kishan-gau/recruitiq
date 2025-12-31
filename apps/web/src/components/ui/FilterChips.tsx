@@ -8,8 +8,7 @@ interface FilterChipsProps {
   onRemove: (filter: any) => void;
 }
 
-export const FilterChips: React.FC<FilterChipsProps> = ({ filters, onRemove }) => {
-  return (
+export const FilterChips: React.FC<FilterChipsProps> = ({ filters, onRemove }) => (
     <div className="flex flex-wrap gap-2">
       {filters.map((filter, index) => (
         <button
@@ -22,6 +21,5 @@ export const FilterChips: React.FC<FilterChipsProps> = ({ filters, onRemove }) =
       ))}
     </div>
   );
-};
 
 export default FilterChips;

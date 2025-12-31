@@ -127,10 +127,10 @@ export function useUpdateGoalProgress() {
 export function useEmployeeFeedback(employeeId?: string) {
   return useQuery({
     queryKey: ['feedback', employeeId],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement feedback service
-      return [];
-    },
+       []
+    ,
     enabled: !!employeeId,
   });
 }

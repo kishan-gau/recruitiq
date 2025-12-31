@@ -11,14 +11,14 @@ import { useQuery } from '@tanstack/react-query';
 export function useCompareVersions(templateId: string, version1: number, version2: number) {
   return useQuery({
     queryKey: ['template-versions', 'compare', templateId, version1, version2],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement API call
-      return {
+       ({
         version1: {},
         version2: {},
         differences: [],
-      };
-    },
+      })
+    ,
     enabled: Boolean(templateId && version1 && version2),
   });
 }
@@ -29,10 +29,10 @@ export function useCompareVersions(templateId: string, version1: number, version
 export function useTemplateVersions(templateId: string) {
   return useQuery({
     queryKey: ['template-versions', templateId],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement API call
-      return [];
-    },
+       []
+    ,
     enabled: Boolean(templateId),
   });
 }

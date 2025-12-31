@@ -14,9 +14,9 @@ import {
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-import { ScheduleAnalytics } from '@features/scheduling/components';
 import { useErrorHandler } from '@/hooks';
 import { useScheduleStats, useStations } from '@/hooks';
+import { ScheduleAnalytics } from '@features/scheduling/components';
 
 export default function ScheduleHubPage() {
   const { data: stats, isLoading: statsLoading, error: statsError } = useScheduleStats();

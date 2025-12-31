@@ -4,10 +4,11 @@ import React, { useState, useMemo, useCallback } from 'react';
 
 import { Modal, Button, Input } from '@recruitiq/ui';
 
-import { useToast } from '@/hooks/useToast';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
-
 import { useDepartments, useWorkers, useRole, useAssignWorkerRoles, useUnassignRole } from '@/hooks';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useToast } from '@/hooks/useToast';
+
+
 import type { Worker, Role } from '../types';
 
 interface AssignWorkersToRoleProps {

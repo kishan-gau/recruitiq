@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 import { Pagination, SearchInput, FilterChips } from '@/components/ui';
-
 import { useJobs } from '@/features/recruitment/hooks/useJobs';
 import { useDebounce, usePagination, useSearchFilters } from '@/utils/hooks';
 

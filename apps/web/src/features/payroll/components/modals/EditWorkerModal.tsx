@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 
 import { Dialog } from '@recruitiq/ui';
 import { FormField, Input, TextArea, Select } from '@recruitiq/ui';
-import { useToast } from '@/hooks/useToast';
+
 import { useDepartments } from '@/hooks';
-import { useLocations } from '@/hooks/useLocations';
 import { usePaylinqAPI } from '@/hooks';
-import { useWorkersForManager } from '@/hooks/useWorkersForManager';
 import { useWorkerTypeTemplates } from '@/hooks';
+import { useLocations } from '@/hooks/useLocations';
+import { useToast } from '@/hooks/useToast';
+import { useWorkersForManager } from '@/hooks/useWorkersForManager';
 import { handleApiError } from '@/utils/errorHandler';
 
 interface EditWorkerModalProps {
