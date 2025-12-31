@@ -29,11 +29,12 @@
       "@features/*": ["./src/features/*"],
       "@shared/*": ["./src/shared/*"],
       "@core/*": ["./src/core/*"],
-      "@recruitiq/api-client": ["../packages/api-client"],
-      "@recruitiq/auth": ["../packages/auth"],
-      "@recruitiq/ui": ["../packages/ui"],
-      "@recruitiq/utils": ["../packages/utils"],
-      "@recruitiq/types": ["../packages/types"]
+      "@recruitiq/api-client": ["../../packages/api-client/src"],
+      "@recruitiq/auth": ["../../packages/auth/src"],
+      "@recruitiq/ui": ["../../packages/ui/src"],
+      "@recruitiq/utils": ["../../packages/utils/src"],
+      "@recruitiq/types": ["../../packages/types/src"],
+      "@recruitiq/types/*": ["../../packages/types/src/*"]
     }
   },
   "include": ["src"],
