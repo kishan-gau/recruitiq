@@ -120,7 +120,7 @@ export function encrypt(plaintext, masterKey = null) {
     ]).toString('base64');
     
     return result;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Encryption failed', {
       error: error.message,
     });
@@ -168,7 +168,7 @@ export function decrypt(ciphertext, masterKey = null) {
     decrypted += decipher.final('utf8');
     
     return decrypted;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Decryption failed', {
       error: error.message,
     });
@@ -221,7 +221,7 @@ export function decryptFields(data, fields) {
     if (decrypted[field]) {
       try {
         decrypted[field] = decrypt(decrypted[field]);
-      } catch (_error) {
+      } catch (error) {
         logger.warn(`Failed to decrypt field: ${field}`, {
           error: error.message,
         });
@@ -314,7 +314,7 @@ export function rotateEncryption(ciphertext, oldKey, newKey) {
     logger.info('Data re-encrypted with new key');
     
     return newCiphertext;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Key rotation failed', {
       error: error.message,
     });
@@ -369,7 +369,7 @@ export function validateEncryptionConfig() {
   
   try {
     getMasterKey();
-  } catch (_error) {
+  } catch (error) {
     issues.push('Master encryption key not configured or too short');
   }
   
@@ -382,7 +382,7 @@ export function validateEncryptionConfig() {
     if (decrypted !== testData) {
       issues.push('Encryption test failed: decrypted data does not match');
     }
-  } catch (_error) {
+  } catch (error) {
     issues.push(`Encryption test failed: ${error.message}`);
   }
   

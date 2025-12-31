@@ -18,9 +18,6 @@ export class ApplicationService {
   candidateRepository: CandidateRepository;
   logger: typeof logger;
   
-  static createSchema: Joi.ObjectSchema;
-  static updateSchema: Joi.ObjectSchema;
-  
   constructor(
     applicationRepository: ApplicationRepository | null = null,
     jobRepository: JobRepository | null = null,
@@ -132,7 +129,7 @@ export class ApplicationService {
       });
 
       return this.sanitizeApplication(application);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating application:', error);
       throw error;
     }
@@ -157,7 +154,7 @@ export class ApplicationService {
       }
 
       return this.sanitizeApplication(application);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting application:', error);
       throw error;
     }
@@ -234,7 +231,7 @@ export class ApplicationService {
       });
 
       return this.sanitizeApplication(application);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating application:', error);
       throw error;
     }
@@ -266,7 +263,7 @@ export class ApplicationService {
       });
 
       return true;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting application:', error);
       throw error;
     }
@@ -284,7 +281,7 @@ export class ApplicationService {
         ...result,
         applications: result.applications.map(app => this.sanitizeApplication(app))
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error searching applications:', error);
       throw error;
     }
@@ -309,7 +306,7 @@ export class ApplicationService {
         ...result,
         applications: result.applications.map(app => this.sanitizeApplication(app))
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting applications by job:', error);
       throw error;
     }
@@ -334,7 +331,7 @@ export class ApplicationService {
       );
 
       return applications.map(app => this.sanitizeApplication(app));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting applications by candidate:', error);
       throw error;
     }
@@ -359,7 +356,7 @@ export class ApplicationService {
         total,
         pipeline: pipelineStats
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting application statistics:', error);
       throw error;
     }
@@ -411,7 +408,7 @@ export class ApplicationService {
       });
 
       return this.sanitizeApplication(application);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error changing application status:', error);
       throw error;
     }
@@ -426,7 +423,7 @@ export class ApplicationService {
       const applications = await this.applicationRepository.getRecent(organizationId, limit);
 
       return applications.map(app => this.sanitizeApplication(app));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting recent applications:', error);
       throw error;
     }

@@ -41,7 +41,7 @@ class MFAService {
         manualEntryKey: secret.base32, // For manual entry in authenticator app
         otpauthUrl: secret.otpauth_url, // Full otpauth URL
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error generating MFA secret:', error);
       throw new Error('Failed to generate MFA secret');
     }
@@ -73,7 +73,7 @@ class MFAService {
       });
 
       return verified;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error verifying MFA token:', error);
       return false;
     }
@@ -104,7 +104,7 @@ class MFAService {
         codes, // Plain codes to show user once
         hashedCodes, // JSONB array of {code, used} objects to store in database
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error generating backup codes:', error);
       throw new Error('Failed to generate backup codes');
     }
@@ -138,7 +138,7 @@ class MFAService {
       }
 
       return -1; // No match found
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error verifying backup code:', error);
       return -1;
     }
@@ -172,7 +172,7 @@ class MFAService {
       await client.query('COMMIT');
       
       logger.info(`MFA enabled for user: ${userId}`);
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       logger.error('Error enabling MFA:', error);
       throw new Error('Failed to enable MFA');
@@ -207,7 +207,7 @@ class MFAService {
       await client.query('COMMIT');
       
       logger.info(`MFA disabled for user: ${userId}`);
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       logger.error('Error disabling MFA:', error);
       throw new Error('Failed to disable MFA');
@@ -245,7 +245,7 @@ class MFAService {
       await client.query('COMMIT');
       
       logger.info(`Backup code used for user: ${userId}`);
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       logger.error('Error marking backup code as used:', error);
       throw new Error('Failed to mark backup code as used');
@@ -283,7 +283,7 @@ class MFAService {
       logger.info(`Backup codes regenerated for user: ${userId}`);
       
       return codes; // Return plain codes to show user
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       logger.error('Error regenerating backup codes:', error);
       throw new Error('Failed to regenerate backup codes');
@@ -324,7 +324,7 @@ class MFAService {
         backupCodesUsed: user.mfa_backup_codes_used || 0,
         enabledAt: user.mfa_enabled_at,
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting MFA status:', error);
       throw new Error('Failed to get MFA status');
     }
@@ -352,7 +352,7 @@ class MFAService {
         mfaEnabled: result.rows[0].mfa_enabled,
         mfaSecret: result.rows[0].mfa_secret,
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error checking MFA requirement:', error);
       return { mfaEnabled: false, mfaSecret: null };
     }

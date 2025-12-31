@@ -15,10 +15,6 @@ export class InterviewService {
   applicationRepository: ApplicationRepository;
   logger: typeof logger;
   
-  static createSchema: Joi.ObjectSchema;
-  static updateSchema: Joi.ObjectSchema;
-  static feedbackSchema: Joi.ObjectSchema;
-  
   constructor(
     interviewRepository: InterviewRepository | null = null,
     applicationRepository: ApplicationRepository | null = null
@@ -150,7 +146,7 @@ export class InterviewService {
       });
 
       return this.sanitizeInterview(interview);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating interview:', error);
       throw error;
     }
@@ -175,7 +171,7 @@ export class InterviewService {
       }
 
       return this.sanitizeInterview(interview);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting interview:', error);
       throw error;
     }
@@ -268,7 +264,7 @@ export class InterviewService {
       });
 
       return this.sanitizeInterview(interview);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating interview:', error);
       throw error;
     }
@@ -300,7 +296,7 @@ export class InterviewService {
       });
 
       return true;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting interview:', error);
       throw error;
     }
@@ -318,7 +314,7 @@ export class InterviewService {
         ...result,
         interviews: result.interviews.map(interview => this.sanitizeInterview(interview))
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error searching interviews:', error);
       throw error;
     }
@@ -343,7 +339,7 @@ export class InterviewService {
       );
 
       return interviews.map(interview => this.sanitizeInterview(interview));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting interviews by application:', error);
       throw error;
     }
@@ -366,7 +362,7 @@ export class InterviewService {
         ...result,
         interviews: result.interviews.map(interview => this.sanitizeInterview(interview))
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting interviews by interviewer:', error);
       throw error;
     }
@@ -386,7 +382,7 @@ export class InterviewService {
       );
 
       return interviews.map(interview => this.sanitizeInterview(interview));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting upcoming interviews:', error);
       throw error;
     }
@@ -411,7 +407,7 @@ export class InterviewService {
         byType,
         total
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting interview statistics:', error);
       throw error;
     }
@@ -457,7 +453,7 @@ export class InterviewService {
       });
 
       return this.sanitizeInterview(updatedInterview);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error submitting interview feedback:', error);
       throw error;
     }
@@ -502,7 +498,7 @@ export class InterviewService {
       });
 
       return this.sanitizeInterview(updatedInterview);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error cancelling interview:', error);
       throw error;
     }
@@ -546,7 +542,7 @@ export class InterviewService {
       });
 
       return this.sanitizeInterview(updatedInterview);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error completing interview:', error);
       throw error;
     }

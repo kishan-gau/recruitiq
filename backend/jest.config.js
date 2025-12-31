@@ -12,8 +12,11 @@ export default {
     }],
   },
   
-  // Module name mapper for path aliases
+  // Module name mapper for path aliases and .js -> .ts resolution
   moduleNameMapper: {
+    // Map .js imports to .ts files (for ESM compatibility in tests)
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+    // Path aliases
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
     '^@middleware/(.*)$': '<rootDir>/src/middleware/$1',

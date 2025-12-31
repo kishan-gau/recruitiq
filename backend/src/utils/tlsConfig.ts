@@ -121,7 +121,7 @@ export function createSecureServer(app, options = {}) {
     });
     
     return server;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to create secure HTTPS server', {
       error: error.message,
     });
@@ -147,7 +147,7 @@ export function createServer(app, options = {}) {
   // In development, try HTTPS but fallback to HTTP
   try {
     return createSecureServer(app, options);
-  } catch (_error) {
+  } catch (error) {
     logger.warn('HTTPS not available in development, using HTTP', {
       error: error.message,
     });
@@ -219,7 +219,7 @@ export function validateTLSConfig() {
     if (!tlsVersion) {
       warnings.push('Unable to determine OpenSSL version');
     }
-  } catch (_error) {
+  } catch (error) {
     warnings.push('Error checking TLS support: ' + error.message);
   }
   
@@ -303,7 +303,7 @@ export function parseCertificate(certPath) {
     if (validToMatch) certInfo.validTo = validToMatch[1].trim();
     
     return certInfo;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to parse certificate', {
       certPath,
       error: error.message,
@@ -365,7 +365,7 @@ export function checkCertificateExpiry(certPath, daysThreshold = 30) {
       expiryDate: certInfo.validTo,
       message: `Certificate valid for ${daysUntilExpiry} more days`,
     };
-  } catch (_error) {
+  } catch (error) {
     return {
       error: true,
       message: error.message,

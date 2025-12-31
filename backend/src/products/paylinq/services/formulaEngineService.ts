@@ -56,7 +56,7 @@ constructor() {
       });
 
       return result;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error evaluating formula', {
         error: err.message,
         formula,
@@ -167,7 +167,7 @@ constructor() {
         const testCode = `${varDeclarations}\n${finalFormula}`;
         // eslint-disable-next-line no-new-func
         new Function(testCode);
-      } catch (_err) {
+      } catch (err) {
         throw new Error(`Syntax error: ${err.message}. Check your formula for typos or missing operators.`);
       }
     }
@@ -291,7 +291,7 @@ constructor() {
       }
 
       return result;
-    } catch (_err) {
+    } catch (err) {
       throw new Error(`Expression evaluation failed: ${err.message}`);
     }
   }
@@ -313,7 +313,7 @@ constructor() {
         result,
         message: 'Formula is valid and evaluates successfully'
       };
-    } catch (_err) {
+    } catch (err) {
       return {
         success: false,
         formula,
@@ -472,7 +472,7 @@ constructor() {
       });
 
       return result;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Formula calculation failed', {
         context,
         formula,

@@ -33,7 +33,7 @@ class PasswordResetService {
         hashedToken, // Store this in database
         expiresAt,
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error generating reset token:', error);
       throw new Error('Failed to generate reset token');
     }
@@ -113,7 +113,7 @@ class PasswordResetService {
         userEmail: user.email,
         userName: user.name,
       };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       logger.error('Error requesting password reset:', error);
       throw new Error('Failed to request password reset');
@@ -170,7 +170,7 @@ class PasswordResetService {
         email: user.email,
         name: user.name,
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error verifying reset token:', error);
       throw new Error('Failed to verify reset token');
     }
@@ -234,7 +234,7 @@ class PasswordResetService {
         success: true,
         userId,
       };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       logger.error('Error resetting password:', error);
       throw new Error('Failed to reset password');
@@ -264,7 +264,7 @@ class PasswordResetService {
       }
 
       return count;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error cleaning up expired tokens:', error);
       return 0;
     }
@@ -300,7 +300,7 @@ class PasswordResetService {
       return {
         canRequest: true,
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error checking reset request eligibility:', error);
       // Fail open - allow request if check fails
       return { canRequest: true };

@@ -14,10 +14,6 @@ export class JobService {
   jobRepository: JobRepository;
   logger: typeof logger;
   
-  static createSchema: Joi.ObjectSchema;
-  static updateSchema: Joi.ObjectSchema;
-  static searchSchema: Joi.ObjectSchema;
-  
   constructor(jobRepository: JobRepository | null = null) {
     this.jobRepository = jobRepository || new JobRepository();
     this.logger = logger;
@@ -145,7 +141,7 @@ export class JobService {
       });
 
       return this.sanitizeJob(job);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating job', {
         error: error.message,
         organizationId: user.organization_id,
@@ -177,7 +173,7 @@ export class JobService {
       }
 
       return this.sanitizeJob(job);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting job', {
         error: error.message,
         jobId: id,
@@ -202,7 +198,7 @@ export class JobService {
 
       // Return public-safe data only
       return this.sanitizeJobForPublic(job);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting job by slug', {
         error: error.message,
         slug
@@ -256,7 +252,7 @@ export class JobService {
       });
 
       return this.sanitizeJob(updatedJob);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating job', {
         error: error.message,
         jobId: id,
@@ -299,7 +295,7 @@ export class JobService {
       });
 
       return deleted;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting job', {
         error: error.message,
         jobId: id,
@@ -323,7 +319,7 @@ export class JobService {
       result.jobs = result.jobs.map(j => this.sanitizeJob(j));
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error searching jobs', {
         error: error.message,
         params,
@@ -349,7 +345,7 @@ export class JobService {
         total,
         byStatus: countByStatus
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting job statistics', {
         error: error.message,
         organizationId: user.organization_id
@@ -399,7 +395,7 @@ export class JobService {
       });
 
       return this.sanitizeJob(updatedJob);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error toggling job publish status', {
         error: error.message,
         jobId: id,
@@ -422,7 +418,7 @@ export class JobService {
 
       // Return public-safe data
       return jobs.map(j => this.sanitizeJobForPublic(j));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting published jobs', {
         error: error.message,
         organizationId,
@@ -446,7 +442,7 @@ export class JobService {
       );
 
       return jobs.map(j => this.sanitizeJob(j));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting jobs by hiring manager', {
         error: error.message,
         hiringManagerId,
@@ -495,7 +491,7 @@ export class JobService {
       });
 
       return this.sanitizeJob(updatedJob);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error closing job', {
         error: error.message,
         jobId: id,
@@ -541,7 +537,7 @@ export class JobService {
         limit,
         remaining: limit - currentCount
       };
-    } catch (_error) {
+    } catch (error) {
       if (error instanceof BusinessRuleError || error instanceof NotFoundError) {
         throw error;
       }
