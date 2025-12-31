@@ -20,24 +20,24 @@
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-// Mock dependencies before importing controller
+// Mock service methods
 const mockGetDashboardOverview = jest.fn();
 const mockGetPayrollStats = jest.fn();
 const mockGetEmployeeStats = jest.fn();
 const mockGetRecentActivity = jest.fn();
 
-jest.mock('../../../../src/products/paylinq/services/dashboardService.js', () => {
-  return {
-    default: jest.fn().mockImplementation(() => ({
-      getDashboardOverview: mockGetDashboardOverview,
-      getPayrollStats: mockGetPayrollStats,
-      getEmployeeStats: mockGetEmployeeStats,
-      getRecentActivity: mockGetRecentActivity
-    }))
-  };
-});
+// Mock dashboard service before importing controller
+jest.unstable_mockModule('../../../../src/products/paylinq/services/dashboardService.js', () => ({
+  default: jest.fn().mockImplementation(() => ({
+    getDashboardOverview: mockGetDashboardOverview,
+    getPayrollStats: mockGetPayrollStats,
+    getEmployeeStats: mockGetEmployeeStats,
+    getRecentActivity: mockGetRecentActivity
+  }))
+}));
 
-jest.mock('../../../../src/utils/logger.js', () => ({
+// Mock logger to prevent console output during tests
+jest.unstable_mockModule('../../../../src/utils/logger.js', () => ({
   default: {
     warn: jest.fn(),
     error: jest.fn(),
@@ -45,7 +45,9 @@ jest.mock('../../../../src/utils/logger.js', () => ({
   }
 }));
 
-import dashboardController from '../../../../src/products/paylinq/controllers/dashboardController.js';
+// Import controller after mocking dependencies
+const dashboardControllerModule = await import('../../../../src/products/paylinq/controllers/dashboardController.js');
+const dashboardController = dashboardControllerModule.default;
 
 describe('Dashboard Controller', () => {
   let mockReq: any;

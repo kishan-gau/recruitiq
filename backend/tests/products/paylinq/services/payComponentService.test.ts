@@ -117,10 +117,11 @@ describe('PayComponentService', () => {
       expect(result.calculationType).toBe('hourly_rate'); // camelCase
       expect(result.component_code).toBeUndefined(); // snake_case removed
 
+      // Repository should receive snake_case data
       expect(mockRepository.createPayComponent).toHaveBeenCalledWith(
         expect.objectContaining({
-          componentCode: 'BASIC_PAY',
-          componentType: 'earning'
+          component_code: 'BASIC_PAY',
+          component_type: 'earning'
         }),
         testOrganizationId,
         testUserId
@@ -192,7 +193,7 @@ describe('PayComponentService', () => {
       );
 
       expect(result.calculationType).toBe('formula');
-      expect(result.formula).toBe('basePay * 0.10');
+      expect(result.formula).toBe('base_salary * 0.10'); // Formula variables stay as-is
     });
   });
 
@@ -208,7 +209,7 @@ describe('PayComponentService', () => {
 
       expect(result).toEqual(mapComponentDbToApi(dbComponent));
       expect(result.componentCode).toBe('BASIC_PAY'); // camelCase
-      expect(mockRepository.findById).toHaveBeenCalledWith(
+      expect(mockRepository.findPayComponentById).toHaveBeenCalledWith(
         testComponentId,
         testOrganizationId
       );
@@ -235,21 +236,28 @@ describe('PayComponentService', () => {
         })
       ];
 
-      mockRepository.findAll.mockResolvedValue(dbComponents);
+      mockRepository.findPayComponents.mockResolvedValue({
+        components: dbComponents,
+        total: 2
+      });
 
       const result = await service.getPayComponents(
         testOrganizationId,
         { isActive: true, componentType: 'earning' }
       );
 
-      expect(result).toEqual(mapComponentsDbToApi(dbComponents));
-      expect(result).toHaveLength(2);
-      expect(result[0].componentCode).toBe('BASIC_PAY'); // camelCase
-      expect(result[1].componentCode).toBe('OVERTIME_PAY');
+      expect(result.components).toEqual(mapComponentsDbToApi(dbComponents));
+      expect(result.components).toHaveLength(2);
+      expect(result.components[0].componentCode).toBe('BASIC_PAY'); // camelCase
+      expect(result.components[1].componentCode).toBe('OVERTIME_PAY');
+      expect(result.total).toBe(2);
     });
 
     it('should apply filters correctly', async () => {
-      mockRepository.findAll.mockResolvedValue([]);
+      mockRepository.findPayComponents.mockResolvedValue({
+        components: [],
+        total: 0
+      });
 
       await service.getPayComponents(
         testOrganizationId,
@@ -260,7 +268,7 @@ describe('PayComponentService', () => {
         }
       );
 
-      expect(mockRepository.findAll).toHaveBeenCalledWith(
+      expect(mockRepository.findPayComponents).toHaveBeenCalledWith(
         testOrganizationId,
         expect.objectContaining({
           isActive: true,
@@ -343,7 +351,7 @@ describe('PayComponentService', () => {
       );
 
       expect(result).toBe(true);
-      expect(mockRepository.delete).toHaveBeenCalledWith(
+      expect(mockRepository.deletePayComponent).toHaveBeenCalledWith(
         testComponentId,
         testOrganizationId,
         testUserId

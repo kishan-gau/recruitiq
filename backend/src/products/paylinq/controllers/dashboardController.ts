@@ -7,9 +7,9 @@
  */
 
 import DashboardService from '../services/dashboardService.js';
+import logger from '../../../utils/logger.js';
 
 const dashboardService = new DashboardService();
-import logger from '../../../utils/logger.js';
 
 /**
  * Get dashboard overview statistics
