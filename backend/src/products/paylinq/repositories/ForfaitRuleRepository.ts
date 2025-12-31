@@ -6,6 +6,17 @@
 import { query } from '../../../config/database.js';
 
 class ForfaitRuleRepository {
+  
+  query: any;
+
+  /**
+   * Constructor with dependency injection
+   * @param {Object} database - Database instance (optional, defaults to query function)
+   */
+  constructor(database = null) {
+    this.query = database?.query || query;
+  }
+
   /**
    * Find all forfait rules for an organization
    */
@@ -61,7 +72,7 @@ class ForfaitRuleRepository {
 
     sql += ` ORDER BY fr.created_at DESC`;
 
-    const result = await query(sql, params, organizationId, {
+    const result = await this.query(sql, params, organizationId, {
       operation: 'SELECT',
       table: 'forfait_rules'
     });
@@ -88,7 +99,7 @@ class ForfaitRuleRepository {
         AND fr.deleted_at IS NULL
     `;
 
-    const result = await query(sql, [id, organizationId], organizationId, {
+    const result = await this.query(sql, [id, organizationId], organizationId, {
       operation: 'SELECT',
       table: 'forfait_rules'
     });
@@ -117,7 +128,7 @@ class ForfaitRuleRepository {
       ORDER BY fr.effective_from DESC
     `;
 
-    const result = await query(
+    const result = await this.query(
       sql, 
       [sourceComponentId, organizationId, effectiveDate], 
       organizationId,
@@ -162,7 +173,7 @@ class ForfaitRuleRepository {
       userId
     ];
 
-    const result = await query(sql, params, organizationId, {
+    const result = await this.query(sql, params, organizationId, {
       operation: 'INSERT',
       table: 'forfait_rules'
     });
@@ -206,7 +217,7 @@ class ForfaitRuleRepository {
       RETURNING *
     `;
 
-    const result = await query(sql, values, organizationId, {
+    const result = await this.query(sql, values, organizationId, {
       operation: 'UPDATE',
       table: 'forfait_rules'
     });
@@ -229,7 +240,7 @@ class ForfaitRuleRepository {
         AND deleted_at IS NULL
     `;
 
-    await query(sql, [userId, id, organizationId], organizationId, {
+    await this.query(sql, [userId, id, organizationId], organizationId, {
       operation: 'DELETE',
       table: 'forfait_rules'
     });
@@ -250,7 +261,7 @@ class ForfaitRuleRepository {
       ) as exists
     `;
 
-    const result = await query(
+    const result = await this.query(
       sql,
       [sourceComponentId, forfaitComponentId, effectiveFrom, organizationId],
       organizationId,
