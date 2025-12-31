@@ -120,3 +120,40 @@ export function useUpdateGoalProgress() {
     },
   });
 }
+
+/**
+ * Hook to get feedback for an employee
+ */
+export function useEmployeeFeedback(employeeId?: string) {
+  return useQuery({
+    queryKey: ['feedback', employeeId],
+    queryFn: async () => {
+      // TODO: Implement feedback service
+      return [];
+    },
+    enabled: !!employeeId,
+  });
+}
+
+/**
+ * Hook to create feedback
+ */
+export function useCreateFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      // TODO: Implement feedback creation
+      throw new Error('Feedback creation not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feedback'] });
+    },
+  });
+}
+
+/**
+ * Aggregate performance hook for dashboard
+ * Alias for usePerformanceStatistics
+ */
+export { usePerformanceStatistics as usePerformance };

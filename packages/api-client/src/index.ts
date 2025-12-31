@@ -25,6 +25,7 @@ export type {
 export { RecruitIQAPI } from './products/recruitiq';
 export { PortalAPI } from './products/portal';
 export { PaylinqClient } from './products/paylinq';
+export type { ForfaitRule, ForfaitRuleTemplate } from './products/paylinq';
 export { NexusClient } from './products/nexus';
 export { ScheduleHubClient } from './products/schedulehub';
 
@@ -49,6 +50,8 @@ export class RecruitIQPlatformAPI {
   public features: FeaturesAPI;
   public recruitiq: RecruitIQAPI;
   public portal: PortalAPI;
+  public paylinq: PaylinqClient;
+  public nexus: NexusClient;
   public schedulehub: ScheduleHubClient;
 
   constructor(config: APIClientConfig = {}, tokenStorage?: TokenStorage) {
@@ -63,9 +66,6 @@ export class RecruitIQPlatformAPI {
     this.nexus = new NexusClient(this.apiClient);
     this.schedulehub = new ScheduleHubClient(this.apiClient);
   }
-
-    public paylinq: PaylinqClient;
-    public nexus: NexusClient;
   /**
    * Get the underlying API client for direct access
    */
@@ -75,8 +75,6 @@ export class RecruitIQPlatformAPI {
 
   /**
    * Get token storage interface
-      this.paylinq = new PaylinqClient(this.apiClient);
-      this.nexus = new NexusClient(this.apiClient);
    */
   public getTokenStorage(): TokenStorage {
     return this.apiClient.getTokenStorage();
@@ -105,6 +103,41 @@ export class RecruitIQPlatformAPI {
   }
 
   /**
+   * Direct HTTP GET request
+   */
+  public async get<T = any>(url: string, config?: any): Promise<T> {
+    return this.apiClient.get(url, config);
+  }
+
+  /**
+   * Direct HTTP POST request
+   */
+  public async post<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiClient.post(url, data, config);
+  }
+
+  /**
+   * Direct HTTP PUT request
+   */
+  public async put<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiClient.put(url, data, config);
+  }
+
+  /**
+   * Direct HTTP PATCH request
+   */
+  public async patch<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiClient.patch(url, data, config);
+  }
+
+  /**
+   * Direct HTTP DELETE request
+   */
+  public async delete<T = any>(url: string, config?: any): Promise<T> {
+    return this.apiClient.delete(url, config);
+  }
+
+  /**
    * Make a direct request using the API client
    */
   public async request<T = any>(method: string, url: string, data?: any, config?: APIClientConfig): Promise<T> {
@@ -129,3 +162,6 @@ export class RecruitIQPlatformAPI {
 const defaultAPI = new RecruitIQPlatformAPI();
 
 export default defaultAPI;
+
+// Export as apiClient for backward compatibility and convenience
+export { defaultAPI as apiClient };

@@ -344,3 +344,39 @@ export function useExecuteWorkerTypeUpgrade() {
     },
   });
 }
+
+/**
+ * Hook to compare two worker type templates
+ */
+export function useCompareTemplates(template1Id: string, template2Id: string) {
+  return useQuery({
+    queryKey: ['worker-type-templates', 'compare', template1Id, template2Id],
+    queryFn: async () => {
+      // TODO: Implement template comparison API
+      return {
+        template1: {},
+        template2: {},
+        differences: [],
+      };
+    },
+    enabled: Boolean(template1Id && template2Id),
+  });
+}
+
+/**
+ * Hook to get worker type upgrade status
+ */
+export function useWorkerTypeUpgradeStatus(workerId: string) {
+  return useQuery({
+    queryKey: ['worker-type-upgrade-status', workerId],
+    queryFn: async () => {
+      // TODO: Implement upgrade status API
+      return {
+        canUpgrade: false,
+        currentTemplate: null,
+        availableUpgrades: [],
+      };
+    },
+    enabled: Boolean(workerId),
+  });
+}

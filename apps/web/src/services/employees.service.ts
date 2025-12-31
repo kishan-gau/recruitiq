@@ -1,10 +1,7 @@
 /**
- * Employee Service - Stub for legacy imports
- * TODO: Migrate consumers to use proper feature-based services
+ * Employee Service - Re-export from feature-based location
+ * This provides backward compatibility for legacy imports
  */
 
-export const employeesService = {
-  // Stub methods - implement as needed
-};
-
-export default employeesService;
+export { employeesService } from '@/features/hris/services/employees.service';
+export { employeesServicePermissions } from '@/features/hris/services/employees.service';

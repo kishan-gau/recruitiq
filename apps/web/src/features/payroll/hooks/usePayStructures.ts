@@ -878,3 +878,97 @@ export function useDeleteTemplateInclusion() {
     },
   });
 }
+
+// Worker Override Management Types
+export interface WorkerOverride {
+  id: string;
+  workerId: string;
+  componentId: string;
+  overrideType: 'amount' | 'rate' | 'disable';
+  overrideValue?: number;
+  effectiveDate: string;
+  expiryDate?: string;
+  reason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Hook to get worker overrides
+ */
+export function useWorkerOverrides(workerId: string) {
+  return useQuery({
+    queryKey: ['worker-overrides', workerId],
+    queryFn: async () => {
+      // TODO: Implement worker overrides API
+      return [] as WorkerOverride[];
+    },
+    enabled: !!workerId,
+  });
+}
+
+/**
+ * Hook to create worker override
+ */
+export function useCreateWorkerOverride() {
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async (data: Partial<WorkerOverride>) => {
+      // TODO: Implement create worker override API
+      throw new Error('Create worker override not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worker-overrides'] });
+      success('Worker override created successfully');
+    },
+    onError: (err: any) => {
+      error(err?.message || 'Failed to create worker override');
+    },
+  });
+}
+
+/**
+ * Hook to update worker override
+ */
+export function useUpdateWorkerOverride() {
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<WorkerOverride> }) => {
+      // TODO: Implement update worker override API
+      throw new Error('Update worker override not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worker-overrides'] });
+      success('Worker override updated successfully');
+    },
+    onError: (err: any) => {
+      error(err?.message || 'Failed to update worker override');
+    },
+  });
+}
+
+/**
+ * Hook to delete worker override
+ */
+export function useDeleteWorkerOverride() {
+  const queryClient = useQueryClient();
+  const { success, error } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // TODO: Implement delete worker override API
+      throw new Error('Delete worker override not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['worker-overrides'] });
+      success('Worker override deleted successfully');
+    },
+    onError: (err: any) => {
+      error(err?.message || 'Failed to delete worker override');
+    },
+  });
+}

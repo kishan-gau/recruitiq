@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface SwitchProps {
+export interface SwitchProps {
   id?: string;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;

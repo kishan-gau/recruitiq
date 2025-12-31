@@ -8,3 +8,5 @@ export { usePagination } from './usePagination';
 export type { UsePaginationReturn } from './usePagination';
 export { useSearchFilters } from './useSearchFilters';
 export type { UseSearchFiltersReturn } from './useSearchFilters';
+export { useShiftTypes } from './useShiftTypes';
+export type { ShiftType } from './useShiftTypes';

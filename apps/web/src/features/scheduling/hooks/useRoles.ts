@@ -132,3 +132,34 @@ export function useAssignWorkerRoles() {
     },
   });
 }
+
+/**
+ * Alias for useAssignWorkerRoles
+ */
+export { useAssignWorkerRoles as useAssignRole };
+
+/**
+ * Hook to unassign a worker from a role
+ */
+export function useUnassignRole() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: async ({ workerId, roleId }: { workerId: string; roleId: string }) => {
+      // TODO: Implement unassign role API endpoint
+      throw new Error('Unassign role not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedulehub', 'workers'] });
+      queryClient.invalidateQueries({ queryKey: roleKeys.lists() });
+      toast.success('Role unassigned successfully');
+    },
+    onError: (error) => {
+      handleApiError(error, {
+        toast,
+        defaultMessage: 'Failed to unassign role',
+      });
+    },
+  });
+}

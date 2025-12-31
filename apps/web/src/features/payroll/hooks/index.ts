@@ -6,6 +6,9 @@ export * from './usePayrollRuns';
 export * from './useWorkers';
 export * from './useDepartments';
 export * from './useLocations';
+export * from './usePayments';
+export * from './useTemplateVersions';
+export * from './useCurrency';
 
 // Migrated from legacy shared/hooks/paylinq
 // API hook
@@ -40,6 +43,10 @@ export { useResolvedPayStructureTemplate } from './usePayStructures';
 export { useAddTemplateInclusion } from './usePayStructures';
 export { useUpdateTemplateInclusion } from './usePayStructures';
 export { useDeleteTemplateInclusion } from './usePayStructures';
+export { useWorkerOverrides } from './usePayStructures';
+export { useCreateWorkerOverride } from './usePayStructures';
+export { useUpdateWorkerOverride } from './usePayStructures';
+export { useDeleteWorkerOverride } from './usePayStructures';
 export { useWorkersForManager } from './useWorkersForManager';
 
 // Phase 2A - Pay Components
@@ -59,4 +66,8 @@ export type { WorkerPayStructure } from './usePayStructures';
 export type { ComponentOverride } from './usePayStructures';
 export type { TemplateInclusion } from './usePayStructures';
 export type { ResolvedPayStructureTemplate } from './usePayStructures';
+export type { CreateTemplateInclusionInput } from './usePayStructures';
+export type { WorkerOverride } from './usePayStructures';
 export type { UseWorkersForManagerOptions } from './useWorkersForManager';
+export type { ExchangeRate } from './useCurrency';
+export type { ForfaitRule, ForfaitRuleTemplate } from '@recruitiq/api-client';

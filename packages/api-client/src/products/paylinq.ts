@@ -111,7 +111,7 @@ import type {
 } from '@recruitiq/types';
 
 // Forfait Rule Types (inline until added to @recruitiq/types)
-interface ForfaitRuleTemplate {
+export interface ForfaitRuleTemplate {
   id: string;
   name: string;
   description: string;
@@ -120,7 +120,7 @@ interface ForfaitRuleTemplate {
   deductionCode?: string;
 }
 
-interface ForfaitRule {
+export interface ForfaitRule {
   id: string;
   componentCode: string;
   taxPercentage: number;
