@@ -79,6 +79,18 @@ export {
   useTerminateWorkerTypeAssignment,
   usePreviewWorkerTypeUpgrade,
   useExecuteWorkerTypeUpgrade,
+  useCompareTemplates,
+  useWorkerTypeUpgradeStatus,
+  // Currency hooks
+  useCurrencyConfig,
+  useUpdateCurrencyConfig,
+  useCacheStats,
+  useClearCache,
+  useExchangeRates,
+  useCreateExchangeRate,
+  useUpdateExchangeRate,
+  useDeleteExchangeRate,
+  useConversionHistory,
   // Types
   type PayStructureTemplate,
   type PayStructureComponent,
@@ -88,6 +100,7 @@ export {
   type TemplateInclusion,
   type ResolvedPayStructureTemplate,
   type UseWorkersForManagerOptions,
+  type ExchangeRate,
 } from '@/features/payroll/hooks';
 
 // HRIS feature hooks (migrated from legacy shared/hooks/nexus)
