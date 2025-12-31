@@ -40,7 +40,7 @@ else
 fi
 
 echo "📦 Phase 1: Creating Database Schema..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /docker-init/01-create-schema.sql
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /backend/docker-init/01-create-schema.sql
 
 if [ $? -eq 0 ]; then
     echo "✅ Phase 1 Complete: Database schema created successfully"
@@ -50,7 +50,7 @@ else
 fi
 
 echo "🌱 Phase 2: Loading Production Seeds..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /docker-init/02-production-seeds.sql
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /backend/docker-init/02-production-seeds.sql
 
 if [ $? -eq 0 ]; then
     echo "✅ Phase 2 Complete: Production seeds loaded successfully"
@@ -60,7 +60,7 @@ else
 fi
 
 echo "🏢 Phase 3: Creating Default Tenant (if configured)..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /docker-init/03-create-tenant.sql
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /backend/docker-init/03-create-tenant.sql
 
 if [ $? -eq 0 ]; then
     echo "✅ Phase 3 Complete: Tenant creation completed"

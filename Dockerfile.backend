@@ -5,7 +5,15 @@ FROM node:20-alpine AS base
 WORKDIR /app
 
 # Install system dependencies including PostgreSQL client
-RUN apk add --no-cache dumb-init python3 make g++ postgresql-client bash
+RUN apk add --no-cache dumb-init python3 make g++ postgresql-client bash wget
+
+# Install pnpm using standalone script (works without registry access)
+RUN wget -qO- https://get.pnpm.io/install.sh | ENV="$HOME/.bashrc" SHELL="$(which sh)" sh - || \
+    npm install -g pnpm@8.15.0 || \
+    (corepack enable && corepack prepare pnpm@8.15.0 --activate)
+
+ENV PNPM_HOME="/root/.local/share/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
@@ -14,8 +22,7 @@ RUN addgroup -g 1001 -S nodejs && \
 # Development stage
 FROM base AS development
 
-# Enable corepack and install pnpm
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+# pnpm is inherited from base stage
 
 # Copy monorepo workspace files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -47,8 +54,7 @@ CMD ["./backend/scripts/startup.sh"]
 # Production builder stage
 FROM base AS builder
 
-# Enable corepack and install pnpm
-RUN corepack enable && corepack prepare pnpm@8.15.0 --activate
+# pnpm is inherited from base stage
 
 # Copy monorepo workspace files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
