@@ -17,7 +17,7 @@ export const auditLog = (action, entityType) => {
         try {
           const responseData = JSON.parse(data)
           entityId = responseData.id || responseData.data?.id || req.params.id || null
-        } catch (e) {
+        } catch (_e) {
           entityId = req.params.id || null
         }
 

@@ -45,7 +45,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding time-off types', { organizationId, error: error.message });
       throw error;
     }
@@ -63,7 +63,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding time-off type', { id, organizationId, error: error.message });
       throw error;
     }
@@ -108,7 +108,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating time-off type', { typeData, organizationId, error: error.message });
       throw error;
     }
@@ -135,7 +135,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [employeeId, typeId, year, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding balance', { employeeId, typeId, year, organizationId, error: error.message });
       throw error;
     }
@@ -161,7 +161,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [employeeId, year, organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding balances by employee', { employeeId, year, organizationId, error: error.message });
       throw error;
     }
@@ -207,7 +207,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error upserting balance', { balanceData, organizationId, error: error.message });
       throw error;
     }
@@ -244,7 +244,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating balance', { employeeId, typeId, year, updates, organizationId, error: error.message });
       throw error;
     }
@@ -275,7 +275,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding request by ID', { id, organizationId, error: error.message });
       throw error;
     }
@@ -331,7 +331,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding all requests', { filters, organizationId, error: error.message });
       throw error;
     }
@@ -368,7 +368,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating request', { requestData, organizationId, error: error.message });
       throw error;
     }
@@ -397,7 +397,7 @@ constructor(database = null) {
       const params = [status, approverId, rejectionReason, userId, id, organizationId];
       const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating request status', { id, status, organizationId, error: error.message });
       throw error;
     }
@@ -417,7 +417,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rowCount > 0;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error deleting request', { id, organizationId, error: error.message });
       throw error;
     }
@@ -453,7 +453,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating accrual history', { accrualData, organizationId, error: error.message });
       throw error;
     }
@@ -475,7 +475,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [employeeId, typeId, organizationId, limit], organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting accrual history', { employeeId, typeId, organizationId, error: error.message });
       throw error;
     }

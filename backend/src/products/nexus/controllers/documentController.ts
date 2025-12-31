@@ -21,7 +21,7 @@ class DocumentController {
       const { organizationId, userId } = req.user;
       const document = await this.service.createDocument(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: document });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in createDocument controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -37,7 +37,7 @@ class DocumentController {
       const { id } = req.params;
       const document = await this.service.getDocument(id, organizationId);
       res.json({ success: true, data: document });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getDocument controller', { error: error.message });
       const status = error.message === 'Document not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -54,7 +54,7 @@ class DocumentController {
       const { id } = req.params;
       const document = await this.service.updateDocument(id, req.body, organizationId, userId);
       res.json({ success: true, data: document });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in updateDocument controller', { error: error.message });
       const status = error.message === 'Document not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -71,7 +71,7 @@ class DocumentController {
       const { id } = req.params;
       await this.service.deleteDocument(id, organizationId, userId);
       res.json({ success: true, message: 'Document deleted successfully' });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in deleteDocument controller', { error: error.message });
       const status = error.message === 'Document not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -98,7 +98,7 @@ class DocumentController {
         { ...filters, limit: parseInt(limit), offset: parseInt(offset) }
       );
       res.json({ success: true, data: documents });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getEmployeeDocuments controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -120,7 +120,7 @@ class DocumentController {
         { limit: parseInt(limit), offset: parseInt(offset) }
       );
       res.json({ success: true, data: documents });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getDocumentsByType controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -136,7 +136,7 @@ class DocumentController {
       const { days = 30 } = req.params;
       const documents = await this.service.getExpiringDocuments(parseInt(days), organizationId);
       res.json({ success: true, data: documents });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getExpiringDocuments controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -151,7 +151,7 @@ class DocumentController {
       const { organizationId } = req.user;
       const documents = await this.service.getExpiredDocuments(organizationId);
       res.json({ success: true, data: documents });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getExpiredDocuments controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -182,7 +182,7 @@ class DocumentController {
         { ...filters, limit: parseInt(limit), offset: parseInt(offset) }
       );
       res.json({ success: true, data: documents });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in searchDocuments controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -198,7 +198,7 @@ class DocumentController {
       const { employeeId } = req.params;
       const stats = await this.service.getEmployeeDocumentStats(employeeId, organizationId);
       res.json({ success: true, data: stats });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getEmployeeDocumentStats controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -213,7 +213,7 @@ class DocumentController {
       const { organizationId } = req.user;
       const stats = await this.service.getOrganizationDocumentStats(organizationId);
       res.json({ success: true, data: stats });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getOrganizationDocumentStats controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }

@@ -21,7 +21,6 @@ import type {
   UpdateShiftTemplateInput,
   ShiftTemplate
 } from '@/types/shift-templates';
-
 import { formatDuration } from '@/utils';
 
 // Validation schema

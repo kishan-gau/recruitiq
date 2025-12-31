@@ -149,7 +149,7 @@ class TaxCalculationService {
       });
 
       return deduction;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error creating deduction', { error: err.message, organizationId });
       throw err;
     }
@@ -164,7 +164,7 @@ class TaxCalculationService {
   async getDeductionsByOrganization(organizationId, filters = {}) {
     try {
       return await this.deductionRepository.findEmployeeDeductions(filters, organizationId);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching deductions by organization', { error: err.message, organizationId });
       throw err;
     }
@@ -183,7 +183,7 @@ class TaxCalculationService {
         { ...filters, employeeRecordId },
         organizationId
       );
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching deductions by employee', { 
         error: err.message, 
         employeeRecordId,
@@ -202,7 +202,7 @@ class TaxCalculationService {
   async getDeductionById(deductionId, organizationId) {
     try {
       return await this.deductionRepository.findEmployeeDeductionById(deductionId, organizationId);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching deduction by ID', { error: err.message, deductionId, organizationId });
       throw err;
     }
@@ -242,7 +242,7 @@ class TaxCalculationService {
       });
 
       return updated;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error updating deduction', { error: err.message, deductionId, organizationId });
       throw err;
     }
@@ -271,7 +271,7 @@ class TaxCalculationService {
       });
 
       return true;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error deleting deduction', { error: err.message, deductionId, organizationId });
       throw err;
     }
@@ -312,7 +312,7 @@ class TaxCalculationService {
       });
 
       return ruleSet;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error creating tax rule set', { error: err.message, organizationId });
       throw err;
     }
@@ -327,7 +327,7 @@ class TaxCalculationService {
   async getTaxRuleSets(organizationId, filters = {}) {
     try {
       return await this.taxEngineRepository.findTaxRuleSets(organizationId, filters);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching tax rule sets', { error: err.message, organizationId });
       throw err;
     }
@@ -342,7 +342,7 @@ class TaxCalculationService {
   async getTaxRuleSetById(ruleSetId, organizationId) {
     try {
       return await this.taxEngineRepository.findTaxRuleSetById(ruleSetId, organizationId);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching tax rule set by ID', { error: err.message, ruleSetId, organizationId });
       throw err;
     }
@@ -379,7 +379,7 @@ class TaxCalculationService {
       });
 
       return updated;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error updating tax rule set', { error: err.message, ruleSetId, organizationId });
       throw err;
     }
@@ -407,7 +407,7 @@ class TaxCalculationService {
       });
 
       return true;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error deleting tax rule set', { error: err.message, ruleSetId, organizationId });
       throw err;
     }
@@ -431,7 +431,7 @@ class TaxCalculationService {
         state,
         locality
       );
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching applicable tax rule sets', { error: err.message, organizationId });
       throw err;
     }
@@ -471,7 +471,7 @@ class TaxCalculationService {
       });
 
       return bracket;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error creating tax bracket', { error: err.message, organizationId });
       throw err;
     }
@@ -506,7 +506,7 @@ class TaxCalculationService {
       });
 
       return results;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error bulk creating tax brackets', { error: err.message, organizationId });
       throw err;
     }
@@ -521,7 +521,7 @@ class TaxCalculationService {
   async getTaxBrackets(taxRuleSetId, organizationId) {
     try {
       return await this.taxEngineRepository.findTaxBrackets(taxRuleSetId, organizationId);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching tax brackets', { error: err.message, taxRuleSetId, organizationId });
       throw err;
     }
@@ -558,7 +558,7 @@ class TaxCalculationService {
       });
 
       return updated;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error updating tax bracket', { error: err.message, bracketId, organizationId });
       throw err;
     }
@@ -586,7 +586,7 @@ class TaxCalculationService {
       });
 
       return true;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error deleting tax bracket', { error: err.message, bracketId, organizationId });
       throw err;
     }
@@ -626,7 +626,7 @@ class TaxCalculationService {
       });
 
       return allowance;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error creating allowance', { error: err.message, organizationId });
       throw err;
     }
@@ -675,7 +675,7 @@ class TaxCalculationService {
         isSurinameResident: result.rows[0].is_suriname_resident,
         nationalId: result.rows[0].national_id
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching employee residence status', {
         error: error.message,
         employeeRecordId,
@@ -866,7 +866,7 @@ class TaxCalculationService {
 
       return result;
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error calculating employee taxes', { 
         error: err.message, 
         employeeRecordId,
@@ -1265,7 +1265,7 @@ class TaxCalculationService {
 
       return result;
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error in component-based tax calculation', {
         error: err.message,
         stack: err.stack,
@@ -1306,7 +1306,7 @@ class TaxCalculationService {
         message: 'MVP: YTD calculation requires paycheck history integration'
       };
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching YTD tax summary', { 
         error: err.message, 
         employeeRecordId,
@@ -1350,7 +1350,7 @@ class TaxCalculationService {
       });
 
       return allowance;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error setting up monthly tax-free allowance', { error: err.message, organizationId });
       throw err;
     }
@@ -1473,7 +1473,7 @@ class TaxCalculationService {
 
       return results;
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error setting up Surinamese tax rules', { error: err.message, organizationId });
       throw err;
     }
@@ -1649,7 +1649,7 @@ class TaxCalculationService {
 
       return newRuleSet;
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error creating new tax rule version', {
         error: err.message,
         ruleSetId,
@@ -1689,7 +1689,7 @@ class TaxCalculationService {
         bracketCount: version.bracket_count || 0
       }));
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error getting tax rule version history', {
         error: err.message,
         ruleSetCode,
@@ -1750,7 +1750,7 @@ class TaxCalculationService {
 
       return publishedRuleSet;
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error publishing tax rule version', {
         error: err.message,
         ruleSetId,
@@ -1798,7 +1798,7 @@ class TaxCalculationService {
 
       return archivedRuleSet;
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error archiving tax rule version', {
         error: err.message,
         ruleSetId,
@@ -1909,7 +1909,7 @@ class TaxCalculationService {
         }
       };
 
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error comparing tax rule versions', {
         error: err.message,
         fromRuleSetId,

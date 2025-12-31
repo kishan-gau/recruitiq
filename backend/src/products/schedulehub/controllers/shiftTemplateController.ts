@@ -37,7 +37,7 @@ class ShiftTemplateController {
         shiftTemplate: template,
         message: 'Shift template created successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating shift template:', {
         error: error.message,
         organizationId: req.user?.organization_id,
@@ -66,7 +66,7 @@ class ShiftTemplateController {
         success: true,
         shiftTemplates: templates
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error retrieving shift templates:', {
         error: error.message,
         organizationId: req.user?.organization_id,
@@ -99,7 +99,7 @@ class ShiftTemplateController {
         success: true,
         shiftTemplate: template
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error retrieving shift template:', {
         error: error.message,
         templateId: req.params.id,
@@ -138,7 +138,7 @@ class ShiftTemplateController {
         shiftTemplate: template,
         message: 'Shift template updated successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating shift template:', {
         error: error.message,
         templateId: req.params.id,
@@ -172,7 +172,7 @@ class ShiftTemplateController {
         success: true,
         message: 'Shift template deleted successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error deleting shift template:', {
         error: error.message,
         templateId: req.params.id,
@@ -202,7 +202,7 @@ class ShiftTemplateController {
         success: true,
         templates: summaries
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error retrieving shift template summaries:', {
         error: error.message,
         organizationId: req.user?.organization_id,
@@ -243,7 +243,7 @@ class ShiftTemplateController {
         success: true,
         usage
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error retrieving shift template usage:', {
         error: error.message,
         templateId: req.params.id,
@@ -274,7 +274,7 @@ class ShiftTemplateController {
         success: true,
         validation
       });
-    } catch (error) {
+    } catch (_error) {
       // For validation endpoint, we want to return validation errors as success
       // with error details, not as HTTP errors
       if (error.name === 'ValidationError') {
@@ -358,7 +358,7 @@ class ShiftTemplateController {
         shiftTemplate: clonedTemplate,
         message: 'Shift template cloned successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error cloning shift template:', {
         error: error.message,
         templateId: req.params.id,

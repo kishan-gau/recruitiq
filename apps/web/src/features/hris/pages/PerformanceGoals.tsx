@@ -96,9 +96,9 @@ function CreateGoalForm({
   const validate = (state: GoalFormState) => {
     const vErrors: Record<string, string> = {};
 
-    if (!state.employeeId?.trim()) {
+    if (!state._employeeId?.trim()) {
       vErrors.employeeId = 'Werknemer ID is verplicht';
-    } else if (!isValidUuidV4(state.employeeId.trim())) {
+    } else if (!isValidUuidV4(state._employeeId.trim())) {
       vErrors.employeeId = 'Werknemer ID moet een geldige UUID v4 zijn';
     }
 
@@ -169,7 +169,7 @@ function CreateGoalForm({
           <input
             type="text"
             value={form.employeeId}
-            onChange={(e) => updateField('employeeId', e.target.value)}
+            onChange={(e) => updateField('_employeeId', e.target.value)}
             required
             aria-invalid={!!errors.employeeId}
             aria-describedby={errors.employeeId ? 'employeeId-error' : undefined}

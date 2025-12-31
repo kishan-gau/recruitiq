@@ -80,7 +80,7 @@ class DatadogClient {
         type,
         tags,
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to send Datadog metric', {
         metricName,
         error: error.message,
@@ -132,7 +132,7 @@ class DatadogClient {
         alertType,
         tags,
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to send Datadog event', {
         title,
         error: error.message,
@@ -284,7 +284,7 @@ class DatadogClient {
         apiKeyValid: valid,
         site: this.site,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         status: 'unhealthy',
         enabled: true,

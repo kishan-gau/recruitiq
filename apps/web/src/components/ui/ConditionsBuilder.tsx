@@ -14,7 +14,7 @@ interface ConditionsBuilderProps {
   onChange: (conditions: Condition[]) => void;
 }
 
-export function ConditionsBuilder({ conditions, onChange }: ConditionsBuilderProps) {
+export function ConditionsBuilder({ _conditions, _onChange }: ConditionsBuilderProps) {
   return (
     <div className="border rounded-lg p-4">
       <h4 className="font-medium mb-3">Conditions</h4>

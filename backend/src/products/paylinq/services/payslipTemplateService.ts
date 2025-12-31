@@ -107,7 +107,7 @@ class PayslipTemplateService {
       );
 
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching payslip templates', { error: error.message, organizationId });
       throw error;
     }
@@ -130,7 +130,7 @@ class PayslipTemplateService {
       }
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching template by ID', { error: error.message, templateId, organizationId });
       throw error;
     }
@@ -224,7 +224,7 @@ class PayslipTemplateService {
 
       logger.info('Created payslip template', { templateId: result.rows[0].id, organizationId, userId });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating template', { error: error.message, organizationId, userId });
       throw error;
     }
@@ -343,7 +343,7 @@ class PayslipTemplateService {
 
       logger.info('Updated payslip template', { templateId, organizationId, userId });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating template', { error: error.message, templateId, organizationId });
       throw error;
     }
@@ -376,7 +376,7 @@ class PayslipTemplateService {
 
       logger.info('Deleted payslip template', { templateId, organizationId, userId });
       return { success: true };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error deleting template', { error: error.message, templateId, organizationId });
       throw error;
     }
@@ -406,7 +406,7 @@ class PayslipTemplateService {
       delete newTemplate.assignment_count;
 
       return await this.createTemplate(newTemplate, organizationId, userId);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error duplicating template', { error: error.message, templateId, organizationId });
       throw error;
     }
@@ -418,7 +418,7 @@ class PayslipTemplateService {
   async activateTemplate(templateId, organizationId, userId) {
     try {
       return await this.updateTemplate(templateId, { status: 'active' }, organizationId, userId);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error activating template', { error: error.message, templateId, organizationId });
       throw error;
     }
@@ -430,7 +430,7 @@ class PayslipTemplateService {
   async archiveTemplate(templateId, organizationId, userId) {
     try {
       return await this.updateTemplate(templateId, { status: 'archived' }, organizationId, userId);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error archiving template', { error: error.message, templateId, organizationId });
       throw error;
     }
@@ -459,7 +459,7 @@ class PayslipTemplateService {
       );
 
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching template assignments', { error: error.message, templateId, organizationId });
       throw error;
     }
@@ -502,7 +502,7 @@ class PayslipTemplateService {
 
       logger.info('Created template assignment', { assignmentId: result.rows[0].id, templateId: value.templateId, organizationId });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating assignment', { error: error.message, organizationId });
       throw error;
     }
@@ -554,7 +554,7 @@ class PayslipTemplateService {
 
       logger.info('Updated template assignment', { assignmentId, organizationId });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating assignment', { error: error.message, assignmentId, organizationId });
       throw error;
     }
@@ -574,7 +574,7 @@ class PayslipTemplateService {
 
       logger.info('Deleted template assignment', { assignmentId, organizationId });
       return { success: true };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error deleting assignment', { error: error.message, assignmentId, organizationId });
       throw error;
     }

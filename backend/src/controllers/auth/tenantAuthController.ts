@@ -184,7 +184,7 @@ export const login = async (req, res) => {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     console.error('Tenant login error:', error);
     res.status(500).json({
       success: false,
@@ -213,7 +213,7 @@ export const refresh = async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    } catch (error) {
+    } catch (_error) {
       return res.status(401).json({
         success: false,
         error: 'Invalid or expired refresh token'
@@ -305,7 +305,7 @@ export const refresh = async (req, res) => {
       success: true
     });
 
-  } catch (error) {
+  } catch (_error) {
     console.error('Tenant token refresh error:', error);
     res.status(500).json({
       success: false,
@@ -358,7 +358,7 @@ export const logout = async (req, res) => {
       message: 'Logout successful'
     });
 
-  } catch (error) {
+  } catch (_error) {
     console.error('Tenant logout error:', error);
     res.status(500).json({
       success: false,
@@ -415,7 +415,7 @@ export const getProfile = async (req, res) => {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     console.error('Get tenant profile error:', error);
     res.status(500).json({
       success: false,
@@ -447,7 +447,7 @@ export const revokeAllSessions = async (req, res) => {
       message: 'All sessions revoked successfully'
     });
 
-  } catch (error) {
+  } catch (_error) {
     console.error('Revoke all sessions error:', error);
     res.status(500).json({
       success: false,
@@ -518,7 +518,7 @@ export const switchProduct = async (req, res) => {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     console.error('Switch product error:', error);
     res.status(500).json({
       success: false,

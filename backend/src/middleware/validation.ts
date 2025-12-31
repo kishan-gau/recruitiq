@@ -85,7 +85,7 @@ export function validate(schema, source = 'body') {
       };
 
       next();
-    } catch (err) {
+    } catch (_err) {
       logger.error('Validation middleware error', {
         error: err.message,
         stack: err.stack,
@@ -181,7 +181,7 @@ export function validateMultiple(schemas) {
       }
 
       next();
-    } catch (err) {
+    } catch (_err) {
       logger.error('Multi-source validation middleware error', {
         error: err.message,
         stack: err.stack,
@@ -283,7 +283,7 @@ export function validateFileUpload(options = {}) {
       });
 
       next();
-    } catch (err) {
+    } catch (_err) {
       logger.error('File validation error', {
         error: err.message,
         stack: err.stack,
@@ -326,7 +326,7 @@ export function customValidator(validatorFn) {
         error: 'Validation Error',
         message: typeof result === 'string' ? result : 'Custom validation failed',
       });
-    } catch (err) {
+    } catch (_err) {
       logger.error('Custom validator error', {
         error: err.message,
         stack: err.stack,

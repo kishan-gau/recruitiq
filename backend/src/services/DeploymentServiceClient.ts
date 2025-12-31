@@ -97,7 +97,7 @@ constructor() {
       });
 
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       logger.error('[DeploymentServiceClient] Deployment failed', {
         error: error.message,
         organizationSlug: config.organizationSlug
@@ -120,7 +120,7 @@ constructor() {
       const response = await client.delete(`/tenants/${tenantId}`);
 
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       logger.error('[DeploymentServiceClient] Tenant removal failed', {
         error: error.message,
         tenantId
@@ -140,7 +140,7 @@ constructor() {
       const client = this.getClient();
       const response = await client.get(`/tenants/${tenantId}/health`);
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       logger.error('[DeploymentServiceClient] Health check failed', {
         error: error.message,
         tenantId
@@ -160,7 +160,7 @@ constructor() {
       const client = this.getClient();
       const response = await client.get(`/deployments/${deploymentId}/logs`);
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       logger.error('[DeploymentServiceClient] Failed to get deployment logs', {
         error: error.message,
         deploymentId
@@ -179,7 +179,7 @@ constructor() {
       const client = this.getClient();
       const response = await client.get('/tenants/ports/stats');
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       logger.error('[DeploymentServiceClient] Failed to get port stats', {
         error: error.message
       });
@@ -199,7 +199,7 @@ constructor() {
         timeout: 5000
       });
       return response.data;
-    } catch (error) {
+    } catch (_error) {
       logger.warn('[DeploymentServiceClient] Health check failed', {
         error: error.message
       });

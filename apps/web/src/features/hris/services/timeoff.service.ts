@@ -43,8 +43,8 @@ export const timeoffService = {
     return this.reviewTimeOffRequest(id, { status: 'rejected', reviewNotes });
   },
 
-  async getEmployeeTimeOffBalance(employeeId: string, year?: number): Promise<TimeOffBalance[]> {
-    const response = await nexusClient.getEmployeeTimeOffBalances(employeeId, year);
+  async getEmployeeTimeOffBalance(_employeeId: string, year?: number): Promise<TimeOffBalance[]> {
+    const response = await nexusClient.getEmployeeTimeOffBalances(_employeeId, year);
     return response.data;
   },
 };

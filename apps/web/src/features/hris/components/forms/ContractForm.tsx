@@ -160,7 +160,7 @@ export default function ContractForm({ contract, mode }: ContractFormProps) {
               Employee <span className="text-red-500">*</span>
             </label>
             <select
-              {...register('employeeId')}
+              {...register('_employeeId')}
               disabled={mode === 'edit'}
               className="w-full px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-slate-100 dark:disabled:bg-slate-900 disabled:opacity-50"
             >

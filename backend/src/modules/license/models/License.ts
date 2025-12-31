@@ -259,7 +259,7 @@ class License {
       
       await client.query('COMMIT')
       return license
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK')
       throw error
     } finally {
@@ -297,7 +297,7 @@ class License {
       
       await client.query('COMMIT')
       return license
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK')
       throw error
     } finally {

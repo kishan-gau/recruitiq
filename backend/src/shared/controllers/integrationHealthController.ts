@@ -46,7 +46,7 @@ class IntegrationHealthController {
       });
 
       res.json(response);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('[Integration Health] Error getting health status', {
         error: error.message,
         stack: error.stack
@@ -79,7 +79,7 @@ class IntegrationHealthController {
         ...health[integrationName],
         timestamp: new Date().toISOString()
       });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('[Integration Health] Error getting integration health', {
         error: error.message,
         stack: error.stack
@@ -105,7 +105,7 @@ class IntegrationHealthController {
         message: `Metrics reset for integration: ${integrationName}`,
         timestamp: new Date().toISOString()
       });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('[Integration Health] Error resetting metrics', {
         error: error.message,
         stack: error.stack
@@ -129,7 +129,7 @@ class IntegrationHealthController {
         message: 'All integration metrics reset',
         timestamp: new Date().toISOString()
       });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('[Integration Health] Error resetting all metrics', {
         error: error.message,
         stack: error.stack

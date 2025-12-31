@@ -50,7 +50,7 @@ constructor() {
 
       logger.info(`Email service initialized with provider: ${config.provider}`);
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize email service:', error);
       throw error;
     }
@@ -200,7 +200,7 @@ constructor() {
         messageId: info.messageId,
         response: info.response,
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to send email:', {
         error: error.message,
         to: mailOptions.to,
@@ -228,7 +228,7 @@ constructor() {
         if (delayMs > 0) {
           await new Promise(resolve => setTimeout(resolve, delayMs));
         }
-      } catch (error) {
+      } catch (_error) {
         results.push({
           success: false,
           email: emailOptions.to,
@@ -273,7 +273,7 @@ constructor() {
         success: true,
         message: `Test email sent successfully to ${testEmail}`,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         success: false,
         message: `Failed to send test email: ${error.message}`,

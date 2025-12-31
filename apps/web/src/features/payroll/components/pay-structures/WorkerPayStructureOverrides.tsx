@@ -23,7 +23,7 @@ export default function WorkerPayStructureOverrides({
   const [editingOverride, setEditingOverride] = useState<any>(null);
 
   const { data: overrides = [], isLoading } = useWorkerOverrides(workerStructureId);
-  const createMutation = useCreateWorkerOverride(employeeId);
+  const createMutation = useCreateWorkerOverride(_employeeId);
   const updateMutation = useUpdateWorkerOverride();
   const deleteMutation = useDeleteWorkerOverride();
 

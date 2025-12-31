@@ -1,9 +1,10 @@
 import { Package, Calendar, Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { StatusBadge } from '@recruitiq/ui';
+
 import AssignPayStructureModal from '@/components/modals/AssignPayStructureModal';
 import WorkerPayStructureOverrides from '@/components/pay-structures/WorkerPayStructureOverrides';
-import { StatusBadge } from '@recruitiq/ui';
 import {
   useCurrentWorkerPayStructure,
   useWorkerPayStructureHistory,

@@ -1,4 +1,3 @@
-import React from 'react';
 
 import { ShiftTemplates } from '@features/scheduling/components';
 

@@ -35,7 +35,7 @@ async function createWorkerType(req, res) {
       workerType: workerType,
       message: 'Worker type created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating worker type', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -103,7 +103,7 @@ async function getWorkerTypes(req, res) {
       workerTypes: result.workerTypes,
       pagination: result.pagination,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching worker types', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -132,7 +132,7 @@ async function getWorkerTypeById(req, res) {
       success: true,
       workerType: workerType,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching worker type', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -196,7 +196,7 @@ async function updateWorkerType(req, res) {
       workerType: workerType,
       message: 'Worker type updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating worker type', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -250,7 +250,7 @@ async function deleteWorkerType(req, res) {
       success: true,
       message: 'Worker type deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting worker type', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -329,7 +329,7 @@ async function assignWorkerType(req, res) {
       assignment,
       message: 'Worker type assigned successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error assigning worker type', {
       error: error.message,
       body: req.body,
@@ -406,7 +406,7 @@ async function assignEmployees(req, res) {
       assigned: result,
       message: 'Employees assigned successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error assigning employees', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -446,7 +446,7 @@ async function getWorkerTypeEmployees(req, res) {
       employees: result.employees,
       pagination: result.pagination,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching worker type employees', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -480,7 +480,7 @@ async function getTemplateInclusions(req, res) {
       success: true,
       inclusions,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching template inclusions', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -532,7 +532,7 @@ async function addTemplateInclusion(req, res) {
       inclusion,
       message: 'Inclusion added successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error adding template inclusion', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -593,7 +593,7 @@ async function updateTemplateInclusion(req, res) {
       inclusion,
       message: 'Inclusion updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating template inclusion', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -645,7 +645,7 @@ async function removeTemplateInclusion(req, res) {
       success: true,
       message: 'Inclusion removed successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error removing template inclusion', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -690,7 +690,7 @@ async function getUpgradeStatus(req, res) {
       success: true,
       upgradeStatus: status,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching upgrade status', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -729,7 +729,7 @@ async function previewUpgrade(req, res) {
       success: true,
       preview,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error previewing template upgrade', {
       error: error.message,
       workerTypeId: req.params.id,
@@ -786,7 +786,7 @@ async function upgradeWorkers(req, res) {
       success: true,
       result,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error upgrading workers', {
       error: error.message,
       workerTypeId: req.params.id,

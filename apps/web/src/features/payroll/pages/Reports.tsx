@@ -180,7 +180,7 @@ export default function ReportsPage() {
                       type="text"
                       placeholder="Medewerker ID of naam"
                       value={filters.employeeId || ''}
-                      onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
+                      onChange={(e) => setFilters({ ...filters, _employeeId: e.target.value })}
                       className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     />
                   </div>

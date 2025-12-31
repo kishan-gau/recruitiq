@@ -365,7 +365,7 @@ class AuditLogger {
           table: 'security_events'
         }
       );
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to persist security event', {
         error: error.message,
         eventType: event.eventType
@@ -423,7 +423,7 @@ class AuditLogger {
           details: { failureCount, ipAddress }
         });
       }
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to check repeated failures', {
         error: error.message,
         userId,
@@ -465,7 +465,7 @@ class AuditLogger {
         userId: event.userId,
         organizationId: event.organizationId
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to create security alert', {
         error: error.message,
         eventType: event.eventType

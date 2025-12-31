@@ -368,7 +368,7 @@ function ContractForm({
   onSubmit: (payload: any) => void | Promise<void>;
   onCancel: () => void;
 }) {
-  const [employeeId, setEmployeeId] = useState(initial?.employeeId || initial?.employee_id || '');
+  const [employeeId, setEmployeeId] = useState(initial?._employeeId || initial?.employee_id || '');
   const [contractType, setContractType] = useState(initial?.contractType || initial?.contract_type || '');
   const [startDate, setStartDate] = useState(initial?.startDate || initial?.start_date || '');
   const [endDate, setEndDate] = useState(initial?.endDate || initial?.end_date || '');
@@ -381,9 +381,9 @@ function ContractForm({
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!employeeId?.trim()) {
+    if (!_employeeId?.trim()) {
       newErrors.employeeId = 'Werknemer ID is verplicht';
-    } else if (!isValidUuidV4(employeeId.trim())) {
+    } else if (!isValidUuidV4(_employeeId.trim())) {
       newErrors.employeeId = 'Werknemer ID moet een geldige UUID zijn';
     }
 

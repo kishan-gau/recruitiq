@@ -1,10 +1,11 @@
 import { X, User, Clock, MapPin, Badge, AlertTriangle, CheckCircle } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+
+import { formatTime, formatTimeSlot } from '@/utils';
 
 import { useAssignShift } from '../../hooks/schedulehub/useScheduleStats';
 import { apiClient } from '../../services/api';
 import type { Shift, Worker } from '../../types/schedulehub';
-import { formatTime, formatTimeSlot } from '@/utils';
 
 interface ShiftAssignmentModalProps {
   isOpen: boolean;

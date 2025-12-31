@@ -59,7 +59,7 @@ constructor() {
       });
 
       await this.client.connect();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to connect to Redis for IP tracking:', error);
       this.isConnected = false;
     }
@@ -171,7 +171,7 @@ constructor() {
       }
 
       return analysis;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to record IP:', error);
       return { error: error.message };
     }
@@ -224,7 +224,7 @@ constructor() {
       } else {
         return this.inMemoryStore.get(key) || [];
       }
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to get IP history:', error);
       return [];
     }
@@ -240,7 +240,7 @@ constructor() {
     try {
       const history = await this.getIPHistory(userId);
       return history.some(entry => entry.ip === ip);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to check known IP:', error);
       return false;
     }
@@ -262,7 +262,7 @@ constructor() {
 
       logger.info('IP history cleared', { userId });
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to clear IP history:', error);
       return false;
     }
@@ -288,7 +288,7 @@ constructor() {
         totalUsers: keys.length,
         inMemoryEntries: this.inMemoryStore.size,
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to get IP tracking stats:', error);
       return { error: error.message };
     }

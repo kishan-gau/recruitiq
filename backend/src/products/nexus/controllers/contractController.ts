@@ -21,7 +21,7 @@ class ContractController {
       const { organizationId, userId } = req.user;
       const contract = await this.service.createContract(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: contract });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in createContract controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -37,7 +37,7 @@ class ContractController {
       const { id } = req.params;
       const contract = await this.service.getContract(id, organizationId);
       res.json({ success: true, data: contract });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getContract controller', { error: error.message });
       const status = error.message === 'Contract not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -62,7 +62,7 @@ class ContractController {
 
       const contracts = await this.service.listContracts(filters, organizationId, options);
       res.json({ success: true, data: contracts });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in listContracts controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -78,7 +78,7 @@ class ContractController {
       const { id } = req.params;
       const contract = await this.service.updateContract(id, req.body, organizationId, userId);
       res.json({ success: true, data: contract });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in updateContract controller', { error: error.message });
       const status = error.message === 'Contract not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -95,7 +95,7 @@ class ContractController {
       const { id } = req.params;
       const contract = await this.service.activateContract(id, organizationId, userId);
       res.json({ success: true, data: contract });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in activateContract controller', { error: error.message });
       const status = error.message === 'Contract not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -120,7 +120,7 @@ class ContractController {
         userId
       );
       res.json({ success: true, data: contract });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in terminateContract controller', { error: error.message });
       const status = error.message === 'Contract not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -137,7 +137,7 @@ class ContractController {
       const { id } = req.params;
       const contract = await this.service.progressSequenceStep(id, organizationId, userId);
       res.json({ success: true, data: contract });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in progressSequence controller', { error: error.message });
       const status = error.message === 'Contract not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -158,7 +158,7 @@ class ContractController {
         organizationId
       );
       res.json({ success: true, data: contracts });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getExpiringContracts controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -174,7 +174,7 @@ class ContractController {
       const { employeeId } = req.params;
       const contracts = await this.service.getEmployeeContracts(employeeId, organizationId);
       res.json({ success: true, data: contracts });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getEmployeeContracts controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }

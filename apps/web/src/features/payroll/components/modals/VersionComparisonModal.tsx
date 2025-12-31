@@ -1,6 +1,7 @@
 import { Plus, Minus, Edit } from 'lucide-react';
 
 import { StatusBadge, Dialog } from '@recruitiq/ui';
+
 import { useCompareVersions } from '@/hooks/useCompareVersions';
 
 

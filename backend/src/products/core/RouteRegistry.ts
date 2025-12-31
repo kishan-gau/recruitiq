@@ -33,7 +33,7 @@ class RouteRegistry {
       for (const loadedProduct of products) {
         try {
           await this.registerProductRoutes(loadedProduct);
-        } catch (error) {
+        } catch (_error) {
           logger.error(`Failed to register routes for ${loadedProduct.product.name}:`, error);
           // Continue with other products
         }
@@ -41,7 +41,7 @@ class RouteRegistry {
 
       logger.info(`✅ Route Registry initialized. Registered ${this.registeredRoutes.size} product routes.`);
       return this.mainRouter;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize Route Registry:', error);
       throw error;
     }
@@ -102,7 +102,7 @@ class RouteRegistry {
       });
 
       logger.info(`  ✅ Registered routes for ${product.name} at ${basePath}`);
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to register routes for ${loadedProduct.product.name}:`, error);
       throw error;
     }
@@ -143,7 +143,7 @@ class RouteRegistry {
       logger.warn('⚠️  Note: Routes still active until server restart');
       
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to unregister routes for ${slug}:`, error);
       return false;
     }
@@ -259,7 +259,7 @@ class RouteRegistry {
       logger.warn('⚠️  Note: Full reload requires server restart');
       
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to reload routes for ${slug}:`, error);
       throw error;
     }

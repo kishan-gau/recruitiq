@@ -30,7 +30,7 @@ async function createTaxRule(req, res) {
       taxRule: taxRule,
       message: 'Tax rule created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating tax rule', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -67,7 +67,7 @@ async function getTaxRules(req, res) {
       taxRules: taxRules,
       count: taxRules.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching tax rules', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -104,7 +104,7 @@ async function getTaxRuleById(req, res) {
       success: true,
       taxRule: taxRule,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching tax rule', {
       error: error.message,
       taxRuleId: req.params.id,
@@ -154,7 +154,7 @@ async function updateTaxRule(req, res) {
       taxRule: taxRule,
       message: 'Tax rule updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating tax rule', {
       error: error.message,
       taxRuleId: req.params.id,
@@ -199,7 +199,7 @@ async function deleteTaxRule(req, res) {
       success: true,
       message: 'Tax rule deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting tax rule', {
       error: error.message,
       taxRuleId: req.params.id,
@@ -244,7 +244,7 @@ async function createTaxBracket(req, res) {
       bracket: bracket,
       message: 'Tax bracket created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating tax bracket', {
       error: error.message,
       taxRuleId: req.params.taxRuleId,
@@ -276,7 +276,7 @@ async function getTaxBrackets(req, res) {
       brackets: brackets,
       count: brackets.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching tax brackets', {
       error: error.message,
       taxRuleId: req.params.taxRuleId,
@@ -326,7 +326,7 @@ async function updateTaxBracket(req, res) {
       bracket: bracket,
       message: 'Tax bracket updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating tax bracket', {
       error: error.message,
       bracketId: req.params.id,
@@ -371,7 +371,7 @@ async function deleteTaxBracket(req, res) {
       success: true,
       message: 'Tax bracket deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting tax bracket', {
       error: error.message,
       bracketId: req.params.id,
@@ -416,7 +416,7 @@ async function calculateTaxes(req, res) {
       success: true,
       taxCalculations: taxCalculations,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error calculating taxes', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -450,7 +450,7 @@ async function setupSurinameTaxRules(req, res) {
       result: result,
       message: 'Surinamese tax rules setup successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error setting up Surinamese tax rules', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -513,7 +513,7 @@ async function createTaxRuleVersion(req, res) {
       version: newVersion,
       message: `${versionData.versionType.charAt(0).toUpperCase() + versionData.versionType.slice(1)} version created successfully`
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating tax rule version', {
       error: error.message,
       ruleId: req.params.id,
@@ -563,7 +563,7 @@ async function getTaxRuleVersionHistory(req, res) {
       versions: versionHistory,
       ruleSetCode
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error retrieving tax rule version history', {
       error: error.message,
       ruleSetCode: req.params.ruleSetCode,
@@ -624,7 +624,7 @@ async function publishTaxRuleVersion(req, res) {
       version: publishedVersion,
       message: 'Tax rule version published successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error publishing tax rule version', {
       error: error.message,
       versionId: req.params.id,
@@ -692,7 +692,7 @@ async function archiveTaxRuleVersion(req, res) {
       version: archivedVersion,
       message: 'Tax rule version archived successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error archiving tax rule version', {
       error: error.message,
       versionId: req.params.id,
@@ -750,7 +750,7 @@ async function compareTaxRuleVersions(req, res) {
       comparison,
       message: 'Version comparison completed successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error comparing tax rule versions', {
       error: error.message,
       fromId: req.params.fromId,

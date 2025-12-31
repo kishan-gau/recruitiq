@@ -164,7 +164,7 @@ constructor(formulaEngineInstance = null) {
           `Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`
         );
       }
-    } catch (error) {
+    } catch (_error) {
       // Convert FormulaParseError to ValidationError for proper 400 status
       if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
         throw new ValidationError(`Invalid formula syntax: ${error.message}`);
@@ -187,7 +187,7 @@ constructor(formulaEngineInstance = null) {
     let parsed;
     try {
       parsed = await this.formulaEngine.parse(formulaToValidate);
-    } catch (error) {
+    } catch (_error) {
       // If validation passed but parsing failed, re-throw as ValidationError
       throw new ValidationError(`Formula parsing failed: ${error.message}`);
     }
@@ -279,7 +279,7 @@ constructor(formulaEngineInstance = null) {
             if (!validation.valid) {
               throw new ValidationError(`Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`);
             }
-          } catch (error) {
+          } catch (_error) {
             // Convert FormulaParseError to ValidationError
             if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
               throw new ValidationError(`Invalid formula syntax: ${error.message}`);
@@ -291,7 +291,7 @@ constructor(formulaEngineInstance = null) {
           let parsed;
           try {
             parsed = await this.formulaEngine.parse(formulaToValidate);
-          } catch (error) {
+          } catch (_error) {
             throw new ValidationError(`Formula parsing failed: ${error.message}`);
           }
           updates.push(`formula_ast = $${paramIndex++}`);
@@ -333,7 +333,7 @@ constructor(formulaEngineInstance = null) {
     const result = await pool.query(query, params);
     console.log('✅ FormulaTemplateService.updateTemplate succeeded');
     return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       console.error('❌ FormulaTemplateService.updateTemplate ERROR:');
       console.error('  Error type:', error.constructor.name);
       console.error('  Error message:', error.message);
@@ -435,7 +435,7 @@ constructor(formulaEngineInstance = null) {
           `Generated formula is invalid: ${validation.errors.map(e => e.message).join(', ')}`
         );
       }
-    } catch (error) {
+    } catch (_error) {
       // Convert FormulaParseError to ValidationError
       if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
         throw new ValidationError(`Invalid formula syntax in generated formula: ${error.message}`);
@@ -451,7 +451,7 @@ constructor(formulaEngineInstance = null) {
       template_name: template.template_name,
       parameters: parameterValues
       };
-    } catch (error) {
+    } catch (_error) {
       throw error;
     }
   }  /**

@@ -272,7 +272,7 @@ export function validateRequestBody(options = {}) {
         req.body = sanitizeObject(req.body, 0, maxDepth);
       }
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.warn('Request body validation failed', {
         error: error.message,
         userId: req.user?.id,
@@ -301,7 +301,7 @@ export function validateQueryParams(options = {}) {
         sanitizeQueryParams(req.query, { allowArrays });
       }
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.warn('Query params validation failed', {
         error: error.message,
         userId: req.user?.id,
@@ -341,7 +341,7 @@ export function validateUrlParams() {
         }
       }
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.warn('URL params validation failed', {
         error: error.message,
         userId: req.user?.id,
@@ -428,7 +428,7 @@ export function blockFilePathInjection() {
       if (req.body) checkObject(req.body);
       if (req.query) checkObject(req.query);
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.warn('File path injection attempt detected', {
         userId: req.user?.id,
         ipAddress: req.ip,

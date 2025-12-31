@@ -8,7 +8,7 @@ interface MetadataBuilderProps {
   onChange: (metadata: Record<string, any>) => void;
 }
 
-export function MetadataBuilder({ metadata, onChange }: MetadataBuilderProps) {
+export function MetadataBuilder({ _metadata, _onChange }: MetadataBuilderProps) {
   return (
     <div className="border rounded-lg p-4">
       <h4 className="font-medium mb-3">Metadata</h4>

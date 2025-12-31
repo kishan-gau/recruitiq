@@ -54,8 +54,8 @@ export const workersService = {
   /**
    * Gets availability for a worker (using ScheduleHubClient)
    */
-  async getAvailability(employeeId: string) {
-    const response = await schedulehubClient.getAvailability(employeeId);
+  async getAvailability(_employeeId: string) {
+    const response = await schedulehubClient.getAvailability(_employeeId);
     return response.data?.availability || response.data || [];
   },
 

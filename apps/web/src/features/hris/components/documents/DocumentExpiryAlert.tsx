@@ -10,7 +10,7 @@ import {
   FileText,
   ChevronRight,
 } from 'lucide-react';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
 import type { Document } from '@/types/documents.types';

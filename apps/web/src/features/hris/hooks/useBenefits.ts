@@ -56,9 +56,9 @@ export function useEnrollEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_params: { employeeId: string; planId: string }) => {
+    mutationFn: async (_params: { _employeeId: string; planId: string }) => {
       // TODO: Implement enrollEmployee in backend NexusClient
-      // return benefitsService.enrollEmployee(_params.employeeId, _params.planId);
+      // return benefitsService.enrollEmployee(_params._employeeId, _params.planId);
       throw new Error('Employee enrollment not yet implemented');
     },
     onSuccess: () => {
@@ -69,9 +69,9 @@ export function useEnrollEmployee() {
 
 export function useCheckEligibility() {
   return useMutation({
-    mutationFn: async (_params: { employeeId: string; planId: string }) => 
+    mutationFn: async (_params: { _employeeId: string; planId: string }) => 
       // TODO: Implement checkEligibility in backend NexusClient
-      // return benefitsService.checkEligibility(_params.employeeId, _params.planId);
+      // return benefitsService.checkEligibility(_params._employeeId, _params.planId);
        ({ eligible: false, reason: 'Eligibility checking not yet implemented' })
     ,
   });

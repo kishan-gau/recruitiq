@@ -1,4 +1,3 @@
-import React from 'react';
 
 import { RolesManagement } from '@features/scheduling/components';
 

@@ -14,7 +14,7 @@ class ProductConfigService {
         [productId]
       );
       return result.rows[0]?.config || {};
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching product config:', error);
       throw error;
     }
@@ -27,7 +27,7 @@ class ProductConfigService {
         [config, productId]
       );
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating product config:', error);
       throw error;
     }

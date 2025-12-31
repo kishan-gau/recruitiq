@@ -16,7 +16,7 @@ export const validationController = {
       const validation = await LicenseValidator.validateLicense(licenseKey, instanceKey)
 
       res.json(validation)
-    } catch (error) {
+    } catch (_error) {
       console.error('Validation error:', error)
       res.status(500).json({ 
         valid: false,
@@ -42,7 +42,7 @@ export const validationController = {
         hasFeature,
         feature 
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Feature check error:', error)
       res.status(500).json({ 
         hasFeature: false,
@@ -65,7 +65,7 @@ export const validationController = {
       const limitCheck = await LicenseValidator.checkLimit(customerId, resourceType, currentCount)
 
       res.json(limitCheck)
-    } catch (error) {
+    } catch (_error) {
       console.error('Limit check error:', error)
       res.status(500).json({ 
         allowed: false,
@@ -88,7 +88,7 @@ export const validationController = {
       const limitCheck = await LicenseValidator.checkLimitByInstance(instanceKey, resourceType, currentCount)
 
       res.json(limitCheck)
-    } catch (error) {
+    } catch (_error) {
       console.error('Check limit by instance error:', error)
       res.status(500).json({ 
         allowed: false,
@@ -110,7 +110,7 @@ export const validationController = {
       }
 
       res.json(details)
-    } catch (error) {
+    } catch (_error) {
       console.error('Get license details error:', error)
       res.status(500).json({ error: 'Failed to fetch license details' })
     }
@@ -128,7 +128,7 @@ export const validationController = {
       const result = await LicenseGenerator.parseLicenseFile(licenseFile)
 
       res.json(result)
-    } catch (error) {
+    } catch (_error) {
       console.error('Verify license file error:', error)
       res.status(500).json({ 
         valid: false,
@@ -146,7 +146,7 @@ export const validationController = {
         publicKey,
         algorithm: 'RSA-SHA256'
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get public key error:', error)
       res.status(500).json({ error: 'Failed to fetch public key' })
     }
@@ -161,7 +161,7 @@ export const validationController = {
       const history = await LicenseValidator.getValidationHistory(customerId, parseInt(limit))
 
       res.json({ history })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get validation history error:', error)
       res.status(500).json({ error: 'Failed to fetch validation history' })
     }

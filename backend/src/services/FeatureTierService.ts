@@ -62,7 +62,7 @@ constructor() {
       return features.filter(f => 
         f.minTier && includedTiers.includes(f.minTier)
       );
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting tier features', {
         productId,
         tier,
@@ -159,7 +159,7 @@ constructor() {
       });
 
       return result;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error syncing tier features', {
         organizationId,
         productId,
@@ -220,7 +220,7 @@ constructor() {
           netChange: targetFeatures.length - currentFeatures.length
         }
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error previewing tier change', {
         organizationId,
         productId,
@@ -304,7 +304,7 @@ constructor() {
       });
 
       return grant;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error granting add-on', {
         organizationId,
         featureId,
@@ -346,7 +346,7 @@ constructor() {
       });
 
       return revoked;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error revoking add-on', {
         grantId,
         error: error.message
@@ -400,7 +400,7 @@ constructor() {
       });
 
       return grant;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error manual grant', {
         organizationId,
         featureId,
@@ -459,7 +459,7 @@ constructor() {
       });
 
       return grant;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error granting trial', {
         organizationId,
         featureId,

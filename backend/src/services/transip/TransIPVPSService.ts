@@ -49,7 +49,7 @@ constructor(client = null) {
       });
 
       return products;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching VPS products', {
         error: error.message,
         stack: error.stack,
@@ -76,7 +76,7 @@ constructor(client = null) {
       });
 
       return vpsList;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching VPS instances', {
         error: error.message,
         stack: error.stack,
@@ -105,7 +105,7 @@ constructor(client = null) {
       });
 
       return vps;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching VPS details', {
         vpsName,
         error: error.message,
@@ -203,7 +203,7 @@ constructor(client = null) {
           ? 'Test order completed successfully (no real VPS created)' 
           : 'VPS order placed successfully'
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error ordering VPS', {
         orderData,
         error: error.message,
@@ -240,7 +240,7 @@ constructor(client = null) {
           ? 'Test start command completed (no real VPS affected)' 
           : 'VPS start command sent'
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error starting VPS', {
         vpsName,
         error: error.message,
@@ -277,7 +277,7 @@ constructor(client = null) {
           ? 'Test stop command completed (no real VPS affected)' 
           : 'VPS stop command sent'
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error stopping VPS', {
         vpsName,
         error: error.message,
@@ -314,7 +314,7 @@ constructor(client = null) {
           ? 'Test reboot command completed (no real VPS affected)' 
           : 'VPS reboot command sent'
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error rebooting VPS', {
         vpsName,
         error: error.message,
@@ -361,7 +361,7 @@ constructor(client = null) {
           ? 'Test cancellation completed (no real VPS cancelled)' 
           : `VPS cancellation scheduled (${endTime})`
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error cancelling VPS', {
         vpsName,
         endTime,
@@ -392,7 +392,7 @@ constructor(client = null) {
       });
 
       return operatingSystems;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching operating systems', {
         error: error.message,
         stack: error.stack,
@@ -434,7 +434,7 @@ constructor(client = null) {
       });
 
       return statistics;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching VPS usage statistics', {
         vpsName,
         error: error.message,

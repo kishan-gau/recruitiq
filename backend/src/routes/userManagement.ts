@@ -65,7 +65,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
       success: true,
       users: result.rows
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to fetch users', { error: error.message });
     res.status(500).json({
       success: false,
@@ -150,7 +150,7 @@ router.get('/:id', requirePlatformPermission('portal.view'), async (req, res) =>
         role_permissions: rolePerms
       }
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to fetch user', { error: error.message, stack: error.stack, userId: req.params.id });
     res.status(500).json({
       success: false,
@@ -246,7 +246,7 @@ router.post('/', requirePlatformPermission('portal.manage'), async (req, res) =>
       success: true,
       user: result.rows[0]
     });
-  } catch (error) {
+  } catch (_error) {
     await client.query('ROLLBACK');
     logger.error('Failed to create user', { error: error.message });
     res.status(500).json({
@@ -348,7 +348,7 @@ router.put('/:id', requirePlatformPermission('portal.manage'), async (req, res) 
       success: true,
       user: result.rows[0]
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to update user', { error: error.message, userId: req.params.id });
     res.status(500).json({
       success: false,
@@ -399,7 +399,7 @@ router.put('/:id/permissions', requirePlatformPermission('portal.manage'), async
       success: true,
       user: result.rows[0]
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to update user permissions', { error: error.message, userId: req.params.id });
     res.status(500).json({
       success: false,
@@ -449,7 +449,7 @@ router.delete('/:id', requirePlatformPermission('portal.manage'), async (req, re
       success: true,
       message: 'User deleted successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to delete user', { error: error.message, userId: req.params.id });
     res.status(500).json({
       success: false,

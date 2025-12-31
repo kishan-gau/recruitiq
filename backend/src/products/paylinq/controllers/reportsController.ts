@@ -76,7 +76,7 @@ async function getPayrollSummaryReport(req, res) {
       success: true,
       summary: summary,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error generating payroll summary report', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -190,7 +190,7 @@ async function getEmployeeEarningsReport(req, res) {
       success: true,
       report: report,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error generating employee earnings report', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -277,7 +277,7 @@ async function getTaxLiabilityReport(req, res) {
       success: true,
       report: report,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error generating tax liability report', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -366,7 +366,7 @@ async function getTimeAttendanceReport(req, res) {
       success: true,
       report: report,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error generating time attendance report', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -449,7 +449,7 @@ async function getDeductionsReport(req, res) {
       success: true,
       report: report,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error generating deductions report', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -512,7 +512,7 @@ async function getWorkerTypeDistributionReport(req, res) {
       success: true,
       report: report,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error generating worker type distribution report', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -572,7 +572,7 @@ async function exportReport(req, res) {
         estimatedTime: '2-5 minutes',
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error exporting report:', error);
 
     res.status(500).json({

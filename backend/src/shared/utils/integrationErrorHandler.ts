@@ -89,7 +89,7 @@ class IntegrationErrorHandler {
           executionTimeMs
         };
 
-      } catch (error) {
+      } catch (_error) {
         lastError = error;
 
         // Record failure
@@ -169,7 +169,7 @@ class IntegrationErrorHandler {
         integrationResult: result
       };
 
-    } catch (error) {
+    } catch (_error) {
       // Should never happen since executeWithRetry catches all errors
       this.logger.error('[Integration] Unexpected error in non-blocking execution', {
         integration: integrationName,

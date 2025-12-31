@@ -32,7 +32,7 @@ class AvailabilityController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in listAvailability controller:', error);
       next(error);
     }
@@ -54,7 +54,7 @@ class AvailabilityController {
       );
 
       res.status(201).json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in createAvailability controller:', error);
       next(error);
     }
@@ -78,7 +78,7 @@ class AvailabilityController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in updateAvailability controller:', error);
       next(error);
     }
@@ -99,7 +99,7 @@ class AvailabilityController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in deleteAvailability controller:', error);
       next(error);
     }
@@ -127,7 +127,7 @@ class AvailabilityController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getWorkerAvailability controller:', error);
       next(error);
     }
@@ -159,7 +159,7 @@ class AvailabilityController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in checkAvailability controller:', error);
       next(error);
     }
@@ -190,7 +190,7 @@ class AvailabilityController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getAvailableWorkers controller:', error);
       next(error);
     }
@@ -213,7 +213,7 @@ class AvailabilityController {
       );
 
       res.status(201).json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in createDefaultAvailability controller:', error);
       next(error);
     }

@@ -81,7 +81,7 @@ export async function sendMessage(req, res, next) {
       message: 'Message sent successfully'
     });
     
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -150,7 +150,7 @@ export async function getApplicationCommunications(req, res, next) {
       }))
     });
     
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -185,7 +185,7 @@ export async function markAsRead(req, res, next) {
       message: 'Communication marked as read'
     });
     
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -221,7 +221,7 @@ export async function deleteCommunication(req, res, next) {
       message: 'Communication deleted successfully'
     });
     
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }

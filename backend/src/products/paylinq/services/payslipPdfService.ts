@@ -104,7 +104,7 @@ class PayslipPdfService {
       }
 
       return templateResult.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting payslip template', { error: error.message, paycheckId, organizationId });
       throw error;
     }
@@ -168,7 +168,7 @@ class PayslipPdfService {
       );
 
       return pdfBuffer;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error generating payslip PDF', { error: error.message, paycheckId, organizationId });
       throw error;
     }
@@ -297,7 +297,7 @@ class PayslipPdfService {
         }
 
         doc.end();
-      } catch (error) {
+      } catch (_error) {
         reject(error);
       }
     });

@@ -1,4 +1,3 @@
-import React from 'react';
 
 import { StationsManagement } from '@features/scheduling/components';
 

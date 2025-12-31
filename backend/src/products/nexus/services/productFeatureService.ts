@@ -24,7 +24,7 @@ class ProductFeatureService {
         ORDER BY f.name
       `, [productId]);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching product features:', error);
       throw error;
     }
@@ -40,7 +40,7 @@ class ProductFeatureService {
         RETURNING *
       `, [productId, featureId]);
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error enabling product feature:', error);
       throw error;
     }
@@ -55,7 +55,7 @@ class ProductFeatureService {
         RETURNING *
       `, [productId, featureId]);
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error disabling product feature:', error);
       throw error;
     }
@@ -70,7 +70,7 @@ class ProductFeatureService {
         RETURNING *
       `, [config, productId, featureId]);
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating product feature config:', error);
       throw error;
     }

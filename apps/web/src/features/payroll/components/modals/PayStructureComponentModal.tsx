@@ -1,16 +1,17 @@
 import { AlertCircle, DollarSign, Percent, Clock, FileText, ListFilter, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Input, TextArea } from '@recruitiq/ui';
+
 import AvailableComponentsPicker from '@/components/ui/AvailableComponentsPicker';
 import ConditionsBuilder from '@/components/ui/ConditionsBuilder';
 import CurrencySelector from '@/components/ui/CurrencySelector';
-import { Dialog } from '@recruitiq/ui';
-import { FormField, Input, TextArea } from '@recruitiq/ui';
 import MetadataBuilder from '@/components/ui/MetadataBuilder';
-import { useToast } from '@/hooks/useToast';
 import { type ForfaitRule } from '@/hooks';
 import { usePayComponents } from '@/hooks';
 import type { PayStructureComponent } from '@/hooks';
+import { useToast } from '@/hooks/useToast';
 
 interface PayStructureComponentModalProps {
   isOpen: boolean;

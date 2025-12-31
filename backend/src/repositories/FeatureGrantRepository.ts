@@ -53,7 +53,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findById', {
         table: this.tableName,
         id,
@@ -92,7 +92,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findActiveGrant', {
         table: this.tableName,
         organizationId,
@@ -142,7 +142,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findActiveGrantByKey', {
         table: this.tableName,
         organizationId,
@@ -212,7 +212,7 @@ constructor() {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findByOrganization', {
         table: this.tableName,
         organizationId,
@@ -250,7 +250,7 @@ constructor() {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findByFeature', {
         table: this.tableName,
         featureId,
@@ -318,7 +318,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in create', {
         table: this.tableName,
         data,
@@ -394,7 +394,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in update', {
         table: this.tableName,
         id,
@@ -432,7 +432,7 @@ constructor() {
       }
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in incrementUsage', {
         table: this.tableName,
         id,
@@ -482,7 +482,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in revoke', {
         table: this.tableName,
         id,
@@ -567,7 +567,7 @@ constructor() {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in bulkGrant', {
         table: this.tableName,
         organizationId,
@@ -624,7 +624,7 @@ constructor() {
       });
 
       return result.rowCount;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in bulkRevoke', {
         table: this.tableName,
         organizationId,
@@ -657,7 +657,7 @@ constructor() {
       });
 
       return result.rows[0].exists;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in exists', {
         table: this.tableName,
         organizationId,

@@ -1,10 +1,11 @@
+import { lazy } from 'react';
+import { Route, Navigate } from 'react-router-dom';
+
 import { ProtectedRoute } from '@core/routing/ProtectedRoute';
 import { AuthLayout } from '@shared/layouts/AuthLayout';
 import { MainLayout } from '@shared/layouts/MainLayout';
 
 // Lazy load feature modules
-import { lazy } from 'react';
-import { Route, Navigate } from 'react-router-dom';
 
 // Auth pages
 const Login = lazy(() => import('@core/auth/pages/Login'));

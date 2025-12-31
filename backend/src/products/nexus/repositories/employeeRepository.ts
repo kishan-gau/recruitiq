@@ -48,7 +48,7 @@ constructor(database = null) {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding employee by ID', { id, organizationId, error: error.message });
       throw error;
     }
@@ -132,7 +132,7 @@ constructor(database = null) {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding all employees', { filters, organizationId, error: error.message });
       throw error;
     }
@@ -170,7 +170,7 @@ constructor(database = null) {
       });
 
       return parseInt(result.rows[0].count);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error counting employees', { filters, organizationId, error: error.message });
       throw error;
     }
@@ -194,7 +194,7 @@ constructor(database = null) {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding employee by email', { email, organizationId, error: error.message });
       throw error;
     }
@@ -218,7 +218,7 @@ constructor(database = null) {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding employee by number', { employeeNumber, organizationId, error: error.message });
       throw error;
     }
@@ -298,7 +298,7 @@ constructor(database = null) {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating employee', { employeeData, organizationId, error: error.message });
       throw error;
     }
@@ -394,7 +394,7 @@ constructor(database = null) {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating employee', { id, employeeData, organizationId, error: error.message });
       throw error;
     }
@@ -424,7 +424,7 @@ constructor(database = null) {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error terminating employee', { id, terminationDate, organizationId, error: error.message });
       throw error;
     }
@@ -453,7 +453,7 @@ constructor(database = null) {
       });
 
       return result.rowCount > 0;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error deleting employee', { id, organizationId, error: error.message });
       throw error;
     }
@@ -479,7 +479,7 @@ constructor(database = null) {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding employees by manager', { managerId, organizationId, error: error.message });
       throw error;
     }
@@ -526,7 +526,7 @@ constructor(database = null) {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting org chart data', { organizationId, error: error.message });
       throw error;
     }
@@ -551,7 +551,7 @@ constructor(database = null) {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding employees by hire date range', { startDate, endDate, organizationId, error: error.message });
       throw error;
     }

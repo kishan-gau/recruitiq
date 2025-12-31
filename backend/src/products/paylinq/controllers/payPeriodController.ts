@@ -31,7 +31,7 @@ export const getPayPeriodConfig = async (req, res) => {
       success: true,
       payPeriodConfig: config
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting pay period config:', { error: error.message, organizationId: req.organizationId });
     res.status(500).json({
       success: false,
@@ -60,7 +60,7 @@ export const savePayPeriodConfig = async (req, res) => {
       payPeriodConfig: config,
       message: 'Pay period configuration saved successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
@@ -94,7 +94,7 @@ export const getCurrentPayPeriod = async (req, res) => {
       success: true,
       payPeriod
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -128,7 +128,7 @@ export const getNextPayPeriod = async (req, res) => {
       success: true,
       payPeriod
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -163,7 +163,7 @@ export const getHolidays = async (req, res) => {
       success: true,
       holidays
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting holidays:', { error: error.message, organizationId: req.organizationId });
     res.status(500).json({
       success: false,
@@ -190,7 +190,7 @@ export const createHoliday = async (req, res) => {
       holiday,
       message: 'Holiday created successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
@@ -225,7 +225,7 @@ export const deleteHoliday = async (req, res) => {
       success: true,
       message: 'Holiday deleted successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,

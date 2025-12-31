@@ -28,7 +28,7 @@ export const authenticateAdmin = async (req, res, next) => {
     // Attach user to request
     req.user = user
     next()
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' })
     }

@@ -32,7 +32,7 @@ class ProductService {
       `);
 
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching active products:', error);
       throw error;
     }
@@ -79,7 +79,7 @@ class ProductService {
       `, params);
 
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching products:', error);
       throw error;
     }
@@ -109,7 +109,7 @@ class ProductService {
       `, [id]);
 
       return result.rows[0] || null;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching product by ID:', error);
       throw error;
     }
@@ -139,7 +139,7 @@ class ProductService {
       `, [slug]);
 
       return result.rows[0] || null;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching product by slug:', error);
       throw error;
     }
@@ -186,7 +186,7 @@ class ProductService {
 
       product.features = featuresResult.rows;
       return product;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching product with features:', error);
       throw error;
     }
@@ -226,7 +226,7 @@ class ProductService {
 
       logger.info('Product created', { productId: result.rows[0].id, slug, userId });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating product:', error);
       throw error;
     }
@@ -286,7 +286,7 @@ class ProductService {
 
       logger.info('Product updated', { productId: id, userId });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating product:', error);
       throw error;
     }
@@ -313,7 +313,7 @@ class ProductService {
 
       logger.info('Product deleted', { productId: id, userId });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error deleting product:', error);
       throw error;
     }
@@ -347,7 +347,7 @@ class ProductService {
       `, [`%${searchQuery}%`]);
 
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error searching products:', error);
       throw error;
     }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 import { Dialog } from '@recruitiq/ui';
 import { FormField, Input, Select } from '@recruitiq/ui';
+
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks';
 import { handleApiError } from '@/utils/errorHandler';
@@ -21,7 +22,7 @@ interface ShiftModalProps {
   onSuccess: () => void;
 }
 
-export default function ShiftModal({ isOpen, onClose, employeeId, date, existingShift, onSuccess }: ShiftModalProps) {
+export default function ShiftModal({ isOpen, onClose, _employeeId, date, existingShift, onSuccess }: ShiftModalProps) {
   const { success, error } = useToast();
   const { paylinq } = usePaylinqAPI();
   const { data: shiftTypes = [], isLoading: loadingShiftTypes } = useShiftTypes({ status: 'active' });
@@ -45,13 +46,13 @@ export default function ShiftModal({ isOpen, onClose, employeeId, date, existing
   }, [shiftTypes, formData.shiftTypeId]);
 
   // Debug logging
-  console.log('ShiftModal props:', { employeeId, date, dateType: typeof date, dateValue: date });
+  console.log('ShiftModal props:', { _employeeId, date, dateType: typeof date, dateValue: date });
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     // Validate required fields from parent component
-    if (!employeeId) {
+    if (!_employeeId) {
       error('Employee must be selected to create a shift');
       return false;
     }

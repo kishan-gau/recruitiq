@@ -23,7 +23,7 @@ class ProductPermissionController {
       }
 
       res.json(products);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -45,7 +45,7 @@ class ProductPermissionController {
       }
 
       res.json({ hasAccess });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -59,7 +59,7 @@ class ProductPermissionController {
       const { organizationId, productId, featureKey } = req.params;
       const isEnabled = await productPermissionService.isFeatureEnabled(organizationId, productId, featureKey);
       res.json({ isEnabled });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -81,7 +81,7 @@ class ProductPermissionController {
 
       const permission = await productPermissionService.grantAccess(permissionData, userId);
       res.status(201).json(permission);
-    } catch (error) {
+    } catch (_error) {
       if (error.message === 'Product not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -106,7 +106,7 @@ class ProductPermissionController {
       );
 
       res.json(permission);
-    } catch (error) {
+    } catch (_error) {
       if (error.message === 'Permission not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -125,7 +125,7 @@ class ProductPermissionController {
 
       const permission = await productPermissionService.revokeAccess(organizationId, productId, userId);
       res.json(permission);
-    } catch (error) {
+    } catch (_error) {
       if (error.message === 'Permission not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -150,7 +150,7 @@ class ProductPermissionController {
       );
 
       res.json(permission);
-    } catch (error) {
+    } catch (_error) {
       if (error.message === 'Permission not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -175,7 +175,7 @@ class ProductPermissionController {
       );
 
       res.json(permission);
-    } catch (error) {
+    } catch (_error) {
       if (error.message === 'Permission not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -200,7 +200,7 @@ class ProductPermissionController {
       );
 
       res.json(permission);
-    } catch (error) {
+    } catch (_error) {
       res.status(400).json({ error: error.message });
     }
   }
@@ -213,7 +213,7 @@ class ProductPermissionController {
     try {
       const expiredLicenses = await productPermissionService.checkExpiredLicenses();
       res.json(expiredLicenses);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({ error: error.message });
     }
   }

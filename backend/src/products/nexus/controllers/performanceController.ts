@@ -23,7 +23,7 @@ class PerformanceController {
       const { organization_id: organizationId, id: userId } = req.user;
       const review = await this.service.createReview(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: review });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in createReview controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -39,7 +39,7 @@ class PerformanceController {
       const { id } = req.params;
       const review = await this.service.getReview(id, organizationId);
       res.json({ success: true, data: review });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getReview controller', { error: error.message });
       const status = error.message === 'Review not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -63,7 +63,7 @@ class PerformanceController {
 
       const reviews = await this.service.listReviews(filters, organizationId, options);
       res.json({ success: true, data: reviews });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in listReviews controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -79,7 +79,7 @@ class PerformanceController {
       const { id } = req.params;
       const review = await this.service.updateReview(id, req.body, organizationId, userId);
       res.json({ success: true, data: review });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in updateReview controller', { error: error.message });
       const status = error.message === 'Review not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -95,7 +95,7 @@ class PerformanceController {
       const { organization_id: organizationId } = req.user;
       const statistics = await this.service.getReviewsStatistics(organizationId);
       res.json({ success: true, data: statistics });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getReviewsStatistics controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -112,7 +112,7 @@ class PerformanceController {
       const { organization_id: organizationId, id: userId } = req.user;
       const goal = await this.service.createGoal(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: goal });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in createGoal controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -128,7 +128,7 @@ class PerformanceController {
       const { id } = req.params;
       const goal = await this.service.updateGoal(id, req.body, organizationId, userId);
       res.json({ success: true, data: goal });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in updateGoal controller', { error: error.message });
       const status = error.message === 'Goal not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -152,7 +152,7 @@ class PerformanceController {
 
       const goals = await this.service.listGoals(filters, organizationId, options);
       res.json({ success: true, data: goals });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in listGoals controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -167,7 +167,7 @@ class PerformanceController {
       const { organization_id: organizationId } = req.user;
       const statistics = await this.service.getGoalsStatistics(organizationId);
       res.json({ success: true, data: statistics });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getGoalsStatistics controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -184,7 +184,7 @@ class PerformanceController {
       const { organization_id: organizationId, id: userId } = req.user;
       const feedback = await this.service.createFeedback(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: feedback });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in createFeedback controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -206,7 +206,7 @@ class PerformanceController {
         parseInt(limit)
       );
       res.json({ success: true, data: feedback });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getEmployeeFeedback controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }

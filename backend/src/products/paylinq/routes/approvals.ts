@@ -58,7 +58,7 @@ router.post('/', requirePermission('approvals:create'), async (req, res) => {
       success: true,
       data: result
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating approval request', { error, userId: req.userId });
     res.status(500).json({
       success: false,
@@ -88,7 +88,7 @@ router.get('/pending', requirePermission('approvals:read'), async (req, res) => 
       data: approvals,
       count: approvals.length
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching pending approvals', { error, userId: req.userId });
     res.status(500).json({
       success: false,
@@ -146,7 +146,7 @@ router.get('/:id', requirePermission('approvals:read'), async (req, res) => {
       success: true,
       data: result.rows[0]
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching approval request', { error, requestId: req.params.id });
     res.status(500).json({
       success: false,
@@ -186,7 +186,7 @@ router.post('/:id/approve', requirePermission('approvals:approve'), async (req, 
       message: 'Approval request approved successfully',
       data: request
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error approving request', { error, requestId: req.params.id, userId: req.userId });
     
     if (error.message.includes('not authorized') || error.message.includes('already approved')) {
@@ -234,7 +234,7 @@ router.post('/:id/reject', requirePermission('approvals:approve'), async (req, r
       message: 'Approval request rejected successfully',
       data: request
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error rejecting request', { error, requestId: req.params.id, userId: req.userId });
     
     if (error.message.includes('not authorized')) {
@@ -270,7 +270,7 @@ router.get('/history/:referenceType/:referenceId', requirePermission('approvals:
       success: true,
       data: history
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching approval history', { error, params: req.params });
     res.status(500).json({
       success: false,
@@ -294,7 +294,7 @@ router.post('/expire', requirePermission('system:admin'), async (req, res) => {
       message: `Expired ${expiredCount} old approval requests`,
       data: { expiredCount }
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error expiring old requests', { error });
     res.status(500).json({
       success: false,
@@ -324,7 +324,7 @@ router.get('/statistics', requirePermission('approvals:read'), async (req, res) 
       success: true,
       data: result.rows
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching approval statistics', { error });
     res.status(500).json({
       success: false,

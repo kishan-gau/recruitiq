@@ -32,7 +32,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [organizationId], organizationId);
       return result.rows.map(row => new ProductPermission(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding permissions by organization', { organizationId, error: error.message });
       throw error;
     }

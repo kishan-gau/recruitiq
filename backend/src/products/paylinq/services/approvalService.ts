@@ -80,7 +80,7 @@ class ApprovalService {
         requiresApproval: true,
         approvalRequest
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating approval request', { error, requestData });
       throw error;
     }
@@ -114,7 +114,7 @@ class ApprovalService {
       });
 
       return applicableRules;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting applicable rules', { error, organizationId, requestType });
       throw error;
     }
@@ -228,7 +228,7 @@ class ApprovalService {
       });
 
       return request;
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       logger.error('Error approving request', { error, requestId, userId });
       throw error;
@@ -285,7 +285,7 @@ class ApprovalService {
       logger.info('Approval request rejected', { requestId, userId });
 
       return request;
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       logger.error('Error rejecting request', { error, requestId, userId });
       throw error;
@@ -410,7 +410,7 @@ class ApprovalService {
     try {
       const result = await pool.query(queryText, params);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting pending approvals', { error, organizationId });
       throw error;
     }
@@ -457,7 +457,7 @@ class ApprovalService {
     try {
       const result = await pool.query(query, [referenceType, referenceId]);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting approval history', { error, referenceType, referenceId });
       throw error;
     }
@@ -494,7 +494,7 @@ class ApprovalService {
     try {
       await pool.query(query, [requestId, approverIds]);
       logger.info('Approval notifications created', { requestId, count: approverIds.length });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating notifications', { error, requestId });
       // Don't throw - notifications are non-critical
     }
@@ -514,7 +514,7 @@ class ApprovalService {
 
     try {
       await pool.query(query, [request.id, request.created_by]);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error sending approved notification', { error, requestId: request.id });
     }
   }
@@ -536,7 +536,7 @@ class ApprovalService {
 
     try {
       await pool.query(query, [request.id, request.created_by, message]);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error sending rejected notification', { error, requestId: request.id });
     }
   }
@@ -555,7 +555,7 @@ class ApprovalService {
       }
       
       return expiredCount;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error expiring old requests', { error });
       throw error;
     }

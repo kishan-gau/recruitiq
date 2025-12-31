@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 
+import { Button } from '@recruitiq/ui';
+
 import {
   useCurrencyConfig,
   useUpdateCurrencyConfig,
   useCacheStats,
   useClearCache,
 } from '@/hooks';
-import { Button } from '@recruitiq/ui';
+
 import { CURRENCY_SYMBOLS, CURRENCY_NAMES } from '../shared/CurrencyDisplay';
 
 const AVAILABLE_CURRENCIES = [

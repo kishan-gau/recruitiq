@@ -43,7 +43,7 @@ router.post('/deployments/callback', async (req, res) => {
     
     try {
       jwt.verify(token, secret);
-    } catch (err) {
+    } catch (_err) {
       return res.status(401).json({
         success: false,
         error: 'Invalid service token'
@@ -165,7 +165,7 @@ router.post('/deployments/callback', async (req, res) => {
       message: 'Callback processed'
     });
 
-  } catch (error) {
+  } catch (_error) {
     logger.error('Deployment callback error', { error: error.message });
     res.status(500).json({
       success: false,
@@ -220,7 +220,7 @@ router.post('/tenant-logs', async (req, res) => {
       received: logs?.length || 0
     });
 
-  } catch (error) {
+  } catch (_error) {
     logger.error('Tenant logs error', { error: error.message });
     res.status(500).json({
       success: false,
@@ -270,7 +270,7 @@ router.post('/tenant-events', async (req, res) => {
       eventType
     });
 
-  } catch (error) {
+  } catch (_error) {
     logger.error('Tenant event error', { error: error.message });
     res.status(500).json({
       success: false,
@@ -361,7 +361,7 @@ router.post('/licenses/validate', async (req, res) => {
       expiresAt: license.expires_at
     });
 
-  } catch (error) {
+  } catch (_error) {
     logger.error('License validation error', { error: error.message });
     res.status(500).json({
       success: false,
@@ -487,7 +487,7 @@ router.get('/logs', async (req, res) => {
         },
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to fetch portal logs', { error: error.message });
     res.status(500).json({
       success: false,
@@ -588,7 +588,7 @@ router.get('/logs/security', async (req, res) => {
         },
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to fetch security events', { error: error.message });
     res.status(500).json({
       success: false,
@@ -649,7 +649,7 @@ router.get('/logs/search', async (req, res) => {
         query: q,
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to search logs', { error: error.message });
     res.status(500).json({
       success: false,
@@ -722,7 +722,7 @@ router.get('/logs/download', async (req, res) => {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="logs-${Date.now()}.csv"`);
     res.send(csv);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to download logs', { error: error.message });
     res.status(500).json({
       success: false,
@@ -783,7 +783,7 @@ router.get('/stats', async (req, res) => {
         }, {}),
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to fetch portal stats', { error: error.message });
     res.status(500).json({
       success: false,

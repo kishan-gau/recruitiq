@@ -122,7 +122,7 @@ constructor(options = {}) {
       console.log(`[LogReporter] Sent ${logs.length} logs to portal`);
       return { success: true, count: logs.length };
 
-    } catch (error) {
+    } catch (_error) {
       console.error('[LogReporter] Failed to send logs:', error.message);
       
       // Store locally if portal is unreachable
@@ -151,7 +151,7 @@ constructor(options = {}) {
       await fs.writeFile(filepath, JSON.stringify(logs, null, 2));
       
       console.log(`[LogReporter] Stored ${logs.length} logs locally: ${filename}`);
-    } catch (error) {
+    } catch (_error) {
       console.error('[LogReporter] Failed to store logs locally:', error.message);
       // Re-add logs to buffer as last resort
       this.logBuffer.push(...logs);
@@ -207,7 +207,7 @@ constructor(options = {}) {
           await fs.unlink(filepath);
           totalSent += logs.length;
           
-        } catch (error) {
+        } catch (_error) {
           console.error(`[LogReporter] Failed to retry ${file}:`, error.message);
           errors++;
         }
@@ -219,7 +219,7 @@ constructor(options = {}) {
         errors
       };
 
-    } catch (error) {
+    } catch (_error) {
       return { success: false, error: error.message };
     }
   }
@@ -245,7 +245,7 @@ constructor(options = {}) {
         await this.sendLogBatch();
         // Also retry any locally stored logs
         await this.retryLocalLogs();
-      } catch (error) {
+      } catch (_error) {
         console.error('[LogReporter] Periodic flush error:', error.message);
       }
     }, this.flushInterval);
@@ -333,7 +333,7 @@ constructor(options = {}) {
       );
 
       return { success: true };
-    } catch (error) {
+    } catch (_error) {
       console.error(`[LogReporter] Failed to report event ${eventType}:`, error.message);
       return { success: false, error: error.message };
     }

@@ -1,4 +1,3 @@
-import ProfileMenu from '@shared/components/ProfileMenu';
 import { 
   Users, 
   Briefcase, 
@@ -11,6 +10,8 @@ import { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import { useAuth } from '@recruitiq/auth';
+
+import ProfileMenu from '@shared/components/ProfileMenu';
 
 
 const navigation = [

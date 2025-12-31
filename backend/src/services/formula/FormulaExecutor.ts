@@ -33,7 +33,7 @@ class FormulaExecutor {
         executionTime,
         variablesUsed: Array.from(usedVariables),
       });
-    } catch (error) {
+    } catch (_error) {
       if (error instanceof FormulaExecutionError) {
         throw error;
       }

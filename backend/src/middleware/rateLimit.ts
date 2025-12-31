@@ -74,7 +74,7 @@ class RateLimitManager {
       });
 
       await this.redisClient.connect();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize Redis for rate limiting:', error);
       logger.warn('Falling back to memory-based rate limiting');
       this.redisEnabled = false;

@@ -63,7 +63,7 @@ constructor() {
       });
 
       return this.client;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize TransIP client', {
         error: error.message,
         privateKeyPath: config.transip.privateKeyPath
@@ -97,7 +97,7 @@ constructor() {
         isBlocked: vps.isBlocked,
         isCustomerLocked: vps.isCustomerLocked
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to get VPS info', {
         error: error.message,
         vpsName: this.vpsName
@@ -119,7 +119,7 @@ constructor() {
       });
 
       return metrics;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to get VPS metrics', {
         error: error.message,
         vpsName: this.vpsName
@@ -141,7 +141,7 @@ constructor() {
       });
 
       return { success: true, message: 'VPS started successfully' };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to start VPS', {
         error: error.message,
         vpsName: this.vpsName
@@ -163,7 +163,7 @@ constructor() {
       });
 
       return { success: true, message: 'VPS stopped successfully' };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to stop VPS', {
         error: error.message,
         vpsName: this.vpsName
@@ -185,7 +185,7 @@ constructor() {
       });
 
       return { success: true, message: 'VPS rebooted successfully' };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to reboot VPS', {
         error: error.message,
         vpsName: this.vpsName
@@ -208,7 +208,7 @@ constructor() {
       });
 
       return snapshots;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to get VPS snapshots', {
         error: error.message,
         vpsName: this.vpsName
@@ -232,7 +232,7 @@ constructor() {
       });
 
       return snapshot;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to create VPS snapshot', {
         error: error.message,
         vpsName: this.vpsName,
@@ -256,7 +256,7 @@ constructor() {
       });
 
       return { success: true, message: 'VPS reverted to snapshot successfully' };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to revert VPS to snapshot', {
         error: error.message,
         vpsName: this.vpsName,
@@ -282,7 +282,7 @@ constructor() {
         testMode: this.testMode,
         vpsName: this.vpsName
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('TransIP health check failed', {
         error: error.message
       });

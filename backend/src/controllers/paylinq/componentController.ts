@@ -93,7 +93,7 @@ export async function getPaycheckComponents(req, res, next) {
       organizationId
     });
 
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching paycheck components', {
       error: error.message,
       paycheckId: req.params.id,

@@ -82,7 +82,7 @@ export async function getEmailSettings(req, res) {
         updatedAt: settings.updated_at,
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching email settings:', error);
     res.status(500).json({
       success: false,
@@ -191,7 +191,7 @@ export async function saveEmailSettings(req, res) {
         fromName,
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error saving email settings:', error);
     res.status(500).json({
       success: false,
@@ -242,7 +242,7 @@ export async function testEmailConfiguration(req, res) {
         message: result.message,
       });
     }
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error testing email configuration:', error);
     res.status(500).json({
       success: false,
@@ -275,7 +275,7 @@ export async function deleteEmailSettings(req, res) {
       success: true,
       message: 'Email settings deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting email settings:', error);
     res.status(500).json({
       success: false,
@@ -332,7 +332,7 @@ export async function initializeEmailService(organizationId) {
 
     await emailService.initialize(config);
     return true;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to initialize email service:', error);
     throw error;
   }

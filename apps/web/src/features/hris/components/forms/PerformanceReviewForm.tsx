@@ -122,7 +122,7 @@ export default function PerformanceReviewForm({ review, onSuccess }: Performance
     }
   };
 
-  const selectedEmployeeId = watch('employeeId');
+  const selectedEmployeeId = watch('_employeeId');
 
   // Filter out selected employee from reviewer list
   const reviewerOptions = employees.filter((emp) => emp.id !== selectedEmployeeId);
@@ -143,7 +143,7 @@ export default function PerformanceReviewForm({ review, onSuccess }: Performance
             </label>
             <select
               id="employeeId"
-              {...register('employeeId')}
+              {...register('_employeeId')}
               disabled={loadingEmployees || isEditMode}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed"
             >

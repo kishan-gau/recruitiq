@@ -47,7 +47,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, null);
       return result.rows.map(row => new Product(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding all products', { options, error: error.message });
       throw error;
     }
@@ -61,7 +61,7 @@ constructor(database = null) {
       const sql = 'SELECT * FROM products WHERE id = $1 AND deleted_at IS NULL';
       const result = await this.query(sql, [id], null);
       return result.rows.length > 0 ? new Product(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding product by ID', { id, error: error.message });
       throw error;
     }
@@ -75,7 +75,7 @@ constructor(database = null) {
       const sql = 'SELECT * FROM products WHERE slug = $1 AND deleted_at IS NULL';
       const result = await this.query(sql, [slug], null);
       return result.rows.length > 0 ? new Product(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding product by slug', { slug, error: error.message });
       throw error;
     }
@@ -89,7 +89,7 @@ constructor(database = null) {
       const sql = 'SELECT * FROM products WHERE name = $1 AND deleted_at IS NULL';
       const result = await this.query(sql, [name], null);
       return result.rows.length > 0 ? new Product(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding product by name', { name, error: error.message });
       throw error;
     }
@@ -107,7 +107,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [], null);
       return result.rows.map(row => new Product(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding active products', { error: error.message });
       throw error;
     }
@@ -125,7 +125,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [], null);
       return result.rows.map(row => new Product(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding core products', { error: error.message });
       throw error;
     }
@@ -143,7 +143,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [], null);
       return result.rows.map(row => new Product(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding add-on products', { error: error.message });
       throw error;
     }
@@ -204,7 +204,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, values, null);
       return new Product(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating product', { name: productData.name, error: error.message });
       throw error;
     }
@@ -284,7 +284,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, values, null);
       return result.rows.length > 0 ? new Product(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating product', { id, error: error.message });
       throw error;
     }
@@ -303,7 +303,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [id], null);
       return result.rows.length > 0 ? new Product(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error soft deleting product', { id, error: error.message });
       throw error;
     }
@@ -317,7 +317,7 @@ constructor(database = null) {
       const sql = 'DELETE FROM products WHERE id = $1 RETURNING *';
       const result = await this.query(sql, [id], null);
       return result.rows.length > 0;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error hard deleting product', { id, error: error.message });
       throw error;
     }
@@ -336,7 +336,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [id], null);
       return result.rows.length > 0 ? new Product(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error restoring product', { id, error: error.message });
       throw error;
     }
@@ -359,7 +359,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [`%${searchTerm}%`], null);
       return result.rows.map(row => new Product(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error searching products', { searchTerm, error: error.message });
       throw error;
     }

@@ -127,7 +127,7 @@ class BarbicanProvider {
       });
 
       return this.authToken;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Barbican authentication failed', {
         error: error.message,
         endpoint: this.config.authEndpoint,
@@ -174,7 +174,7 @@ class BarbicanProvider {
 
       logger.info(`Successfully retrieved secret: ${secretName}`);
       return secretValue;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to retrieve secret: ${secretName}`, {
         error: error.message,
       });
@@ -218,7 +218,7 @@ class BarbicanProvider {
       }
 
       return secrets[0].secret_ref;
-    } catch (error) {
+    } catch (_error) {
       throw new Error(`Failed to resolve secret reference: ${error.message}`);
     }
   }
@@ -266,7 +266,7 @@ class BarbicanProvider {
       });
 
       return secretRef;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to store secret: ${secretName}`, {
         error: error.message,
       });
@@ -295,7 +295,7 @@ class BarbicanProvider {
       this.cache.delete(secretName);
 
       logger.info(`Successfully deleted secret: ${secretName}`);
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to delete secret: ${secretName}`, {
         error: error.message,
       });
@@ -319,7 +319,7 @@ class BarbicanProvider {
       logger.info(`Successfully rotated secret: ${secretName}`);
       
       return secretRef;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to rotate secret: ${secretName}`, {
         error: error.message,
       });
@@ -365,7 +365,7 @@ class BarbicanProvider {
       });
 
       return secretRef;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to generate secret: ${secretName}`, {
         error: error.message,
       });
@@ -442,7 +442,7 @@ class BarbicanProvider {
         endpoint: this.config.endpoint,
         authenticated: true,
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         status: 'unhealthy',
         provider: 'barbican',

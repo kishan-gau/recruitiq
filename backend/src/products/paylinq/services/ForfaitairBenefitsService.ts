@@ -120,7 +120,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return components;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching tenant benefit library', {
         error: error.message,
         organizationId,
@@ -153,7 +153,7 @@ constructor(repository = null, formulaEngine = null) {
       }
 
       return component;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching global benefit', {
         error: error.message,
         componentCode
@@ -199,7 +199,7 @@ constructor(repository = null, formulaEngine = null) {
       if (validated.formula) {
         try {
           await this.formulaEngine.parseFormula(validated.formula);
-        } catch (err) {
+        } catch (_err) {
           throw new ValidationError(`Invalid formula: ${err.message}`);
         }
       }
@@ -224,7 +224,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return component;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating custom benefit', {
         error: error.message,
         organizationId,
@@ -283,7 +283,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return created;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error cloning global benefit', {
         error: error.message,
         globalComponentCode,
@@ -327,7 +327,7 @@ constructor(repository = null, formulaEngine = null) {
         globalComponents: [], // Always empty - no global components exist
         orgComponents: tenantComponents // Alias to tenant components
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching available benefits', {
         error: error.message,
         organizationId
@@ -361,7 +361,7 @@ constructor(repository = null, formulaEngine = null) {
       let component;
       try {
         component = await this.getGlobalBenefitByCode(validated.componentCode);
-      } catch (err) {
+      } catch (_err) {
         // Not global, check org-specific
         component = await this.repository.findByCode(validated.componentCode, organizationId);
         if (!component) {
@@ -397,7 +397,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return assignment;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error assigning benefit to employee', {
         error: error.message,
         organizationId,
@@ -439,7 +439,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return benefits;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching employee benefits', {
         error: error.message,
         employeeId,
@@ -471,7 +471,7 @@ constructor(repository = null, formulaEngine = null) {
       let component;
       try {
         component = await this.getGlobalBenefitByCode(componentCode);
-      } catch (err) {
+      } catch (_err) {
         component = await this.repository.findByCode(componentCode, organizationId);
         if (!component) {
           throw new NotFoundError(`Component '${componentCode}' not found`);
@@ -533,7 +533,7 @@ constructor(repository = null, formulaEngine = null) {
       logger.info('Employee benefit calculated', result);
 
       return result;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error calculating employee benefit', {
         error: error.message,
         employeeId,
@@ -566,7 +566,7 @@ constructor(repository = null, formulaEngine = null) {
       );
 
       logger.info('Benefit assignment removed', { assignmentId });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error removing benefit assignment', {
         error: error.message,
         assignmentId,
@@ -596,7 +596,7 @@ constructor(repository = null, formulaEngine = null) {
       logger.info('Benefit statistics fetched', { organizationId, stats });
 
       return stats;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching benefit statistics', {
         error: error.message,
         organizationId

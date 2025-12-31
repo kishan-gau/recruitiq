@@ -218,7 +218,7 @@ constructor() {
         message: 'Payroll successfully set up from Nexus contract'
       };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('[Paylinq] Error setting up payroll from Nexus contract', {
         error: error.message,
@@ -368,7 +368,7 @@ constructor() {
         message: 'Benefits deduction successfully added to payroll'
       };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('[Paylinq] Error adding benefits deduction', {
         error: error.message,
@@ -526,7 +526,7 @@ constructor() {
         message: 'Time entry successfully recorded in payroll'
       };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('[Paylinq] Error recording time entry', {
         error: error.message,

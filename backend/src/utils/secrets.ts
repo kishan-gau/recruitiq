@@ -26,7 +26,7 @@ export async function loadSecret(secretName, fallback = null, required = true) {
   try {
     const value = await secretsManager.getSecret(secretName);
     return value;
-  } catch (error) {
+  } catch (_error) {
     if (fallback !== null) {
       logger.warn(`Secret ${secretName} not found, using fallback`);
       return fallback;
@@ -58,7 +58,7 @@ export async function loadSecrets(secretNames, continueOnError = false) {
     secretNames.map(async (name) => {
       try {
         secrets[name] = await secretsManager.getSecret(name);
-      } catch (error) {
+      } catch (_error) {
         errors.push({ name, error: error.message });
         
         if (!continueOnError) {
@@ -98,7 +98,7 @@ export async function loadJWTSecrets() {
     }
     
     return secrets;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to load JWT secrets', { error: error.message });
     throw error;
   }
@@ -128,7 +128,7 @@ export async function loadDatabaseSecrets() {
     );
     
     return secrets;
-  } catch (error) {
+  } catch (_error) {
     logger.warn('Failed to load database secrets from secrets manager, using environment variables');
     return null;
   }
@@ -157,7 +157,7 @@ export async function loadAWSSecrets() {
     );
     
     return secrets;
-  } catch (error) {
+  } catch (_error) {
     logger.warn('Failed to load AWS secrets');
     return null;
   }
@@ -176,7 +176,7 @@ export async function loadEmailSecrets() {
     );
     
     return secrets;
-  } catch (error) {
+  } catch (_error) {
     logger.warn('Failed to load email secrets');
     return null;
   }
@@ -199,7 +199,7 @@ export async function rotateSecret(secretName, generator) {
     await secretsManager.setSecret(secretName, newValue);
     
     logger.info(`Secret ${secretName} rotated successfully`);
-  } catch (error) {
+  } catch (_error) {
     logger.error(`Failed to rotate secret ${secretName}`, {
       error: error.message,
     });
@@ -241,7 +241,7 @@ export async function initializeSecrets() {
       try {
         await secretsManager.getSecret(secretName);
         logger.debug(`Pre-loaded secret: ${secretName}`);
-      } catch (error) {
+      } catch (_error) {
         logger.warn(`Could not pre-load secret: ${secretName}`, {
           error: error.message,
         });
@@ -252,7 +252,7 @@ export async function initializeSecrets() {
       provider: secretsManager.provider?.name,
       cacheSize: secretsManager.getCacheStats().size,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to initialize secrets manager', {
       error: error.message,
     });
@@ -279,7 +279,7 @@ export async function secretsHealthCheck() {
       cacheSize: stats.size,
       cacheTTL: stats.ttl,
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       status: 'unhealthy',
       error: error.message,

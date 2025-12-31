@@ -673,7 +673,7 @@ constructor(timeAttendanceRepository = null, queryFn = null) {
           jobTitle: employee?.job_title,
           ...result,
         });
-      } catch (error) {
+      } catch (_error) {
         logger.error('Error testing pattern for employee', {
           employeeId,
           error: error.message,

@@ -38,7 +38,7 @@ async function testConnection() {
     await db.raw('SELECT 1');
     console.log('✅ Knex database connection successful');
     return true;
-  } catch (error) {
+  } catch (_error) {
     console.error('❌ Knex database connection failed:', error.message);
     throw error;
   }

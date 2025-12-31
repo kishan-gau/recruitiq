@@ -269,7 +269,7 @@ export function validateFileUploadSecurity({
     });
     
     return result;
-  } catch (error) {
+  } catch (_error) {
     logger.error('File security validation error:', {
       error: error.message,
       filename,

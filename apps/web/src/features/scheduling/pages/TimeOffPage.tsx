@@ -1,4 +1,3 @@
-import React from 'react';
 
 import { TimeOffManagement } from '@features/scheduling/components';
 

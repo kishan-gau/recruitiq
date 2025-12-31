@@ -20,10 +20,10 @@ export function useTimeOffRequest(id?: string) {
   });
 }
 
-export function useEmployeeTimeOffBalance(employeeId?: string, year?: number) {
+export function useEmployeeTimeOffBalance(_employeeId?: string, year?: number) {
   return useQuery({
     queryKey: [...TIMEOFF_QUERY_KEY, 'balance', employeeId, year],
-    queryFn: () => timeoffService.getEmployeeTimeOffBalance(employeeId!, year),
+    queryFn: () => timeoffService.getEmployeeTimeOffBalance(_employeeId!, year),
     enabled: !!employeeId,
   });
 }
