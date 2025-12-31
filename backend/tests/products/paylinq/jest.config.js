@@ -4,7 +4,7 @@
  * Test configuration for the Paylinq product.
  */
 
-module.exports = {
+export default {
   // Test environment
   testEnvironment: 'node',
 
@@ -21,7 +21,7 @@ module.exports = {
   ],
 
   // Coverage thresholds
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       branches: 80,
       functions: 80,
@@ -34,13 +34,25 @@ module.exports = {
   coverageDirectory: 'coverage/paylinq',
 
   // Setup files
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/../../../tests/setup.js'],
 
   // Module paths
   moduleDirectories: ['node_modules', 'src'],
 
-  // Transform
-  transform: {},
+  // Module name mapper for .js -> .ts resolution
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
+
+  // Enable ES modules support
+  extensionsToTreatAsEsm: ['.ts'],
+
+  // Transform TypeScript files
+  transform: {
+    '^.+\\.ts$': ['ts-jest', {
+      useESM: true,
+    }],
+  },
 
   // Timeout
   testTimeout: 10000,
