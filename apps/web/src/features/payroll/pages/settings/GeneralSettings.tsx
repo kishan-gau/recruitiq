@@ -12,9 +12,8 @@ import { Globe, DollarSign, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { FormSection, FormGrid, FormField } from '@recruitiq/ui';
-import { SelectWithSearch } from '@recruitiq/ui';
-import { Input } from '@recruitiq/ui';
+// import { FormField } from "@recruitiq/ui";
+import { Select, Input, FormField } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 
 type Currency = 'SRD' | 'USD' | 'EUR';
@@ -173,14 +172,14 @@ export default function GeneralSettings() {
       )}
 
       {/* Currency Settings */}
-      <FormSection
+      <div
         title="Currency & Exchange Rates"
         description="Configure default currency and exchange rates"
         icon={<DollarSign className="h-5 w-5" />}
       >
         <div className="space-y-4">
           <FormField label="Default Currency" required>
-            <SelectWithSearch
+            <Select
               options={currencyOptions}
               value={defaultCurrency}
               onChange={(value) => setDefaultCurrency(value as Currency)}
@@ -225,17 +224,17 @@ export default function GeneralSettings() {
             </div>
           </div>
         </div>
-      </FormSection>
+      </div>
 
       {/* Regional Settings */}
-      <FormSection
+      <div
         title="Regional Settings"
         description="Configure date, time, timezone, and language preferences"
         icon={<Globe className="h-5 w-5" />}
       >
-        <FormGrid>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Date Format" required>
-            <SelectWithSearch
+            <Select
               options={[
                 { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
                 { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
@@ -251,7 +250,7 @@ export default function GeneralSettings() {
           </FormField>
 
           <FormField label="Time Format" required>
-            <SelectWithSearch
+            <Select
               options={[
                 { value: '12h', label: '12-hour (AM/PM)' },
                 { value: '24h', label: '24-hour' }
@@ -266,7 +265,7 @@ export default function GeneralSettings() {
           </FormField>
 
           <FormField label="Timezone" required>
-            <SelectWithSearch
+            <Select
               options={timezoneOptions}
               value={timezone}
               onChange={(value) => setTimezone(value as string)}
@@ -275,15 +274,15 @@ export default function GeneralSettings() {
           </FormField>
 
           <FormField label="Language" required>
-            <SelectWithSearch
+            <Select
               options={languageOptions}
               value={language}
               onChange={(value) => setLanguage(value as Language)}
               placeholder="Select language"
             />
           </FormField>
-        </FormGrid>
-      </FormSection>
+        </div>
+      </div>
     </div>
   );
 }

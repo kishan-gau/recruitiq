@@ -16,8 +16,8 @@ import {
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { FormSection, FormGrid, FormField } from '@recruitiq/ui';
-import { SelectWithSearch } from '@recruitiq/ui';
+import { FormField } from "@recruitiq/ui";
+import { Select } from '@recruitiq/ui';
 import { Input } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -96,14 +96,14 @@ export default function PayrollDefaultsSettings() {
       )}
 
       {/* Payroll Defaults */}
-      <FormSection
+      <section
         title="Payroll Defaults"
         description="Configure default payroll settings for new employees"
         icon={<Calendar className="h-5 w-5" />}
       >
-        <FormGrid>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Default Pay Frequency" required>
-            <SelectWithSearch
+            <Select
               options={payFrequencyOptions}
               value={defaultPayFrequency}
               onChange={(value) => setDefaultPayFrequency(value as string)}
@@ -141,8 +141,8 @@ export default function PayrollDefaultsSettings() {
               max="7"
             />
           </FormField>
-        </FormGrid>
-      </FormSection>
+        </div>
+      </section>
     </div>
   );
 }

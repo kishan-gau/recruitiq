@@ -136,7 +136,7 @@ export default function NotificationSettings() {
       )}
 
       {/* Notification Preferences */}
-      <FormSection
+      <section
         title="Notification Preferences"
         description="Configure email and in-app notifications"
         icon={<Bell className="h-5 w-5" />}
@@ -214,7 +214,7 @@ export default function NotificationSettings() {
             </table>
           </div>
         </div>
-      </FormSection>
+      </section>
     </div>
   );
 }

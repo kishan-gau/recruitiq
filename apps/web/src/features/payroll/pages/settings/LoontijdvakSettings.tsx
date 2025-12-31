@@ -21,8 +21,8 @@ import { Link } from 'react-router-dom';
 
 import { APIClient, PaylinqClient } from '@recruitiq/api-client';
 
-import { FormSection, FormGrid, FormField } from '@recruitiq/ui';
-import { SelectWithSearch } from '@recruitiq/ui';
+import { FormField } from "@recruitiq/ui";
+import { Select } from '@recruitiq/ui';
 import { Input } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -293,7 +293,7 @@ export default function LoontijdvakSettings() {
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Year">
-            <SelectWithSearch
+            <Select
               options={yearOptions}
               value={selectedYear.toString()}
               onChange={(value) => setSelectedYear(parseInt(value as string))}
@@ -302,7 +302,7 @@ export default function LoontijdvakSettings() {
           </FormField>
 
           <FormField label="Period Type">
-            <SelectWithSearch
+            <Select
               options={periodTypeOptions}
               value={selectedType}
               onChange={(value) => setSelectedType(value as string)}
