@@ -67,9 +67,10 @@ export function useTax(filters?: any) {
     isLoadingRules: taxRulesQuery.isLoading,
     isErrorRules: taxRulesQuery.isError,
     errorRules: taxRulesQuery.error,
-    createTaxRule: createMutation.mutate,
-    updateTaxRule: updateMutation.mutate,
-    deleteTaxRule: deleteMutation.mutate,
+    // Return full mutation objects to access both mutate and mutateAsync
+    createTaxRule: createMutation,
+    updateTaxRule: updateMutation,
+    deleteTaxRule: deleteMutation,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,

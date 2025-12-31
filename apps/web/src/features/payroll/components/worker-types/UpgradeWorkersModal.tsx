@@ -2,7 +2,7 @@ import { AlertTriangle, ArrowRight, Calendar, CheckCircle, Users, XCircle } from
 import { useState, useMemo } from 'react';
 
 import { Dialog } from '@recruitiq/ui';
-import { useWorkerTypeUpgradeStatus, usePreviewWorkerTypeUpgrade, useExecuteWorkerTypeUpgrade } from '@/hooks';
+import { useWorkerTypeUpgradeStatus, useWorkerTypeUpgradePreview, useExecuteWorkerTypeUpgrade } from '@/hooks';
 
 
 interface UpgradeWorkersModalProps {
@@ -26,7 +26,7 @@ export default function UpgradeWorkersModal({
 
   // Fetch upgrade status
   const { data: upgradeStatus, isLoading: isLoadingStatus } = useWorkerTypeUpgradeStatus(workerTypeId);
-  const { data: preview, isLoading: isLoadingPreview } = usePreviewWorkerTypeUpgrade(
+  const { data: preview, isLoading: isLoadingPreview } = useWorkerTypeUpgradePreview(
     workerTypeId,
     showPreview
   );

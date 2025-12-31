@@ -51,3 +51,27 @@ export function useDeleteDeduction() {
     },
   });
 }
+
+/**
+ * Combined hook for deductions management (industry standard pattern)
+ * Combines query and mutation hooks for simplified component usage
+ */
+export function useDed(filters?: any) {
+  const deductionsQuery = useDeductions(filters);
+  const createMutation = useCreateDeduction();
+  const updateMutation = useUpdateDeduction();
+  const deleteMutation = useDeleteDeduction();
+
+  return {
+    deductions: deductionsQuery.data,
+    isLoadingDeductions: deductionsQuery.isLoading,
+    isErrorDeductions: deductionsQuery.isError,
+    errorDeductions: deductionsQuery.error,
+    createDeduction: createMutation.mutate,
+    updateDeduction: updateMutation.mutate,
+    deleteDeduction: deleteMutation.mutate,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+  };
+}

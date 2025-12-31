@@ -78,6 +78,7 @@ export {
   useAssignWorkerType,
   useTerminateWorkerTypeAssignment,
   usePreviewWorkerTypeUpgrade,
+  useWorkerTypeUpgradePreview,
   useExecuteWorkerTypeUpgrade,
   useCompareTemplates,
   useWorkerTypeUpgradeStatus,

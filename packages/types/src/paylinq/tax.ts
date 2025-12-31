@@ -43,6 +43,11 @@ export interface TaxRuleSet {
   updatedBy?: string;
   deletedBy?: string;
   name?: string; // Alias for taxName
+  // Additional properties used in components
+  ruleCode?: string;
+  ruleName?: string; // Alias for taxName
+  ruleType?: string; // Alias for taxType
+  isActive?: boolean;
 }
 
 // Alias for backward compatibility
