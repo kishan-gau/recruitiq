@@ -43,6 +43,20 @@ export interface TimeOffTypeConfig {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  // Additional properties used in components
+  typeName?: string; // Alias for name
+  typeCode?: string; // Alias for code
+  icon?: string;
+  maxBalance?: number;
+  minBalance?: number;
+  requiresDocumentation?: boolean;
+  availableDuringProbation?: boolean;
+  probationWaitingPeriodDays?: number;
+  minRequestDays?: number;
+  maxRequestDays?: number;
+  advanceNoticeDays?: number;
+  isPaid?: boolean;
+  isUnlimited?: boolean;
 }
 
 export interface CreateTimeOffTypeDTO {
@@ -58,4 +72,18 @@ export interface CreateTimeOffTypeDTO {
   maxAccrualBalance?: number;
   carryOverPolicy: CarryOverPolicy;
   maxCarryOverDays?: number;
+  // Additional properties used in form
+  typeName?: string;
+  typeCode?: string;
+  icon?: string;
+  maxBalance?: number;
+  minBalance?: number;
+  requiresDocumentation?: boolean;
+  availableDuringProbation?: boolean;
+  probationWaitingPeriodDays?: number;
+  minRequestDays?: number;
+  maxRequestDays?: number;
+  advanceNoticeDays?: number;
+  isPaid?: boolean;
+  isUnlimited?: boolean;
 }

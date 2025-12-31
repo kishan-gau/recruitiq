@@ -433,6 +433,13 @@ export interface ShiftTemplateRole {
   created_at: string;
   updated_at: string;
   role?: Role;
+  // Additional properties for UI
+  quantity?: number; // Alias for min_workers
+  minimumProficiency?: string;
+  preferredProficiency?: string;
+  isPrimaryRole?: boolean;
+  priority?: number; // Alias for priority_level
+  isFlexible?: boolean;
 }
 
 export interface ShiftTemplateUsage {
