@@ -7,13 +7,12 @@ WORKDIR /app
 # Install system dependencies including PostgreSQL client
 RUN apk add --no-cache dumb-init python3 make g++ postgresql-client bash wget
 
-# Install pnpm using standalone script (works without registry access)
-RUN wget -qO- https://get.pnpm.io/install.sh | ENV="$HOME/.bashrc" SHELL="$(which sh)" sh - || \
-    npm install -g pnpm@8.15.0 || \
-    (corepack enable && corepack prepare pnpm@8.15.0 --activate)
+# Install pnpm using corepack (recommended approach)
+RUN corepack enable && \
+    corepack prepare pnpm@8.15.0 --activate
 
-ENV PNPM_HOME="/root/.local/share/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
+# Verify pnpm is installed
+RUN pnpm --version
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \

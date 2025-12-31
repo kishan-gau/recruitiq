@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
+import { PaylinqClient } from '../products/paylinq';
 
 export interface APIClientConfig {
   baseURL?: string;
@@ -19,12 +20,22 @@ export interface TokenStorage {
 /**
  * Core API Client with authentication and error handling
  * Provides base HTTP client with token management and interceptors
+ * 
+ * ARCHITECTURE: Factory Pattern for Product Client Composition
+ * APIClient initializes product-specific clients (PayLinQ, Nexus, etc.)
+ * using dependency injection. This follows industry standards:
+ * - Separation of concerns: Base HTTP client + product clients
+ * - Dependency injection: Product clients receive APIClient instance
+ * - Factory pattern: APIClient responsible for client initialization
  */
 export class APIClient {
   private client: AxiosInstance;
   private tokenStorage: TokenStorage;
   private isRefreshing: boolean = false;
   private refreshSubscribers: Array<(token: string) => void> = [];
+  
+  // Product clients - lazily initialized via factory methods
+  public paylinq: PaylinqClient;
 
   constructor(config: APIClientConfig = {}, tokenStorage?: TokenStorage) {
     // ARCHITECTURE: Default baseURL is /api for all core and product endpoints
@@ -51,6 +62,14 @@ export class APIClient {
     this.tokenStorage = tokenStorage || this.createDefaultTokenStorage();
 
     this.setupInterceptors();
+    
+    // ARCHITECTURE: Initialize product clients via factory pattern
+    // Each product client receives this APIClient instance for shared HTTP handling
+    // This enables:
+    // 1. Dependency injection - product clients don't create their own HTTP layer
+    // 2. Shared authentication - all products use same token management
+    // 3. Consistent error handling - all products use same interceptors
+    this.paylinq = new PaylinqClient(this);
   }
 
   /**
@@ -447,26 +466,5 @@ export class APIClient {
    */
   public getCsrfToken(): string | null {
     return this.tokenStorage.getCsrfToken();
-  }
-
-  // Pay Component methods (delegate to PaylinqClient)
-  public async listPayComponents(filters?: any) {
-    return this.paylinq.listPayComponents(filters);
-  }
-
-  public async getPayComponent(id: string) {
-    return this.paylinq.getPayComponent(id);
-  }
-
-  public async createPayComponent(data: any) {
-    return this.paylinq.createPayComponent(data);
-  }
-
-  public async updatePayComponent(id: string, data: any) {
-    return this.paylinq.updatePayComponent(id, data);
-  }
-
-  public async deletePayComponent(id: string) {
-    return this.paylinq.deletePayComponent(id);
   }
 }
