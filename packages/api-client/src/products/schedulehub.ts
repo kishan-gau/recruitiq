@@ -344,6 +344,62 @@ export class ScheduleHubClient {
   }
 
   // ============================================================================
+  // Stations
+  // ============================================================================
+
+  /**
+   * Get all stations with optional filters
+   */
+  async getAllStations(filters?: { search?: string; isActive?: boolean }) {
+    const queryParams = new URLSearchParams();
+    if (filters?.search) queryParams.append('search', filters.search);
+    if (filters?.isActive !== undefined) queryParams.append('isActive', String(filters.isActive));
+    
+    const queryString = queryParams.toString();
+    const url = `${this.basePath}/stations${queryString ? `?${queryString}` : ''}`;
+    
+    return this.client.get<ApiResponse<any[]>>(url);
+  }
+
+  /**
+   * Get a single station by ID
+   */
+  async getStation(id: string) {
+    return this.client.get<ApiResponse<any>>(
+      `${this.basePath}/stations/${id}`
+    );
+  }
+
+  /**
+   * Create a new station
+   */
+  async createStation(data: any) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/stations`,
+      data
+    );
+  }
+
+  /**
+   * Update an existing station
+   */
+  async updateStation(id: string, updates: any) {
+    return this.client.patch<ApiResponse<any>>(
+      `${this.basePath}/stations/${id}`,
+      updates
+    );
+  }
+
+  /**
+   * Delete a station (soft delete)
+   */
+  async deleteStation(id: string) {
+    return this.client.delete<ApiResponse<void>>(
+      `${this.basePath}/stations/${id}`
+    );
+  }
+
+  // ============================================================================
   // Station Coverage
   // ============================================================================
 
