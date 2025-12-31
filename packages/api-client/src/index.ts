@@ -49,6 +49,8 @@ export class RecruitIQPlatformAPI {
   public features: FeaturesAPI;
   public recruitiq: RecruitIQAPI;
   public portal: PortalAPI;
+  public paylinq: PaylinqClient;
+  public nexus: NexusClient;
   public schedulehub: ScheduleHubClient;
 
   constructor(config: APIClientConfig = {}, tokenStorage?: TokenStorage) {
@@ -63,9 +65,6 @@ export class RecruitIQPlatformAPI {
     this.nexus = new NexusClient(this.apiClient);
     this.schedulehub = new ScheduleHubClient(this.apiClient);
   }
-
-    public paylinq: PaylinqClient;
-    public nexus: NexusClient;
   /**
    * Get the underlying API client for direct access
    */
@@ -75,8 +74,6 @@ export class RecruitIQPlatformAPI {
 
   /**
    * Get token storage interface
-      this.paylinq = new PaylinqClient(this.apiClient);
-      this.nexus = new NexusClient(this.apiClient);
    */
   public getTokenStorage(): TokenStorage {
     return this.apiClient.getTokenStorage();
@@ -129,3 +126,6 @@ export class RecruitIQPlatformAPI {
 const defaultAPI = new RecruitIQPlatformAPI();
 
 export default defaultAPI;
+
+// Export as apiClient for backward compatibility and convenience
+export { defaultAPI as apiClient };

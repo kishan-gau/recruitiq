@@ -7,7 +7,7 @@
 
 import { useContext } from 'react';
 
-import { ToastContext, ToastContextType } from '@/contexts/ToastContext';
+import { ToastContext, type ToastContextType, type Toast } from '@/contexts/ToastContext';
 
 /**
  * Hook to access toast notifications
@@ -22,4 +22,7 @@ export function useToast(): ToastContextType {
 
   return context;
 }
+
+// Re-export Toast type for convenience
+export type { Toast };
 
