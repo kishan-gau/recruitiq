@@ -20,44 +20,24 @@
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
-// Mock repository methods
-const mockGetPayrollMetrics = jest.fn();
-const mockGetEmployeeMetrics = jest.fn();
-const mockGetTimesheetMetrics = jest.fn();
-const mockGetUpcomingPayrolls = jest.fn();
-const mockGetRecentActivityRepo = jest.fn();
-
-// Mock dashboard repository before service
-jest.mock('../../../../src/products/paylinq/repositories/dashboardRepository.js', () => {
-  return {
-    default: jest.fn().mockImplementation(() => ({
-      getPayrollMetrics: mockGetPayrollMetrics,
-      getEmployeeMetrics: mockGetEmployeeMetrics,
-      getTimesheetMetrics: mockGetTimesheetMetrics,
-      getUpcomingPayrolls: mockGetUpcomingPayrolls,
-      getRecentActivity: mockGetRecentActivityRepo
-    }))
-  };
-});
-
-// Mock dependencies before importing controller
+// Mock service methods
 const mockGetDashboardOverview = jest.fn();
 const mockGetPayrollStats = jest.fn();
 const mockGetEmployeeStats = jest.fn();
 const mockGetRecentActivity = jest.fn();
 
-jest.mock('../../../../src/products/paylinq/services/dashboardService.js', () => {
-  return {
-    default: jest.fn().mockImplementation(() => ({
-      getDashboardOverview: mockGetDashboardOverview,
-      getPayrollStats: mockGetPayrollStats,
-      getEmployeeStats: mockGetEmployeeStats,
-      getRecentActivity: mockGetRecentActivity
-    }))
-  };
-});
+// Mock dashboard service before importing controller
+jest.unstable_mockModule('../../../../src/products/paylinq/services/dashboardService.js', () => ({
+  default: jest.fn().mockImplementation(() => ({
+    getDashboardOverview: mockGetDashboardOverview,
+    getPayrollStats: mockGetPayrollStats,
+    getEmployeeStats: mockGetEmployeeStats,
+    getRecentActivity: mockGetRecentActivity
+  }))
+}));
 
-jest.mock('../../../../src/utils/logger.js', () => ({
+// Mock logger to prevent console output during tests
+jest.unstable_mockModule('../../../../src/utils/logger.js', () => ({
   default: {
     warn: jest.fn(),
     error: jest.fn(),
@@ -65,7 +45,9 @@ jest.mock('../../../../src/utils/logger.js', () => ({
   }
 }));
 
-import dashboardController from '../../../../src/products/paylinq/controllers/dashboardController.js';
+// Import controller after mocking dependencies
+const dashboardControllerModule = await import('../../../../src/products/paylinq/controllers/dashboardController.js');
+const dashboardController = dashboardControllerModule.default;
 
 describe('Dashboard Controller', () => {
   let mockReq: any;
@@ -98,11 +80,6 @@ describe('Dashboard Controller', () => {
     mockGetPayrollStats.mockClear();
     mockGetEmployeeStats.mockClear();
     mockGetRecentActivity.mockClear();
-    mockGetPayrollMetrics.mockClear();
-    mockGetEmployeeMetrics.mockClear();
-    mockGetTimesheetMetrics.mockClear();
-    mockGetUpcomingPayrolls.mockClear();
-    mockGetRecentActivityRepo.mockClear();
     mockRes.status.mockClear();
     mockRes.json.mockClear();
   });
