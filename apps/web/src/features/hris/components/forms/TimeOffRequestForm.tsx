@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 import { useCreateTimeOffRequest, useUpdateTimeOffRequest } from '@/hooks';
 import { employeesService } from '@/services/employees.service';
-import type { TimeOffRequest, TimeOffType } from '@/types/timeOff.types';
+import type { TimeOffRequest, TimeOffType } from '@/types/timeoff.types';
 
 const TIME_OFF_TYPE_OPTIONS: Array<{ value: TimeOffType; label: string }> = [
   { value: 'vacation', label: 'Vacation' },
