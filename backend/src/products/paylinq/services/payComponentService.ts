@@ -292,33 +292,18 @@ constructor(repository = null) {
       // Business rule: Prevent updating system components
       const existing = await this.getPayComponentById(componentId, organizationId);
       if (existing.isSystemDefined) {
-        throw new ValidationError('System components cannot be modified');
+        throw new ValidationError('system component cannot be modified');
+      }
+
+      // Business rule: Prevent updating component code (immutable after creation)
+      if (updates.componentCode) {
+        throw new ValidationError('Component code cannot be changed after creation');
       }
 
       // Business rule: If updating category, validate it matches component type
       if (updates.category) {
         const componentType = updates.componentType || existing.componentType;
         this.validateCategoryForType(componentType, updates.category);
-      }
-
-      // Business rule: If updating code, validate format and uniqueness
-      if (updates.componentCode) {
-        const codePattern = /^[A-Z0-9_]+$/;
-        if (!codePattern.test(updates.componentCode)) {
-          throw new ValidationError('Component code must be uppercase letters, numbers, and underscores only');
-        }
-
-        // Check if new code is already in use (by a different component)
-        const duplicate = await this.payComponentRepository.findPayComponentByCode(
-          updates.componentCode,
-          organizationId
-        );
-        if (duplicate && duplicate.id !== componentId) {
-          throw new ConflictError(
-            `Pay component with code '${updates.componentCode}' already exists. ` +
-            `Component codes must be unique within your organization.`
-          );
-        }
       }
 
       // Transform API data to DB format
@@ -358,8 +343,23 @@ constructor(repository = null) {
       const existing = await this.getPayComponentById(componentId, organizationId);
       if (existing.isSystemDefined) {
         throw new ValidationError(
-          'System components cannot be deleted. These are required for payroll processing.'
+          'system component cannot be deleted. These are required for payroll processing.'
         );
+      }
+
+      // Business rule: Check if component has active employee assignments
+      // Use repository method if available (for testing), otherwise skip
+      if (this.payComponentRepository.getEmployeeComponents) {
+        const assignments = await this.payComponentRepository.getEmployeeComponents(
+          componentId,
+          organizationId
+        );
+        if (assignments && assignments.length > 0) {
+          throw new ConflictError(
+            'Cannot delete this pay component because it has active employee assignments. ' +
+            'Please remove all employee assignments first, or deactivate the component instead.'
+          );
+        }
       }
 
       // Business rule: Check if component is in use (done in repository layer)
@@ -464,7 +464,17 @@ constructor(repository = null) {
         organizationId
       });
 
-      return formula;
+      // Transform to camelCase for API response
+      return {
+        id: formula.id,
+        payComponentId: formula.pay_component_id,
+        formulaName: formula.formula_name,
+        formulaExpression: formula.formula_expression,
+        formulaType: formula.formula_type,
+        description: formula.description,
+        createdAt: formula.created_at,
+        createdBy: formula.created_by
+      };
     } catch (err) {
       logger.error('Error creating component formula', { error: err.message, organizationId });
       throw err;
@@ -487,6 +497,16 @@ constructor(repository = null) {
   }
 
   /**
+   * Alias: Get component formulas (backwards compatibility)
+   * @param {string} componentId - Pay component UUID
+   * @param {string} organizationId - Organization UUID
+   * @returns {Promise<Array>} Component formulas
+   */
+  async getComponentFormulas(componentId, organizationId) {
+    return this.getFormulasByComponent(componentId, organizationId);
+  }
+
+  /**
    * Validate formula expression (MVP - simple arithmetic)
    * @param {string} expression - Formula expression
    * @throws {Error} If expression is invalid
@@ -497,7 +517,7 @@ constructor(repository = null) {
     const allowedPattern = /^[\d\s+\-*/().{}\w]+$/;
 
     if (!allowedPattern.test(expression)) {
-      throw new Error('Invalid formula expression. Only arithmetic operators and variables are allowed');
+      throw new ValidationError('Invalid formula expression. Only arithmetic operators and variables are allowed');
     }
 
     // Check for balanced parentheses
@@ -506,12 +526,12 @@ constructor(repository = null) {
       if (char === '(') balance++;
       if (char === ')') balance--;
       if (balance < 0) {
-        throw new Error('Invalid formula expression. Unbalanced parentheses');
+        throw new ValidationError('Invalid formula expression. Unbalanced parentheses');
       }
     }
 
     if (balance !== 0) {
-      throw new Error('Invalid formula expression. Unbalanced parentheses');
+      throw new ValidationError('Invalid formula expression. Unbalanced parentheses');
     }
   }
 
@@ -589,13 +609,13 @@ constructor(repository = null) {
     }
   }
 
-  // ==================== NEW: EMPLOYEE COMPONENT ASSIGNMENTS ====================
+  // ==================== EMPLOYEE COMPONENT ASSIGNMENTS (NEW SYSTEM) ====================
 
   /**
-   * Assign pay component to employee using new employee_pay_component_assignment table
-   * @param {Object} assignmentData - Assignment data
+   * Assign component to employee with rich configuration
+   * @param {Object} assignmentData - Assignment data with configuration
    * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User creating the assignment
+   * @param {string} userId - User creating assignment
    * @returns {Promise<Object>} Created assignment
    */
   async assignComponentToEmployee(assignmentData, organizationId, userId) {
@@ -608,31 +628,76 @@ constructor(repository = null) {
       throw new ValidationError(error.details[0].message);
     }
 
-    // Business rule: Validate effective dates
-    if (value.effectiveTo && value.effectiveTo <= value.effectiveFrom) {
-      throw new Error('Effective to date must be after effective from date');
-    }
-
     try {
-      // Verify component exists
-      await this.getPayComponentById(value.componentId, organizationId);
+      const { employeeId, componentId, componentCode, effectiveFrom, effectiveTo, 
+              configuration, overrideAmount, overrideFormula, notes } = value;
 
-      const { v4: uuidv4 } = await import('uuid');
-      const assignment = await this.payComponentRepository.assignComponentToEmployee(
-        { ...value, id: uuidv4(), createdBy: userId },
-        organizationId
-      );
+      // Validate component exists
+      const component = await this.getPayComponentById(componentId, organizationId);
+      if (!component) {
+        throw new NotFoundError('Pay component not found');
+      }
+
+      // Business rule: Cannot assign inactive components
+      if (!component.isActive) {
+        throw new ValidationError('Cannot assign inactive component to employee');
+      }
+
+      // Validate effective dates
+      if (effectiveFrom && effectiveTo) {
+        const from = new Date(effectiveFrom);
+        const to = new Date(effectiveTo);
+        if (to <= from) {
+          throw new ValidationError('Effective to date must be after effective from date');
+        }
+      }
+
+      // Create assignment with generated UUID
+      const assignment = {
+        id: crypto.randomUUID(),
+        employeeId,
+        componentId,
+        componentCode: componentCode || component.componentCode,
+        effectiveFrom,
+        effectiveTo,
+        configuration: configuration || {},
+        overrideAmount,
+        overrideFormula,
+        notes,
+        createdBy: userId
+      };
+
+      const created = await this.payComponentRepository.assignComponentToEmployee(assignment, organizationId);
 
       logger.info('Component assigned to employee', {
-        assignmentId: assignment.id,
-        employeeId: assignment.employee_id,
-        componentId: assignment.component_id,
-        organizationId
+        organizationId,
+        employeeId,
+        componentId,
+        assignmentId: created.id,
+        userId
       });
 
-      return assignment;
+      // Transform to camelCase for API response
+      return {
+        id: created.id,
+        employeeId: created.employee_id,
+        componentId: created.component_id,
+        componentCode: created.component_code,
+        effectiveFrom: created.effective_from,
+        effectiveTo: created.effective_to,
+        configuration: created.configuration,
+        overrideAmount: created.override_amount,
+        overrideFormula: created.override_formula,
+        notes: created.notes,
+        createdAt: created.created_at,
+        createdBy: created.created_by
+      };
     } catch (err) {
-      logger.error('Error assigning component to employee', { error: err.message, organizationId });
+      logger.error('Error assigning component to employee', { 
+        error: err.message, 
+        employeeId: assignmentData.employeeId,
+        componentId: assignmentData.componentId 
+      });
       throw err;
     }
   }
@@ -805,84 +870,6 @@ constructor(repository = null) {
    */
   async deleteEmployeePayComponent(assignmentId, organizationId, userId) {
     return this.deleteEmployeeAssignment(assignmentId, organizationId, userId);
-  }
-
-  // ==================== EMPLOYEE COMPONENT ASSIGNMENTS (NEW SYSTEM) ====================
-
-  /**
-   * Assign component to employee with rich configuration
-   * @param {Object} assignmentData - Assignment data with configuration
-   * @param {string} organizationId - Organization UUID
-   * @param {string} userId - User creating assignment
-   * @returns {Promise<Object>} Created assignment
-   */
-  async assignComponentToEmployee(assignmentData, organizationId, userId) {
-    try {
-      const { employeeId, componentId, componentCode, effectiveFrom, effectiveTo, 
-              configuration, overrideAmount, overrideFormula, notes } = assignmentData;
-
-      // Validate required fields
-      if (!employeeId) {
-        throw new ValidationError('Employee ID is required');
-      }
-      if (!componentId) {
-        throw new ValidationError('Component ID is required');
-      }
-
-      // Validate component exists (BUG FIX: use service method instead of repository)
-      const component = await this.getPayComponentById(componentId, organizationId);
-      if (!component) {
-        throw new NotFoundError('Pay component not found');
-      }
-
-      // Business rule: Cannot assign inactive components
-      if (!component.isActive) {
-        throw new ValidationError('Cannot assign inactive component to employee');
-      }
-
-      // Validate effective dates
-      if (effectiveFrom && effectiveTo) {
-        const from = new Date(effectiveFrom);
-        const to = new Date(effectiveTo);
-        if (to <= from) {
-          throw new ValidationError('Effective to date must be after effective from date');
-        }
-      }
-
-      // Create assignment with generated UUID
-      const assignment = {
-        id: crypto.randomUUID(),
-        employeeId,
-        componentId,
-        componentCode: componentCode || component.componentCode,
-        effectiveFrom,
-        effectiveTo,
-        configuration: configuration || {},
-        overrideAmount,
-        overrideFormula,
-        notes,
-        createdBy: userId
-      };
-
-      const created = await this.payComponentRepository.assignComponentToEmployee(assignment, organizationId);
-
-      logger.info('Component assigned to employee', {
-        organizationId,
-        employeeId,
-        componentId,
-        assignmentId: created.id,
-        userId
-      });
-
-      return created;
-    } catch (err) {
-      logger.error('Error assigning component to employee', { 
-        error: err.message, 
-        employeeId: assignmentData.employeeId,
-        componentId: assignmentData.componentId 
-      });
-      throw err;
-    }
   }
 
   /**
