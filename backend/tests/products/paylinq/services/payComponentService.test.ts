@@ -117,10 +117,11 @@ describe('PayComponentService', () => {
       expect(result.calculationType).toBe('hourly_rate'); // camelCase
       expect(result.component_code).toBeUndefined(); // snake_case removed
 
+      // Repository should receive snake_case data
       expect(mockRepository.createPayComponent).toHaveBeenCalledWith(
         expect.objectContaining({
-          componentCode: 'BASIC_PAY',
-          componentType: 'earning'
+          component_code: 'BASIC_PAY',
+          component_type: 'earning'
         }),
         testOrganizationId,
         testUserId
@@ -192,7 +193,7 @@ describe('PayComponentService', () => {
       );
 
       expect(result.calculationType).toBe('formula');
-      expect(result.formula).toBe('basePay * 0.10');
+      expect(result.formula).toBe('base_salary * 0.10'); // Formula variables stay as-is
     });
   });
 
