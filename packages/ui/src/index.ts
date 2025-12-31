@@ -37,6 +37,14 @@ export * from './rbac';
 export * from './hooks';
 
 // ============================================
+// RECRUITMENT COMPONENTS (Temporary - Should be moved to web app)
+// ============================================
+export * from './recruitment/SearchInput';
+export * from './recruitment/FilterChips';
+export * from './recruitment/Pagination';
+export * from './recruitment/ApplicationSourceBadge';
+
+// ============================================
 // FEATURE-SPECIFIC COMPONENTS (DO NOT IMPORT HERE)
 // ============================================
 // Recruitment-specific components: apps/web/src/features/recruitment/components/shared/

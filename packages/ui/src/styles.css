@@ -7,7 +7,7 @@
 
 @layer base {
   * {
-    @apply transition-colors duration-220 ease-in-out;
+    @apply transition-colors duration-200 ease-in-out;
   }
   
   body {
