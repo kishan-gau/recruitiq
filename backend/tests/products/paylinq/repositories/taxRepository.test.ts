@@ -56,7 +56,8 @@ describe('TaxRepository', () => {
 
   beforeEach(() => {
     mockQuery.mockClear();
-    repository = new TaxRepository();
+    // Inject mock database via constructor (dependency injection)
+    repository = new TaxRepository({ query: mockQuery });
   });
 
   // ==================== GET TAX RATES ====================

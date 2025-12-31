@@ -42,7 +42,7 @@ export async function listRunTypes(req, res, next) {
       payrollRunTypes: runTypes // Resource-specific key
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error listing run types', {
       error: error.message,
       stack: error.stack,
@@ -83,7 +83,7 @@ export async function getRunTypesSummary(req, res, next) {
       payrollRunTypes: summary
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting run types summary', {
       error: error.message,
       organizationId: req.user?.organizationId
@@ -115,7 +115,7 @@ export async function getRunTypeByCode(req, res, next) {
       payrollRunType: runType // Resource-specific key (singular)
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting run type by code', {
       error: error.message,
       typeCode: req.params.typeCode,
@@ -148,7 +148,7 @@ export async function getRunTypeById(req, res, next) {
       payrollRunType: runType
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting run type by ID', {
       error: error.message,
       id: req.params.id,
@@ -188,7 +188,7 @@ export async function createRunType(req, res, next) {
       payrollRunType: runType
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating run type', {
       error: error.message,
       organizationId: req.user?.organizationId,
@@ -229,7 +229,7 @@ export async function updateRunType(req, res, next) {
       payrollRunType: runType
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating run type', {
       error: error.message,
       id: req.params.id,
@@ -271,7 +271,7 @@ export async function deleteRunType(req, res, next) {
       message: 'Run type deleted successfully'
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting run type', {
       error: error.message,
       id: req.params.id,
@@ -305,7 +305,7 @@ export async function resolveAllowedComponents(req, res, next) {
       components // Array of component codes
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error resolving allowed components', {
       error: error.message,
       typeCode: req.params.typeCode,
@@ -338,7 +338,7 @@ export async function validateRunType(req, res, next) {
       validation
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error validating run type', {
       error: error.message,
       typeCode: req.params.typeCode,
