@@ -1,0 +1,130 @@
+# Production Docker Compose Configuration
+# This configuration demonstrates running the web app in a production-ready Docker environment
+# 
+# Prerequisites:
+#   - Web app must be built first: pnpm build:web
+#   - Environment variables must be configured in .env.production
+#
+# Usage:
+#   docker-compose -f docker-compose.production.yml up -d
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: recruitiq_postgres_prod
+    restart: unless-stopped
+    command: ["postgres", "-c", "listen_addresses=*"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_prod_password_CHANGE_ME}
+      POSTGRES_DB: ${POSTGRES_DB:-recruitiq_prod}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      # Mount initialization script for first-time setup
+      - ./backend/docker-init/docker-entrypoint-init.sh:/docker-entrypoint-initdb.d/01-init-database.sh:ro
+      - ./backend:/backend:ro
+    networks:
+      - recruitiq_prod_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: recruitiq_redis_prod
+    restart: unless-stopped
+    command: >
+      sh -c '
+      redis-server 
+      --requirepass "${REDIS_PASSWORD:-redis_prod_password_CHANGE_ME}"
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      '
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - recruitiq_prod_network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "redis-cli --no-auth-warning -a \"${REDIS_PASSWORD:-redis_prod_password_CHANGE_ME}\" ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (Production)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: production
+    container_name: recruitiq_backend_prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: ${API_PORT:-3001}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres_prod_password_CHANGE_ME}@postgres:5432/${POSTGRES_DB:-recruitiq_prod}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_prod_password_CHANGE_ME}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+    ports:
+      - "${API_PORT:-3001}:3001"
+    volumes:
+      - backend_prod_logs:/app/logs
+      - backend_prod_uploads:/app/uploads
+    networks:
+      - recruitiq_prod_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+
+  # Web Frontend (Production)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: recruitiq_web_prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-80}:80"
+    networks:
+      - recruitiq_prod_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  postgres_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+  backend_prod_logs:
+    driver: local
+  backend_prod_uploads:
+    driver: local
+
+networks:
+  recruitiq_prod_network:
+    driver: bridge
