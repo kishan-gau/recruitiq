@@ -45,7 +45,7 @@ export function mapComponentDbToApi(dbComponent: any): Record<string, any> | nul
     // Configuration - database uses 'status' column, not 'is_active'
     isActive: dbComponent.status === 'active',
     isTaxable: dbComponent.is_taxable,
-    isSystemDefined: dbComponent.is_system_defined,
+    isSystemDefined: dbComponent.is_system_component, // Map is_system_component to isSystemDefined
     displayOrder: dbComponent.display_order,
     
     // Multi-currency support
