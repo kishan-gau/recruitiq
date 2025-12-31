@@ -8,6 +8,7 @@ export * from './useDepartments';
 export * from './useLocations';
 export * from './usePayments';
 export * from './useTemplateVersions';
+export * from './useCurrency';
 
 // Migrated from legacy shared/hooks/paylinq
 // API hook
@@ -62,3 +63,5 @@ export type { ComponentOverride } from './usePayStructures';
 export type { TemplateInclusion } from './usePayStructures';
 export type { ResolvedPayStructureTemplate } from './usePayStructures';
 export type { UseWorkersForManagerOptions } from './useWorkersForManager';
+export type { ExchangeRate } from './useCurrency';
+export type { ForfaitRule, ForfaitRuleTemplate } from '@recruitiq/api-client';

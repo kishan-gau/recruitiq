@@ -25,6 +25,7 @@ export type {
 export { RecruitIQAPI } from './products/recruitiq';
 export { PortalAPI } from './products/portal';
 export { PaylinqClient } from './products/paylinq';
+export type { ForfaitRule, ForfaitRuleTemplate } from './products/paylinq';
 export { NexusClient } from './products/nexus';
 export { ScheduleHubClient } from './products/schedulehub';
 

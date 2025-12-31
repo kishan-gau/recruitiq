@@ -69,3 +69,12 @@ export function useAttendanceStatistics() {
     queryFn: () => attendanceService.getAttendanceStatistics(),
   });
 }
+
+/**
+ * Hook for today's attendance records
+ * Alias for useAttendanceRecords with today's date filter
+ */
+export function useTodayAttendance() {
+  const today = new Date().toISOString().split('T')[0];
+  return useAttendanceRecords({ date: today });
+}
