@@ -30,6 +30,7 @@ export {
   useAssignWorkerRoles,
   useAssignRole,
   useUnassignRole,
+  useRoleWorkers,
 } from './useRoles';
 
 // Station Coverage Analysis Hooks
@@ -114,3 +115,4 @@ export {
 // Future hooks (to be migrated)
 export * from './useSchedules';
 export * from './useShifts';
+export * from './useDepartments';

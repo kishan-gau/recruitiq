@@ -66,3 +66,39 @@ export function useDeleteShift() {
     },
   });
 }
+
+/**
+ * Hook for assigning a shift to a worker
+ * TODO: Implement actual API call
+ */
+export function useAssignShift() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ shiftId, workerId }: { shiftId: string; workerId: string }) => {
+      // TODO: Implement actual API call
+      return { shiftId, workerId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+    },
+  });
+}
+
+/**
+ * Hook for unassigning a shift from a worker
+ * TODO: Implement actual API call
+ */
+export function useUnassignShift() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ shiftId }: { shiftId: string }) => {
+      // TODO: Implement actual API call
+      return { shiftId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shifts'] });
+    },
+  });
+}

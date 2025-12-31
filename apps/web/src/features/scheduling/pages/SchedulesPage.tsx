@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import {
   CalendarView,
-  ShiftManagement,
-  WorkerScheduling
+  // ShiftManagement,  // TODO: Create component
+  // WorkerScheduling  // TODO: Create component
 } from '@features/scheduling/components';
 import { useErrorHandler } from '@/hooks';
 
@@ -13,10 +13,17 @@ export default function SchedulesPage() {
   const { view = 'calendar' } = useParams<{ view?: string }>();
   const handleError = useErrorHandler();
 
+  // Placeholder components for views that haven't been implemented yet
+  const PlaceholderComponent = ({ title }: { title: string }) => (
+    <div className="flex items-center justify-center h-96 bg-slate-50 dark:bg-slate-800 rounded-lg">
+      <p className="text-slate-600 dark:text-slate-400">{title} - Coming Soon</p>
+    </div>
+  );
+
   const views = [
     { id: 'calendar', label: 'Calendar View', component: CalendarView },
-    { id: 'shifts', label: 'Shift Management', component: ShiftManagement },
-    { id: 'workers', label: 'Worker Scheduling', component: WorkerScheduling }
+    { id: 'shifts', label: 'Shift Management', component: () => <PlaceholderComponent title="Shift Management" /> },
+    { id: 'workers', label: 'Worker Scheduling', component: () => <PlaceholderComponent title="Worker Scheduling" /> }
   ];
 
   const currentView = views.find(v => v.id === view) || views[0];

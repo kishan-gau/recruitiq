@@ -163,3 +163,18 @@ export function useUnassignRole() {
     },
   });
 }
+
+/**
+ * Hook to get workers assigned to a role
+ * TODO: Implement actual API call
+ */
+export function useRoleWorkers(roleId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['schedulehub', 'roles', roleId, 'workers'],
+    queryFn: async () => {
+      // TODO: Implement actual API call
+      return [];
+    },
+    enabled: enabled && !!roleId,
+  });
+}

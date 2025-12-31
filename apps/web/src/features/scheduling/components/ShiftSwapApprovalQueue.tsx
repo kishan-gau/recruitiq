@@ -20,8 +20,8 @@ import { useNavigate } from 'react-router-dom';
 import { useErrorHandler } from '@/hooks';
 import {
   usePendingSwaps,
-  useApproveSwap,
-  useRejectSwap,
+  useApproveShiftSwap as useApproveSwap,
+  useRejectShiftSwap as useRejectSwap,
   useBulkApproveSwaps,
   useBulkRejectSwaps,
 } from '../hooks';

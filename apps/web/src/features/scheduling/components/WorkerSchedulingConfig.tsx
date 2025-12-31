@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 
 import { Modal, Button, Input } from '@recruitiq/ui';
 
-import { Label } from '@recruitiq/ui';
 import { Switch } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
@@ -166,9 +165,9 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
           {/* Schedulable Toggle */}
           <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <div className="space-y-0.5">
-              <Label htmlFor="isSchedulable" className="text-base font-medium">
+              <label htmlFor="isSchedulable" className="text-base font-medium">
                 Available for Scheduling
-              </Label>
+              </label>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Enable to allow this employee to be assigned to shifts
               </p>
@@ -188,9 +187,9 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <Label htmlFor="maxHoursPerWeek">
+                    <label htmlFor="maxHoursPerWeek">
                       Max Hours/Week <span className="text-red-500">*</span>
-                    </Label>
+                    </label>
                     <Input
                       id="maxHoursPerWeek"
                       type="number"
@@ -218,7 +217,7 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
                   </div>
 
                   <div>
-                    <Label htmlFor="maxConsecutiveDays">Max Consecutive Days</Label>
+                    <label htmlFor="maxConsecutiveDays">Max Consecutive Days</label>
                     <Input
                       id="maxConsecutiveDays"
                       type="number"
@@ -244,9 +243,9 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
                   </div>
 
                   <div>
-                    <Label htmlFor="minHoursBetweenShifts">
+                    <label htmlFor="minHoursBetweenShifts">
                       Min Hours Between Shifts
-                    </Label>
+                    </label>
                     <Input
                       id="minHoursBetweenShifts"
                       type="number"
@@ -275,7 +274,7 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
 
               {/* Preferred Shift Types */}
               <div className="space-y-3">
-                <Label>Preferred Shift Types (Optional)</Label>
+                <label>Preferred Shift Types (Optional)</label>
                 <p id="shift-types-description" className="text-sm text-gray-600 dark:text-gray-400">
                   Select the shift types this employee prefers to work
                 </p>
@@ -300,10 +299,10 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
 
               {/* Unavailable Days */}
               <div className="space-y-3">
-                <Label className="flex items-center gap-2">
+                <label className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   Unavailable Days (Optional)
-                </Label>
+                </label>
                 <div className="grid grid-cols-4 gap-2">
                   {daysOfWeek.map((day) => (
                     <Button
@@ -325,7 +324,7 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
 
               {/* Notes */}
               <div>
-                <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                <label htmlFor="notes">Additional Notes (Optional)</label>
                 <p id="notes-help" className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                   Add any special scheduling considerations or preferences
                 </p>
