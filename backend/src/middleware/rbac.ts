@@ -74,7 +74,7 @@ export function requirePermission(requiredPermission, options = {}) {
       }
       
       next();
-    } catch (error) {
+    } catch (_error) {
       next(error);
     }
   };
@@ -199,7 +199,7 @@ export function requireRole(...roleNames) {
       req.userRole = result.rows[0].name;
 
       next();
-    } catch (error) {
+    } catch (_error) {
       next(error);
     }
   };
@@ -245,7 +245,7 @@ export async function attachPermissions(req, res, next) {
     req.userRoles = rolesResult.rows.map(row => row.name);
 
     next();
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error attaching permissions', {
       error: error.message,
       userId: req.user?.id,

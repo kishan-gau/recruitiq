@@ -96,7 +96,7 @@ constructor(loontijdvakService = null) {
         employeeComponents: processedComponents,
         calculatedAt: new Date().toISOString()
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error calculating payroll run components', {
         error: error.message,
         organizationId
@@ -226,7 +226,7 @@ constructor(loontijdvakService = null) {
         loontijdvak: loontijdvak.type,
         wasProrated: proratingMetadata.needsProrating
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error processing employee components', {
         error: error.message,
         employeeRecordId: employee.employeeRecordId,

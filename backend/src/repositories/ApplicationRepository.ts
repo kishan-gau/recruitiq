@@ -42,7 +42,7 @@ export class ApplicationRepository extends BaseRepository {
       // Import DTO mapper
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return mapDbToApi(dbRecord);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding application with details:', error);
       throw error;
     }
@@ -67,7 +67,7 @@ export class ApplicationRepository extends BaseRepository {
       
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return mapDbToApi(dbRecord);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding application by candidate and job:', error);
       throw error;
     }
@@ -148,7 +148,7 @@ export class ApplicationRepository extends BaseRepository {
         limit,
         totalPages: Math.ceil(total / limit)
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding applications by job:', error);
       throw error;
     }
@@ -176,7 +176,7 @@ export class ApplicationRepository extends BaseRepository {
       
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding applications by candidate:', error);
       throw error;
     }
@@ -302,7 +302,7 @@ export class ApplicationRepository extends BaseRepository {
         limit,
         totalPages: Math.ceil(total / limit)
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error searching applications:', error);
       throw error;
     }
@@ -323,7 +323,7 @@ export class ApplicationRepository extends BaseRepository {
 
       const result = await db.query(query, [organizationId]);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting application count by status:', error);
       throw error;
     }
@@ -350,7 +350,7 @@ export class ApplicationRepository extends BaseRepository {
 
       const result = await db.query(query, [organizationId, limit]);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting recent applications:', error);
       throw error;
     }
@@ -384,7 +384,7 @@ export class ApplicationRepository extends BaseRepository {
 
       const result = await db.query(query, [status, reviewedBy, notes, id, organizationId]);
       return result.rows[0] || null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating application status:', error);
       throw error;
     }
@@ -412,7 +412,7 @@ export class ApplicationRepository extends BaseRepository {
 
       const result = await db.query(query, params);
       return parseInt(result.rows[0].count, 10);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error counting applications by job:', error);
       throw error;
     }
@@ -433,7 +433,7 @@ export class ApplicationRepository extends BaseRepository {
 
       const result = await db.query(query, [candidateId, organizationId]);
       return parseInt(result.rows[0].count, 10);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error counting applications by candidate:', error);
       throw error;
     }
@@ -477,7 +477,7 @@ export class ApplicationRepository extends BaseRepository {
 
       const result = await db.query(query, params);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting pipeline stats:', error);
       throw error;
     }

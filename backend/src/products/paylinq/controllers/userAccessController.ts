@@ -40,7 +40,7 @@ async function grantAccess(req, res) {
       message: 'System access granted successfully',
       data: result
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in grantAccess controller', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -93,7 +93,7 @@ async function getUserAccount(req, res) {
       success: true,
       data: status
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in getUserAccount controller', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -139,7 +139,7 @@ async function revokeAccess(req, res) {
       success: true,
       message: result.message
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in revokeAccess controller', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -189,7 +189,7 @@ async function updateAccess(req, res) {
       message: 'Access updated successfully',
       data: result
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in updateAccess controller', {
       error: error.message,
       employeeId: req.params.employeeId,

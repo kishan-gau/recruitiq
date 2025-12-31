@@ -27,7 +27,7 @@ export const validateFormula = async (req, res) => {
       data: result,
       message: 'Formula validation completed'
     });
-  } catch (err) {
+  } catch (_err) {
     logger.error('Error in validateFormula controller', { error: err.message });
     return res.status(500).json({
       success: false,
@@ -61,7 +61,7 @@ export const testFormula = async (req, res) => {
       data: result,
       message: 'Formula test completed'
     });
-  } catch (err) {
+  } catch (_err) {
     logger.error('Error in testFormula controller', { error: err.message });
     return res.status(500).json({
       success: false,
@@ -116,7 +116,7 @@ export const executeFormula = async (req, res) => {
       data: result,
       message: 'Formula executed successfully'
     });
-  } catch (err) {
+  } catch (_err) {
     logger.error('Error in executeFormula controller', { error: err.message });
     const statusCode = err.message.includes('not found') ? 404 : 500;
     return res.status(statusCode).json({
@@ -238,7 +238,7 @@ export const getFormulaVariables = async (req, res) => {
       data: { variables, operators, functions, examples },
       message: 'Formula metadata retrieved successfully'
     });
-  } catch (err) {
+  } catch (_err) {
     logger.error('Error in getFormulaVariables controller', { error: err.message });
     return res.status(500).json({
       success: false,

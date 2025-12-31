@@ -92,7 +92,7 @@ router.post('/test', async (req, res, next) => {
       notQualifiedWorkers: testResults.notQualifiedWorkers,
       allResults: testResults.allResults,
     });
-  } catch (err) {
+  } catch (_err) {
     next(err);
   }
 });
@@ -162,7 +162,7 @@ router.post('/evaluate', async (req, res, next) => {
       success: true,
       evaluation,
     });
-  } catch (err) {
+  } catch (_err) {
     next(err);
   }
 });
@@ -249,7 +249,7 @@ router.get('/shift-types', async (req, res, next) => {
       hasNext: page < Math.ceil(total / limit),
       hasPrev: page > 1,
     });
-  } catch (err) {
+  } catch (_err) {
     next(err);
   }
 });
@@ -324,7 +324,7 @@ router.get('/stations', async (req, res, next) => {
       hasNext: page < Math.ceil(total / limit),
       hasPrev: page > 1,
     });
-  } catch (err) {
+  } catch (_err) {
     next(err);
   }
 });
@@ -399,7 +399,7 @@ router.get('/roles', async (req, res, next) => {
       hasNext: page < Math.ceil(total / limit),
       hasPrev: page > 1,
     });
-  } catch (err) {
+  } catch (_err) {
     next(err);
   }
 });
@@ -479,7 +479,7 @@ router.get('/validation-schema', async (req, res, next) => {
       success: true,
       schema: schemaDefinition,
     });
-  } catch (err) {
+  } catch (_err) {
     next(err);
   }
 });

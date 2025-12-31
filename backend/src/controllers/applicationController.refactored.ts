@@ -22,7 +22,7 @@ export async function createApplication(req, res, next) {
       data: application,
       message: 'Application submitted successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -46,7 +46,7 @@ export async function getApplication(req, res, next) {
       success: true,
       application: application
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -66,7 +66,7 @@ export async function updateApplication(req, res, next) {
       data: application,
       message: 'Application updated successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -85,7 +85,7 @@ export async function deleteApplication(req, res, next) {
       success: true,
       message: 'Application deleted successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -135,7 +135,7 @@ export async function listApplications(req, res, next) {
         totalPages: result.totalPages
       }
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -177,7 +177,7 @@ export async function getJobApplications(req, res, next) {
         totalPages: result.totalPages
       }
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -196,7 +196,7 @@ export async function getCandidateApplications(req, res, next) {
       success: true,
       data: applications
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -215,7 +215,7 @@ export async function getApplicationStatistics(req, res, next) {
       success: true,
       data: stats
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -248,7 +248,7 @@ export async function changeApplicationStatus(req, res, next) {
       data: application,
       message: 'Application status updated successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -270,7 +270,7 @@ export async function getRecentApplications(req, res, next) {
       success: true,
       data: applications
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -292,7 +292,7 @@ export async function trackApplication(req, res, next) {
         message: 'Application tracking feature coming soon'
       }
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }

@@ -59,7 +59,7 @@ constructor() {
       });
 
       return feature;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating feature', {
         data,
         error: error.message
@@ -96,7 +96,7 @@ constructor() {
       });
 
       return updated;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating feature', {
         featureId,
         data,
@@ -118,7 +118,7 @@ constructor() {
         throw new NotFoundError('Feature not found');
       }
       return feature;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting feature', {
         featureId,
         error: error.message
@@ -140,7 +140,7 @@ constructor() {
         throw new NotFoundError(`Feature '${featureKey}' not found`);
       }
       return feature;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting feature by key', {
         productId,
         featureKey,
@@ -159,7 +159,7 @@ constructor() {
   async listFeatures(filters = {}, options = {}) {
     try {
       return await this.featureRepo.findAll(filters, options);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error listing features', {
         filters,
         error: error.message
@@ -178,7 +178,7 @@ constructor() {
   async listProductFeatures(productId, filters = {}, options = {}) {
     try {
       return await this.featureRepo.findByProduct(productId, filters, options);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error listing product features', {
         productId,
         error: error.message
@@ -222,7 +222,7 @@ constructor() {
       });
 
       return deprecated;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error deprecating feature', {
         featureId,
         error: error.message
@@ -261,7 +261,7 @@ constructor() {
       });
 
       return updated;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating rollout', {
         featureId,
         percentage,
@@ -360,7 +360,7 @@ constructor() {
       );
 
       return dependents;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding dependent features', {
         featureId,
         error: error.message

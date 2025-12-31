@@ -62,7 +62,7 @@ export function timezoneMiddleware(req, res, next) {
     }
     
     next();
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in timezone middleware', {
       error: error.message,
       stack: error.stack

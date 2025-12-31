@@ -72,13 +72,13 @@ class TierManagement {
           affectedCustomers: affectedCount,
           willAutoMigrate: autoMigrate && affectedCount > 0
         }
-      } catch (error) {
+      } catch (_error) {
         await client.query('ROLLBACK')
         throw error
       } finally {
         client.release()
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Create tier version error:', error)
       throw new Error('Failed to create tier version')
     }
@@ -200,7 +200,7 @@ class TierManagement {
         customers: changes,
         filters
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Preview migration error:', error)
       throw new Error('Failed to preview migration')
     }
@@ -302,7 +302,7 @@ class TierManagement {
             ]
           )
           migratedCount++
-        } catch (error) {
+        } catch (_error) {
           errors.push({
             licenseId: license.id,
             customerId: license.customer_id,
@@ -337,7 +337,7 @@ class TierManagement {
         migratedCustomers: migratedCount,
         errors: errors.length > 0 ? errors : null
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Execute migration error:', error)
       
       // Update migration status to failed
@@ -385,7 +385,7 @@ class TierManagement {
 
       const result = await db.query(query, params)
       return result.rows
-    } catch (error) {
+    } catch (_error) {
       console.error('Get migration history error:', error)
       return []
     }

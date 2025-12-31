@@ -30,7 +30,7 @@ class ScheduleController {
         success: true,
         schedule
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in createSchedule controller:', error);
       next(error);
     }
@@ -61,7 +61,7 @@ class ScheduleController {
         schedule: result.schedule,
         generationSummary: result.generationSummary
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in autoGenerateSchedule controller:', error);
       next(error);
     }
@@ -96,7 +96,7 @@ class ScheduleController {
         schedule: result.data.schedule,
         shifts: includeShifts ? result.data.shifts : undefined
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getScheduleById controller:', error);
       next(error);
     }
@@ -135,7 +135,7 @@ class ScheduleController {
         schedule: result.schedule,
         generationSummary: result.generationSummary
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in regenerateSchedule controller:', error);
       
       // Handle validation errors
@@ -182,7 +182,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in listSchedules controller:', error);
       next(error);
     }
@@ -205,7 +205,7 @@ class ScheduleController {
       );
 
       res.status(201).json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in createShift controller:', error);
       next(error);
     }
@@ -229,7 +229,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in updateShift controller:', error);
       next(error);
     }
@@ -254,7 +254,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in cancelShift controller:', error);
       next(error);
     }
@@ -279,7 +279,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in assignWorker controller:', error);
       next(error);
     }
@@ -302,7 +302,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in unassignWorker controller:', error);
       next(error);
     }
@@ -325,7 +325,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in publishSchedule controller:', error);
       next(error);
     }
@@ -343,7 +343,7 @@ class ScheduleController {
       const result = await this.scheduleService.clockIn(id, organizationId);
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in clockIn controller:', error);
       next(error);
     }
@@ -374,7 +374,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getWorkerShifts controller:', error);
       next(error);
     }
@@ -395,7 +395,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getAllShifts controller:', error);
       next(error);
     }
@@ -416,7 +416,7 @@ class ScheduleController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getStationCoverageStats controller:', error);
       next(error);
     }

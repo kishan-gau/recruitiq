@@ -87,7 +87,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating contract', { 
         error: error.message,
         organizationId,
@@ -129,7 +129,7 @@ constructor() {
       }
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting contract', { 
         error: error.message,
         id,
@@ -245,7 +245,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error listing contracts', { 
         error: error.message,
         filters,
@@ -328,7 +328,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating contract', { 
         error: error.message,
         id,
@@ -379,7 +379,7 @@ constructor() {
       });
 
       return { success: true, message: 'Contract deleted successfully' };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error deleting contract', { 
         error: error.message,
         id,
@@ -423,7 +423,7 @@ constructor() {
       });
 
       return result.rows[0] || null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting active contract', { 
         error: error.message,
         employeeId,

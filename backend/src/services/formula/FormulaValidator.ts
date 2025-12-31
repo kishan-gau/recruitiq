@@ -44,7 +44,7 @@ constructor() {
       // Additional semantic checks
       this.checkSemantics(ast, result);
       
-    } catch (error) {
+    } catch (_error) {
       result.addError(error.message);
     }
 

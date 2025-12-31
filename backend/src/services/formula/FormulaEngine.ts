@@ -48,7 +48,7 @@ constructor() {
       const ast = this.parser.parse(formula);
       logger.debug('Formula parsed successfully', { formula, ast });
       return ast;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Formula parse error', { formula, error: error.message });
       throw error;
     }
@@ -72,7 +72,7 @@ constructor() {
       });
       
       return result;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Formula validation error', { formula, error: error.message });
       throw error;
     }
@@ -108,7 +108,7 @@ constructor() {
       });
       
       return result;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Formula execution error', {
         formula: typeof formula === 'string' ? formula : '[AST]',
         variables,
@@ -178,7 +178,7 @@ constructor() {
     try {
       const ast = typeof formula === 'string' ? this.parse(formula) : formula;
       return this.validator.extractVariables(ast);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error extracting variables', { formula, error: error.message });
       throw error;
     }
@@ -209,7 +209,7 @@ constructor() {
             result: result.value,
             success: true,
           };
-        } catch (error) {
+        } catch (_error) {
           return {
             variables: testVars,
             error: error.message,
@@ -224,7 +224,7 @@ constructor() {
         testCases: results,
         ast: this.astToJSON(ast),
       };
-    } catch (error) {
+    } catch (_error) {
       return {
         formula,
         error: error.message,
@@ -250,7 +250,7 @@ constructor() {
         nodeCount,
         complexity: nodeCount > 50 ? 'high' : nodeCount > 20 ? 'medium' : 'low',
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting formula stats', { formula, error: error.message });
       throw error;
     }

@@ -53,7 +53,7 @@ const initializeCentralPool = () => {
         database: config.centralLogging.database || config.database.name,
         enabled: config.centralLogging.enabled,
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize central logging pool:', error);
       centralPool = null;
     }
@@ -94,7 +94,7 @@ export const queryCentralDb = async (text, params = []) => {
     }
     
     return result;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Central DB query error:', { text, error: error.message });
     throw error;
   }
@@ -124,7 +124,7 @@ export const centralHealthCheck = async () => {
         waiting: pool.waitingCount,
       },
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       status: 'unhealthy',
       error: error.message,
@@ -141,7 +141,7 @@ export const closeCentralPool = async () => {
       await centralPool.end();
       logger.info('Central database pool closed');
       centralPool = null;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error closing central database pool:', error);
     }
   }

@@ -21,7 +21,7 @@ class AttendanceController {
       const { organizationId, userId } = req.user;
       const attendance = await this.service.clockIn(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: attendance });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in clockIn controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -42,7 +42,7 @@ class AttendanceController {
 
       const attendance = await this.service.clockOut(employeeId, clockOutData, organizationId, userId);
       res.json({ success: true, data: attendance });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in clockOut controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -58,7 +58,7 @@ class AttendanceController {
       const { id } = req.params;
       const attendance = await this.service.getAttendanceRecord(id, organizationId);
       res.json({ success: true, data: attendance });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getAttendance controller', { error: error.message });
       const status = error.message === 'Attendance record not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -85,7 +85,7 @@ class AttendanceController {
         { ...filters, limit: parseInt(limit), offset: parseInt(offset) }
       );
       res.json({ success: true, data: attendance });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getEmployeeAttendance controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -100,7 +100,7 @@ class AttendanceController {
       const { organizationId, userId } = req.user;
       const attendance = await this.service.createManualAttendance(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: attendance });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in createManualAttendance controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -130,7 +130,7 @@ class AttendanceController {
         organizationId
       );
       res.json({ success: true, data: summary });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getAttendanceSummary controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -145,7 +145,7 @@ class AttendanceController {
       const { organizationId } = req.user;
       const records = await this.service.getTodayAttendance(organizationId);
       res.json({ success: true, data: records });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getTodayAttendance controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -160,7 +160,7 @@ class AttendanceController {
       const { organizationId } = req.user;
       const statistics = await this.service.getAttendanceStatistics(organizationId);
       res.json({ success: true, data: statistics });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getAttendanceStatistics controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }

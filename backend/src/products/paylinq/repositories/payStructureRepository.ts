@@ -145,7 +145,7 @@ constructor(database = null) {
       );
       
       return result.rows.map(row => mapPayStructureTemplateDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       throw error;
     }
   }

@@ -47,7 +47,7 @@ export const authenticatePlatform = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
+    } catch (_error) {
       if (error.name === 'TokenExpiredError') {
         return res.status(401).json({
           success: false,
@@ -111,7 +111,7 @@ export const authenticatePlatform = async (req, res, next) => {
     };
     
     next();
-  } catch (error) {
+  } catch (_error) {
     logger.error('Platform authentication error:', error);
     return res.status(500).json({
       success: false,
@@ -159,7 +159,7 @@ export const authenticateTenant = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
+    } catch (_error) {
       if (error.name === 'TokenExpiredError') {
         return res.status(401).json({
           success: false,
@@ -284,7 +284,7 @@ export const authenticateTenant = async (req, res, next) => {
     }
     
     next();
-  } catch (error) {
+  } catch (_error) {
     logger.error('Tenant authentication error:', error);
     return res.status(500).json({
       success: false,
@@ -488,7 +488,7 @@ export const authenticate = (req, res, next) => {
         message: 'Token format outdated. Please log in again.'
       });
     }
-  } catch (error) {
+  } catch (_error) {
     logger.error('Authentication error:', error);
     return res.status(500).json({
       success: false,
@@ -667,13 +667,13 @@ export const optionalAuth = async (req, res, next) => {
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Invalid token, but continue without user
       logger.debug('Optional auth failed:', error.message);
     }
     
     next();
-  } catch (error) {
+  } catch (_error) {
     logger.error('Optional auth error:', error);
     next(); // Continue even if error
   }

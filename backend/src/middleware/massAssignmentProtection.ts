@@ -210,7 +210,7 @@ export function createWhitelistMiddleware(allowedFields, options = {}) {
         req.body = enforceWhitelist(req.body, allowedFields, strict);
       }
       next();
-    } catch (error) {
+    } catch (_error) {
       next(error);
     }
   };
@@ -292,7 +292,7 @@ export function validateObjectStructure(maxDepth = 3) {
         checkDepth(req.query);
       }
       next();
-    } catch (error) {
+    } catch (_error) {
       next(error);
     }
   };
@@ -343,7 +343,7 @@ export function protectMassAssignment(options = {}) {
       }
 
       next();
-    } catch (error) {
+    } catch (_error) {
       next(error);
     }
   };

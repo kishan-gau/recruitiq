@@ -24,7 +24,7 @@ async function getTemplates(req, res) {
       data: templates,
       count: templates.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching templates', { error: error.message, organizationId: req.user?.organization_id });
     res.status(500).json({
       success: false,
@@ -49,7 +49,7 @@ async function getTemplateById(req, res) {
       success: true,
       data: template,
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -82,7 +82,7 @@ async function createTemplate(req, res) {
       data: template,
       message: 'Template created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
@@ -116,7 +116,7 @@ async function updateTemplate(req, res) {
       data: template,
       message: 'Template updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -157,7 +157,7 @@ async function deleteTemplate(req, res) {
       success: true,
       message: 'Template deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -199,7 +199,7 @@ async function duplicateTemplate(req, res) {
       data: template,
       message: 'Template duplicated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -233,7 +233,7 @@ async function activateTemplate(req, res) {
       data: template,
       message: 'Template activated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -267,7 +267,7 @@ async function archiveTemplate(req, res) {
       data: template,
       message: 'Template archived successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -301,7 +301,7 @@ async function getTemplateAssignments(req, res) {
       data: assignments,
       count: assignments.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching template assignments', { error: error.message, templateId: req.params.id });
     res.status(500).json({
       success: false,
@@ -328,7 +328,7 @@ async function createAssignment(req, res) {
       data: assignment,
       message: 'Assignment created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'ValidationError' || error.name === 'NotFoundError') {
       return res.status(400).json({
         success: false,
@@ -362,7 +362,7 @@ async function updateAssignment(req, res) {
       data: assignment,
       message: 'Assignment updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     if (error.name === 'NotFoundError') {
       return res.status(404).json({
         success: false,
@@ -403,7 +403,7 @@ async function deleteAssignment(req, res) {
       success: true,
       message: 'Assignment deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting assignment', { error: error.message, assignmentId: req.params.assignmentId });
     res.status(500).json({
       success: false,
@@ -443,7 +443,7 @@ async function generatePreview(req, res) {
     res.setHeader('Content-Disposition', 'inline; filename="preview.pdf"');
     res.send(pdfBuffer);
 
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error generating preview', { error: error.message, templateId: req.params.id });
     res.status(500).json({
       success: false,

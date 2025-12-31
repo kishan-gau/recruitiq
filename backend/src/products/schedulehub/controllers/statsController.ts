@@ -38,7 +38,7 @@ class StatsController {
           { operation: 'SELECT', table: 'hris.employee' }
         );
         stats.activeWorkers = parseInt(workersResult.rows[0]?.count || 0);
-      } catch (err) {
+      } catch (_err) {
         logger.warn('Error getting active workers count:', err.message);
       }
 
@@ -55,7 +55,7 @@ class StatsController {
           { operation: 'SELECT', table: 'scheduling.schedules' }
         );
         stats.publishedSchedules = parseInt(schedulesResult.rows[0]?.count || 0);
-      } catch (err) {
+      } catch (_err) {
         logger.warn('Error getting published schedules count:', err.message);
       }
 
@@ -71,7 +71,7 @@ class StatsController {
           { operation: 'SELECT', table: 'scheduling.time_off_requests' }
         );
         stats.pendingTimeOff = parseInt(timeOffResult.rows[0]?.count || 0);
-      } catch (err) {
+      } catch (_err) {
         logger.warn('Error getting pending time off count:', err.message);
       }
 
@@ -89,7 +89,7 @@ class StatsController {
           { operation: 'SELECT', table: 'scheduling.shifts' }
         );
         stats.openShifts = parseInt(openShiftsResult.rows[0]?.count || 0);
-      } catch (err) {
+      } catch (_err) {
         logger.warn('Error getting open shifts count:', err.message);
       }
 
@@ -109,7 +109,7 @@ class StatsController {
           { operation: 'SELECT', table: 'scheduling.shifts' }
         );
         stats.upcomingShifts = upcomingShiftsResult.rows || [];
-      } catch (err) {
+      } catch (_err) {
         logger.warn('Error getting upcoming shifts:', err.message);
       }
 
@@ -127,7 +127,7 @@ class StatsController {
           { operation: 'SELECT', table: 'scheduling.time_off_requests' }
         );
         stats.pendingApprovals = pendingApprovalsResult.rows || [];
-      } catch (err) {
+      } catch (_err) {
         logger.warn('Error getting pending approvals:', err.message);
       }
 
@@ -135,7 +135,7 @@ class StatsController {
         success: true,
         data: stats,
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getStats controller:', error);
       next(error);
     }

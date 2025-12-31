@@ -80,7 +80,7 @@ class Customer {
         instance,
         license: licenseResult.rows[0]
       }
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK')
       throw error
     } finally {

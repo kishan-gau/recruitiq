@@ -32,7 +32,7 @@ class ExchangeRateRepository {
     try {
       const result = await pool.query(query, [organizationId, fromCurrency, toCurrency, effectiveDate]);
       return result.rows[0] || null;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting current exchange rate', { organizationId, fromCurrency, toCurrency, error });
       throw error;
     }
@@ -58,7 +58,7 @@ class ExchangeRateRepository {
     try {
       const result = await pool.query(query, [organizationId]);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting active exchange rates', { organizationId, error });
       throw error;
     }
@@ -107,7 +107,7 @@ class ExchangeRateRepository {
     try {
       const result = await pool.query(query, params);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting historical rates', { organizationId, fromCurrency, toCurrency, error });
       throw error;
     }
@@ -156,7 +156,7 @@ class ExchangeRateRepository {
       });
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating exchange rate', { rateData, error });
       throw error;
     }
@@ -195,7 +195,7 @@ class ExchangeRateRepository {
 
       logger.info('Exchange rate updated', { id, updateData });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating exchange rate', { id, updateData, error });
       throw error;
     }
@@ -230,7 +230,7 @@ class ExchangeRateRepository {
 
       logger.info('Exchange rate deleted', { id, userId });
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error deleting exchange rate', { id, error });
       throw error;
     }
@@ -277,7 +277,7 @@ class ExchangeRateRepository {
       await client.query('COMMIT');
       logger.info('Bulk exchange rates created', { count: createdRates.length });
       return createdRates;
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       logger.error('Error bulk creating exchange rates', { error });
       throw error;
@@ -325,7 +325,7 @@ class ExchangeRateRepository {
       ]);
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error logging currency conversion', { conversionData, error });
       throw error;
     }
@@ -353,7 +353,7 @@ class ExchangeRateRepository {
     try {
       const result = await pool.query(query, [referenceType, referenceId]);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting conversion history', { referenceType, referenceId, error });
       throw error;
     }
@@ -371,7 +371,7 @@ class ExchangeRateRepository {
     try {
       const result = await pool.query(query);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting materialized view status', { error });
       throw error;
     }
@@ -384,7 +384,7 @@ class ExchangeRateRepository {
     try {
       await pool.query('SELECT payroll.refresh_currency_materialized_views()');
       logger.info('All currency materialized views refreshed');
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error refreshing materialized views', { error });
       throw error;
     }
@@ -397,7 +397,7 @@ class ExchangeRateRepository {
     try {
       await pool.query('SELECT payroll.refresh_active_rates_mv()');
       logger.info('Active exchange rates materialized view refreshed');
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error refreshing active rates view', { error });
       throw error;
     }
@@ -456,7 +456,7 @@ class ExchangeRateRepository {
     try {
       const result = await pool.query(query, params);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting conversion statistics', { organizationId, options, error });
       throw error;
     }
@@ -492,7 +492,7 @@ class ExchangeRateRepository {
     try {
       const result = await pool.query(query, [organizationId, fromCurrency, toCurrency]);
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting rate change history', { organizationId, fromCurrency, toCurrency, error });
       throw error;
     }

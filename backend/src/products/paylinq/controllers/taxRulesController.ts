@@ -100,7 +100,7 @@ export const getTaxRules = async (req, res) => {
         hasPrev: pageNum > 1,
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching tax rules', {
       error: error.message,
       stack: error.stack,
@@ -170,7 +170,7 @@ export const getTaxRule = async (req, res) => {
       success: true,
       taxRule,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching tax rule', {
       error: error.message,
       stack: error.stack,
@@ -306,7 +306,7 @@ export const createTaxRule = async (req, res) => {
       taxRule,
       message: 'Tax rule created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating tax rule', {
       error: error.message,
       stack: error.stack,
@@ -443,7 +443,7 @@ export const updateTaxRule = async (req, res) => {
       taxRule,
       message: 'Tax rule updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating tax rule', {
       error: error.message,
       stack: error.stack,
@@ -498,7 +498,7 @@ export const deleteTaxRule = async (req, res) => {
       success: true,
       message: 'Tax rule deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting tax rule', {
       error: error.message,
       stack: error.stack,
@@ -576,7 +576,7 @@ export const createTaxRuleVersion = async (req, res) => {
       version: newVersion,
       message: 'Tax rule version created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating tax rule version', {
       error: error.message,
       stack: error.stack,
@@ -611,7 +611,7 @@ export const getTaxRuleVersionHistory = async (req, res) => {
       success: true,
       versions: history,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching tax rule version history', {
       error: error.message,
       stack: error.stack,
@@ -663,7 +663,7 @@ export const publishTaxRuleVersion = async (req, res) => {
       version: publishedVersion,
       message: 'Tax rule version published successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error publishing tax rule version', {
       error: error.message,
       stack: error.stack,
@@ -719,7 +719,7 @@ export const archiveTaxRuleVersion = async (req, res) => {
       version: archivedVersion,
       message: 'Tax rule version archived successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error archiving tax rule version', {
       error: error.message,
       stack: error.stack,
@@ -777,7 +777,7 @@ export const compareTaxRuleVersions = async (req, res) => {
       success: true,
       comparison,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error comparing tax rule versions', {
       error: error.message,
       stack: error.stack,

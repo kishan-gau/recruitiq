@@ -28,7 +28,7 @@ pool.on('connect', async (client) => {
     // RBAC tables (roles, permissions) are in public schema as platform infrastructure
     await client.query('SET search_path TO public, hris, payroll, scheduling');
     logger.info('✅ PostgreSQL connected with search_path configured');
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to set search_path:', error);
   }
 });
@@ -77,7 +77,7 @@ export const query = async (text, params, organizationId = null, metadata = {}) 
     logger.debug('Executed query', { text, duration, rows: result.rowCount });
     
     return result;
-  } catch (error) {
+  } catch (_error) {
     logQueryError(modifiedText, modifiedParams, error, metadata);
     logger.error('Database query error:', { text, error: error.message });
     throw error;
@@ -101,7 +101,7 @@ export const transaction = async (callback) => {
     const result = await callback(client);
     await client.query('COMMIT');
     return result;
-  } catch (error) {
+  } catch (_error) {
     await client.query('ROLLBACK');
     throw error;
   } finally {
@@ -123,7 +123,7 @@ export const healthCheck = async () => {
         waiting: pool.waitingCount,
       },
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       status: 'unhealthy',
       error: error.message,
@@ -136,7 +136,7 @@ export const closePool = async () => {
   try {
     await pool.end();
     logger.info('Database pool closed');
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error closing database pool:', error);
   }
 };

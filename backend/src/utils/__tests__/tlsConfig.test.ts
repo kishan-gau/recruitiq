@@ -319,7 +319,7 @@ describe('TLS Configuration Utilities', () => {
         const server = createServer(mockApp);
         // If it doesn't throw, that's also acceptable in development
         expect(server).toBeDefined();
-      } catch (error) {
+      } catch (_error) {
         // If it throws, verify error was logged
         expect(error).toBeDefined();
       }

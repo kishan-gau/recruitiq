@@ -66,7 +66,7 @@ class PayPeriodService {
       );
 
       return result.rows[0] || null;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching pay period config', { error: err.message, organizationId });
       throw err;
     }
@@ -167,7 +167,7 @@ class PayPeriodService {
         logger.info('Pay period config created', { organizationId, configId: result.rows[0].id });
         return result.rows[0];
       }
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error saving pay period config', { error: err.message, organizationId });
       throw err;
     }
@@ -329,7 +329,7 @@ class PayPeriodService {
       const result = await this.db.query(sql, params, organizationId, { operation: 'SELECT', table: 'company_holiday' });
       
       return result.rows;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching holidays', { error: err.message, organizationId });
       throw err;
     }
@@ -380,7 +380,7 @@ class PayPeriodService {
 
       logger.info('Holiday created', { organizationId, holidayId: result.rows[0].id });
       return result.rows[0];
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error creating holiday', { error: err.message, organizationId });
       throw err;
     }
@@ -407,7 +407,7 @@ class PayPeriodService {
 
       logger.info('Holiday deleted', { organizationId, holidayId });
       return { success: true };
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error deleting holiday', { error: err.message, organizationId, holidayId });
       throw err;
     }

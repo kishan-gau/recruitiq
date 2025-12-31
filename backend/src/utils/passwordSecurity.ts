@@ -149,7 +149,7 @@ export async function checkBreachedPassword(password) {
     
     return { breached: false, count: 0 };
     
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to check password breach status', {
       error: error.message,
     });
@@ -349,7 +349,7 @@ export async function validatePassword(password, options = {}) {
           'Please choose a different password'
         );
       }
-    } catch (error) {
+    } catch (_error) {
       // Log error but don't fail validation
       logger.warn('Could not check password breach status', {
         error: error.message,

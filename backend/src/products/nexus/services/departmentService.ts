@@ -82,7 +82,7 @@ constructor() {
       });
 
       return mapDepartmentDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating department', { 
         error: error.message,
         organizationId,
@@ -122,7 +122,7 @@ constructor() {
       }
 
       return mapDepartmentDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting department', { 
         error: error.message,
         id,
@@ -232,7 +232,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error listing departments', { 
         error: error.message,
         filters,
@@ -331,7 +331,7 @@ constructor() {
       });
 
       return mapDepartmentDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating department', { 
         error: error.message,
         id,
@@ -408,7 +408,7 @@ constructor() {
       });
 
       return { success: true, message: 'Department deleted successfully' };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error deleting department', { 
         error: error.message,
         id,
@@ -462,7 +462,7 @@ constructor() {
       });
 
       return mapDepartmentsDbToApi(result.rows);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting department hierarchy', { 
         error: error.message,
         organizationId 
@@ -501,7 +501,7 @@ constructor() {
         // Get employees for just this department
         return await employeeService.listEmployees(organizationId, { departmentId });
       }
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting department employees', {
         error: error.message,
         departmentId,

@@ -229,7 +229,7 @@ export function validateConfiguration() {
 
     logger.info('=== Configuration Validation Complete ===\n');
     return true;
-  } catch (error) {
+  } catch (_error) {
     logger.error('❌ Configuration validation failed:', error.message);
     throw error;
   }
@@ -242,7 +242,7 @@ export function validateConfiguration() {
 export function validateConfigurationOrExit() {
   try {
     validateConfiguration();
-  } catch (error) {
+  } catch (_error) {
     logger.error('Fatal configuration error. Exiting...');
     process.exit(1);
   }

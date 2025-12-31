@@ -22,7 +22,7 @@ class ProductConfigController {
 
       const configs = await productConfigService.getConfigs(organizationId, productId);
       res.json(configs);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -41,7 +41,7 @@ class ProductConfigController {
       }
 
       res.json(config);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -77,7 +77,7 @@ class ProductConfigController {
       );
 
       res.json(config);
-    } catch (error) {
+    } catch (_error) {
       res.status(400).json({ error: error.message });
     }
   }
@@ -105,7 +105,7 @@ class ProductConfigController {
       );
 
       res.json(config);
-    } catch (error) {
+    } catch (_error) {
       if (error.message === 'Config not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -124,7 +124,7 @@ class ProductConfigController {
 
       await productConfigService.deleteConfig(organizationId, productId, configKey, userId);
       res.status(204).send();
-    } catch (error) {
+    } catch (_error) {
       if (error.message === 'Config not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -143,7 +143,7 @@ class ProductConfigController {
 
       const count = await productConfigService.deleteAllConfigs(organizationId, productId, userId);
       res.json({ deleted: count });
-    } catch (error) {
+    } catch (_error) {
       res.status(400).json({ error: error.message });
     }
   }

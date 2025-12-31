@@ -47,7 +47,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding contract by ID', { id, organizationId, error: error.message });
       throw error;
     }
@@ -103,7 +103,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding all contracts', { filters, organizationId, error: error.message });
       throw error;
     }
@@ -124,7 +124,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [employeeId, organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding contracts by employee', { employeeId, organizationId, error: error.message });
       throw error;
     }
@@ -147,7 +147,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [employeeId, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding active contract by employee', { employeeId, organizationId, error: error.message });
       throw error;
     }
@@ -175,7 +175,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [organizationId, daysAhead], organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding expiring contracts', { daysAhead, organizationId, error: error.message });
       throw error;
     }
@@ -234,7 +234,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating contract', { contractData, organizationId, error: error.message });
       throw error;
     }
@@ -296,7 +296,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating contract', { id, contractData, organizationId, error: error.message });
       throw error;
     }
@@ -321,7 +321,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [status, userId, id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating contract status', { id, status, organizationId, error: error.message });
       throw error;
     }
@@ -347,7 +347,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [stepId, sequenceNumber, userId, id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating contract step', { id, stepId, organizationId, error: error.message });
       throw error;
     }
@@ -367,7 +367,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rowCount > 0;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error deleting contract', { id, organizationId, error: error.message });
       throw error;
     }

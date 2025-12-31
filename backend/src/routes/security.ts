@@ -47,7 +47,7 @@ router.get('/dashboard', (req, res) => {
     };
     
     res.json(dashboard);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get security dashboard', {
       error: error.message,
       userId: req.user?.id,
@@ -68,7 +68,7 @@ router.get('/metrics', (req, res) => {
       metrics,
       timestamp: new Date(),
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get security metrics', {
       error: error.message,
       userId: req.user?.id,
@@ -102,7 +102,7 @@ router.get('/events', (req, res) => {
     };
     
     res.json(events);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get security events', {
       error: error.message,
       userId: req.user?.id,
@@ -133,7 +133,7 @@ router.get('/alerts', (req, res) => {
     };
     
     res.json(alerts);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get security alerts', {
       error: error.message,
       userId: req.user?.id,
@@ -158,7 +158,7 @@ router.get('/threats', (req, res) => {
     };
     
     res.json(threats);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get active threats', {
       error: error.message,
       userId: req.user?.id,
@@ -193,7 +193,7 @@ router.get('/health', (req, res) => {
     };
     
     res.json(overallHealth);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get security health', {
       error: error.message,
       userId: req.user?.id,
@@ -221,7 +221,7 @@ router.get('/config', (req, res) => {
     };
     
     res.json(configInfo);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get security config', {
       error: error.message,
       userId: req.user?.id,
@@ -258,7 +258,7 @@ router.post('/test-alert', (req, res) => {
       type,
       severity,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to generate test alert', {
       error: error.message,
       userId: req.user?.id,
@@ -294,7 +294,7 @@ router.get('/statistics', (req, res) => {
     };
     
     res.json(statistics);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get security statistics', {
       error: error.message,
       userId: req.user?.id,

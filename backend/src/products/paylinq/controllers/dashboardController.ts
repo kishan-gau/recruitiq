@@ -46,7 +46,7 @@ async function getDashboardOverview(req, res) {
       data: dashboardData,
       message: 'Dashboard data retrieved successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching dashboard overview', {
       error: error.message,
       stack: error.stack,
@@ -87,7 +87,7 @@ async function getPayrollStats(req, res) {
       data: stats,
       message: 'Payroll statistics retrieved successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching payroll statistics', {
       error: error.message,
       stack: error.stack,
@@ -123,7 +123,7 @@ async function getEmployeeStats(req, res) {
       data: stats,
       message: 'Employee statistics retrieved successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching employee statistics', {
       error: error.message,
       stack: error.stack,
@@ -163,7 +163,7 @@ async function getRecentActivity(req, res) {
       data: activities,
       message: 'Recent activity retrieved successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching recent activity', {
       error: error.message,
       stack: error.stack,

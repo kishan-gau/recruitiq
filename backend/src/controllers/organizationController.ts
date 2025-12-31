@@ -45,7 +45,7 @@ export async function getOrganization(req, res, next) {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -86,7 +86,7 @@ export async function updateOrganization(req, res, next) {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -104,7 +104,7 @@ export async function getUsageStats(req, res, next) {
       stats
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -130,7 +130,7 @@ export async function getSessionPolicy(req, res, next) {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -219,7 +219,7 @@ export async function updateSessionPolicy(req, res, next) {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }

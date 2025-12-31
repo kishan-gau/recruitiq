@@ -20,7 +20,7 @@ export async function healthCheck(req, res, next) {
       success: health.status === 'healthy',
       ...health
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('VPS health check failed', {
       error: error.message
     });
@@ -49,7 +49,7 @@ export async function getVPSInfo(req, res, next) {
       success: true,
       vps: vpsInfo
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get VPS info', {
       error: error.message,
       userId: req.user.id
@@ -74,7 +74,7 @@ export async function getVPSMetrics(req, res, next) {
       success: true,
       metrics
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get VPS metrics', {
       error: error.message,
       userId: req.user.id
@@ -100,7 +100,7 @@ export async function startVPS(req, res, next) {
       success: true,
       ...result
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to start VPS', {
       error: error.message,
       userId: req.user.id
@@ -126,7 +126,7 @@ export async function stopVPS(req, res, next) {
       success: true,
       ...result
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to stop VPS', {
       error: error.message,
       userId: req.user.id
@@ -152,7 +152,7 @@ export async function rebootVPS(req, res, next) {
       success: true,
       ...result
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to reboot VPS', {
       error: error.message,
       userId: req.user.id
@@ -178,7 +178,7 @@ export async function getSnapshots(req, res, next) {
       success: true,
       snapshots
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to get VPS snapshots', {
       error: error.message,
       userId: req.user.id
@@ -215,7 +215,7 @@ export async function createSnapshot(req, res, next) {
       snapshot,
       message: 'Snapshot created successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to create VPS snapshot', {
       error: error.message,
       userId: req.user.id
@@ -251,7 +251,7 @@ export async function revertToSnapshot(req, res, next) {
       success: true,
       ...result
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to revert VPS to snapshot', {
       error: error.message,
       userId: req.user.id,

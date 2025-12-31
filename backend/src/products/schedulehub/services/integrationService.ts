@@ -207,7 +207,7 @@ constructor() {
         };
       }
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('[ScheduleHub] Error syncing employee from Nexus', {
         error: error.message,
@@ -319,7 +319,7 @@ constructor() {
         message: 'Worker successfully removed from workforce'
       };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('[ScheduleHub] Error removing employee', {
         error: error.message,

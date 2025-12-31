@@ -699,7 +699,7 @@ constructor(database = null) {
           this._validateFieldName(key, ALLOWED_PAY_CONFIG_FIELDS);
           payConfigUpdates[key] = updates[key];
         }
-      } catch (err) {
+      } catch (_err) {
         logger.warn('Invalid field name attempted', { fieldName: key, error: err.message });
         // Skip invalid fields rather than throwing
       }
@@ -801,7 +801,7 @@ constructor(database = null) {
       // Return updated worker type with pay config
       return await this.findById(workerTypeId, organizationId);
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       
       logger.error('Failed to update worker type', {

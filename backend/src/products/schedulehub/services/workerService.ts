@@ -153,7 +153,7 @@ constructor() {
         data: worker
       };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating worker:', error);
       throw error;
@@ -208,7 +208,7 @@ constructor() {
 
       return result.rows[0];
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching worker:', error);
       throw error;
     }
@@ -256,7 +256,7 @@ constructor() {
 
       return mapWorkerDbToApi(result.rows[0]);
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching worker by employee ID:', error);
       throw error;
     }
@@ -393,7 +393,7 @@ constructor() {
         }
       };
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error listing workers:', error);
       throw error;
     }
@@ -602,7 +602,7 @@ constructor() {
         data: mapWorkerDbToApi(result.rows[0])
       };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error updating worker:', error);
       throw error;
@@ -704,7 +704,7 @@ constructor() {
         data: mapWorkerDbToApi(workerResult.rows[0])
       };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error terminating worker:', error);
       throw error;
@@ -742,7 +742,7 @@ constructor() {
         data: result.rows
       };
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching worker availability:', error);
       throw error;
     }
@@ -795,7 +795,7 @@ constructor() {
         data: result.rows
       };
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching worker shift history:', error);
       throw error;
     }

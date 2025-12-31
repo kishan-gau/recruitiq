@@ -27,7 +27,7 @@ class TimeOffController {
       );
 
       res.status(201).json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in createRequest controller:', error);
       next(error);
     }
@@ -56,7 +56,7 @@ class TimeOffController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in listRequests controller:', error);
       next(error);
     }
@@ -89,7 +89,7 @@ class TimeOffController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in reviewRequest controller:', error);
       next(error);
     }
@@ -114,7 +114,7 @@ class TimeOffController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getWorkerRequests controller:', error);
       next(error);
     }
@@ -131,7 +131,7 @@ class TimeOffController {
       const result = await this.timeOffService.getPendingRequests(organizationId);
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getPendingRequests controller:', error);
       next(error);
     }
@@ -149,7 +149,7 @@ class TimeOffController {
       const result = await this.timeOffService.cancelRequest(id, organizationId);
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in cancelRequest controller:', error);
       next(error);
     }
@@ -171,7 +171,7 @@ class TimeOffController {
       }
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getRequestById controller:', error);
       next(error);
     }

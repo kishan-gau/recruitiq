@@ -55,7 +55,7 @@ export class BaseRepository {
 
       const dbRecord = result.rows[0] || null;
       return dbRecord ? mapDbToApi(dbRecord) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findById', {
         table: this.tableName,
         id,
@@ -99,7 +99,7 @@ export class BaseRepository {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findAll', {
         table: this.tableName,
         filters,
@@ -139,7 +139,7 @@ export class BaseRepository {
 
       const dbRecord = result.rows[0] || null;
       return dbRecord ? mapDbToApi(dbRecord) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findOneBy', {
         table: this.tableName,
         conditions,
@@ -191,7 +191,7 @@ export class BaseRepository {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in create', {
         table: this.tableName,
         data,
@@ -253,7 +253,7 @@ export class BaseRepository {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in update', {
         table: this.tableName,
         id,
@@ -303,7 +303,7 @@ export class BaseRepository {
       }
 
       return deleted;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in delete', {
         table: this.tableName,
         id,
@@ -340,7 +340,7 @@ export class BaseRepository {
       });
 
       return parseInt(result.rows[0].count, 10);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in count', {
         table: this.tableName,
         filters,
@@ -361,7 +361,7 @@ export class BaseRepository {
     try {
       const record = await this.findOneBy(conditions, organizationId);
       return record !== null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in exists', {
         table: this.tableName,
         conditions,

@@ -9,7 +9,7 @@ export const tierController = {
     try {
       const tiers = await TierPreset.getAllActive()
       res.json({ tiers })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get all tiers error:', error)
       res.status(500).json({ error: 'Failed to fetch tiers' })
     }
@@ -23,7 +23,7 @@ export const tierController = {
       const { tierName } = req.params
       const history = await TierPreset.getTierHistory(tierName)
       res.json({ history })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get tier history error:', error)
       res.status(500).json({ error: 'Failed to fetch tier history' })
     }
@@ -36,7 +36,7 @@ export const tierController = {
     try {
       const stats = await TierPreset.getUsageStats()
       res.json({ stats })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get tier stats error:', error)
       res.status(500).json({ error: 'Failed to fetch tier statistics' })
     }
@@ -64,7 +64,7 @@ export const tierController = {
         ...result,
         message: `Created version ${result.preset.version} for ${result.preset.tier_name} tier`
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Create tier version error:', error)
       res.status(500).json({ 
         success: false,
@@ -88,7 +88,7 @@ export const tierController = {
         success: true,
         ...preview
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Preview migration error:', error)
       res.status(500).json({ 
         success: false,
@@ -113,7 +113,7 @@ export const tierController = {
         ...result,
         message: `Successfully migrated ${result.migratedCustomers} of ${result.affectedCustomers} customers`
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Execute migration error:', error)
       res.status(500).json({ 
         success: false,
@@ -137,7 +137,7 @@ export const tierController = {
       )
 
       res.json({ history })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get migration history error:', error)
       res.status(500).json({ error: 'Failed to fetch migration history' })
     }
@@ -157,7 +157,7 @@ export const tierController = {
         count: customers.length,
         customers 
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get preset customers error:', error)
       res.status(500).json({ error: 'Failed to fetch preset customers' })
     }
@@ -180,7 +180,7 @@ export const tierController = {
         success: true,
         ...comparison
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Compare versions error:', error)
       res.status(500).json({ 
         error: 'Failed to compare versions',

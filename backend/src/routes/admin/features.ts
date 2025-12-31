@@ -93,7 +93,7 @@ router.post('/', requirePlatformPermission('features:manage'), async (req, res) 
       success: true,
       feature
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating feature', {
       error: error.message,
       body: req.body,
@@ -147,7 +147,7 @@ router.get('/', requirePlatformPermission('features:view'), async (req, res) => 
         pages: result.pages
       }
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error listing features', {
       error: error.message,
       query: req.query,
@@ -176,7 +176,7 @@ router.get('/:featureId', requirePlatformPermission('features:view'), async (req
       success: true,
       feature
     });
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof NotFoundError) {
       return res.status(404).json({
         success: false,
@@ -219,7 +219,7 @@ router.patch('/:featureId', requirePlatformPermission('features:manage'), async 
       success: true,
       feature
     });
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof NotFoundError) {
       return res.status(404).json({
         success: false,
@@ -278,7 +278,7 @@ router.post('/:featureId/deprecate', requirePlatformPermission('features:manage'
       success: true,
       feature
     });
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof NotFoundError) {
       return res.status(404).json({
         success: false,
@@ -339,7 +339,7 @@ router.patch('/:featureId/rollout', requirePlatformPermission('features:manage')
       success: true,
       feature
     });
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof NotFoundError) {
       return res.status(404).json({
         success: false,
@@ -393,7 +393,7 @@ router.get('/organizations/:organizationId/features', requirePlatformPermission(
       organizationId,
       features: grants
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error listing organization features', {
       error: error.message,
       organizationId: req.params.organizationId,
@@ -469,7 +469,7 @@ router.post('/organizations/:organizationId/features/grant', requirePlatformPerm
       success: true,
       grant
     });
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof NotFoundError) {
       return res.status(404).json({
         success: false,
@@ -532,7 +532,7 @@ router.delete('/organizations/:organizationId/features/:grantId', requirePlatfor
       message: 'Feature revoked successfully',
       grant
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error revoking feature', {
       error: error.message,
       grantId: req.params.grantId,
@@ -585,7 +585,7 @@ router.post('/organizations/:organizationId/features/sync-tier', requirePlatform
         removedFeatures: changes.removed
       }
     });
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof ValidationError) {
       return res.status(400).json({
         success: false,
@@ -632,7 +632,7 @@ router.post('/organizations/:organizationId/features/preview-tier-change', requi
       success: true,
       preview
     });
-  } catch (error) {
+  } catch (_error) {
     if (error instanceof ValidationError) {
       return res.status(400).json({
         success: false,
@@ -730,7 +730,7 @@ router.get('/:featureId/analytics', requirePlatformPermission('features:view'), 
         }
       }
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting feature analytics', {
       error: error.message,
       featureId: req.params.featureId,
@@ -805,7 +805,7 @@ router.get('/adoption-report', requirePlatformPermission('features:view'), async
         }))
       }
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error generating adoption report', {
       error: error.message,
       query: req.query,

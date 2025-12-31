@@ -82,7 +82,7 @@ export const adminController = {
           timestamp: event.timestamp
         }))
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Dashboard error:', error)
       res.status(500).json({ error: 'Failed to fetch dashboard data' })
     }
@@ -116,7 +116,7 @@ export const adminController = {
           role: user.role
         }
       })
-    } catch (error) {
+    } catch (_error) {
       console.error('Login error:', error)
       res.status(500).json({ error: 'Login failed' })
     }
@@ -132,7 +132,7 @@ export const adminController = {
     try {
       const users = await AdminUser.findAll()
       res.json({ users })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get admin users error:', error)
       res.status(500).json({ error: 'Failed to fetch admin users' })
     }
@@ -149,7 +149,7 @@ export const adminController = {
 
       const user = await AdminUser.create({ email, password, name, role })
       res.status(201).json({ user })
-    } catch (error) {
+    } catch (_error) {
       console.error('Create admin user error:', error)
       res.status(500).json({ error: 'Failed to create admin user' })
     }
@@ -168,7 +168,7 @@ export const adminController = {
       }
 
       res.json({ user })
-    } catch (error) {
+    } catch (_error) {
       console.error('Update admin user error:', error)
       res.status(500).json({ error: 'Failed to update admin user' })
     }
@@ -191,7 +191,7 @@ export const adminController = {
       }
 
       res.json({ message: 'Admin user deleted', user })
-    } catch (error) {
+    } catch (_error) {
       console.error('Delete admin user error:', error)
       res.status(500).json({ error: 'Failed to delete admin user' })
     }
@@ -239,7 +239,7 @@ export const adminController = {
       const result = await db.query(query, params)
 
       res.json({ logs: result.rows })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get audit log error:', error)
       res.status(500).json({ error: 'Failed to fetch audit log' })
     }

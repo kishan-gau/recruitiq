@@ -47,7 +47,7 @@ class UsageTracker {
         eventId: event.id,
         warnings
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Track event error:', error)
       throw error
     }
@@ -104,7 +104,7 @@ class UsageTracker {
         summary,
         trends
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Get usage stats error:', error)
       throw error
     }
@@ -119,7 +119,7 @@ class UsageTracker {
   static async getRecentActivity(customerId, limit = 20) {
     try {
       return await UsageEvent.findByCustomerId(customerId, { limit })
-    } catch (error) {
+    } catch (_error) {
       console.error('Get recent activity error:', error)
       throw error
     }
@@ -157,7 +157,7 @@ class UsageTracker {
       }
 
       return metrics
-    } catch (error) {
+    } catch (_error) {
       console.error('Calculate global metrics error:', error)
       throw error
     }
@@ -199,7 +199,7 @@ class UsageTracker {
         instanceStatus: instance.status,
         lastHeartbeat: new Date()
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Process heartbeat error:', error)
       return {
         success: false,

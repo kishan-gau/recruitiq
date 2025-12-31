@@ -78,7 +78,7 @@ router.get('/',
         data: rates,
         count: rates.length
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching exchange rates', { error, user: req.user });
       next(error);
     }
@@ -109,7 +109,7 @@ router.get('/current/:from/:to',
         success: true,
         data: rate
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching current rate', { error, params: req.params });
       next(error);
     }
@@ -150,7 +150,7 @@ router.get('/historical/:from/:to',
           offset: options.offset
         }
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching historical rates', { error, params: req.params });
       next(error);
     }
@@ -180,7 +180,7 @@ router.post('/',
         data: rate,
         message: 'Exchange rate created successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating exchange rate', { error, body: req.body });
       next(error);
     }
@@ -211,7 +211,7 @@ router.put('/:id',
         data: rate,
         message: 'Exchange rate updated successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating exchange rate', { error, id: req.params.id });
       next(error);
     }
@@ -236,7 +236,7 @@ router.delete('/:id',
         data: rate,
         message: 'Exchange rate deleted successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error deleting exchange rate', { error, id: req.params.id });
       next(error);
     }
@@ -270,7 +270,7 @@ router.post('/bulk-import',
         count: createdRates.length,
         message: `${createdRates.length} exchange rates imported successfully`
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error bulk importing rates', { error, count: req.body.rates?.length });
       next(error);
     }
@@ -306,7 +306,7 @@ router.post('/convert',
         success: true,
         data: result
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error converting amount', { error, body: req.body });
       next(error);
     }
@@ -329,7 +329,7 @@ router.get('/conversions/:type/:id',
         data: conversions,
         count: conversions.length
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching conversion history', { error, params: req.params });
       next(error);
     }
@@ -355,7 +355,7 @@ router.get('/config',
         success: true,
         data: config
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching currency config', { error, user: req.user });
       next(error);
     }
@@ -385,7 +385,7 @@ router.put('/config',
         data: config,
         message: 'Currency configuration updated successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating currency config', { error, body: req.body });
       next(error);
     }
@@ -405,7 +405,7 @@ router.get('/cache/stats',
         success: true,
         data: stats
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching cache stats', { error });
       next(error);
     }
@@ -426,7 +426,7 @@ router.post('/cache/clear',
         success: true,
         message: 'Exchange rate cache cleared successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error clearing cache', { error });
       next(error);
     }

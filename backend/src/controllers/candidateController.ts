@@ -24,7 +24,7 @@ export async function createCandidate(req: Request, res: Response, next: NextFun
       userId
     );
     return res.sendCreated('candidate', candidate);
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -50,7 +50,7 @@ export async function getCandidate(req: Request, res: Response, next: NextFuncti
       resource: 'candidate',
       data: candidate
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -75,7 +75,7 @@ export async function updateCandidate(req, res, next) {
       resource: 'candidate',
       data: candidate
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -92,7 +92,7 @@ export async function deleteCandidate(req, res, next) {
     await candidateService.delete(id, organizationId, userId);
     
     return res.sendDeleted('Candidate deleted successfully');
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -146,7 +146,7 @@ export async function listCandidates(req, res, next) {
         totalPages: result.totalPages
       }
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -165,7 +165,7 @@ export async function getCandidateStatistics(req, res, next) {
       resource: 'statistics',
       data: stats
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -186,7 +186,7 @@ export async function updateCandidateTags(req, res, next) {
       resource: 'candidate',
       data: candidate
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -205,7 +205,7 @@ export async function checkCandidateLimit(req, res, next) {
       resource: 'limitInfo',
       data: limitInfo
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -225,7 +225,7 @@ export async function bulkImportCandidates(req, res, next) {
       resource: 'results',
       data: results
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -257,7 +257,7 @@ export async function getCandidateApplications(req, res, next) {
       data: result.applications,
       pagination: result.pagination
     });
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
