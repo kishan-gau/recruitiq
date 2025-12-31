@@ -10,6 +10,7 @@ export type ReviewType =
   | 'quarterly'
   | 'probation'
   | 'project'
+  | '360'
   | 'ad-hoc';
 
 export type ReviewStatus = 
@@ -20,6 +21,18 @@ export type ReviewStatus =
   | 'cancelled';
 
 export type RatingScale = 1 | 2 | 3 | 4 | 5;
+export type ReviewRating = RatingScale; // Alias for backward compatibility
+
+export type GoalCategory = 
+  | 'performance'
+  | 'development'
+  | 'behavioral'
+  | 'technical'
+  | 'leadership'
+  | 'other';
+
+export type GoalPriority = 'low' | 'medium' | 'high' | 'critical';
+export type GoalStatus = 'draft' | 'active' | 'completed' | 'cancelled' | 'on_hold';
 
 export interface PerformanceReview extends AuditFields {
   id: string;
@@ -33,12 +46,14 @@ export interface PerformanceReview extends AuditFields {
   reviewPeriodStart: string;
   reviewPeriodEnd: string;
   reviewDate?: string;
+  dueDate?: string;
   overallRating?: RatingScale;
   strengths?: string;
   areasForImprovement?: string;
   goals?: string;
   comments?: string;
   employeeComments?: string;
+  reviewerComments?: string;
   managerSignedDate?: string;
   employeeSignedDate?: string;
 }
@@ -50,6 +65,7 @@ export interface CreatePerformanceReviewDTO {
   reviewPeriodStart: string;
   reviewPeriodEnd: string;
   reviewDate?: string;
+  dueDate?: string;
 }
 
 export interface UpdatePerformanceReviewDTO extends Partial<CreatePerformanceReviewDTO> {
@@ -60,6 +76,7 @@ export interface UpdatePerformanceReviewDTO extends Partial<CreatePerformanceRev
   goals?: string;
   comments?: string;
   employeeComments?: string;
+  reviewerComments?: string;
 }
 
 export interface PerformanceReviewFilters {
@@ -69,4 +86,41 @@ export interface PerformanceReviewFilters {
   status?: ReviewStatus;
   periodStart?: string;
   periodEnd?: string;
+}
+
+// Goal types
+export interface Goal extends AuditFields {
+  id: string;
+  organizationId: string;
+  employeeId: string;
+  employeeName?: string;
+  reviewId?: string;
+  title: string;
+  description?: string;
+  category: GoalCategory;
+  priority: GoalPriority;
+  status: GoalStatus;
+  targetDate?: string;
+  completedDate?: string;
+  progress?: number; // 0-100
+  measurableCriteria?: string;
+  notes?: string;
+}
+
+export interface CreateGoalDTO {
+  employeeId: string;
+  reviewId?: string;
+  title: string;
+  description?: string;
+  category: GoalCategory;
+  priority: GoalPriority;
+  targetDate?: string;
+  measurableCriteria?: string;
+  notes?: string;
+}
+
+export interface UpdateGoalDTO extends Partial<CreateGoalDTO> {
+  status?: GoalStatus;
+  progress?: number;
+  completedDate?: string;
 }

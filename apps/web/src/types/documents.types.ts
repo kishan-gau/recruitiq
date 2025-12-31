@@ -12,19 +12,42 @@ export type DocumentType =
   | 'visa'
   | 'contract'
   | 'certificate'
+  | 'policy'
+  | 'handbook'
   | 'other';
 
-export type DocumentStatus = 'active' | 'expired' | 'pending' | 'revoked';
+export type DocumentStatus = 
+  | 'draft'
+  | 'active' 
+  | 'expired' 
+  | 'pending' 
+  | 'revoked'
+  | 'archived';
+
+export type DocumentCategory = 
+  | 'personal'
+  | 'employment'
+  | 'legal'
+  | 'compliance'
+  | 'training'
+  | 'other';
 
 export interface Document extends AuditFields {
   id: string;
   organizationId: string;
   employeeId: string;
   employeeName?: string; // For UI display
+  employee?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  }; // Nested employee object for joins
   documentType: DocumentType;
   documentNumber?: string;
   name: string;
   description?: string;
+  category?: DocumentCategory;
   fileUrl?: string;
   fileName?: string;
   fileSize?: number;
@@ -33,6 +56,9 @@ export interface Document extends AuditFields {
   expiryDate?: string;
   status: DocumentStatus;
   notes?: string;
+  requiresSignature?: boolean;
+  signedAt?: string;
+  signedBy?: string;
 }
 
 export interface CreateDocumentDTO {

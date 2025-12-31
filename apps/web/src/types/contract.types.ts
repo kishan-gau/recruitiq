@@ -29,10 +29,16 @@ export interface Contract extends AuditFields {
   title: string;
   startDate: string;
   endDate?: string;
+  probationEndDate?: string;
   salary?: number;
   currency?: string;
+  paymentFrequency?: 'monthly' | 'bi-weekly' | 'weekly' | 'hourly';
   hoursPerWeek?: number;
+  location?: string;
+  department?: string;
+  position?: string;
   terms?: string;
+  termsAndConditions?: string;
   notes?: string;
   signedDate?: string;
   terminationDate?: string;
