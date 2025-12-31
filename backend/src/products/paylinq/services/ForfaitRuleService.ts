@@ -189,7 +189,7 @@ constructor(repository = null) {
         forfaitRule: updatedMetadata.forfaitRule
       };
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error setting forfait rule', {
         error: error.message,
         componentCode,
@@ -222,7 +222,7 @@ constructor(repository = null) {
 
       return forfaitRule;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting forfait rule', {
         error: error.message,
         componentCode,
@@ -263,7 +263,7 @@ constructor(repository = null) {
 
       logger.info('Forfait rule removed', { componentCode, organizationId });
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error removing forfait rule', {
         error: error.message,
         componentCode,
@@ -361,7 +361,7 @@ constructor(repository = null) {
 
       return created;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error auto-creating forfait assignment', {
         error: error.message,
         benefitAssignmentId: benefitAssignment.id,
@@ -502,7 +502,7 @@ constructor(repository = null) {
 
       return forfaitAssignment;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating linked forfait assignment', {
         error: error.message,
         benefitAssignmentId,
@@ -543,7 +543,7 @@ constructor(repository = null) {
         });
       }
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error deleting linked forfait assignment', {
         error: error.message,
         benefitAssignmentId,
@@ -616,7 +616,7 @@ constructor(repository = null) {
 
       return results;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error calculating forfait for payroll', {
         error: error.message,
         payrollRunId,
