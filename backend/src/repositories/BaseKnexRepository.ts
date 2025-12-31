@@ -53,7 +53,7 @@ class BaseKnexRepository {
         .first();
       
       return record || null;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Error finding ${this.tableName} by ID`, {
         error: error.message,
         id,
@@ -102,7 +102,7 @@ class BaseKnexRepository {
       
       const records = await query;
       return records;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Error finding all ${this.tableName}`, {
         error: error.message,
         organizationId,
@@ -132,7 +132,7 @@ class BaseKnexRepository {
       
       const result = await query.count('* as count').first();
       return parseInt(result.count, 10);
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Error counting ${this.tableName}`, {
         error: error.message,
         organizationId,
@@ -172,7 +172,7 @@ class BaseKnexRepository {
       });
       
       return record;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Error creating ${this.tableName}`, {
         error: error.message,
         organizationId,
@@ -216,7 +216,7 @@ class BaseKnexRepository {
       });
       
       return record;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Error updating ${this.tableName}`, {
         error: error.message,
         id,
@@ -256,7 +256,7 @@ class BaseKnexRepository {
       }
       
       return deleted;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Error soft deleting ${this.tableName}`, {
         error: error.message,
         id,
@@ -290,7 +290,7 @@ class BaseKnexRepository {
       }
       
       return deleted;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Error hard deleting ${this.tableName}`, {
         error: error.message,
         id,

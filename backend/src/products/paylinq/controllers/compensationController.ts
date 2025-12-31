@@ -50,7 +50,7 @@ async function createCompensation(req, res) {
       compensation: mapCompensationDbToApi(compensation),
       message: 'Compensation record created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating compensation', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -129,7 +129,7 @@ async function getEmployeeCompensation(req, res) {
       success: true,
       compensation: mapCompensationDbToApi(compensation),
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching employee compensation', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -167,7 +167,7 @@ async function getCompensationById(req, res) {
       success: true,
       data: mapCompensationDbToApi(compensation),
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching compensation', {
       error: error.message,
       compensationId: req.params.id,
@@ -213,7 +213,7 @@ async function updateCompensation(req, res) {
       compensation: mapCompensationDbToApi(compensation),
       message: 'Compensation updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating compensation', {
       error: error.message,
       compensationId: req.params.id,
@@ -258,7 +258,7 @@ async function deleteCompensation(req, res) {
       success: true,
       message: 'Compensation deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting compensation', {
       error: error.message,
       compensationId: req.params.id,
@@ -290,7 +290,7 @@ async function getCompensationHistory(req, res) {
       compensationHistory: mapCompensationDbArrayToApi(history),
       count: history.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching compensation history', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -325,7 +325,7 @@ async function getCompensationSummary(req, res) {
         firstHireDate: summary.firstHireDate
       },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching compensation summary', {
       error: error.message,
       employeeId: req.params.employeeId,

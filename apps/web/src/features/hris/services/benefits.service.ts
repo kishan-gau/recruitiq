@@ -31,8 +31,8 @@ export const benefitsService = {
   // TODO: Implement when NexusClient adds benefit enrollment support
   // The enrollInBenefitPlan method doesn't exist in NexusClient yet
   // Uncomment when backend API implements /api/products/nexus/benefits/enroll endpoint
-  // async enrollEmployee(employeeId: string, planId: string, data?: any) {
-  //   const response = await nexusClient.enrollInBenefitPlan(employeeId, planId, data);
+  // async enrollEmployee(_employeeId: string, planId: string, data?: any) {
+  //   const response = await nexusClient.enrollInBenefitPlan(_employeeId, planId, data);
   //   return response.data?.enrollment || response.data || {
   //     success: false,
   //     message: 'Enrollment service unavailable',
@@ -43,8 +43,8 @@ export const benefitsService = {
   // The checkBenefitEligibility method doesn't exist in NexusClient yet
   // Note: checkRehireEligibility exists but serves a different purpose (employee rehire, not benefits)
   // Uncomment when backend API implements /api/products/nexus/benefits/eligibility endpoint
-  // async checkEligibility(employeeId: string, planId: string) {
-  //   const response = await nexusClient.checkBenefitEligibility(employeeId, planId);
+  // async checkEligibility(_employeeId: string, planId: string) {
+  //   const response = await nexusClient.checkBenefitEligibility(_employeeId, planId);
   //   return response.data?.eligibility || response.data || {
   //     eligible: false,
   //     reasons: ['Eligibility check unavailable'],

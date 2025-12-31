@@ -7,7 +7,7 @@ export const performanceService = {
   /**
    * Lists performance reviews
    */
-  async listPerformanceReviews(filters?: { search?: string; employeeId?: string; status?: string; year?: number }) {
+  async listPerformanceReviews(filters?: { search?: string; _employeeId?: string; status?: string; year?: number }) {
     const response = await nexusClient.listPerformanceReviews?.(filters);
     return response?.data?.reviews || response?.data || [];
   },
@@ -46,8 +46,8 @@ export const performanceService = {
   /**
    * Lists goals for an employee
    */
-  async listGoals(employeeId?: string, filters?: any) {
-    const response = await nexusClient.listGoals?.(employeeId, filters);
+  async listGoals(_employeeId?: string, filters?: any) {
+    const response = await nexusClient.listGoals?.(_employeeId, filters);
     return response?.data?.goals || response?.data || [];
   },
 
@@ -70,8 +70,8 @@ export const performanceService = {
   /**
    * Gets performance statistics for an employee
    */
-  async getPerformanceStatistics(employeeId: string) {
-    const response = await nexusClient.getPerformanceStatistics?.(employeeId);
+  async getPerformanceStatistics(_employeeId: string) {
+    const response = await nexusClient.getPerformanceStatistics?.(_employeeId);
     return response?.data?.statistics || response?.data;
   },
 };

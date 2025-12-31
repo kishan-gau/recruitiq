@@ -77,7 +77,7 @@ export function validateRequest(
       req.body = value;
 
       next();
-    } catch (err) {
+    } catch (_err) {
       next(err);
     }
   };
@@ -119,7 +119,7 @@ export function validateQuery(schema: ObjectSchema): (req: Request, res: Respons
       req.query = value;
 
       next();
-    } catch (err) {
+    } catch (_err) {
       next(err);
     }
   };
@@ -159,7 +159,7 @@ export function validateParams(schema: ObjectSchema): (req: Request, res: Respon
       req.params = value;
 
       next();
-    } catch (err) {
+    } catch (_err) {
       next(err);
     }
   };

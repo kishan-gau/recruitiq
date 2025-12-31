@@ -1,8 +1,8 @@
 import { X, Mail, Lock, Info } from 'lucide-react';
 import { useState } from 'react';
 
-import { useToast } from '@/hooks/useToast';
 import { usePaylinqAPI } from '@/hooks';
+import { useToast } from '@/hooks/useToast';
 import { handleApiError } from '@/utils/errorHandler';
 
 interface GrantAccessModalProps {
@@ -58,7 +58,7 @@ export default function GrantAccessModal({
         requestData.password = formData.password;
       }
 
-      const response = await paylinq.grantEmployeeAccess(employeeId, requestData);
+      const response = await paylinq.grantEmployeeAccess(_employeeId, requestData);
 
       if (response.success) {
         const tempPassword = response.data?.temporaryPassword;

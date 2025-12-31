@@ -19,9 +19,9 @@ export interface ShiftType {
 export function useShiftTypes() {
   return useQuery({
     queryKey: ['shift-types'],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement shift types API
-      return [] as ShiftType[];
-    },
+       [] as ShiftType[]
+    ,
   });
 }

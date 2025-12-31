@@ -81,7 +81,7 @@ function DeductionFormModal({
                   type="text"
                   required
                   value={formData.employeeId}
-                  onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, _employeeId: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>

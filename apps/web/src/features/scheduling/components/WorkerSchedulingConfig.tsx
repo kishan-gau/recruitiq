@@ -5,9 +5,11 @@ import { useForm } from 'react-hook-form';
 
 import { Modal, Button, Input } from '@recruitiq/ui';
 
+import { Label } from '@recruitiq/ui';
 import { Switch } from '@recruitiq/ui';
-import { useToast } from '@/hooks/useToast';
+
 import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useToast } from '@/hooks/useToast';
 
 import { workersService } from '../services';
 import type { Worker, WorkerSchedulingConfig as WorkerConfig } from '../types';
@@ -118,7 +120,7 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
 
       if (existingConfig) {
         // Update existing worker's scheduling configuration
-        await workersService.updateWorker(employeeId, configData);
+        await workersService.updateWorker(_employeeId, configData);
         toast.success('Scheduling configuration updated successfully');
       } else {
         // Create new configuration
@@ -129,7 +131,7 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['schedulehub', 'workers'] });
-      queryClient.invalidateQueries({ queryKey: ['schedulehub', 'worker', employeeId] });
+      queryClient.invalidateQueries({ queryKey: ['schedulehub', 'worker', _employeeId] });
 
       onClose();
     } catch (error: any) {

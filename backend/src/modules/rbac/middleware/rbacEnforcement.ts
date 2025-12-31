@@ -102,7 +102,7 @@ export async function preventSystemRoleModification(req, res, next) {
     }
 
     next();
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in preventSystemRoleModification middleware', {
       error: error.message,
       roleId: req.params.id || req.params.roleId

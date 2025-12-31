@@ -43,7 +43,7 @@ export const getSettings = async (req, res) => {
       success: true,
       data: settings,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error retrieving settings:', error);
     res.status(500).json({
       success: false,
@@ -74,7 +74,7 @@ export const updateSettings = async (req, res) => {
       message: 'Settings updated successfully',
       data: { company, payroll },
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating settings:', error);
     res.status(500).json({
       success: false,
@@ -106,7 +106,7 @@ export const getCompanySettings = async (req, res) => {
       success: true,
       data: settings,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error retrieving company settings:', error);
     res.status(500).json({
       success: false,
@@ -132,7 +132,7 @@ export const updateCompanySettings = async (req, res) => {
       message: 'Company settings updated successfully',
       data: companySettings,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating company settings:', error);
     res.status(500).json({
       success: false,
@@ -161,7 +161,7 @@ export const getPayrollSettings = async (req, res) => {
       success: true,
       data: settings,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error retrieving payroll settings:', error);
     res.status(500).json({
       success: false,
@@ -187,7 +187,7 @@ export const updatePayrollSettings = async (req, res) => {
       message: 'Payroll settings updated successfully',
       data: payrollSettings,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating payroll settings:', error);
     res.status(500).json({
       success: false,

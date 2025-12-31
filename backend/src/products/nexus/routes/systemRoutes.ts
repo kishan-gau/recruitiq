@@ -26,7 +26,7 @@ router.get('/status', authenticatePlatform, requirePermission('nexus:system:read
   try {
     const status = productManager.getStatus();
     res.json(status);
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: 'Failed to get product system status', message: error.message });
   }
 });
@@ -36,7 +36,7 @@ router.get('/health', authenticatePlatform, requirePermission('nexus:system:read
     const health = productManager.healthCheck();
     const statusCode = health.healthy ? 200 : 503;
     res.status(statusCode).json(health);
-  } catch (error) {
+  } catch (_error) {
     res.status(503).json({ healthy: false, status: 'error', error: error.message, timestamp: new Date() });
   }
 });
@@ -45,7 +45,7 @@ router.get('/list', authenticatePlatform, requirePermission('nexus:system:read')
   try {
     const products = productManager.getAllProducts();
     res.json({ count: products.length, products: products.map(p => ({ slug: p.product.slug, name: p.product.name, version: p.product.version, status: p.product.status, isCore: p.product.isCore, hasRoutes: !!p.routes, middlewareCount: p.middleware ? p.middleware.length : 0, loadedAt: p.loadedAt })) });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: 'Failed to list products', message: error.message });
   }
 });
@@ -54,7 +54,7 @@ router.get('/routes', authenticatePlatform, requirePermission('nexus:system:read
   try {
     const routes = productManager.getRoutes();
     res.json({ count: routes.length, routes });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: 'Failed to list routes', message: error.message });
   }
 });
@@ -65,7 +65,7 @@ router.get('/:slug', authenticatePlatform, requirePermission('nexus:system:read'
     const product = productManager.getProduct(slug);
     if (!product) return res.status(404).json({ error: 'Product not found', slug });
     res.json({ slug: product.product.slug, name: product.product.name, version: product.product.version, description: product.product.description, status: product.product.status, isCore: product.product.isCore, basePath: product.product.basePath, npmPackage: product.product.npmPackage, modulePath: product.modulePath, hasRoutes: !!product.routes, middleware: product.middleware ? product.middleware.length : 0, config: product.config, loadedAt: product.loadedAt });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: 'Failed to get product details', message: error.message });
   }
 });
@@ -75,7 +75,7 @@ router.post('/:slug/reload', authenticatePlatform, requirePermission('nexus:syst
     const { slug } = req.params;
     await productManager.reloadProduct(slug);
     res.json({ success: true, message: 'Product ' + slug + ' reloaded successfully', warning: 'Full reload requires server restart' });
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: 'Failed to reload product', message: error.message });
   }
 });
@@ -89,7 +89,7 @@ router.post('/:slug/unload', authenticatePlatform, requirePermission('nexus:syst
     } else {
       res.status(404).json({ error: 'Product not found or already unloaded', slug });
     }
-  } catch (error) {
+  } catch (_error) {
     res.status(500).json({ error: 'Failed to unload product', message: error.message });
   }
 });

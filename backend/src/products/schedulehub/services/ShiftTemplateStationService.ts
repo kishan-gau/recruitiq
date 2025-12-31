@@ -104,7 +104,7 @@ constructor(repository = null) {
       });
 
       return mapShiftTemplateStationDbToApi(created);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error assigning station to template', {
         error: error.message,
         data,
@@ -148,7 +148,7 @@ constructor(repository = null) {
       });
 
       return mapShiftTemplateStationsDbToApi(created);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error bulk assigning stations to template', {
         error: error.message,
         data,
@@ -193,7 +193,7 @@ constructor(repository = null) {
       });
 
       return mapShiftTemplateStationsDbToApi(updated);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating template station assignments', {
         error: error.message,
         data,
@@ -215,7 +215,7 @@ constructor(repository = null) {
     try {
       const stations = await this.repository.findStationsByTemplate(templateId, organizationId);
       return mapShiftTemplateStationsDbToApi(stations);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting stations for template', {
         error: error.message,
         templateId,
@@ -236,7 +236,7 @@ constructor(repository = null) {
     try {
       const templates = await this.repository.findTemplatesByStation(stationId, organizationId);
       return mapShiftTemplateStationsDbToApi(templates);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting templates for station', {
         error: error.message,
         stationId,
@@ -274,7 +274,7 @@ constructor(repository = null) {
         organizationId,
         userId
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error removing station from template', {
         error: error.message,
         templateId,
@@ -303,7 +303,7 @@ constructor(repository = null) {
         organizationId,
         userId
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error removing all stations from template', {
         error: error.message,
         templateId,
@@ -325,7 +325,7 @@ constructor(repository = null) {
   async isStationAssigned(templateId, stationId, organizationId) {
     try {
       return await this.repository.exists(templateId, stationId, organizationId);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error checking station assignment', {
         error: error.message,
         templateId,
@@ -346,7 +346,7 @@ constructor(repository = null) {
   async getAssignmentCount(templateId, organizationId) {
     try {
       return await this.repository.countByTemplate(templateId, organizationId);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error getting assignment count', {
         error: error.message,
         templateId,

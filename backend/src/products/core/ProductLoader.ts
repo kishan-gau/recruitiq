@@ -41,7 +41,7 @@ class ProductLoader {
       for (const product of products) {
         try {
           await this.loadProduct(product);
-        } catch (error) {
+        } catch (_error) {
           logger.error(`Failed to load product ${product.name}:`, error);
           // Continue loading other products even if one fails
         }
@@ -49,7 +49,7 @@ class ProductLoader {
 
       logger.info(`✅ Product Loader initialized. Loaded ${this.loadedProducts.size} products.`);
       return Array.from(this.loadedProducts.values());
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize Product Loader:', error);
       throw error;
     }
@@ -104,7 +104,7 @@ class ProductLoader {
 
       logger.info(`✅ Successfully loaded product: ${product.name}`);
       return loadedProduct;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to load product ${product.name}:`, error);
       throw error;
     }
@@ -124,7 +124,7 @@ class ProductLoader {
             logger.info(`  ✓ Resolved npm package: ${product.npmPackage}`);
             return npmPath;
           }
-        } catch (error) {
+        } catch (_error) {
           logger.warn(`  ✗ npm package not found: ${product.npmPackage}`);
         }
       }
@@ -140,7 +140,7 @@ class ProductLoader {
       // This allows frontend-only products (like RecruitIQ, Portal) to exist without backend modules
       logger.info(`  ⊘ No module resolution found for ${product.name}`);
       return null;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to resolve product module for ${product.name}:`, error);
       // Return null instead of throwing to allow graceful degradation
       return null;
@@ -159,11 +159,11 @@ class ProductLoader {
       try {
         const packagePath = require.resolve(packageName);
         return packagePath;
-      } catch (error) {
+      } catch (_error) {
         // Package not installed
         return null;
       }
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Error resolving npm package ${packageName}:`, error);
       return null;
     }
@@ -209,7 +209,7 @@ class ProductLoader {
       
       // Handle both default and named exports
       return module.default || module;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to import module for ${product.name}:`, error);
       throw error;
     }
@@ -297,7 +297,7 @@ class ProductLoader {
 
       logger.info(`✅ Successfully reloaded product: ${slug}`);
       return this.loadedProducts.get(slug);
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to reload product ${slug}:`, error);
       throw error;
     }

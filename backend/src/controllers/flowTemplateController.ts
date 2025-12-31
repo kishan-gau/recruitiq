@@ -99,7 +99,7 @@ export async function listFlowTemplates(req, res, next) {
       }))
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -152,7 +152,7 @@ export async function getFlowTemplate(req, res, next) {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -225,7 +225,7 @@ export async function createFlowTemplate(req, res, next) {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -300,7 +300,7 @@ export async function updateFlowTemplate(req, res, next) {
       flowTemplate: result.rows[0]
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -346,7 +346,7 @@ export async function deleteFlowTemplate(req, res, next) {
       message: 'Flow template deleted successfully'
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -416,7 +416,7 @@ export async function cloneFlowTemplate(req, res, next) {
       }
     });
 
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }

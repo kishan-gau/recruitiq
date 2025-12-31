@@ -77,7 +77,7 @@ router.get('/roles', requirePermission('settings:read'), async (req, res, next) 
       success: true,
       roles: result.rows,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching PayLinQ roles', {
       error: error.message,
       organizationId: req.user?.organizationId,
@@ -141,7 +141,7 @@ router.get('/roles/:id', requirePermission('settings:read'), async (req, res, ne
       success: true,
       role: result.rows[0],
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching PayLinQ role', {
       error: error.message,
       roleId: req.params.id,
@@ -219,7 +219,7 @@ router.post('/roles/:roleId/permissions', requirePermission('settings:update'), 
       success: true,
       message: 'Permissions updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating role permissions', {
       error: error.message,
       roleId: req.params.roleId,
@@ -266,7 +266,7 @@ router.get('/permissions', requirePermission('settings:read'), async (req, res, 
       success: true,
       permissions: result.rows,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching PayLinQ permissions', {
       error: error.message,
       organizationId: req.user?.organizationId,
@@ -309,7 +309,7 @@ router.get('/permissions/categories', requirePermission('settings:read'), async 
       success: true,
       categories: result.rows,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching PayLinQ permission categories', {
       error: error.message,
       organizationId: req.user?.organizationId,

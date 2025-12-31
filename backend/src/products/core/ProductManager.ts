@@ -55,7 +55,7 @@ class ProductManager {
       logger.info('✅ Product Manager initialized successfully\n');
 
       return router;
-    } catch (error) {
+    } catch (_error) {
       this.initializationError = error;
       logger.error('❌ Failed to initialize Product Manager:', error);
       throw error;
@@ -118,7 +118,7 @@ class ProductManager {
 
       logger.info(`✅ Successfully loaded and registered product: ${product.name}`);
       return loadedProduct;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to load product ${product.name}:`, error);
       throw error;
     }
@@ -141,7 +141,7 @@ class ProductManager {
       logger.warn('⚠️  Note: Full removal requires server restart');
       
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to unload product ${slug}:`, error);
       return false;
     }
@@ -161,7 +161,7 @@ class ProductManager {
       logger.warn('⚠️  Note: Full reload requires server restart');
       
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Failed to reload product ${slug}:`, error);
       throw error;
     }

@@ -34,7 +34,7 @@ async function createPayComponent(req, res) {
       payComponent: component,
       message: 'Pay component created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating pay component', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -115,7 +115,7 @@ async function getPayComponents(req, res) {
         hasPrev: currentPage > 1
       }
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching pay components', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -145,7 +145,7 @@ async function getPayComponentById(req, res) {
       success: true,
       payComponent: component,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching pay component', {
       error: error.message,
       componentId: req.params.id,
@@ -206,7 +206,7 @@ async function updatePayComponent(req, res, next) {
       payComponent: component,
       message: 'Pay component updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     // Log error but pass to error handler middleware
     logger.error('Error updating pay component', {
       error: error.message,
@@ -250,7 +250,7 @@ async function deletePayComponent(req, res) {
       success: true,
       message: 'Pay component deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting pay component', {
       error: error.message,
       componentId: req.params.id,
@@ -315,7 +315,7 @@ async function createEmployeePayComponent(req, res) {
       component: component,
       message: 'Employee pay component created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating employee pay component', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -350,7 +350,7 @@ async function getEmployeePayComponents(req, res) {
       components: components,
       count: components.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching employee pay components', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -402,7 +402,7 @@ async function updateEmployeePayComponent(req, res) {
       component: component,
       message: 'Employee pay component updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating employee pay component', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -454,7 +454,7 @@ async function deleteEmployeePayComponent(req, res) {
       success: true,
       message: 'Employee pay component deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting employee pay component', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -509,7 +509,7 @@ async function assignComponentToEmployee(req, res) {
       assignment: assignment,
       message: 'Component assigned to employee successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error assigning component to employee', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -563,7 +563,7 @@ async function getEmployeeComponentAssignments(req, res) {
       assignments: assignments,
       count: assignments.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching employee component assignments', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -606,7 +606,7 @@ async function updateEmployeeComponentAssignment(req, res) {
       assignment: updated,
       message: 'Component assignment updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating component assignment', {
       error: error.message,
       assignmentId: req.params.assignmentId,
@@ -656,7 +656,7 @@ async function removeEmployeeComponentAssignment(req, res) {
       success: true,
       message: 'Component assignment removed successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error removing component assignment', {
       error: error.message,
       assignmentId: req.params.assignmentId,

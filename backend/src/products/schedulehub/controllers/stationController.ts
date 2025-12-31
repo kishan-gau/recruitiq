@@ -27,7 +27,7 @@ class StationController {
       );
 
       res.status(201).json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in createStation controller:', error);
       next(error);
     }
@@ -51,7 +51,7 @@ class StationController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in updateStation controller:', error);
       next(error);
     }
@@ -74,7 +74,7 @@ class StationController {
 
       // Return consistent format expected by frontend: { stations: Station[] }
       res.json({ success: true, stations });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in listStations controller:', error);
       next(error);
     }
@@ -100,7 +100,7 @@ class StationController {
       }
 
       res.json({ success: true, station });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getStationById controller:', error);
       next(error);
     }
@@ -121,7 +121,7 @@ class StationController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getStationRequirements controller:', error);
       next(error);
     }
@@ -149,7 +149,7 @@ class StationController {
       );
 
       res.status(201).json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in addRequirement controller:', error);
       next(error);
     }
@@ -184,7 +184,7 @@ class StationController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in updateRequirement controller:', error);
       next(error);
     }
@@ -206,7 +206,7 @@ class StationController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in removeRequirement controller:', error);
       next(error);
     }
@@ -234,7 +234,7 @@ class StationController {
         success: true, 
         assignments 
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getStationAssignments controller:', error);
       next(error);
     }
@@ -264,7 +264,7 @@ class StationController {
         assignment,
         message: 'Employee assigned to station successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in assignEmployee controller:', error);
       next(error);
     }
@@ -291,7 +291,7 @@ class StationController {
         success: true,
         message: 'Employee unassigned from station successfully'
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in unassignEmployee controller:', error);
       next(error);
     }
@@ -312,7 +312,7 @@ class StationController {
       );
 
       res.json(result);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in getStationCoverageStats controller:', error);
       next(error);
     }

@@ -1,4 +1,3 @@
-import React from 'react';
 
 import { ScheduleAnalytics } from '@features/scheduling/components';
 

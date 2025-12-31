@@ -53,7 +53,7 @@ export function createSecureUpload(options = {}) {
 
       // Check file size will be done by multer limits
       cb(null, true);
-    } catch (error) {
+    } catch (_error) {
       logger.error('File filter error:', {
         error: error.message,
         filename: file.originalname,
@@ -157,7 +157,7 @@ export function validateUploadSecurity(context = 'document') {
       });
 
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Upload security validation error:', {
         error: error.message,
         stack: error.stack,
@@ -230,7 +230,7 @@ export function scanUploadedFiles() {
       });
 
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Virus scan middleware error:', {
         error: error.message,
         stack: error.stack,

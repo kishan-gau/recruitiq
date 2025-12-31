@@ -13,7 +13,7 @@
  */
 
 import { X, User, CheckCircle, AlertTriangle } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 

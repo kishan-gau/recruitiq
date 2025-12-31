@@ -1,12 +1,11 @@
-import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { useErrorHandler } from '@/hooks';
 import {
   CalendarView,
   // ShiftManagement,  // TODO: Create component
   // WorkerScheduling  // TODO: Create component
 } from '@features/scheduling/components';
-import { useErrorHandler } from '@/hooks';
 
 export default function SchedulesPage() {
   const navigate = useNavigate();

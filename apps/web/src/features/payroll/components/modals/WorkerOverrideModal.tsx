@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 
 import { Dialog } from '@recruitiq/ui';
 import { FormField, Input, TextArea } from '@recruitiq/ui';
+
 import type { PayStructureComponent } from '@/hooks';
 import type { WorkerOverride } from '@/hooks';
 

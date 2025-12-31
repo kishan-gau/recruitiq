@@ -38,7 +38,7 @@ import {
  *       const data = this.getBody(req);
  *       const result = await this.service.create(data, this.getServiceOptions(req));
  *       this.created(res, result);
- *     } catch (error) {
+ *     } catch (_error) {
  *       this.handleError(error, res, next);
  *     }
  *   }

@@ -66,7 +66,7 @@ constructor() {
       
       // Transform database record to API format
       return mapStationDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating station:', error);
       throw error;
@@ -97,7 +97,7 @@ constructor() {
       
       // Transform database records to API format
       return mapStationsDbToApi(result.rows);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error listing stations:', error);
       throw error;
     }
@@ -124,7 +124,7 @@ constructor() {
       
       // Transform database record to API format
       return mapStationDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching station:', error);
       throw error;
     }
@@ -172,7 +172,7 @@ constructor() {
       
       // Transform database record to API format
       return mapStationDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error updating station:', error);
       throw error;
@@ -202,7 +202,7 @@ constructor() {
 
       await client.query('COMMIT');
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error adding role requirement:', error);
       throw error;
@@ -227,7 +227,7 @@ constructor() {
 
       if (result.rows.length === 0) throw new Error('Requirement not found');
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error removing role requirement:', error);
       throw error;
     }
@@ -274,7 +274,7 @@ constructor() {
         assignedBy: assignment.assigned_by,
         assignedByName: assignment.assigned_by_name || 'System'
       }));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching station assignments:', error);
       throw error;
     }
@@ -342,7 +342,7 @@ constructor() {
         assignedAt: assignment.assigned_at,
         assignedBy: assignment.assigned_by
       };
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error assigning employee to station:', error);
       throw error;
@@ -379,7 +379,7 @@ constructor() {
       this.logger.info(`Assignment ${assignmentId} removed from station ${stationId}`);
       
       return true;
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error removing employee assignment:', error);
       throw error;
@@ -446,7 +446,7 @@ constructor() {
       });
 
       return requirements;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting station requirements:', error);
       throw error;
     }
@@ -557,7 +557,7 @@ constructor() {
         createdAt: requirement.created_at,
         updatedAt: requirement.updated_at
       };
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error adding role requirement:', error);
       throw error;
@@ -601,7 +601,7 @@ constructor() {
       });
 
       return true;
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error removing role requirement:', error);
       throw error;
@@ -727,7 +727,7 @@ constructor() {
         stationCoverage,
         criticalPeriods
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching station coverage stats:', {
         error: error.message,
         code: error.code,

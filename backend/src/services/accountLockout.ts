@@ -60,7 +60,7 @@ constructor() {
       });
 
       await this.client.connect();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to connect to Redis for account lockout:', error);
       this.isConnected = false;
     }
@@ -146,7 +146,7 @@ constructor() {
       }
 
       return lockoutInfo;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to record failed attempt:', error);
       return { error: error.message };
     }
@@ -201,7 +201,7 @@ constructor() {
         failedAttempts: failedCount,
         remainingAttempts: MAX_FAILED_ATTEMPTS - failedCount,
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to check lockout:', error);
       return { isLocked: false, error: error.message };
     }
@@ -236,7 +236,7 @@ constructor() {
 
       logger.debug('Failed attempts cleared', { identifier, type });
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to clear attempts:', error);
       return false;
     }
@@ -262,7 +262,7 @@ constructor() {
 
       logger.warn('Manual lockout applied', { identifier, type, durationMs });
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to apply manual lock:', error);
       return false;
     }
@@ -284,7 +284,7 @@ constructor() {
       } else {
         return this.inMemoryStore.has(key);
       }
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to check manual lock:', error);
       return false;
     }
@@ -314,7 +314,7 @@ constructor() {
         manualLockouts: manualLocks,
         inMemoryEntries: this.inMemoryStore.size,
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to get lockout stats:', error);
       return { error: error.message };
     }

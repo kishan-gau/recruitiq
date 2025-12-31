@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 import { useFlow } from '../context/FlowContext';
 import { useWorkspace } from '../context/WorkspaceContext';

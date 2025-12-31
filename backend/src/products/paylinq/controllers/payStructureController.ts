@@ -33,7 +33,7 @@ export async function createTemplate(req, res) {
       template: template,  // Use 'template' key for consistency with API standards
       message: 'Pay structure template created successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating pay structure template', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -89,7 +89,7 @@ export async function getTemplates(req, res) {
       templates: templates,
       count: templates.length
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching pay structure templates', {
       error: error.message,
       organizationId: req.user?.organization_id
@@ -118,7 +118,7 @@ export async function getTemplateById(req, res) {
       success: true,
       template: template
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching pay structure template', {
       error: error.message,
       templateId: req.params.id,
@@ -152,7 +152,7 @@ export async function updateTemplate(req, res) {
       template: template,
       message: 'Pay structure template updated successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating pay structure template', {
       error: error.message,
       templateId: req.params.id,
@@ -189,7 +189,7 @@ export async function publishTemplate(req, res) {
       template: template,
       message: 'Pay structure template published successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error publishing pay structure template', {
       error: error.message,
       templateId: req.params.id,
@@ -227,7 +227,7 @@ export async function deprecateTemplate(req, res) {
       template: template,
       message: 'Pay structure template deprecated successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deprecating pay structure template', {
       error: error.message,
       templateId: req.params.id,
@@ -263,7 +263,7 @@ export async function deleteTemplate(req, res) {
       success: true,
       message: 'Pay structure template deleted successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting pay structure template', {
       error: error.message,
       templateId: req.params.id,
@@ -307,7 +307,7 @@ export async function createNewVersion(req, res) {
       template: newTemplate,
       message: `New ${versionType} version created successfully`
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating new template version', {
       error: error.message,
       templateId: req.params.id,
@@ -346,7 +346,7 @@ export async function addComponent(req, res) {
       component: component,
       message: 'Component added successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error adding component to template', {
       error: error.message,
       templateId: req.params.id,
@@ -382,7 +382,7 @@ export async function getTemplateComponents(req, res) {
       components: components,
       count: components.length
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching template components', {
       error: error.message,
       templateId: req.params.id,
@@ -414,7 +414,7 @@ export async function updateComponent(req, res) {
       component: component,
       message: 'Component updated successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating component', {
       error: error.message,
       componentId: req.params.componentId,
@@ -448,7 +448,7 @@ export async function deleteComponent(req, res) {
       success: true,
       message: 'Component deleted successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting component', {
       error: error.message,
       componentId: req.params.componentId,
@@ -487,7 +487,7 @@ export async function reorderComponents(req, res) {
       components: components,
       message: 'Components reordered successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error reordering components', {
       error: error.message,
       templateId: req.params.id,
@@ -529,7 +529,7 @@ export async function assignTemplateToWorker(req, res) {
       assignment: assignment,
       message: 'Pay structure assigned to worker successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error assigning pay structure to worker', {
       error: error.message,
       code: error.code,
@@ -580,7 +580,7 @@ export async function getCurrentWorkerStructure(req, res) {
       success: true,
       workerPayStructure: structure || null
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching worker pay structure', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -611,7 +611,7 @@ export async function getWorkerStructureHistory(req, res) {
       history: history,
       count: history.length
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching worker pay structure history', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -650,7 +650,7 @@ export async function upgradeWorkerToNewVersion(req, res) {
       assignment: assignment,
       message: 'Worker upgraded to new template version successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error upgrading worker template version', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -688,7 +688,7 @@ export async function addComponentOverride(req, res) {
       override: override,
       message: 'Component override added successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error adding component override', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -733,7 +733,7 @@ export async function getWorkerOverrides(req, res) {
       overrides: transformedOverrides,
       count: transformedOverrides.length
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching worker overrides', {
       error: error.message,
       workerStructureId: req.params.workerStructureId,
@@ -770,7 +770,7 @@ export async function updateComponentOverride(req, res) {
       override: override,
       message: 'Component override updated successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating component override', {
       error: error.message,
       overrideId: req.params.overrideId,
@@ -802,7 +802,7 @@ export async function deleteComponentOverride(req, res) {
       success: true,
       message: 'Component override deleted successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting component override', {
       error: error.message,
       overrideId: req.params.overrideId,
@@ -836,7 +836,7 @@ export async function getTemplateVersions(req, res) {
       versions: versions,
       count: versions.length
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching template versions', {
       error: error.message,
       templateCode: req.params.templateCode,
@@ -871,7 +871,7 @@ export async function getTemplateChangelog(req, res) {
       success: true,
       changelog: changelog
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching template changelog', {
       error: error.message,
       templateId: req.params.id,
@@ -911,7 +911,7 @@ export async function createTemplateVersion(req, res) {
       template: newVersion,
       message: 'New template version created successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating template version', {
       error: error.message,
       templateId: req.params.id,
@@ -956,7 +956,7 @@ export async function compareTemplateVersions(req, res) {
       success: true,
       ...comparison
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error comparing template versions', {
       error: error.message,
       fromId: req.query.fromId,
@@ -1005,7 +1005,7 @@ export async function upgradeWorkersToVersion(req, res) {
       results: results,
       message: `Successfully upgraded ${results.successful} of ${results.total} workers`
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error upgrading workers to new version', {
       error: error.message,
       templateId: req.params.id,
@@ -1045,7 +1045,7 @@ export async function addTemplateInclusion(req, res) {
       inclusion: inclusion,
       message: 'Template inclusion added successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error adding template inclusion', {
       error: error.message,
       parentTemplateId: req.params.id,
@@ -1085,7 +1085,7 @@ export async function getTemplateInclusions(req, res) {
       inclusions: inclusions,
       count: inclusions.length
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching template inclusions', {
       error: error.message,
       parentTemplateId: req.params.id,
@@ -1124,7 +1124,7 @@ export async function updateTemplateInclusion(req, res) {
       inclusion: inclusion,
       message: 'Template inclusion updated successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating template inclusion', {
       error: error.message,
       inclusionId: req.params.inclusionId,
@@ -1164,7 +1164,7 @@ export async function removeTemplateInclusion(req, res) {
       success: true,
       message: 'Template inclusion removed successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error removing template inclusion', {
       error: error.message,
       inclusionId: req.params.inclusionId,
@@ -1200,7 +1200,7 @@ export async function resolveCompositeTemplate(req, res) {
       success: true,
       resolved: resolvedTemplate
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error resolving composite template', {
       error: error.message,
       templateId: req.params.id,
@@ -1241,7 +1241,7 @@ export async function createFromTemplate(req, res) {
       structure,
       message: 'Pay structure created from template successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating from template', {
       error: error.message,
       templateId: req.params.templateId,
@@ -1284,7 +1284,7 @@ export async function addIncludedTemplateController(req, res) {
       inclusion,
       message: 'Template inclusion added successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error adding template inclusion', {
       error: error.message,
       parentTemplateId: req.params.id,
@@ -1323,7 +1323,7 @@ export async function getIncludedTemplatesController(req, res) {
       success: true,
       inclusions
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting template inclusions', {
       error: error.message,
       templateId: req.params.id,
@@ -1364,7 +1364,7 @@ export async function updateIncludedTemplateController(req, res) {
       inclusion: updatedInclusion,
       message: 'Template inclusion updated successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating template inclusion', {
       error: error.message,
       inclusionId: req.params.inclusionId,
@@ -1405,7 +1405,7 @@ export async function removeIncludedTemplateController(req, res) {
       success: true,
       message: 'Template inclusion removed successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error removing template inclusion', {
       error: error.message,
       inclusionId: req.params.inclusionId,
@@ -1442,7 +1442,7 @@ export async function getResolvedTemplate(req, res) {
       success: true,
       resolvedTemplate
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting resolved template', {
       error: error.message,
       templateId: req.params.id,
@@ -1486,7 +1486,7 @@ export async function includeTemplate(req, res) {
       inclusion,
       message: 'Template included successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error including template', {
       error: error.message,
       parentId: req.params.id,
@@ -1522,7 +1522,7 @@ export async function removeIncludedTemplate(req, res) {
       success: true,
       message: 'Included template removed successfully'
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error removing included template', {
       error: error.message,
       parentId: req.params.id,

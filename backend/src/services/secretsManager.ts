@@ -126,7 +126,7 @@ class AWSSecretsProvider extends SecretProvider {
       this.RotateSecretCommand = RotateSecretCommand;
       
       logger.info('AWS Secrets Manager client initialized', { region: this.region });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize AWS Secrets Manager', {
         error: error.message,
       });
@@ -489,7 +489,7 @@ class BarbicanProvider extends SecretProvider {
       
       logger.info('Authenticated with OpenStack Barbican');
       return this.token;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to authenticate with OpenStack', {
         error: error.message,
       });
@@ -540,7 +540,7 @@ class BarbicanProvider extends SecretProvider {
       } catch {
         return payload;
       }
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to retrieve secret from Barbican', {
         secretName,
         error: error.message,
@@ -590,7 +590,7 @@ class BarbicanProvider extends SecretProvider {
       });
       
       return result.secret_ref;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to store secret in Barbican', {
         secretName,
         error: error.message,
@@ -654,7 +654,7 @@ class BarbicanProvider extends SecretProvider {
       });
 
       return result.secret_ref;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to generate secret in Barbican', {
         secretName,
         error: error.message,
@@ -691,7 +691,7 @@ class BarbicanProvider extends SecretProvider {
         
         logger.info('Secret deleted from Barbican', { secretName });
       }
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to delete secret from Barbican', {
         secretName,
         error: error.message,
@@ -745,7 +745,7 @@ class BarbicanProvider extends SecretProvider {
       });
       
       return newSecretRef;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to rotate secret in Barbican', {
         secretName,
         error: error.message,
@@ -826,7 +826,7 @@ class SecretsManager {
       logger.info('Secrets Manager initialized successfully', {
         provider: this.provider.name,
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize Secrets Manager', {
         provider: providerType,
         error: error.message,
@@ -867,7 +867,7 @@ class SecretsManager {
       });
       
       return value;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to retrieve secret', {
         secretName,
         provider: this.provider.name,
@@ -893,7 +893,7 @@ class SecretsManager {
         secretName,
         provider: this.provider.name,
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to update secret', {
         secretName,
         provider: this.provider.name,
@@ -919,7 +919,7 @@ class SecretsManager {
         secretName,
         provider: this.provider.name,
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to delete secret', {
         secretName,
         provider: this.provider.name,
@@ -945,7 +945,7 @@ class SecretsManager {
         secretName,
         provider: this.provider.name,
       });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to rotate secret', {
         secretName,
         provider: this.provider.name,
@@ -980,7 +980,7 @@ class SecretsManager {
       });
       
       return secretRef;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to generate secret', {
         secretName,
         provider: this.provider.name,

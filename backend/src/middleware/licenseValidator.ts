@@ -131,7 +131,7 @@ export function validateLicense(options = {}) {
       req.licenseInfo = validationResult;
       next();
 
-    } catch (error) {
+    } catch (_error) {
       console.error('[LicenseValidator] Portal validation failed:', error.message);
 
       // Fallback: Use locally cached license
@@ -231,7 +231,7 @@ export function checkLimit(limitType, countFn) {
       }
 
       next();
-    } catch (error) {
+    } catch (_error) {
       console.error(`[LicenseValidator] Failed to check ${limitType} limit:`, error.message);
       // Allow on error to avoid blocking operations
       next();

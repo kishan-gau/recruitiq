@@ -68,7 +68,7 @@ async function initializeProducts() {
     logger.info('✅ Dynamic Product System ready');
     logger.info('📍 Dynamic product routes available at /api/products');
     return router;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Failed to initialize Product Manager:', error);
     logger.warn('⚠️  Server will continue without dynamic product loading');
     return null;
@@ -93,7 +93,7 @@ export async function createAndInitializeApp() {
   logger.info('Validating configuration...');
   try {
     validateConfiguration();
-  } catch (error) {
+  } catch (_error) {
     logger.error('Configuration validation failed:', error);
     throw error;
   }
@@ -145,13 +145,13 @@ async function startServer() {
       try {
         await dbHealthCheck();
         logger.info('✓ Database connection verified');
-      } catch (error) {
+      } catch (_error) {
         logger.error('✗ Database connection failed:', error);
       }
     });
 
     return { app, server };
-  } catch (error) {
+  } catch (_error) {
     if (logger) {
       logger.error('Failed to start server:', error);
     } else {
@@ -229,7 +229,7 @@ async function cleanupResources() {
     }
     
     process.exit(0);
-  } catch (error) {
+  } catch (_error) {
     if (logger) {
       logger.error('Error during shutdown:', error);
     } else {

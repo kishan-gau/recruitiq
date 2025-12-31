@@ -14,7 +14,7 @@ class ProductPermissionService {
         [productId]
       );
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error fetching product permissions:', error);
       throw error;
     }
@@ -27,7 +27,7 @@ class ProductPermissionService {
         [data.productId, data.permissionCode, data.name, data.description]
       );
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error creating product permission:', error);
       throw error;
     }
@@ -40,7 +40,7 @@ class ProductPermissionService {
         [data.name, data.description, id]
       );
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error updating product permission:', error);
       throw error;
     }
@@ -50,7 +50,7 @@ class ProductPermissionService {
     try {
       await db.query('DELETE FROM product_permissions WHERE id = $1', [id]);
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error deleting product permission:', error);
       throw error;
     }

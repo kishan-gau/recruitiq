@@ -68,7 +68,7 @@ constructor(database = null) {
       totalTaxes: parseFloat(result.rows[0].total_taxes) || 0,
       totalDeductions: parseFloat(result.rows[0].total_deductions) || 0
     };
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching payroll metrics', {
       error: error.message,
       organizationId
@@ -122,7 +122,7 @@ constructor(database = null) {
       workerTypesCount: parseInt(result.rows[0].worker_types_count) || 0,
       workerTypeBreakdown: workerTypeResult.rows
     };
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching employee metrics', {
       error: error.message,
       organizationId
@@ -168,7 +168,7 @@ constructor(database = null) {
       rejectedTimesheets: parseInt(result.rows[0].rejected_timesheets) || 0,
       totalHoursLogged: parseFloat(result.rows[0].total_hours_logged) || 0
     };
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching timesheet metrics', {
       error: error.message,
       organizationId
@@ -204,7 +204,7 @@ constructor(database = null) {
 
     const result = await this.db.query(query, [organizationId, limit]);
     return result.rows;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching upcoming payrolls', {
       error: error.message,
       organizationId
@@ -264,7 +264,7 @@ constructor(database = null) {
 
     const result = await this.db.query(query, [organizationId, limit]);
     return result.rows;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching recent activity', {
       error: error.message,
       organizationId

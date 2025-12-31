@@ -1,13 +1,15 @@
 import { format } from 'date-fns';
 import React, { useState, useMemo } from 'react';
 
+import { Button } from '@recruitiq/ui';
+
 import type {
   ExchangeRate} from '@/hooks';
 import {
   useExchangeRates,
   useDeleteExchangeRate
 } from '@/hooks';
-import { Button } from '@recruitiq/ui';
+
 import { CURRENCY_SYMBOLS } from '../shared/CurrencyDisplay';
 import Modal from '../ui/Modal';
 

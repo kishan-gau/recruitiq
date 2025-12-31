@@ -154,7 +154,7 @@ class FileStorage {
         uploadedBy: userId,
         uploadedAt: new Date().toISOString(),
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('File upload error:', {
         error: error.message,
         originalFilename,
@@ -183,7 +183,7 @@ class FileStorage {
         const fullPath = path.join(this.localStoragePath, securePath);
         return await fs.readFile(fullPath);
       }
-    } catch (error) {
+    } catch (_error) {
       logger.error('File retrieval error:', {
         error: error.message,
         securePath,
@@ -213,7 +213,7 @@ class FileStorage {
       
       logger.info(`File deleted: ${securePath}`);
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('File deletion error:', {
         error: error.message,
         securePath,
@@ -262,7 +262,7 @@ class FileStorage {
         await fs.access(fullPath);
         return true;
       }
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -295,7 +295,7 @@ class FileStorage {
           lastModified: stats.mtime,
         };
       }
-    } catch (error) {
+    } catch (_error) {
       logger.error('Get metadata error:', {
         error: error.message,
         securePath,

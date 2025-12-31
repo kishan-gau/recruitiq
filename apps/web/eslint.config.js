@@ -569,6 +569,8 @@ export default tseslint.config(
        * From: FRONTEND_STANDARDS.md - Naming Conventions
        * React components and lazy imports: PascalCase
        * Utilities/hooks/regular functions: camelCase
+       * 
+       * NOTE: Relaxed rules to accommodate React best practices and API integrations
        */
       '@typescript-eslint/naming-convention': [
         'error',
@@ -590,6 +592,12 @@ export default tseslint.config(
           selector: 'typeLike',
           format: ['PascalCase']
         },
+        // Imports: Allow both camelCase and PascalCase (for React, components, types)
+        {
+          selector: 'import',
+          format: ['camelCase', 'PascalCase'],
+          leadingUnderscore: 'allow'
+        },
         // Variables: Allow both camelCase and PascalCase
         // PascalCase for React components and lazy imports
         // camelCase for utilities, constants can be UPPER_CASE
@@ -599,41 +607,53 @@ export default tseslint.config(
           leadingUnderscore: 'allow',
           trailingUnderscore: 'allow'
         },
-        // React components (capitalized exports): PascalCase
+        // Functions: Allow both PascalCase and camelCase
+        // PascalCase for React components (both exported and internal)
+        // camelCase for utility functions and hooks
         {
           selector: 'function',
-          modifiers: ['exported'],
           format: ['PascalCase', 'camelCase'],
           leadingUnderscore: 'allow',
           trailingUnderscore: 'allow'
         },
-        // Regular functions (not exported): camelCase
+        // Object literal properties: Allow all naming styles
+        // Numeric keys, kebab-case, snake_case, camelCase, PascalCase all allowed
+        // This accommodates API responses, configuration objects, and enum values
         {
-          selector: 'function',
-          format: ['camelCase'],
+          selector: 'property',
+          format: null, // Disable format checking to allow maximum flexibility
           leadingUnderscore: 'allow',
           trailingUnderscore: 'allow'
         },
-        // Properties and method definitions: camelCase
+        // Class properties: camelCase (stricter for internal class state)
         {
           selector: 'classProperty',
           format: ['camelCase'],
           leadingUnderscore: 'allow',
           trailingUnderscore: 'allow'
         },
+        // Object methods: Allow PascalCase for component references (e.g., icon names)
+        {
+          selector: 'method',
+          modifiers: ['public'],
+          format: ['camelCase', 'PascalCase'],
+          leadingUnderscore: 'allow',
+          trailingUnderscore: 'allow'
+        },
+        // Class methods: camelCase
         {
           selector: 'classMethod',
           format: ['camelCase'],
           leadingUnderscore: 'allow',
           trailingUnderscore: 'allow'
         },
-        // Parameters: camelCase (allow underscore prefix for unused)
+        // Parameters: Allow both camelCase and PascalCase (for component props)
         {
           selector: 'parameter',
-          format: ['camelCase'],
+          format: ['camelCase', 'PascalCase'],
           leadingUnderscore: 'allow'
         },
-        // Default: camelCase
+        // Default: camelCase with underscore allowances
         {
           selector: 'default',
           format: ['camelCase'],

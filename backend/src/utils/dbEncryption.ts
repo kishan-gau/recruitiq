@@ -184,7 +184,7 @@ export function decryptRow(table, data) {
     if (decrypted[field]) {
       try {
         decrypted[field] = encryption.decrypt(decrypted[field]);
-      } catch (error) {
+      } catch (_error) {
         logger.warn(`Failed to decrypt field ${table}.${field}`, {
           error: error.message,
           fieldLength: decrypted[field]?.length,
@@ -248,7 +248,7 @@ export function encryptBeforeSave(table) {
   return async (data) => {
     try {
       return encryptRow(table, data);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Encryption before save failed', {
         table,
         error: error.message,
@@ -271,7 +271,7 @@ export function decryptAfterLoad(table) {
         return decryptRows(table, data);
       }
       return decryptRow(table, data);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Decryption after load failed', {
         table,
         error: error.message,
@@ -356,7 +356,7 @@ export function rotateRowEncryption(table, data, oldKey, newKey) {
           oldKey,
           newKey
         );
-      } catch (error) {
+      } catch (_error) {
         logger.error(`Failed to rotate encryption for ${table}.${field}`, {
           error: error.message,
         });
@@ -436,7 +436,7 @@ export async function rotateTableEncryption(db, table, oldKey, newKey) {
     });
     
     return rotatedCount;
-  } catch (error) {
+  } catch (_error) {
     logger.error(`Encryption rotation failed for table: ${table}`, {
       error: error.message,
     });
@@ -554,7 +554,7 @@ export async function migrateToEncryption(db, table, batchSize = 100) {
     });
     
     return migratedCount;
-  } catch (error) {
+  } catch (_error) {
     logger.error(`Encryption migration failed for table: ${table}`, {
       error: error.message,
     });
@@ -599,7 +599,7 @@ export async function addHashColumns(db, table) {
         addedColumns.push(hashField);
         
         logger.info(`Added hash column: ${validatedTable}.${hashField}`);
-      } catch (error) {
+      } catch (_error) {
         logger.warn(`Failed to add hash column: ${validatedTable}.${hashField}`, {
           error: error.message,
         });
@@ -607,7 +607,7 @@ export async function addHashColumns(db, table) {
     }
     
     return addedColumns;
-  } catch (error) {
+  } catch (_error) {
     logger.error(`Failed to add hash columns for table: ${table}`, {
       error: error.message,
     });

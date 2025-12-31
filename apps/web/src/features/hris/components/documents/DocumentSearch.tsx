@@ -4,7 +4,7 @@
  */
 
 import { Search, X, Filter, Tag, Calendar, User } from 'lucide-react';
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import type { DocumentCategory, DocumentStatus } from '@/types/documents.types';
 import { useDebounce } from '@/utils/hooks';

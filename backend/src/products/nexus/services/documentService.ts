@@ -101,7 +101,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating document', { 
         error: error.message,
         organizationId,
@@ -140,7 +140,7 @@ constructor() {
       }
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting document', { 
         error: error.message,
         id,
@@ -236,7 +236,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error updating document', { 
         error: error.message,
         id,
@@ -287,7 +287,7 @@ constructor() {
       });
 
       return { success: true, message: 'Document deleted successfully' };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error deleting document', { 
         error: error.message,
         id,
@@ -379,7 +379,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting employee documents', { 
         error: error.message,
         employeeId,
@@ -439,7 +439,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting documents by type', { 
         error: error.message,
         type,
@@ -479,7 +479,7 @@ constructor() {
       });
 
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting expiring documents', { 
         error: error.message,
         days,
@@ -515,7 +515,7 @@ constructor() {
       });
 
       return result.rows;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting expired documents', { 
         error: error.message,
         organizationId 
@@ -604,7 +604,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error searching documents', { 
         error: error.message,
         searchTerm,
@@ -645,7 +645,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting employee document stats', { 
         error: error.message,
         employeeId,
@@ -683,7 +683,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting organization document stats', { 
         error: error.message,
         organizationId 

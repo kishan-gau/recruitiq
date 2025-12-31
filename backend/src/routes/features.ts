@@ -37,7 +37,7 @@ async function getProductId(productSlug) {
       [productSlug]
     );
     return result.rows[0]?.id || null;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting product ID', { productSlug, error: error.message });
     return null;
   }
@@ -125,7 +125,7 @@ router.get('/check', async (req, res) => {
         upgradeRequired: result.reason === 'no_grant' && result.feature?.minTier
       });
     }
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error checking feature access', {
       error: error.message,
       query: req.query,
@@ -200,7 +200,7 @@ router.post('/check-multiple', async (req, res) => {
       success: true,
       features: results
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error checking multiple features', {
       error: error.message,
       body: req.body,
@@ -261,7 +261,7 @@ router.get('/', async (req, res) => {
       success: true,
       features: result
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting organization features', {
       error: error.message,
       query: req.query,
@@ -333,7 +333,7 @@ router.get('/my-grants', async (req, res) => {
         config: grant.config
       }))
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting organization grants', {
       error: error.message,
       query: req.query,
@@ -437,7 +437,7 @@ router.post('/request-access', async (req, res) => {
         submittedAt: new Date()
       }
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error requesting feature access', {
       error: error.message,
       body: req.body,
@@ -509,7 +509,7 @@ router.get('/usage-summary', async (req, res) => {
       success: true,
       usageSummary
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting usage summary', {
       error: error.message,
       query: req.query,

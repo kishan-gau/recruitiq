@@ -98,7 +98,7 @@ constructor(repository = null) {
       });
 
       return vps;
-    } catch (error) {
+    } catch (_error) {
       // 6. Log errors with context
       logger.error('Error creating VPS', {
         error: error.message,

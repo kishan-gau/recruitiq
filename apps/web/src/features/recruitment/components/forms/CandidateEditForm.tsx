@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 import { useData } from '../context/DataContext';
 import { useToast } from '../context/ToastContext';

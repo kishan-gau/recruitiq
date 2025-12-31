@@ -26,9 +26,9 @@ export interface ExchangeRate {
 export function useCurrencyConfig() {
   return useQuery({
     queryKey: ['currency-config'],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement currency config API
-      return {
+       ({
         baseCurrency: 'USD',
         supportedCurrencies: ['USD', 'EUR', 'GBP', 'CAD'],
         auto_update_rates: false,
@@ -36,8 +36,8 @@ export function useCurrencyConfig() {
         default_rate_source: 'manual',
         allow_manual_rates: true,
         require_rate_approval: false,
-      };
-    },
+      })
+    ,
   });
 }
 
@@ -64,10 +64,10 @@ export function useUpdateCurrencyConfig() {
 export function useExchangeRates(filters?: { fromCurrency?: string; toCurrency?: string }) {
   return useQuery({
     queryKey: ['exchange-rates', filters],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement exchange rates API
-      return [] as ExchangeRate[];
-    },
+       [] as ExchangeRate[]
+    ,
   });
 }
 
@@ -128,15 +128,15 @@ export function useDeleteExchangeRate() {
 export function useCacheStats() {
   return useQuery({
     queryKey: ['cache-stats'],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement cache stats API
-      return {
+       ({
         hits: 0,
         misses: 0,
         size: 0,
         keys: 0,
-      };
-    },
+      })
+    ,
   });
 }
 
@@ -163,9 +163,9 @@ export function useClearCache() {
 export function useConversionHistory(filters?: { fromCurrency?: string; toCurrency?: string; dateFrom?: string; dateTo?: string }) {
   return useQuery({
     queryKey: ['conversion-history', filters],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement conversion history API
-      return [];
-    },
+       []
+    ,
   });
 }

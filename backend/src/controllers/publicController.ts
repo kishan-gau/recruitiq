@@ -156,7 +156,7 @@ export async function getPublicJob(req, res, next) {
       publicSlug: job.public_slug
     });
     
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -268,7 +268,7 @@ export async function listPublicJobs(req, res, next) {
       })
     });
     
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -484,7 +484,7 @@ export async function submitApplication(req, res, next) {
       message: 'Application submitted successfully'
     });
     
-  } catch (error) {
+  } catch (_error) {
     await client.query('ROLLBACK');
     next(error);
   } finally {
@@ -589,7 +589,7 @@ export async function getApplicationStatus(req, res, next) {
       }))
     });
     
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }
@@ -675,7 +675,7 @@ export async function uploadDocument(req, res, next) {
       filename
     });
     
-  } catch (error) {
+  } catch (_error) {
     next(error);
   }
 }

@@ -47,7 +47,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findById', {
         table: this.tableName,
         id,
@@ -79,7 +79,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findByKey', {
         table: this.tableName,
         productId,
@@ -148,7 +148,7 @@ constructor() {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findByProduct', {
         table: this.tableName,
         productId,
@@ -222,7 +222,7 @@ constructor() {
         offset,
         pages: Math.ceil(total / limit)
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in findAll', {
         table: this.tableName,
         filters,
@@ -291,7 +291,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in create', {
         table: this.tableName,
         data,
@@ -369,7 +369,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in update', {
         table: this.tableName,
         id,
@@ -414,7 +414,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in deprecate', {
         table: this.tableName,
         id,
@@ -446,7 +446,7 @@ constructor() {
         isValid: missingFeatures.length === 0,
         missingFeatures
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in validateDependencies', {
         table: this.tableName,
         featureId,
@@ -478,7 +478,7 @@ constructor() {
         hasConflicts: conflictingFeatures.length > 0,
         conflictingFeatures
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in checkConflicts', {
         table: this.tableName,
         featureId,

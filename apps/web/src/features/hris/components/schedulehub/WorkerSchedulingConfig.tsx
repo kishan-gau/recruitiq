@@ -120,7 +120,7 @@ export default function WorkerSchedulingConfig({
       if (existingConfig) {
         // We're updating an existing worker's scheduling configuration
         // Use the employeeId as the worker identifier since that's what the backend expects
-        await schedulehubApi.workers.update(employeeId, configData);
+        await schedulehubApi.workers.update(_employeeId, configData);
         toast.success('Scheduling configuration updated successfully');
       } else {
         // This shouldn't happen when called from WorkerDetails, but keeping for safety
@@ -132,7 +132,7 @@ export default function WorkerSchedulingConfig({
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['schedulehub', 'workers'] });
-      queryClient.invalidateQueries({ queryKey: ['schedulehub', 'worker', employeeId] });
+      queryClient.invalidateQueries({ queryKey: ['schedulehub', 'worker', _employeeId] });
 
       onClose();
     } catch (error: any) {

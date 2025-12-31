@@ -26,7 +26,7 @@ constructor(database = null) {
       const sql = `SELECT * FROM ${this.tableName} WHERE id = $1 AND organization_id = $2`;
       const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding attendance', { id, organizationId, error: error.message });
       throw error;
     }
@@ -72,7 +72,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding attendance by employee', { employeeId, organizationId, error: error.message });
       throw error;
     }
@@ -102,7 +102,7 @@ constructor(database = null) {
       ];
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error clock in', { employeeId, organizationId, error: error.message });
       throw error;
     }
@@ -129,7 +129,7 @@ constructor(database = null) {
       ];
       const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error clock out', { recordId, organizationId, error: error.message });
       throw error;
     }
@@ -153,7 +153,7 @@ constructor(database = null) {
       ];
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error creating attendance', { attendanceData, organizationId, error: error.message });
       throw error;
     }
@@ -174,7 +174,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [today, organizationId], organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error finding today attendance', { organizationId, error: error.message });
       throw error;
     }
@@ -235,7 +235,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [organizationId, today], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting attendance statistics', { organizationId, error: error.message });
       throw error;
     }

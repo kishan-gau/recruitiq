@@ -15,7 +15,7 @@
  */
 
 import { motion, AnimatePresence } from 'framer-motion';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { ApplicationSourceBadge } from '../../../components/ui/ApplicationSourceBadge';

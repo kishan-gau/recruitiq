@@ -3,10 +3,11 @@ import { History, GitCompare, ArrowUpCircle, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { StatusBadge, Dialog } from '@recruitiq/ui';
+
 import CreateVersionModal from '@/components/modals/CreateVersionModal';
 import UpgradeWorkersModal from '@/components/modals/UpgradeWorkersModal';
 import VersionComparisonModal from '@/components/modals/VersionComparisonModal';
-import { StatusBadge, Dialog } from '@recruitiq/ui';
 import { useDeletePayStructureTemplate } from '@/hooks';
 import { useTemplateVersions } from '@/hooks/useTemplateVersions';
 

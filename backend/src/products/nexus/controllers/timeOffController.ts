@@ -21,7 +21,7 @@ class TimeOffController {
       const { organizationId, userId } = req.user;
       const request = await this.service.createTimeOffRequest(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: request });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in createRequest controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -37,7 +37,7 @@ class TimeOffController {
       const { id } = req.params;
       const request = await this.service.reviewTimeOffRequest(id, req.body, organizationId, userId);
       res.json({ success: true, data: request });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in reviewRequest controller', { error: error.message });
       const status = error.message === 'Request not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -54,7 +54,7 @@ class TimeOffController {
       const { id } = req.params;
       const request = await this.service.cancelTimeOffRequest(id, organizationId, userId);
       res.json({ success: true, data: request });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in cancelRequest controller', { error: error.message });
       const status = error.message === 'Request not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -83,7 +83,7 @@ class TimeOffController {
 
       const requests = await this.service.getTimeOffRequests(filters, organizationId, options);
       res.json({ success: true, data: requests });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getRequests controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -99,7 +99,7 @@ class TimeOffController {
       const { employeeId } = req.params;
       const balances = await this.service.getEmployeeTimeOffBalance(employeeId, organizationId);
       res.json({ success: true, data: balances });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in getBalances controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -114,7 +114,7 @@ class TimeOffController {
       const { organizationId, userId } = req.user;
       const type = await this.service.createTimeOffType(req.body, organizationId, userId);
       res.status(201).json({ success: true, data: type });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in createType controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -146,7 +146,7 @@ class TimeOffController {
       );
 
       res.json({ success: true, data: balance });
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error in accrueTimeOff controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }

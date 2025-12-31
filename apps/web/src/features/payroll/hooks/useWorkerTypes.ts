@@ -159,14 +159,14 @@ export function useDeleteWorkerTypeTemplate() {
 /**
  * Fetches worker type assignments for an employee
  */
-export function useEmployeeWorkerTypeAssignments(employeeId: string) {
+export function useEmployeeWorkerTypeAssignments(_employeeId: string) {
   const apiClient = new APIClient();
   const paylinqClient = new PaylinqClient(apiClient);
 
   return useQuery({
     queryKey: ['employeeWorkerTypeAssignments', employeeId],
     queryFn: async () => {
-      const response = await paylinqClient.getEmployeeWorkerTypeAssignments(employeeId);
+      const response = await paylinqClient.getEmployeeWorkerTypeAssignments(_employeeId);
       return response.data.assignments || response.data;
     },
     enabled: !!employeeId,
@@ -202,7 +202,7 @@ export function useAssignWorkerType() {
       });
       return response.data;
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeWorkerTypeAssignments', employeeId],
       });
@@ -243,7 +243,7 @@ export function useTerminateWorkerTypeAssignment() {
       );
       return response.data;
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeWorkerTypeAssignments', employeeId],
       });
@@ -372,7 +372,7 @@ export function useExecuteWorkerTypeUpgrade() {
         throw error;
       }
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeWorkerTypeAssignments', employeeId],
       });
@@ -393,9 +393,9 @@ export function useExecuteWorkerTypeUpgrade() {
 export function useCompareTemplates(template1Id: string, template2Id: string) {
   return useQuery({
     queryKey: ['worker-type-templates', 'compare', template1Id, template2Id],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement template comparison API
-      return {
+       ({
         template1: {},
         template2: {},
         differences: [],
@@ -404,8 +404,8 @@ export function useCompareTemplates(template1Id: string, template2Id: string) {
         componentsAdded: [],
         componentsRemoved: [],
         componentsModified: [],
-      };
-    },
+      })
+    ,
     enabled: Boolean(template1Id && template2Id),
   });
 }
@@ -416,9 +416,9 @@ export function useCompareTemplates(template1Id: string, template2Id: string) {
 export function useWorkerTypeUpgradeStatus(workerId: string) {
   return useQuery({
     queryKey: ['worker-type-upgrade-status', workerId],
-    queryFn: async () => {
+    queryFn: async () => 
       // TODO: Implement upgrade status API
-      return {
+       ({
         canUpgrade: false,
         currentTemplate: null,
         availableUpgrades: [],
@@ -426,8 +426,8 @@ export function useWorkerTypeUpgradeStatus(workerId: string) {
         latestTemplateVersion: '1.0.0',
         latestTemplateName: '',
         workersNeedingUpgrade: 0,
-      };
-    },
+      })
+    ,
     enabled: Boolean(workerId),
   });
 }

@@ -47,7 +47,7 @@ class LicenseValidator {
           expiresAt: license.expires_at
         } : null
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('License validation error:', error)
       return {
         valid: false,
@@ -133,7 +133,7 @@ class LicenseValidator {
         tier: license?.tier,
         customerName: customer?.name
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Limit check error:', error)
       return {
         allowed: false,
@@ -174,7 +174,7 @@ class LicenseValidator {
 
       const customerId = result.rows[0].customer_id
       return await this.checkLimit(customerId, resourceType, currentCount)
-    } catch (error) {
+    } catch (_error) {
       console.error('Check limit by instance error:', error)
       return {
         allowed: false,
@@ -193,7 +193,7 @@ class LicenseValidator {
   static async hasFeature(customerId, featureName) {
     try {
       return await License.hasFeature(customerId, featureName)
-    } catch (error) {
+    } catch (_error) {
       console.error('Feature check error:', error)
       return false
     }
@@ -250,7 +250,7 @@ class LicenseValidator {
         instanceKey: license.instance_key,
         instanceUrl: license.instance_url
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Get license details error:', error)
       return null
     }
@@ -273,7 +273,7 @@ class LicenseValidator {
       )
 
       return result.rows
-    } catch (error) {
+    } catch (_error) {
       console.error('Get validation history error:', error)
       return []
     }

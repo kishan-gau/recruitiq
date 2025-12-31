@@ -3,18 +3,19 @@
  * Displays list of feedback for an employee
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 import { useEmployeeFeedback } from '@/hooks';
-import type { Feedback } from '../../types/feedback.types';
 import { formatDate } from '@/utils';
+
+import type { Feedback } from '../../types/feedback.types';
 
 interface FeedbackListProps {
   employeeId: string;
 }
 
-export default function FeedbackList({ employeeId }: FeedbackListProps) {
-  const { data: feedback, isLoading, error } = useEmployeeFeedback(employeeId);
+export default function FeedbackList({ _employeeId }: FeedbackListProps) {
+  const { data: feedback, isLoading, error } = useEmployeeFeedback(_employeeId);
   const [filterType, setFilterType] = useState<string>('all');
   const [filterVisibility, setFilterVisibility] = useState<string>('all');
 

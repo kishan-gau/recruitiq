@@ -29,7 +29,7 @@ import {
   RefreshCw,
   ChevronDown
 } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useRoles } from '@/hooks';

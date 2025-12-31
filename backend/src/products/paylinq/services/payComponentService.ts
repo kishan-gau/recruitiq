@@ -230,7 +230,7 @@ constructor(repository = null) {
       });
 
       return apiComponent;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error creating pay component', { error: err.message, organizationId });
       throw err;
     }
@@ -249,7 +249,7 @@ constructor(repository = null) {
         components: mapComponentsDbToApi(result.components),
         total: result.total
       };
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching pay components', { error: err.message, organizationId });
       throw err;
     }
@@ -273,7 +273,7 @@ constructor(repository = null) {
       }
 
       return mapComponentDbToApi(component);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching pay component', { error: err.message, componentId });
       throw err;
     }
@@ -339,7 +339,7 @@ constructor(repository = null) {
 
       // Transform DB result to API format
       return mapComponentDbToApi(component);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error updating pay component', { error: err.message, componentId });
       throw err;
     }
@@ -375,7 +375,7 @@ constructor(repository = null) {
       }
 
       return deleted;
-    } catch (err) {
+    } catch (_err) {
       // Enhance error message for "in use" scenario
       if (err.message.includes('assigned to employees')) {
         throw new ConflictError(
@@ -403,7 +403,7 @@ constructor(repository = null) {
         try {
           const result = await this.createPayComponent(component, organizationId, userId);
           results.push({ success: true, data: result });
-        } catch (err) {
+        } catch (_err) {
           results.push({
             success: false,
             error: err.message,
@@ -420,7 +420,7 @@ constructor(repository = null) {
       });
 
       return results;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error in bulk component creation', { error: err.message, organizationId });
       throw err;
     }
@@ -465,7 +465,7 @@ constructor(repository = null) {
       });
 
       return formula;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error creating component formula', { error: err.message, organizationId });
       throw err;
     }
@@ -480,7 +480,7 @@ constructor(repository = null) {
   async getFormulasByComponent(componentId, organizationId) {
     try {
       return await this.payComponentRepository.findFormulasByComponent(componentId, organizationId);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching component formulas', { error: err.message, componentId });
       throw err;
     }
@@ -529,7 +529,7 @@ constructor(repository = null) {
         organizationId,
         filters
       );
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching employee component assignments', { error: err.message, employeeId });
       throw err;
     }
@@ -559,7 +559,7 @@ constructor(repository = null) {
       });
 
       return assignment;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error updating employee assignment', { error: err.message, assignmentId });
       throw err;
     }
@@ -583,7 +583,7 @@ constructor(repository = null) {
       logger.info('Employee assignment deleted', { assignmentId, organizationId });
 
       return result;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error deleting employee assignment', { error: err.message, assignmentId });
       throw err;
     }
@@ -631,7 +631,7 @@ constructor(repository = null) {
       });
 
       return assignment;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error assigning component to employee', { error: err.message, organizationId });
       throw err;
     }
@@ -646,7 +646,7 @@ constructor(repository = null) {
     try {
       const components = await this.payComponentRepository.findActivePayComponentsForPayroll(organizationId);
       return mapComponentsDbToApi(components);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error fetching active pay components for payroll', { error: err.message, organizationId });
       throw err;
     }
@@ -695,7 +695,7 @@ constructor(repository = null) {
         componentName: component.componentName,
         componentCode: component.componentCode,
       };
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error executing formula', {
         error: err.message,
         componentId,
@@ -723,7 +723,7 @@ constructor(repository = null) {
         variables: formulaEngine.extractVariables(ast),
         ast: formulaEngine.astToJSON(ast),
       };
-    } catch (err) {
+    } catch (_err) {
       return {
         valid: false,
         errors: [{ message: err.message, type: 'error' }],
@@ -740,7 +740,7 @@ constructor(repository = null) {
   testFormula(formula) {
     try {
       return formulaEngine.test(formula);
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error testing formula', { error: err.message, formula });
       throw new ValidationError(`Formula test failed: ${err.message}`);
     }
@@ -875,7 +875,7 @@ constructor(repository = null) {
       });
 
       return created;
-    } catch (err) {
+    } catch (_err) {
       logger.error('Error assigning component to employee', { 
         error: err.message, 
         employeeId: assignmentData.employeeId,

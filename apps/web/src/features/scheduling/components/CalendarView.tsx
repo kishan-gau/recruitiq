@@ -30,7 +30,7 @@ export interface CalendarViewProps {
   workers?: Worker[];
   getWorkerName?: (workerId: string) => string;
   getStationName?: (stationId: string) => string;
-  getEmployeeName?: (employeeId: string) => string;
+  getEmployeeName?: (_employeeId: string) => string;
   templates?: boolean;
 }
 
@@ -382,7 +382,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     {shift.startTime} - {shift.endTime}
                   </div>
                   <div className="text-xs opacity-80 truncate">
-                    {getEmployeeName(shift.employeeId)}
+                    {getEmployeeName(shift._employeeId)}
                   </div>
                   {shift.stationId && (
                     <div className="text-xs opacity-60 truncate">
@@ -612,7 +612,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                       </div>
                       <div className="flex items-center gap-1 mt-0.5 opacity-80">
                         <User className="w-3 h-3" />
-                        <span className="truncate">{getEmployeeName(shift.employeeId)}</span>
+                        <span className="truncate">{getEmployeeName(shift._employeeId)}</span>
                       </div>
                     </div>
                   ))}

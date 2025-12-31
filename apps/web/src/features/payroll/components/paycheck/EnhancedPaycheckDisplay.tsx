@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import React from 'react';
 
 import { useConversionHistory } from '@/hooks';
+
 import CurrencyDisplay from '../shared/CurrencyDisplay';
 
 import PaycheckConversionDetails from './PaycheckConversionDetails';

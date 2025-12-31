@@ -113,7 +113,7 @@ constructor(poolInstance = null) {
       const availability = mapAvailabilityDbToApi(result.rows[0]);
       return { success: true, availability };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating availability:', error);
       throw error;
@@ -256,7 +256,7 @@ constructor(poolInstance = null) {
         }
       };
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error listing availability:', error);
       throw error;
     }
@@ -314,7 +314,7 @@ constructor(poolInstance = null) {
         availability: mapAvailabilitiesDbToApi(result.rows)
       };
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching worker availability:', error);
       throw error;
     }
@@ -390,7 +390,7 @@ constructor(poolInstance = null) {
       const availability = mapAvailabilityDbToApi(result.rows[0]);
       return { success: true, availability };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error updating availability:', error);
       throw error;
@@ -430,7 +430,7 @@ constructor(poolInstance = null) {
       const availability = mapAvailabilityDbToApi(result.rows[0]);
       return { success: true, availability };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error deleting availability:', error);
       throw error;
@@ -493,7 +493,7 @@ constructor(poolInstance = null) {
         data: mapAvailabilitiesDbToApi(results)
       };
 
-    } catch (error) {
+    } catch (_error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating default availability:', error);
       throw error;
@@ -583,7 +583,7 @@ constructor(poolInstance = null) {
         reason: 'No availability defined for this time'
       };
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error checking worker availability:', error);
       throw error;
     }
@@ -668,7 +668,7 @@ constructor(poolInstance = null) {
         data: result.rows
       };
 
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error fetching available workers:', error);
       throw error;
     }

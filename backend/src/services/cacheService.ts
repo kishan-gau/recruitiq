@@ -123,7 +123,7 @@ constructor() {
       
       logger.info('✅ CacheService initialized successfully');
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to initialize Redis cache:', {
         error: error.message,
         stack: error.stack
@@ -157,7 +157,7 @@ constructor() {
       
       logger.debug('Cache miss', { key });
       return null;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Cache get error', { 
         key, 
         error: error.message 
@@ -183,7 +183,7 @@ constructor() {
       await this.client.setEx(key, ttl, JSON.stringify(value));
       logger.debug('Cache set', { key, ttl });
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Cache set error', { 
         key, 
         error: error.message 
@@ -224,7 +224,7 @@ constructor() {
       }
       
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Cache delete error', { 
         key, 
         error: error.message 
@@ -247,7 +247,7 @@ constructor() {
     try {
       const result = await this.client.exists(key);
       return result === 1;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Cache exists error', { 
         key, 
         error: error.message 
@@ -287,7 +287,7 @@ constructor() {
         hitRate: parseFloat(hitRate),
         total
       };
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to get cache stats', { error: error.message });
       return {
         connected: this.isConnected,
@@ -338,7 +338,7 @@ constructor() {
       await this.client.flushDb();
       logger.warn('All cache cleared (FLUSHDB)');
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Cache flush error', { error: error.message });
       return false;
     }
@@ -362,7 +362,7 @@ constructor() {
       try {
         await this.client.quit();
         logger.info('Redis connection closed gracefully');
-      } catch (error) {
+      } catch (_error) {
         logger.error('Error closing Redis connection', { 
           error: error.message 
         });
@@ -423,12 +423,12 @@ constructor() {
         await this.client.quit();
         this.isConnected = false;
         logger.info('Redis client disconnected gracefully');
-      } catch (error) {
+      } catch (_error) {
         logger.error('Error disconnecting Redis client:', { error: error.message });
         // Force disconnect
         try {
           await this.client.disconnect();
-        } catch (e) {
+        } catch (_e) {
           // Ignore
         }
       }

@@ -2,6 +2,7 @@ import { AlertCircle, Eye, Package } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 import { StatusBadge, Dialog, FormField, Input } from '@recruitiq/ui';
+
 import { usePayStructureTemplates, useAssignPayStructureToWorker, usePayStructureComponents } from '@/hooks';
 
 interface AssignPayStructureModalProps {

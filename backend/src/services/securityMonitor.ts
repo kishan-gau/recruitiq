@@ -50,7 +50,7 @@ if (config.deployment?.type === 'cloud' && config.centralMonitoring?.enabled) {
       
       await centralMonitoringPool.query('SELECT 1');
       // console.log('✓ Central monitoring database connected');
-    } catch (error) {
+    } catch (_error) {
       // console.error('✗ Failed to connect to central monitoring database:', error.message);
       centralMonitoringPool = null;
     }
@@ -238,7 +238,7 @@ constructor() {
       ];
       
       await centralMonitoringPool.query(query, values);
-    } catch (error) {
+    } catch (_error) {
       // Don't throw - just log locally to avoid monitoring loops
       logger.error('Failed to send security event to central monitoring', {
         error: error.message,
@@ -279,7 +279,7 @@ constructor() {
       ];
       
       await centralMonitoringPool.query(query, values);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to send alert to central monitoring', {
         error: error.message,
         alertId: alert.id,
@@ -617,7 +617,7 @@ constructor() {
             // Already logged above
             break;
         }
-      } catch (error) {
+      } catch (_error) {
         logger.error('Failed to send alert through channel', {
           channel,
           alertType: alert.type,
@@ -674,7 +674,7 @@ constructor() {
       }
       
       logger.info('Webhook alert sent', { alertId: alert.id });
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to send webhook alert', {
         alertId: alert.id,
         error: error.message,

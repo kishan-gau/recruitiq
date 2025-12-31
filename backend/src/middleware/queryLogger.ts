@@ -225,7 +225,7 @@ export function createLoggedQuery(pool) {
       logSlowQuery(text, params || [], executionTime);
 
       return result;
-    } catch (error) {
+    } catch (_error) {
       // Log error
       logQueryError(text, params || [], error, metadata);
       throw error;

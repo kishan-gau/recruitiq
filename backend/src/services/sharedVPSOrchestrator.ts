@@ -67,7 +67,7 @@ constructor() {
       );
       
       this.addLog(deploymentId, `Status updated: ${status}${statusMessage ? ' - ' + statusMessage : ''}`);
-    } catch (error) {
+    } catch (_error) {
       logger.error('Failed to update deployment status:', error);
     }
   }
@@ -81,7 +81,7 @@ constructor() {
     try {
       const { stdout, stderr } = await execAsync(sshCmd);
       return { success: true, stdout, stderr };
-    } catch (error) {
+    } catch (_error) {
       logger.error(`SSH command failed on ${vpsIp}:`, error);
       return { success: false, error: error.message, stdout: error.stdout, stderr: error.stderr };
     }
@@ -138,7 +138,7 @@ constructor() {
         vpsIp
       };
       
-    } catch (error) {
+    } catch (_error) {
       logger.error(`Tenant onboarding failed for ${slug}:`, error);
       
       await this.updateDeploymentStatus(
@@ -365,7 +365,7 @@ NGINX_CONFIG_EOF`;
         this.addLog(deploymentId, `⚠️  Tenant responded with status ${response.status}`);
         return false;
       }
-    } catch (error) {
+    } catch (_error) {
       this.addLog(deploymentId, `⚠️  Could not verify tenant access: ${error.message}`);
       // Don't fail deployment if health check fails - tenant might still be accessible
       return false;

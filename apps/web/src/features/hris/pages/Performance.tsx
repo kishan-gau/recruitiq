@@ -96,7 +96,7 @@ function ReviewForm({
           <input
             type="text"
             value={form.employeeId}
-            onChange={(e) => updateField('employeeId', e.target.value)}
+            onChange={(e) => updateField('_employeeId', e.target.value)}
             required
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
           />

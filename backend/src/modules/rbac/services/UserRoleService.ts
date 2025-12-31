@@ -100,7 +100,7 @@ constructor(userRoleModel = null, roleModel = null, auditModel = null) {
       });
 
       return assignment;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error assigning role', {
         error: error.message,
         data,
@@ -148,7 +148,7 @@ constructor(userRoleModel = null, roleModel = null, auditModel = null) {
       });
 
       return true;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error revoking role', {
         error: error.message,
         userId,
@@ -216,7 +216,7 @@ constructor(userRoleModel = null, roleModel = null, auditModel = null) {
       }
 
       return results;
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error bulk assigning roles', {
         error: error.message,
         userId,

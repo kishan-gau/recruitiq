@@ -37,7 +37,7 @@ async function clockIn(req, res) {
       clockEntry: clockEntry,
       message: 'Clocked in successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error clocking in', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -88,7 +88,7 @@ async function clockOut(req, res) {
       result: result,
       message: 'Clocked out successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error clocking out', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -126,7 +126,7 @@ async function getActiveClockEntries(req, res) {
       activeClocks: activeClocks,
       count: activeClocks.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching active clock entries', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -162,7 +162,7 @@ async function getEmployeeClockHistory(req, res) {
       history: history,
       count: history.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching clock history', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -201,7 +201,7 @@ async function createTimeEntry(req, res) {
       timeEntry: timeEntry,
       message: 'Time entry created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating time entry', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -242,7 +242,7 @@ async function getTimeEntries(req, res) {
       entries: entries,
       count: entries.length,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching time entries', {
       error: error.message,
       organization_id: req.user?.organization_id,
@@ -279,7 +279,7 @@ async function getTimeEntryById(req, res) {
       success: true,
       timeEntry: timeEntry,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching time entry', {
       error: error.message,
       timeEntryId: req.params.id,
@@ -326,7 +326,7 @@ async function updateTimeEntry(req, res) {
       timeEntry: timeEntry,
       message: 'Time entry updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating time entry', {
       error: error.message,
       timeEntryId: req.params.id,
@@ -388,7 +388,7 @@ async function bulkApproveTimeEntries(req, res) {
       result: result,
       message: `Time entries ${action}d successfully`,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error bulk processing time entries', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -433,7 +433,7 @@ async function deleteTimeEntry(req, res) {
       success: true,
       message: 'Time entry deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting time entry', {
       error: error.message,
       timeEntryId: req.params.id,
@@ -473,7 +473,7 @@ async function createShiftType(req, res) {
       shiftType,
       message: 'Shift type created successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error creating shift type', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -501,7 +501,7 @@ async function getShiftTypes(req, res) {
       success: true,
       shiftTypes,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching shift types', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -529,7 +529,7 @@ async function getShiftTypeById(req, res) {
       success: true,
       shiftType,
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error fetching shift type', {
       error: error.message,
       shiftTypeId: req.params.id,
@@ -569,7 +569,7 @@ async function updateShiftType(req, res) {
       shiftType,
       message: 'Shift type updated successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error updating shift type', {
       error: error.message,
       shiftTypeId: req.params.id,
@@ -606,7 +606,7 @@ async function deleteShiftType(req, res) {
       success: true,
       message: 'Shift type deleted successfully',
     });
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error deleting shift type', {
       error: error.message,
       shiftTypeId: req.params.id,

@@ -25,7 +25,7 @@ async function getProductId(productSlug) {
       { operation: 'getProductId' }
     );
     return result.rows[0]?.id || null;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error getting product ID', { productSlug, error: error.message });
     return null;
   }
@@ -127,7 +127,7 @@ export function requireFeature(productSlug, featureKey, options = {}) {
       };
 
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in requireFeature middleware', {
         productSlug,
         featureKey,
@@ -210,7 +210,7 @@ export function requireAnyFeature(productSlug, featureKeys, options = {}) {
       };
 
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in requireAnyFeature middleware', {
         productSlug,
         featureKeys,
@@ -303,7 +303,7 @@ export function requireAllFeatures(productSlug, featureKeys, options = {}) {
       );
 
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in requireAllFeatures middleware', {
         productSlug,
         featureKeys,
@@ -364,7 +364,7 @@ export function checkFeatureAvailability(productSlug, featureKeys) {
 
       req.features = features;
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in checkFeatureAvailability middleware', {
         productSlug,
         featureKeys,
@@ -421,7 +421,7 @@ export function enforceUsageLimit() {
       }
 
       next();
-    } catch (error) {
+    } catch (_error) {
       logger.error('Error in enforceUsageLimit middleware', {
         error: error.message
       });

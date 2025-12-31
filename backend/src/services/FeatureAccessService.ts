@@ -150,7 +150,7 @@ constructor() {
 
       this.setCachedResult(cacheKey, result);
       return result;
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error checking feature access', {
         organizationId,
         productId,
@@ -209,7 +209,7 @@ constructor() {
         matchedFeature: null,
         result: null
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error checking any feature access', {
         organizationId,
         productId,
@@ -245,7 +245,7 @@ constructor() {
         hasAccess,
         results
       };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error checking all features access', {
         organizationId,
         productId,
@@ -330,7 +330,7 @@ constructor() {
       }
 
       return { available, unavailable };
-    } catch (error) {
+    } catch (_error) {
       this.logger.error('Error getting organization features', {
         organizationId,
         productId,
@@ -366,7 +366,7 @@ constructor() {
           newUsage: grant.currentUsage + amount
         });
       }
-    } catch (error) {
+    } catch (_error) {
       // Don't throw - usage tracking failures shouldn't break the app
       this.logger.error('Error tracking feature usage', {
         organizationId,

@@ -1,6 +1,8 @@
-import { useState, FormEvent } from 'react';
+import type { FormEvent } from 'react';
+import { useState } from 'react';
 
 import { Dialog, Input, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, TextArea } from '@recruitiq/ui';
+
 import { FormField } from '@/components/FormField';
 import { 
   useToast, 

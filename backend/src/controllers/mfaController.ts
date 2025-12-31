@@ -48,7 +48,7 @@ export const setupMFA = async (req, res) => {
     });
 
     logger.info(`MFA setup initiated for user: ${userId}`);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in setupMFA:', error);
     res.status(500).json({
       success: false,
@@ -99,7 +99,7 @@ export const verifySetup = async (req, res) => {
     });
 
     logger.info(`MFA enabled successfully for user: ${userId}`);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in verifySetup:', error);
     res.status(500).json({
       success: false,
@@ -136,7 +136,7 @@ export const verifyMFA = async (req, res) => {
           message: 'Invalid MFA token',
         });
       }
-    } catch (error) {
+    } catch (_error) {
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired MFA token',
@@ -284,7 +284,7 @@ export const verifyMFA = async (req, res) => {
     });
 
     logger.info(`MFA verification successful for user: ${userId}`);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in verifyMFA:', error);
     res.status(500).json({
       success: false,
@@ -320,7 +320,7 @@ export const useBackupCode = async (req, res) => {
           message: 'Invalid MFA token',
         });
       }
-    } catch (error) {
+    } catch (_error) {
       return res.status(401).json({
         success: false,
         message: 'Invalid or expired MFA token',
@@ -442,7 +442,7 @@ export const useBackupCode = async (req, res) => {
     });
 
     logger.info(`Backup code used successfully for user: ${userId} (${remainingCodes} codes remaining)`);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in useBackupCode:', error);
     res.status(500).json({
       success: false,
@@ -549,7 +549,7 @@ export const disableMFA = async (req, res) => {
     });
 
     logger.info(`MFA disabled for user: ${userId}`);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in disableMFA:', error);
     res.status(500).json({
       success: false,
@@ -629,7 +629,7 @@ export const regenerateBackupCodes = async (req, res) => {
     });
 
     logger.info(`Backup codes regenerated for user: ${userId}`);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in regenerateBackupCodes:', error);
     res.status(500).json({
       success: false,
@@ -684,7 +684,7 @@ export const getMFAStatus = async (req, res) => {
     }
 
     res.json(response);
-  } catch (error) {
+  } catch (_error) {
     logger.error('Error in getMFAStatus:', error);
     res.status(500).json({
       success: false,

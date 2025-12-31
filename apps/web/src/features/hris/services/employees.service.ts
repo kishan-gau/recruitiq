@@ -162,23 +162,23 @@ export const employeesService = {
       sendEmail?: boolean;
     }
   ): Promise<any> => {
-    const response = await nexusClient.grantSystemAccess(employeeId, accessData);
+    const response = await nexusClient.grantSystemAccess(_employeeId, accessData);
     return response;
   },
 
   /**
    * Get employee's user account status
    */
-  getUserAccountStatus: async (employeeId: string): Promise<any> => {
-    const response = await nexusClient.getUserAccountStatus(employeeId);
+  getUserAccountStatus: async (_employeeId: string): Promise<any> => {
+    const response = await nexusClient.getUserAccountStatus(_employeeId);
     return response;
   },
 
   /**
    * Revoke system access from an employee
    */
-  revokeSystemAccess: async (employeeId: string): Promise<void> => {
-    await nexusClient.revokeSystemAccess(employeeId);
+  revokeSystemAccess: async (_employeeId: string): Promise<void> => {
+    await nexusClient.revokeSystemAccess(_employeeId);
   },
 
   /**
@@ -192,7 +192,7 @@ export const employeesService = {
       status?: string;
     }
   ): Promise<any> => {
-    const response = await nexusClient.updateUserAccess(employeeId, updates);
+    const response = await nexusClient.updateUserAccess(_employeeId, updates);
     return response;
   },
 };

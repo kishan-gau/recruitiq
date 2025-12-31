@@ -66,7 +66,7 @@ export function encrypt(text) {
     
     // Return IV + encrypted data
     return `${iv.toString('hex')}:${encrypted}`;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Encryption error:', error);
     throw new Error('Failed to encrypt data');
   }
@@ -99,7 +99,7 @@ export function decrypt(encryptedText) {
     decrypted += decipher.final('utf8');
     
     return decrypted;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Decryption error:', error);
     throw new Error('Failed to decrypt data');
   }
@@ -117,7 +117,7 @@ export function hash(text) {
 
   try {
     return crypto.createHash('sha256').update(text).digest('hex');
-  } catch (error) {
+  } catch (_error) {
     logger.error('Hashing error:', error);
     throw new Error('Failed to hash data');
   }
@@ -137,7 +137,7 @@ export function compareHash(text, hashedText) {
   try {
     const textHash = hash(text);
     return textHash === hashedText;
-  } catch (error) {
+  } catch (_error) {
     logger.error('Hash comparison error:', error);
     return false;
   }
