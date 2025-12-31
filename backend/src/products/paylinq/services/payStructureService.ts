@@ -464,7 +464,7 @@ class PayStructureService {
         // Parse and validate formula
         const parsed = await this.formulaEngine.parseFormula(value.formulaExpression);
         value.formulaAst = parsed;
-      } catch (_err) {
+      } catch (err) {
         throw new ValidationError(`Invalid formula: ${err.message}`);
       }
     }
@@ -512,7 +512,7 @@ class PayStructureService {
       try {
         const parsed = await this.formulaEngine.parseFormula(updates.formulaExpression);
         updates.formulaAst = parsed;
-      } catch (_err) {
+      } catch (err) {
         throw new ValidationError(`Invalid formula: ${err.message}`);
       }
     }
@@ -696,7 +696,7 @@ class PayStructureService {
     if (value.overrideType === 'formula' && value.overrideFormula) {
       try {
         await this.formulaEngine.parseFormula(value.overrideFormula);
-      } catch (_err) {
+      } catch (err) {
         throw new ValidationError(`Invalid override formula: ${err.message}`);
       }
     }
@@ -932,7 +932,7 @@ class PayStructureService {
           context.grossEarnings = (context.grossEarnings || 0) + value;
           context.gross_earnings = context.grossEarnings; // Keep both formats
         }
-      } catch (_err) {
+      } catch (err) {
         logger.error('Component calculation failed', {
           component: component.componentCode,
           error: err.message,

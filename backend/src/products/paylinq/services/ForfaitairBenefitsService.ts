@@ -199,7 +199,7 @@ constructor(repository = null, formulaEngine = null) {
       if (validated.formula) {
         try {
           await this.formulaEngine.parseFormula(validated.formula);
-        } catch (_err) {
+        } catch (err) {
           throw new ValidationError(`Invalid formula: ${err.message}`);
         }
       }
@@ -361,7 +361,7 @@ constructor(repository = null, formulaEngine = null) {
       let component;
       try {
         component = await this.getGlobalBenefitByCode(validated.componentCode);
-      } catch (_err) {
+      } catch (err) {
         // Not global, check org-specific
         component = await this.repository.findByCode(validated.componentCode, organizationId);
         if (!component) {
@@ -471,7 +471,7 @@ constructor(repository = null, formulaEngine = null) {
       let component;
       try {
         component = await this.getGlobalBenefitByCode(componentCode);
-      } catch (_err) {
+      } catch (err) {
         component = await this.repository.findByCode(componentCode, organizationId);
         if (!component) {
           throw new NotFoundError(`Component '${componentCode}' not found`);

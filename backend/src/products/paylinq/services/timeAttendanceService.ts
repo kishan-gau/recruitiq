@@ -99,7 +99,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       });
 
       return shiftType;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating shift type', { error: err.message, organizationId });
       throw err;
     }
@@ -114,7 +114,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
   async getShiftTypes(organizationId, filters = {}) {
     try {
       return await this.timeAttendanceRepository.findShiftTypes(organizationId, filters);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching shift types', { error: err.message, organizationId });
       throw err;
     }
@@ -135,7 +135,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       }
 
       return shiftType;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching shift type', { error: err.message, shiftTypeId, organizationId });
       throw err;
     }
@@ -156,7 +156,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       }
 
       return shiftType;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching shift type by code', { error: err.message, shiftCode, organizationId });
       throw err;
     }
@@ -214,7 +214,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       });
 
       return updatedShiftType;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating shift type', { error: err.message, shiftTypeId, organizationId });
       throw err;
     }
@@ -252,7 +252,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
         shiftTypeId,
         organizationId
       });
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error deleting shift type', { error: err.message, shiftTypeId, organizationId });
       throw err;
     }
@@ -293,7 +293,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       });
 
       return clockEvent;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error clocking in employee', { error: err.message, organizationId });
       throw err;
     }
@@ -376,7 +376,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
           overtimeHours
         }
       };
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error clocking out employee', { error: err.message, organizationId });
       throw err;
     }
@@ -401,7 +401,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
         organizationId,
         userId
       );
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating clock event', { error: err.message, organizationId });
       throw err;
     }
@@ -443,7 +443,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       });
 
       return timeEntry;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating time entry', { error: err.message, organizationId });
       throw err;
     }
@@ -458,7 +458,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
   async getTimeEntries(organizationId, filters = {}) {
     try {
       return await this.timeAttendanceRepository.findTimeEntries(filters, organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching time entries', { error: err.message, organizationId });
       throw err;
     }
@@ -478,7 +478,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       );
 
       return timeEntry; // Return null if not found, let controller handle 404
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching time entry', { error: err.message, timeEntryId });
       throw err;
     }
@@ -514,7 +514,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       });
 
       return timeEntry;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error updating time entry', { error: err.message, timeEntryId });
       throw err;
     }
@@ -547,7 +547,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       });
 
       return timeEntry;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error approving time entry', { error: err.message, timeEntryId });
       throw err;
     }
@@ -576,7 +576,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       });
 
       return timeEntry;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error rejecting time entry', { error: err.message, timeEntryId });
       throw err;
     }
@@ -658,7 +658,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       });
 
       return ratedTimeLines;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error creating rated time lines', { error: err.message, timeEntryId: timeEntry.id });
       throw err;
     }
@@ -680,7 +680,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
         toDate,
         organizationId
       );
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching hours summary', { error: err.message, employeeRecordId });
       throw err;
     }
@@ -696,7 +696,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
   async getActiveClockEntries(organizationId) {
     try {
       return await this.timeAttendanceRepository.findActiveClockEntries(organizationId);
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching active clock entries', { error: err.message, organizationId });
       throw err;
     }
@@ -716,7 +716,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
         organizationId,
         filters
       );
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error fetching clock history', { error: err.message, employeeRecordId, organizationId });
       throw err;
     }
@@ -747,7 +747,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
         try {
           const approved = await this.approveTimeEntry(timeEntryId, organizationId, userId);
           results.push({ timeEntryId, success: true, data: approved });
-        } catch (_err) {
+        } catch (err) {
           results.push({ timeEntryId, success: false, error: err.message });
         }
       }
@@ -766,7 +766,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
         failed: results.filter(r => !r.success).length,
         results
       };
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error bulk approving time entries', { error: err.message, organizationId });
       throw err;
     }
@@ -793,7 +793,7 @@ constructor(timeAttendanceRepository = null, payComponentRepository = null) {
       }
 
       return deleted;
-    } catch (_err) {
+    } catch (err) {
       logger.error('Error deleting time entry', { error: err.message, timeEntryId, organizationId });
       throw err;
     }
