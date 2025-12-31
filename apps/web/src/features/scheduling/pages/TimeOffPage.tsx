@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { TimeOffManagement } from '../../features/scheduling/components';
+import { TimeOffManagement } from '@features/scheduling/components';
 
 export default function TimeOffPage() {
   return (

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { ReportingDashboard } from '../../features/scheduling/components';
+import { ReportingDashboard } from '@features/scheduling/components';
 
 export default function ReportsPage() {
   return (

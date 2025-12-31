@@ -12,7 +12,6 @@ export * from './shared';
 
 // Core Scheduling Components
 export { default as CalendarView } from './CalendarView';
-export { default as ScheduleAnalytics } from './ScheduleAnalytics';
 
 // Filtering and Selection
 export { default as StationDropdownFilter } from './StationDropdownFilter';
