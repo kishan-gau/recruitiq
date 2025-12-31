@@ -14,6 +14,7 @@ export interface SettingCard {
   href: string;
   badge?: string;
   category: string;
+  key?: string; // React key prop for list rendering
 }
 
 export interface SettingsCategory {

@@ -18,13 +18,16 @@ export type AccrualFrequency =
   | 'monthly'
   | 'quarterly'
   | 'annually'
-  | 'per_pay_period';
+  | 'per_pay_period'
+  | 'on_anniversary';
 
 export type CarryOverPolicy = 
   | 'none'
   | 'unlimited'
   | 'limited'
-  | 'expire_end_of_year';
+  | 'expire_end_of_year'
+  | 'all'
+  | 'use_or_lose';
 
 export interface TimeOffTypeConfig {
   id: string;

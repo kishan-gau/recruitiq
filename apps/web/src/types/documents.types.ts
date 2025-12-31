@@ -30,6 +30,12 @@ export type DocumentCategory =
   | 'legal'
   | 'compliance'
   | 'training'
+  | 'contract'
+  | 'policy'
+  | 'handbook'
+  | 'payroll'
+  | 'benefit'
+  | 'performance'
   | 'other';
 
 export interface Document extends AuditFields {

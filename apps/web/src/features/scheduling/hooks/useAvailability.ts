@@ -177,8 +177,8 @@ export function useCreateAvailability() {
     },
     onError: (error) => {
       handleError(error, { 
-        toast, 
-        defaultMessage: 'Failed to create availability' 
+        toast: true,
+        context: 'Failed to create availability' 
       });
     },
   });
@@ -216,8 +216,8 @@ export function useUpdateAvailability() {
     },
     onError: (error) => {
       handleError(error, { 
-        toast, 
-        defaultMessage: 'Failed to update availability' 
+        toast: true,
+        context: 'Failed to update availability' 
       });
     },
   });
@@ -241,8 +241,8 @@ export function useDeleteAvailability() {
     },
     onError: (error) => {
       handleError(error, { 
-        toast, 
-        defaultMessage: 'Failed to delete availability' 
+        toast: true,
+        context: 'Failed to delete availability' 
       });
     },
   });
@@ -274,8 +274,8 @@ export function useCreateAvailabilityException() {
     },
     onError: (error) => {
       handleError(error, { 
-        toast, 
-        defaultMessage: 'Failed to create availability exception' 
+        toast: true,
+        context: 'Failed to create availability exception' 
       });
     },
   });
@@ -299,8 +299,8 @@ export function useDeleteAvailabilityException() {
     },
     onError: (error) => {
       handleError(error, { 
-        toast, 
-        defaultMessage: 'Failed to delete availability exception' 
+        toast: true,
+        context: 'Failed to delete availability exception' 
       });
     },
   });

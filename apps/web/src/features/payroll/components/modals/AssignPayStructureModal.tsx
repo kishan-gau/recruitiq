@@ -195,7 +195,7 @@ export default function AssignPayStructureModal({
                 </span>
               </div>
               {selectedTemplate && (
-                <StatusBadge variant="blue" className="text-xs">
+                <StatusBadge status="active" className="text-xs">
                   {previewComponents?.length || 0} Components
                 </StatusBadge>
               )}

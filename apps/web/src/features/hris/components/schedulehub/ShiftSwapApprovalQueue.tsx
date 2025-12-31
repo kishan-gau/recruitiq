@@ -145,7 +145,7 @@ export const ShiftSwapApprovalQueue: React.FC<ShiftSwapApprovalQueueProps> = ({
 
     const config = statusConfig[status] || statusConfig.pending;
     return (
-      <StatusBadge variant={config.color as any} size="sm">
+      <StatusBadge status={status} size="sm">
         {config.label}
       </StatusBadge>
     );
@@ -332,7 +332,7 @@ export const ShiftSwapApprovalQueue: React.FC<ShiftSwapApprovalQueueProps> = ({
                           {swap.shift?.role?.name || 'Unknown Role'}
                         </h3>
                         {swap.isUrgent && (
-                          <StatusBadge variant="red" size="sm">
+                          <StatusBadge status="urgent" size="sm">
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             Urgent
                           </StatusBadge>

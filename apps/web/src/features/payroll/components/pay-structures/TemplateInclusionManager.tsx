@@ -190,6 +190,7 @@ interface InclusionCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onToggleActive: () => void;
+  key?: string; // React key prop for list rendering
 }
 
 function InclusionCard({ inclusion, onEdit, onDelete, onToggleActive }: InclusionCardProps) {

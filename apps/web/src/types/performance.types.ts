@@ -29,6 +29,7 @@ export type GoalCategory =
   | 'behavioral'
   | 'technical'
   | 'leadership'
+  | 'project'
   | 'other';
 
 export type GoalPriority = 'low' | 'medium' | 'high' | 'critical';

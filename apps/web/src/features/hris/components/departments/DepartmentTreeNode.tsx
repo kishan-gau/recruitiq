@@ -20,6 +20,7 @@ interface DepartmentTreeNodeProps {
   department: DepartmentHierarchy;
   level: number;
   onEmployeeClick?: (departmentId: string) => void;
+  key?: string; // React key prop for list rendering
 }
 
 export default function DepartmentTreeNode({

@@ -28,6 +28,7 @@ interface SourceConfig {
 export interface ApplicationSourceBadgeProps {
   source: ApplicationSource;
   className?: string;
+  size?: string; // Optional size prop for variant usage
 }
 
 /**

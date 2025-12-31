@@ -53,16 +53,17 @@ export default function TemplateVersionHistory({
   const [selectedVersionForUpgrade, setSelectedVersionForUpgrade] = useState<Version | null>(null);
   const [selectedVersionForDelete, setSelectedVersionForDelete] = useState<Version | null>(null);
 
-  const getStatusVariant = (status: string): 'green' | 'yellow' | 'red' | 'gray' => {
+  const getStatusString = (status: string): string => {
+    // Return status string that StatusBadge understands
     switch (status) {
       case 'active':
-        return 'green';
+        return 'active';
       case 'draft':
-        return 'yellow';
+        return 'draft';
       case 'deprecated':
-        return 'red';
+        return 'deprecated';
       default:
-        return 'gray';
+        return 'inactive';
     }
   };
 
@@ -184,7 +185,7 @@ export default function TemplateVersionHistory({
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge variant={getStatusVariant(version.status)}>
+                    <StatusBadge status={getStatusString(version.status)}>
                       {version.status.toUpperCase()}
                     </StatusBadge>
                   </td>

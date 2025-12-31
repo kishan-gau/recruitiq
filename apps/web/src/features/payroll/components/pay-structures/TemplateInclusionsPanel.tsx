@@ -183,6 +183,7 @@ interface InclusionRowProps {
   onEdit: () => void;
   onDelete: () => void;
   isDraft: boolean;
+  key?: string; // React key prop for list rendering
 }
 
 function InclusionRow({ inclusion, onEdit, onDelete, isDraft }: InclusionRowProps) {

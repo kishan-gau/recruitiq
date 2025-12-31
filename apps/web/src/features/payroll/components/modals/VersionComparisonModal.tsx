@@ -48,16 +48,16 @@ export default function VersionComparisonModal({
     }
   };
 
-  const getChangeVariant = (changeType: string): 'green' | 'red' | 'yellow' | 'gray' => {
+  const getChangeStatus = (changeType: string): string => {
     switch (changeType) {
       case 'added':
-        return 'green';
+        return 'completed';  // Maps to green
       case 'removed':
-        return 'red';
+        return 'rejected';   // Maps to red
       case 'modified':
-        return 'yellow';
+        return 'pending';    // Maps to yellow
       default:
-        return 'gray';
+        return 'inactive';   // Maps to gray
     }
   };
 
@@ -109,7 +109,7 @@ export default function VersionComparisonModal({
               <p className="text-xs text-gray-600 dark:text-gray-400 uppercase mb-1">From Version</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">v{(comparison.fromVersion || comparison.from).versionString}</p>
               <div className="flex items-center gap-2 mt-2">
-                <StatusBadge variant="gray">{(comparison.fromVersion || comparison.from).status.toUpperCase()}</StatusBadge>
+                <StatusBadge status={(comparison.fromVersion || comparison.from).status}>{(comparison.fromVersion || comparison.from).status.toUpperCase()}</StatusBadge>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {(comparison.fromVersion || comparison.from).componentCount || (comparison.fromVersion || comparison.from).componentsCount} components
                 </span>
@@ -120,7 +120,7 @@ export default function VersionComparisonModal({
               <p className="text-xs text-gray-600 dark:text-gray-400 uppercase mb-1">To Version</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">v{(comparison.toVersion || comparison.to).versionString}</p>
               <div className="flex items-center gap-2 mt-2">
-                <StatusBadge variant="gray">{(comparison.toVersion || comparison.to).status.toUpperCase()}</StatusBadge>
+                <StatusBadge status={(comparison.toVersion || comparison.to).status}>{(comparison.toVersion || comparison.to).status.toUpperCase()}</StatusBadge>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   {(comparison.toVersion || comparison.to).componentCount || (comparison.toVersion || comparison.to).componentsCount} components
                 </span>
@@ -133,13 +133,13 @@ export default function VersionComparisonModal({
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">Summary of Changes</p>
               <div className="flex gap-3">
-                <StatusBadge variant="green">
+                <StatusBadge status="completed">
                   {comparison.summary.addedCount || 0} Added
                 </StatusBadge>
-                <StatusBadge variant="yellow">
+                <StatusBadge status="pending">
                   {comparison.summary.modifiedCount || 0} Modified
                 </StatusBadge>
-                <StatusBadge variant="red">
+                <StatusBadge status="rejected">
                   {comparison.summary.removedCount || 0} Removed
                 </StatusBadge>
               </div>
@@ -164,7 +164,7 @@ export default function VersionComparisonModal({
                             <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
                               {change.componentCode}
                             </span>
-                            <StatusBadge variant={getChangeVariant(change.changeType)}>
+                            <StatusBadge status={getChangeStatus(change.changeType)}>
                               {change.changeType.toUpperCase()}
                             </StatusBadge>
                           </div>
