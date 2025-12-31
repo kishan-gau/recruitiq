@@ -6,6 +6,17 @@
 import pool from '../../../config/database.js';
 
 class TaxRepository {
+  
+  db: any;
+
+  /**
+   * Constructor with dependency injection
+   * @param {Object} database - Database instance (optional, defaults to pool)
+   */
+  constructor(database = null) {
+    this.db = database || pool;
+  }
+
   /**
    * Get tax rates for a jurisdiction
    */
@@ -18,7 +29,7 @@ class TaxRepository {
     ORDER BY tax_type, created_at DESC
   `;
   
-  const result = await pool.query(query, [jurisdictionId, effectiveDate]);
+  const result = await this.db.query(query, [jurisdictionId, effectiveDate]);
   return result.rows;
 }
 
@@ -31,7 +42,7 @@ class TaxRepository {
     ORDER BY jurisdiction_name
   `;
   
-  const result = await pool.query(query);
+  const result = await this.db.query(query);
   return result.rows;
 }
 
@@ -44,7 +55,7 @@ class TaxRepository {
     WHERE id = $1
   `;
   
-  const result = await pool.query(query, [jurisdictionId]);
+  const result = await this.db.query(query, [jurisdictionId]);
   return result.rows[0];
 }
 

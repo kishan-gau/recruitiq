@@ -9,8 +9,12 @@ class ComplianceRepository {
   
   db: any;
 
-constructor() {
-    this.db = pool;
+  /**
+   * Constructor with dependency injection
+   * @param {Object} database - Database instance (optional, defaults to pool)
+   */
+  constructor(database = null) {
+    this.db = database || pool;
   }
 
   /**
