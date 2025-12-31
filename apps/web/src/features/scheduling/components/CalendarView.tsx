@@ -2,7 +2,7 @@ import { format, startOfWeek, addDays, getWeeksInMonth, startOfMonth, endOfMonth
 import { ChevronLeft, ChevronRight, User } from 'lucide-react';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 
-import { useStationCoverage, useShiftTemplates, useTemplateBasedTimeSlots } from '../hooks';
+import { useStationCoverage, useShiftTemplates } from '../hooks';
 import { 
   type Shift, 
   type Station, 
@@ -75,7 +75,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   // Custom hooks
   const { data: stationCoverage } = useStationCoverage();
   const { data: shiftTemplates = [] } = useShiftTemplates();
-  const { data: templateTimeSlots } = useTemplateBasedTimeSlots(selectedDate);
+  // const { data: templateTimeSlots } = useTemplateBasedTimeSlots(selectedDate); // TODO: Implement hook
+  const templateTimeSlots = undefined;  // Placeholder until hook is implemented
 
   // Memoized calculations
   const weekDays = useMemo(() => {
