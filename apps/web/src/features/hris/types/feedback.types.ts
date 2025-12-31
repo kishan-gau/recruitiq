@@ -17,6 +17,12 @@ export type FeedbackStatus =
   | 'acknowledged'
   | 'archived';
 
+export type FeedbackVisibility = 
+  | 'private'
+  | 'manager'
+  | 'team'
+  | 'public';
+
 export interface Feedback extends AuditFields {
   id: string;
   organizationId: string;

@@ -146,3 +146,16 @@ export function useClearCache() {
     },
   });
 }
+
+/**
+ * Hook to get conversion history
+ */
+export function useConversionHistory(filters?: { fromCurrency?: string; toCurrency?: string; dateFrom?: string; dateTo?: string }) {
+  return useQuery({
+    queryKey: ['conversion-history', filters],
+    queryFn: async () => {
+      // TODO: Implement conversion history API
+      return [];
+    },
+  });
+}
