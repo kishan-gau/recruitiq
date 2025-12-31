@@ -102,6 +102,41 @@ export class RecruitIQPlatformAPI {
   }
 
   /**
+   * Direct HTTP GET request
+   */
+  public async get<T = any>(url: string, config?: any): Promise<T> {
+    return this.apiClient.get(url, config);
+  }
+
+  /**
+   * Direct HTTP POST request
+   */
+  public async post<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiClient.post(url, data, config);
+  }
+
+  /**
+   * Direct HTTP PUT request
+   */
+  public async put<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiClient.put(url, data, config);
+  }
+
+  /**
+   * Direct HTTP PATCH request
+   */
+  public async patch<T = any>(url: string, data?: any, config?: any): Promise<T> {
+    return this.apiClient.patch(url, data, config);
+  }
+
+  /**
+   * Direct HTTP DELETE request
+   */
+  public async delete<T = any>(url: string, config?: any): Promise<T> {
+    return this.apiClient.delete(url, config);
+  }
+
+  /**
    * Make a direct request using the API client
    */
   public async request<T = any>(method: string, url: string, data?: any, config?: APIClientConfig): Promise<T> {

@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
 
-interface FormFieldProps {
+export interface FormFieldProps {
   label?: string;
   error?: string;
   required?: boolean;

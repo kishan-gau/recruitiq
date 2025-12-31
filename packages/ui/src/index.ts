@@ -22,7 +22,6 @@ export * from './components/Select';
 export * from './components/Tabs';
 
 // Feature Management Components
-export * from './components/FeatureGate';
 export * from './components/UpgradePrompt';
 export * from './components/FeatureUsageIndicator';
 
