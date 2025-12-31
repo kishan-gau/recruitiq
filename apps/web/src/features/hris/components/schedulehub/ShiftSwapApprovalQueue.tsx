@@ -24,12 +24,7 @@ import {
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { Button } from '@recruitiq/ui';
-
-import Badge from '@recruitiq/ui';
-import Card from '@recruitiq/ui';
-import Input from '@recruitiq/ui';
-import Select from '@recruitiq/ui';
+import { Button, Card, Input, Select, StatusBadge } from '@recruitiq/ui';
 import {
   usePendingApprovals,
   useApproveSwap,
@@ -150,9 +145,9 @@ export const ShiftSwapApprovalQueue: React.FC<ShiftSwapApprovalQueueProps> = ({
 
     const config = statusConfig[status] || statusConfig.pending;
     return (
-      <Badge variant={config.color as any} size="sm">
+      <StatusBadge status={status} size="sm">
         {config.label}
-      </Badge>
+      </StatusBadge>
     );
   };
 
@@ -337,10 +332,10 @@ export const ShiftSwapApprovalQueue: React.FC<ShiftSwapApprovalQueueProps> = ({
                           {swap.shift?.role?.name || 'Unknown Role'}
                         </h3>
                         {swap.isUrgent && (
-                          <Badge variant="red" size="sm">
+                          <StatusBadge status="urgent" size="sm">
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             Urgent
-                          </Badge>
+                          </StatusBadge>
                         )}
                         {getStatusBadge(swap.status)}
                       </div>
@@ -460,7 +455,7 @@ export const ShiftSwapApprovalQueue: React.FC<ShiftSwapApprovalQueueProps> = ({
               onClick={() => {/* Handle next page */}}
               variant="outline"
               size="sm"
-              disabled={!pagination.hasNext}
+                      disabled={!pagination.hasNext}
             >
               Next
             </Button>
@@ -470,3 +465,5 @@ export const ShiftSwapApprovalQueue: React.FC<ShiftSwapApprovalQueueProps> = ({
     </div>
   );
 };
+
+export default ShiftSwapApprovalQueue;

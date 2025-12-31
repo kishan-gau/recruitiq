@@ -2772,5 +2772,15 @@ export class PaylinqClient {
       data
     );
   }
+
+  /**
+   * Execute worker type upgrade
+   */
+  async executeWorkerTypeUpgrade(data: any) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/worker-types/upgrade/execute`,
+      data
+    );
+  }
 }
 

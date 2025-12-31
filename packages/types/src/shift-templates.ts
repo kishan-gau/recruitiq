@@ -39,6 +39,13 @@ export interface ShiftTemplateRole {
   minExperience?: number; // years
   skills?: string[];
   notes?: string;
+  // Additional properties used in UI components
+  quantity?: number; // Alias for requiredCount
+  minimumProficiency?: string;
+  preferredProficiency?: string;
+  isPrimaryRole?: boolean;
+  priority?: number;
+  isFlexible?: boolean;
 }
 
 /**
@@ -91,6 +98,12 @@ export interface ShiftTemplate {
   updatedAt: string;
   createdBy: string;
   updatedBy?: string;
+  
+  // Additional properties used in UI components (aliases)
+  templateName?: string; // Alias for name
+  startTime?: string;
+  endTime?: string;
+  roleRequirements?: ShiftTemplateRole[]; // Alias for roles
 }
 
 /**
@@ -110,6 +123,11 @@ export interface ShiftTemplateSummary {
   color?: string;
   createdAt: string;
   updatedAt: string;
+  // Additional properties used in UI components
+  templateName?: string; // Alias for name
+  startTime?: string;
+  endTime?: string;
+  stationName?: string;
 }
 
 /**

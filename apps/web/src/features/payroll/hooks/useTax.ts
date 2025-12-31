@@ -51,3 +51,28 @@ export function useDeleteTaxRule() {
     },
   });
 }
+
+/**
+ * Combined tax management hook
+ * Provides all tax-related functionality in a single hook for convenience
+ */
+export function useTax(filters?: any) {
+  const taxRulesQuery = useTaxRules(filters);
+  const createMutation = useCreateTaxRule();
+  const updateMutation = useUpdateTaxRule();
+  const deleteMutation = useDeleteTaxRule();
+
+  return {
+    taxRules: taxRulesQuery.data,
+    isLoadingRules: taxRulesQuery.isLoading,
+    isErrorRules: taxRulesQuery.isError,
+    errorRules: taxRulesQuery.error,
+    // Return full mutation objects to access both mutate and mutateAsync
+    createTaxRule: createMutation,
+    updateTaxRule: updateMutation,
+    deleteTaxRule: deleteMutation,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+  };
+}

@@ -18,13 +18,16 @@ export type AccrualFrequency =
   | 'monthly'
   | 'quarterly'
   | 'annually'
-  | 'per_pay_period';
+  | 'per_pay_period'
+  | 'on_anniversary';
 
 export type CarryOverPolicy = 
   | 'none'
   | 'unlimited'
   | 'limited'
-  | 'expire_end_of_year';
+  | 'expire_end_of_year'
+  | 'all'
+  | 'use_or_lose';
 
 export interface TimeOffTypeConfig {
   id: string;
@@ -43,6 +46,20 @@ export interface TimeOffTypeConfig {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  // Additional properties used in components
+  typeName?: string; // Alias for name
+  typeCode?: string; // Alias for code
+  icon?: string;
+  maxBalance?: number;
+  minBalance?: number;
+  requiresDocumentation?: boolean;
+  availableDuringProbation?: boolean;
+  probationWaitingPeriodDays?: number;
+  minRequestDays?: number;
+  maxRequestDays?: number;
+  advanceNoticeDays?: number;
+  isPaid?: boolean;
+  isUnlimited?: boolean;
 }
 
 export interface CreateTimeOffTypeDTO {
@@ -58,4 +75,18 @@ export interface CreateTimeOffTypeDTO {
   maxAccrualBalance?: number;
   carryOverPolicy: CarryOverPolicy;
   maxCarryOverDays?: number;
+  // Additional properties used in form
+  typeName?: string;
+  typeCode?: string;
+  icon?: string;
+  maxBalance?: number;
+  minBalance?: number;
+  requiresDocumentation?: boolean;
+  availableDuringProbation?: boolean;
+  probationWaitingPeriodDays?: number;
+  minRequestDays?: number;
+  maxRequestDays?: number;
+  advanceNoticeDays?: number;
+  isPaid?: boolean;
+  isUnlimited?: boolean;
 }

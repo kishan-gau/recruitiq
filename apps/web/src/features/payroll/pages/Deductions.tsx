@@ -5,7 +5,7 @@ import type { EmployeeDeduction } from '@recruitiq/types';
 
 import { handleApiError } from '@/utils/errorHandler';
 
-import { useDeductions } from '../hooks/useDeductions';
+import { useDed } from '../hooks/useDeductions';
 
 // Deduction Type Badge
 function DeductionTypeBadge({ type }: { type: string }) {
@@ -227,7 +227,7 @@ export default function DeductionsPage() {
     createDeduction,
     updateDeduction,
     deleteDeduction,
-  } = useDeductions();
+  } = useDed();
 
   // Filter deductions
   const filteredDeductions = useMemo(() => {

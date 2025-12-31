@@ -39,6 +39,11 @@ export interface Feedback extends AuditFields {
   acknowledgedAt?: string;
   relatedReviewId?: string;
   tags?: string[];
+  // Additional properties used in components
+  visibility?: FeedbackVisibility;
+  rating?: number;
+  comments?: string;
+  providedByName?: string;
 }
 
 export interface CreateFeedbackDTO {

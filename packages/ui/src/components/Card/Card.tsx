@@ -4,6 +4,7 @@ import { clsx } from 'clsx';
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'outlined' | 'elevated';
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  key?: string; // React key prop for list rendering
 }
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(

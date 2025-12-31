@@ -62,6 +62,12 @@ export interface EmployeeDeduction extends BaseEntity {
   employeeName?: string;
   currentPeriodAmount?: number;
   yearToDateAmount?: number;
+  // Additional properties used in UI
+  maxAmount?: number;
+  startDate?: string; // Alias for effectiveFrom
+  endDate?: string; // Alias for effectiveTo
+  isActive?: boolean;
+  notes?: string;
 }
 
 /**

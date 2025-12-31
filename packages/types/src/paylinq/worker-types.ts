@@ -233,6 +233,11 @@ export interface WorkerTypeUpgradePreview {
   componentChanges: ComponentChange[];
   affectedWorkersCount: number;
   affectedWorkers: WorkerNeedingUpgrade[];
+  // Additional properties used in components
+  componentsAdded?: ComponentChange[];
+  componentsRemoved?: ComponentChange[];
+  componentsModified?: ComponentChange[];
+  changes?: ComponentChange[]; // Alias for componentChanges
 }
 
 /** Template comparison response */
@@ -287,6 +292,7 @@ export interface WorkerTypeUpgradeStatusResponse {
 export interface WorkerTypeUpgradePreviewResponse {
   success: boolean;
   preview: WorkerTypeUpgradePreview;
+  data?: WorkerTypeUpgradePreview; // Alias for preview
 }
 
 /** API response for template comparison */

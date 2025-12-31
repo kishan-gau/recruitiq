@@ -19,11 +19,11 @@ import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 import { useAssignShift, useUnassignShift } from '../hooks';
 import { schedulingService } from '../services';
-import type { Shift, Worker, WorkerAvailability } from '../types';
+import type { Shift, Worker, Availability } from '../types';
 
 
 interface WorkerWithAvailability extends Worker {
-  availability?: WorkerAvailability & {
+  availability?: Availability & {
     priority: 'high' | 'medium' | 'low';
     available: boolean;
     hours: number;

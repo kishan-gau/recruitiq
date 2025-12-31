@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { RoleManagement } from '@features/scheduling/components';
+import { RolesManagement } from '@features/scheduling/components';
 
 export default function RolesPage() {
   return (
@@ -19,7 +19,7 @@ export default function RolesPage() {
 
       {/* Role Management Component */}
       <div className="min-h-[600px]">
-        <RoleManagement />
+        <RolesManagement />
       </div>
     </div>
   );

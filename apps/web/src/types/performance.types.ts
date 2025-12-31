@@ -29,6 +29,7 @@ export type GoalCategory =
   | 'behavioral'
   | 'technical'
   | 'leadership'
+  | 'project'
   | 'other';
 
 export type GoalPriority = 'low' | 'medium' | 'high' | 'critical';
@@ -56,6 +57,13 @@ export interface PerformanceReview extends AuditFields {
   reviewerComments?: string;
   managerSignedDate?: string;
   employeeSignedDate?: string;
+  // Additional rating properties used in components
+  technicalSkillsRating?: RatingScale;
+  communicationRating?: RatingScale;
+  teamworkRating?: RatingScale;
+  leadershipRating?: RatingScale;
+  initiativeRating?: RatingScale;
+  achievements?: string;
 }
 
 export interface CreatePerformanceReviewDTO {
@@ -105,6 +113,7 @@ export interface Goal extends AuditFields {
   progress?: number; // 0-100
   measurableCriteria?: string;
   notes?: string;
+  keyResults?: string; // Key results or success metrics for the goal
 }
 
 export interface CreateGoalDTO {

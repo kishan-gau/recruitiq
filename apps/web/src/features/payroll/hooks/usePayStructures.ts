@@ -109,6 +109,11 @@ export interface PayStructureComponent {
   
   createdAt?: string;
   updatedAt?: string;
+  
+  // Additional properties used in components
+  defaultCurrency?: string;
+  allowCurrencyOverride?: boolean;
+  forfaitRuleId?: string;
 }
 
 export interface TieredRate {
@@ -171,6 +176,11 @@ export interface TemplateInclusion {
   updatedAt: string;
   createdBy: string;
   updatedBy?: string;
+  // Additional properties used in components
+  minVersion?: string;
+  maxVersion?: string;
+  priority?: number; // Alias for inclusionPriority
+  conditionExpression?: string;
 }
 
 export interface ResolvedPayStructureTemplate extends PayStructureTemplate {
@@ -186,6 +196,9 @@ export interface ResolvedPayStructureTemplate extends PayStructureTemplate {
     totalInclusions: number;
     mergeStrategy: string;
   };
+  // Additional properties used in components
+  appliedInclusions?: TemplateInclusion[];
+  template?: any; // Legacy field for nested template data
 }
 
 export type InclusionMode = 'merge' | 'override' | 'append';

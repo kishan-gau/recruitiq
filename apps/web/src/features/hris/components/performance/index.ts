@@ -1,7 +1,7 @@
 // HRIS Performance Components
 // Migrated from apps/nexus/src/components/performance/
 
-export { FeedbackForm } from './FeedbackForm';
-export { FeedbackList } from './FeedbackList';
-export { GoalForm } from './GoalForm';
-export { ReviewForm } from './ReviewForm';
+export { default as FeedbackForm } from './FeedbackForm';
+export { default as FeedbackList } from './FeedbackList';
+export { default as GoalForm } from './GoalForm';
+export { default as ReviewForm } from './ReviewForm';

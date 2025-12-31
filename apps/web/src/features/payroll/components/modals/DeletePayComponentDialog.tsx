@@ -1,4 +1,4 @@
-import ConfirmDialog from '@recruitiq/ui';
+import { ConfirmDialog } from '@recruitiq/ui';
 
 interface PayComponent {
   id: string;

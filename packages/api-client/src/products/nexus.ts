@@ -1573,4 +1573,12 @@ export class NexusClient {
   async deleteAvailabilityException(id: string) {
     return this.client.delete<ApiResponse<void>>(`products/schedulehub/availability/exceptions/${id}`);
   }
+
+  // ============================================================================
+  // Performance Management
+  // ============================================================================
+
+  async getPerformanceStatistics(filters?: any) {
+    return this.client.get<ApiResponse<any>>(`${this.basePath}/performance/statistics`, { params: filters });
+  }
 }

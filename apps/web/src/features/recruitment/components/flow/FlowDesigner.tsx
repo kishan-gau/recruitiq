@@ -38,8 +38,8 @@ const QUESTION_TYPES = [
 ];
 
 // Helper function to get color based on stage type
-const getStageColor = (type) => {
-  const colorMap = {
+const getStageColor = (type: string) => {
+  const colorMap: Record<string, string> = {
     'phone-screen': '#3b82f6', // blue
     'technical': '#8b5cf6', // purple
     'behavioral': '#ec4899', // pink
@@ -55,17 +55,40 @@ const getStageColor = (type) => {
   return colorMap[type] || '#64748b'; // default slate
 };
 
-export default function FlowDesigner({ isOpen, onClose, editingTemplate = null }) {
+interface FlowStage {
+  id?: string;
+  name: string;
+  type: string;
+  description?: string;
+  duration?: number;
+  evaluationQuestions?: any[];
+  [key: string]: any;
+}
+
+interface FlowFormData {
+  name: string;
+  description: string;
+  category: string;
+  stages: FlowStage[];
+}
+
+interface FlowDesignerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  editingTemplate?: any;
+}
+
+export default function FlowDesigner({ isOpen, onClose, editingTemplate = null }: FlowDesignerProps) {
   const { createFlowTemplate, updateFlowTemplate } = useFlow();
   const { currentWorkspaceId } = useWorkspace();
   
-  const [formData, setFormData] = useState(() => {
+  const [formData, setFormData] = useState<FlowFormData>(() => {
     if (editingTemplate) {
       return {
         name: editingTemplate.name,
         description: editingTemplate.description,
         category: editingTemplate.category,
-        stages: editingTemplate.stages.map(s => ({...s})) // deep clone
+        stages: editingTemplate.stages.map((s: FlowStage) => ({...s})) // deep clone
       };
     }
     return {
@@ -95,12 +118,12 @@ export default function FlowDesigner({ isOpen, onClose, editingTemplate = null }
       }
     }
   });
-  const [stageErrors, setStageErrors] = useState({});
-  const [templateErrors, setTemplateErrors] = useState({});
+  const [stageErrors, setStageErrors] = useState<Record<string, string>>({});
+  const [templateErrors, setTemplateErrors] = useState<Record<string, string>>({});
   
   // Question/Document management state
   const [showQuestionForm, setShowQuestionForm] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [editingQuestion, setEditingQuestion] = useState<any>(null);
   const [questionFormData, setQuestionFormData] = useState({
     text: '',
     type: 'rating',

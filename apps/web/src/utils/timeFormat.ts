@@ -3,6 +3,35 @@
  */
 
 /**
+ * Format a time string or Date object for display
+ * @param time - Time in HH:MM format or Date object
+ * @param use12Hour - Use 12-hour format (default: false)
+ * @returns Formatted time string
+ */
+export function formatTime(time: string | Date, use12Hour = false): string {
+  if (time instanceof Date) {
+    return time.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: use12Hour 
+    });
+  }
+  
+  // If it's already a string in HH:MM format, return as is or convert to 12-hour
+  if (typeof time === 'string') {
+    if (use12Hour) {
+      const [hours, minutes] = time.split(':').map(Number);
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    }
+    return time;
+  }
+  
+  return '';
+}
+
+/**
  * Format a duration in minutes to a readable string
  * @param minutes - Duration in minutes
  * @returns Formatted string (e.g., "2h 30m", "45m", "8h")

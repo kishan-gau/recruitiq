@@ -6,8 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import CreateVersionModal from '@/components/modals/CreateVersionModal';
 import UpgradeWorkersModal from '@/components/modals/UpgradeWorkersModal';
 import VersionComparisonModal from '@/components/modals/VersionComparisonModal';
-import Badge from '@recruitiq/ui';
-import ConfirmDialog from '@recruitiq/ui';
+import { StatusBadge, Dialog } from '@recruitiq/ui';
 import { useDeletePayStructureTemplate } from '@/hooks';
 import { useTemplateVersions } from '@/hooks/useTemplateVersions';
 
@@ -54,16 +53,17 @@ export default function TemplateVersionHistory({
   const [selectedVersionForUpgrade, setSelectedVersionForUpgrade] = useState<Version | null>(null);
   const [selectedVersionForDelete, setSelectedVersionForDelete] = useState<Version | null>(null);
 
-  const getStatusVariant = (status: string): 'green' | 'yellow' | 'red' | 'gray' => {
+  const getStatusString = (status: string): string => {
+    // Return status string that StatusBadge understands
     switch (status) {
       case 'active':
-        return 'green';
+        return 'active';
       case 'draft':
-        return 'yellow';
+        return 'draft';
       case 'deprecated':
-        return 'red';
+        return 'deprecated';
       default:
-        return 'gray';
+        return 'inactive';
     }
   };
 
@@ -185,9 +185,9 @@ export default function TemplateVersionHistory({
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge variant={getStatusVariant(version.status)}>
+                    <StatusBadge status={getStatusString(version.status)}>
                       {version.status.toUpperCase()}
-                    </Badge>
+                    </StatusBadge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {version.componentCount || version.componentsCount || 0}

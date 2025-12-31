@@ -186,9 +186,9 @@ export function usePayComponentsByType(type: 'earnings' | 'deductions') {
 /**
  * Map database response to API format
  */
-function mapPayComponentToApi(data: any): PayComponent {
+function mapPayComponentToApi(data: any): PayComponent | PayComponent[] {
   if (Array.isArray(data)) {
-    return data.map((item) => mapPayComponentToApi(item));
+    return data.map((item) => mapPayComponentToApi(item)) as PayComponent[];
   }
 
   return {

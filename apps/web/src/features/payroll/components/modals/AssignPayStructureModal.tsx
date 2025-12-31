@@ -1,9 +1,7 @@
 import { AlertCircle, Eye, Package } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-import Badge from '@recruitiq/ui';
-import { Dialog } from '@recruitiq/ui';
-import { FormField, Input, TextArea } from '@recruitiq/ui';
+import { StatusBadge, Dialog, FormField, Input } from '@recruitiq/ui';
 import { usePayStructureTemplates, useAssignPayStructureToWorker, usePayStructureComponents } from '@/hooks';
 
 interface AssignPayStructureModalProps {
@@ -197,9 +195,9 @@ export default function AssignPayStructureModal({
                 </span>
               </div>
               {selectedTemplate && (
-                <Badge variant="blue" className="text-xs">
+                <StatusBadge status="active" className="text-xs">
                   {previewComponents?.length || 0} Components
-                </Badge>
+                </StatusBadge>
               )}
             </button>
             

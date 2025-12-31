@@ -180,6 +180,8 @@ export interface Shift {
   actualEndTime?: string;
   createdAt: string;
   updatedAt: string;
+  assignedWorkerId?: string; // Alias for employeeId for backward compatibility
+  title?: string; // Display title for the shift
   
   // Nested objects from JOINs (DTO transformed)
   worker?: {
@@ -257,6 +259,15 @@ export interface ShiftSwapOffer {
   approved_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CreateShiftSwapOffer {
+  offered_shift_id: string;
+  swap_type: 'open' | 'direct' | 'trade';
+  target_worker_id?: string;
+  requested_shift_id?: string;
+  expires_at?: string;
+  notes?: string;
 }
 
 export interface ShiftSwapRequest {
@@ -385,12 +396,20 @@ export interface ShiftTemplate {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // CamelCase aliases for UI components
+  templateName?: string;
+  startTime?: string;
+  endTime?: string;
+  roleRequirements?: any[]; // For compatibility with components expecting roles array
+  roles?: any[]; // Alternative name for role requirements
+  stationName?: string; // For display purposes
 }
 
 export interface ShiftTemplateDetails extends ShiftTemplate {
   roles: ShiftTemplateRole[];
   stations: Station[];
   usageCount?: number;
+  roleRequirements?: ShiftTemplateRole[]; // Alias for roles
 }
 
 export interface ShiftTemplateSummary {
@@ -414,6 +433,13 @@ export interface ShiftTemplateRole {
   created_at: string;
   updated_at: string;
   role?: Role;
+  // Additional properties for UI
+  quantity?: number; // Alias for min_workers
+  minimumProficiency?: string;
+  preferredProficiency?: string;
+  isPrimaryRole?: boolean;
+  priority?: number; // Alias for priority_level
+  isFlexible?: boolean;
 }
 
 export interface ShiftTemplateUsage {
@@ -440,6 +466,11 @@ export interface CreateShiftTemplateRequest {
     priority_level?: number;
   }>;
   station_ids?: string[];
+}
+
+export interface CloneShiftTemplateRequest {
+  id: string;
+  name: string;
 }
 
 export interface UpdateShiftTemplateRequest {
@@ -483,7 +514,16 @@ export interface ShiftTemplateFilters {
 
 export interface ValidationResult {
   isValid: boolean;
-  errors: string[];
+    errors: string[];
+}
+
+export interface StationCoverage {
+  stationId: string;
+  stationName: string;
+  totalRequired: number;
+  totalAssigned: number;
+  coveragePercent: number;
+  gaps: StationCoverageGap[];
 }
 
 export interface StationCoverageGap {

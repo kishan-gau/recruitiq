@@ -6,7 +6,7 @@ import {
   useCacheStats,
   useClearCache,
 } from '@/hooks';
-import Button from '@recruitiq/ui';
+import { Button } from '@recruitiq/ui';
 import { CURRENCY_SYMBOLS, CURRENCY_NAMES } from '../shared/CurrencyDisplay';
 
 const AVAILABLE_CURRENCIES = [

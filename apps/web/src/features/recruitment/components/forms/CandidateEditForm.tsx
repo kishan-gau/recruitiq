@@ -5,7 +5,22 @@ import { useToast } from '../context/ToastContext';
 
 import Modal from './Modal';
 
-export default function CandidateEditForm({ open, onClose, candidate }) {
+interface CandidateEditFormProps {
+  open: boolean;
+  onClose: () => void;
+  candidate: any;
+}
+
+interface FormErrors {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  linkedinUrl?: string;
+  portfolioUrl?: string;
+  [key: string]: string | undefined;
+}
+
+export default function CandidateEditForm({ open, onClose, candidate }: CandidateEditFormProps) {
   const { updateCandidate } = useData();
   const toast = useToast();
 
@@ -20,11 +35,11 @@ export default function CandidateEditForm({ open, onClose, candidate }) {
   const [portfolioUrl, setPortfolioUrl] = useState('');
   const [notes, setNotes] = useState('');
 
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const firstNameRef = useRef(null);
-  const emailRef = useRef(null);
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   // Populate form when editing
   useEffect(() => {
@@ -49,7 +64,7 @@ export default function CandidateEditForm({ open, onClose, candidate }) {
   }, [open, candidate]);
 
   const validate = () => {
-    const newErrors = {};
+    const newErrors: FormErrors = {};
 
     if (!firstName.trim()) {
       newErrors.firstName = 'First name is required';

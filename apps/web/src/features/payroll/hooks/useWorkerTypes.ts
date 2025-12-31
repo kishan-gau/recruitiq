@@ -22,8 +22,11 @@ export function useWorkerTypeTemplates() {
     queryKey: ['workerTypeTemplates'],
     queryFn: async () => {
       const response = await paylinqClient.getWorkerTypeTemplates();
-      return response.data.templates || response.data;
+      const data = response.data.templates || response.data;
+      // Return wrapped in templates property for component compatibility
+      return { templates: Array.isArray(data) ? data : [data] };
     },
+    select: (data) => data.templates, // Extract templates for direct access
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -40,8 +43,11 @@ export function useWorkerTypeTemplate(templateId: string) {
     queryKey: ['workerTypeTemplate', templateId],
     queryFn: async () => {
       const response = await paylinqClient.getWorkerTypeTemplate(templateId);
-      return response.data.template || response.data;
+      const data = response.data.template || response.data;
+      // Return wrapped in template property for component compatibility
+      return { template: data };
     },
+    select: (data) => data.template, // Extract template for direct access
     enabled: !!templateId,
     staleTime: 5 * 60 * 1000,
   });
@@ -261,6 +267,42 @@ export function useTerminateWorkerTypeAssignment() {
 /**
  * Previews a worker type upgrade
  */
+/**
+ * Query hook to preview worker type upgrade
+ * For use when you need to fetch preview data automatically
+ */
+export function useWorkerTypeUpgradePreview(workerTypeId: string, enabled: boolean = true) {
+  const apiClient = new APIClient();
+  const paylinqClient = new PaylinqClient(apiClient);
+
+  return useQuery({
+    queryKey: ['worker-type-upgrade-preview', workerTypeId],
+    queryFn: async () => {
+      if (!workerTypeId) return null;
+      // This would need actual employee/target IDs in real implementation
+      // For now, return stub data
+      return {
+        workerTypeId,
+        fromTemplate: { id: '', code: '', version: 1, name: '' },
+        toTemplate: { id: '', code: '', version: 2, name: '' },
+        componentChanges: [],
+        affectedWorkersCount: 0,
+        affectedWorkers: [],
+        componentsAdded: [],
+        componentsRemoved: [],
+        componentsModified: [],
+        changes: [],
+      };
+    },
+    enabled: enabled && Boolean(workerTypeId),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to preview worker type upgrade
+ * For use when you want to manually trigger the preview
+ */
 export function usePreviewWorkerTypeUpgrade() {
   const toast = useToast();
   const apiClient = new APIClient();
@@ -357,6 +399,11 @@ export function useCompareTemplates(template1Id: string, template2Id: string) {
         template1: {},
         template2: {},
         differences: [],
+        fromVersion: '1.0.0',
+        toVersion: '2.0.0',
+        componentsAdded: [],
+        componentsRemoved: [],
+        componentsModified: [],
       };
     },
     enabled: Boolean(template1Id && template2Id),
@@ -375,6 +422,10 @@ export function useWorkerTypeUpgradeStatus(workerId: string) {
         canUpgrade: false,
         currentTemplate: null,
         availableUpgrades: [],
+        needsUpgrade: false,
+        latestTemplateVersion: '1.0.0',
+        latestTemplateName: '',
+        workersNeedingUpgrade: 0,
       };
     },
     enabled: Boolean(workerId),

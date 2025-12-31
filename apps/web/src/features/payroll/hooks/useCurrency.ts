@@ -14,6 +14,10 @@ export interface ExchangeRate {
   source?: string;
   createdAt: string;
   updatedAt: string;
+  // Additional properties used in components
+  source_provider?: string;
+  effective_from?: string;
+  effective_to?: string;
 }
 
 /**
@@ -27,6 +31,11 @@ export function useCurrencyConfig() {
       return {
         baseCurrency: 'USD',
         supportedCurrencies: ['USD', 'EUR', 'GBP', 'CAD'],
+        auto_update_rates: false,
+        rate_update_frequency: 'daily',
+        default_rate_source: 'manual',
+        allow_manual_rates: true,
+        require_rate_approval: false,
       };
     },
   });
@@ -125,6 +134,7 @@ export function useCacheStats() {
         hits: 0,
         misses: 0,
         size: 0,
+        keys: 0,
       };
     },
   });
