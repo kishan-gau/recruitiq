@@ -14,6 +14,7 @@ export interface ToastContextType {
   info: (message: string) => void;
   warning: (message: string) => void;
   remove: (id: string) => void;
+  showToast?: (message: string, type?: string) => void; // Legacy alias
 }
 
 export const ToastContext = createContext<ToastContextType | undefined>(undefined);
