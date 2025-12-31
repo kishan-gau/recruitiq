@@ -28,6 +28,8 @@ export {
   useUpdateRole,
   useDeleteRole,
   useAssignWorkerRoles,
+  useAssignRole,
+  useUnassignRole,
 } from './useRoles';
 
 // Station Coverage Analysis Hooks

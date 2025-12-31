@@ -3,6 +3,28 @@
  * Displays currency amounts with proper formatting
  */
 
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  CAD: 'C$',
+  AUD: 'A$',
+  JPY: '¥',
+  CHF: 'CHF',
+  CNY: '¥',
+};
+
+export const CURRENCY_NAMES: Record<string, string> = {
+  USD: 'US Dollar',
+  EUR: 'Euro',
+  GBP: 'British Pound',
+  CAD: 'Canadian Dollar',
+  AUD: 'Australian Dollar',
+  JPY: 'Japanese Yen',
+  CHF: 'Swiss Franc',
+  CNY: 'Chinese Yuan',
+};
+
 interface CurrencyDisplayProps {
   amount: number;
   currency?: string;

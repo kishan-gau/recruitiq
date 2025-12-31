@@ -1,25 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-interface SelectProps {
+export interface SelectProps {
   children: React.ReactNode;
   value?: string;
   onValueChange?: (value: string) => void;
 }
 
-interface SelectTriggerProps {
+export interface SelectTriggerProps {
   children: React.ReactNode;
   className?: string;
 }
 
-interface SelectValueProps {
+export interface SelectValueProps {
   placeholder?: string;
 }
 
-interface SelectContentProps {
+export interface SelectContentProps {
   children: React.ReactNode;
 }
 
-interface SelectItemProps {
+export interface SelectItemProps {
   value: string;
   children: React.ReactNode;
 }
