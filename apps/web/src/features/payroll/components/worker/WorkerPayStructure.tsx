@@ -4,7 +4,7 @@ import { useState } from 'react';
 import AssignPayStructureModal from '@/components/modals/AssignPayStructureModal';
 import WorkerPayStructureOverrides from '@/components/pay-structures/WorkerPayStructureOverrides';
 import Badge from '@recruitiq/ui';
-import StatusBadge from '@/components/ui/StatusBadge';
+import StatusBadge from '@recruitiq/ui';
 import {
   useCurrentWorkerPayStructure,
   useWorkerPayStructureHistory,

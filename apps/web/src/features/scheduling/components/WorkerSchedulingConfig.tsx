@@ -5,8 +5,8 @@ import { useForm } from 'react-hook-form';
 
 import { Modal, Button, Input } from '@recruitiq/ui';
 
-import { Label } from '@/components/ui/Label';
-import { Switch } from '@/components/ui/Switch';
+import { Label } from '@recruitiq/ui';
+import { Switch } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 

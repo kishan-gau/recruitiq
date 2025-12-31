@@ -22,7 +22,7 @@ import type {
   ShiftTemplate
 } from '@/types/shift-templates';
 
-import { formatDuration } from '../../utils/dateUtils';
+import { formatDuration } from '@/utils';
 
 // Validation schema
 const shiftTemplateSchema = z.object({

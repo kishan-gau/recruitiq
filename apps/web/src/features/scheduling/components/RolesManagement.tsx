@@ -13,7 +13,7 @@ import {
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
+import { useErrorHandler } from '@/hooks';
 import { useRoles, useDeleteRole, useDepartments } from '../hooks';
 import type { Role } from '../types';
 

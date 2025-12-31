@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 
 import type { ShiftTemplateSummary } from '@/types/shift-templates';
 
-import { formatDuration, formatTime } from '../../utils/dateUtils';
+import { formatDuration, formatTime } from '@/utils';
 
 interface ShiftTemplateCardProps {
   template: ShiftTemplateSummary;

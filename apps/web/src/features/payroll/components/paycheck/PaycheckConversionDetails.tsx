@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import React from 'react';
 
-import { CURRENCY_SYMBOLS, CURRENCY_NAMES } from '../ui/CurrencyDisplay';
+import { CURRENCY_SYMBOLS, CURRENCY_NAMES } from '../shared/CurrencyDisplay';
 
 interface ConversionDetails {
   baseCurrency: string;

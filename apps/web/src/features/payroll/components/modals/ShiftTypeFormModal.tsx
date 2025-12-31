@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import type { ShiftType } from '@recruitiq/types';
 import { handleFormError } from '@recruitiq/utils';
 
-import Button from '@/components/ui/Button';
+import Button from '@recruitiq/ui';
 import { Dialog } from '@recruitiq/ui';
 import { FormField, Input, TextArea, Select } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';

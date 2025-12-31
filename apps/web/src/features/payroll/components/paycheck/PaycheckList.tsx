@@ -1,8 +1,8 @@
 import { format } from 'date-fns';
 import React, { useState, useMemo } from 'react';
 
-import CurrencyDisplay from '../ui/CurrencyDisplay';
-import { CURRENCY_SYMBOLS } from '../ui/CurrencyDisplay';
+import CurrencyDisplay from '../shared/CurrencyDisplay';
+import { CURRENCY_SYMBOLS } from '../shared/CurrencyDisplay';
 
 interface PaycheckListItem {
   id: string;
