@@ -2,7 +2,7 @@ import { ArrowLeft, Edit, Users, CheckCircle, XCircle, Calendar } from 'lucide-r
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
-import { useRole, useRoleWorkers } from '@/hooks';
+import { useRole } from '@/hooks';
 
 import AssignWorkersToRole from './AssignWorkersToRole';
 import RoleForm from './RoleForm';
@@ -17,10 +17,10 @@ const RoleDetails: React.FC = () => {
   console.log('🔍 RoleDetails - roleId:', roleId);
 
   const { data: roleData, isLoading, error, refetch } = useRole(roleId!);
-  const { data: workersData, isLoading: loadingWorkers, refetch: refetchWorkers } = useRoleWorkers(roleId!);
-
+  
   const role = roleData?.data;
-  const workers = workersData?.workers || [];
+  // Workers assigned to role can be accessed from roleData.assignedWorkers if available
+  const workers = roleData?.assignedWorkers || [];
 
   if (isLoading) {
     return (
@@ -222,11 +222,10 @@ const RoleDetails: React.FC = () => {
         <AssignWorkersToRole
           roleId={roleId!}
           roleName={roleData?.data?.roleName || 'Role'}
-          onClose={() => setShowAssignWorkerModal(false)}
+                  onClose={() => setShowAssignWorkerModal(false)}
           onSuccess={() => {
             setShowAssignWorkerModal(false);
             refetch();
-            refetchWorkers();
           }}
         />
       )}

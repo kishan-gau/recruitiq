@@ -7,13 +7,7 @@ import { Modal, Button, Input } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
-import { useDepartments } from '@/hooks';
-import { 
-  useWorkers, 
-  useRoleWorkers, 
-  useAssignWorkerToRole, 
-  useUnassignRole 
-} from '@/hooks' // was: from '../hooks/useWorkers';
+import { useDepartments, useWorkers, useRole, useAssignWorkerRoles, useUnassignRole } from '@/hooks';
 import type { Worker, Role } from '../types';
 
 interface AssignWorkersToRoleProps {
@@ -37,9 +31,10 @@ const AssignWorkersToRole: React.FC<AssignWorkersToRoleProps> = ({
 
   // Data fetching
   const { data: allWorkers = [], isLoading: workersLoading } = useWorkers();
-  const { data: assignedWorkers = [], isLoading: roleWorkersLoading } = useRoleWorkers(role.id);
+  const { data: roleData } = useRole(role.id);
+  const assignedWorkers = roleData?.assignedWorkers || [];
   const { data: departments = [] } = useDepartments();
-  const assignWorkerMutation = useAssignWorkerToRole();
+  const assignWorkerMutation = useAssignWorkerRoles();
   const unassignRoleMutation = useUnassignRole();
 
   console.log('AssignWorkersToRole - All workers:', allWorkers.length);

@@ -259,6 +259,15 @@ export interface ShiftSwapOffer {
   updated_at: string;
 }
 
+export interface CreateShiftSwapOffer {
+  offered_shift_id: string;
+  swap_type: 'open' | 'direct' | 'trade';
+  target_worker_id?: string;
+  requested_shift_id?: string;
+  expires_at?: string;
+  notes?: string;
+}
+
 export interface ShiftSwapRequest {
   id: string;
   offer_id: string;
@@ -442,6 +451,11 @@ export interface CreateShiftTemplateRequest {
   station_ids?: string[];
 }
 
+export interface CloneShiftTemplateRequest {
+  id: string;
+  name: string;
+}
+
 export interface UpdateShiftTemplateRequest {
   template_name?: string;
   description?: string;
@@ -483,7 +497,16 @@ export interface ShiftTemplateFilters {
 
 export interface ValidationResult {
   isValid: boolean;
-  errors: string[];
+    errors: string[];
+}
+
+export interface StationCoverage {
+  stationId: string;
+  stationName: string;
+  totalRequired: number;
+  totalAssigned: number;
+  coveragePercent: number;
+  gaps: StationCoverageGap[];
 }
 
 export interface StationCoverageGap {

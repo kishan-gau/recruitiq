@@ -11,7 +11,7 @@ import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useToast } from '@/hooks/useToast';
 
 import { availabilityService } from '../services';
-import { WorkerAvailability, AvailabilityException } from '../types';
+import { Availability, AvailabilityException } from '../types';
 
 // ==================== Query Keys ====================
 

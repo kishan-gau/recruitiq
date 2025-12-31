@@ -1,9 +1,7 @@
 import { X, UserPlus, Trash2, AlertCircle, Users, Search } from 'lucide-react';
 import React, { useState } from 'react';
 
-import { useRoleWorkers, useAssignWorkerToRole, useUnassignRole } from '@/hooks';
-import { useWorkers } from '@/hooks';
-import { useDepartments } from '@/hooks';
+import { useWorkers, useRole, useAssignWorkerRoles, useUnassignRole, useDepartments } from '@/hooks';
 
 interface AssignWorkersToRoleProps {
   roleId: string;
@@ -23,13 +21,14 @@ const AssignWorkersToRole: React.FC<AssignWorkersToRoleProps> = ({
   const [error, setError] = useState<string>('');
 
   const { data: workersData, isLoading: workersLoading } = useWorkers();
-  const { data: roleWorkersData, isLoading: roleWorkersLoading } = useRoleWorkers(roleId);
+  const { data: roleData } = useRole(roleId);
   const { data: departmentsData, isLoading: departmentsLoading } = useDepartments();
-  const assignRole = useAssignWorkerToRole();
+  const assignRoleMutation = useAssignWorkerRoles();
   const unassignRole = useUnassignRole();
 
   const allWorkers = workersData?.workers || [];
-  const assignedWorkers = roleWorkersData?.workers || [];
+  // TODO: Get workers already assigned to this role from roleData or a separate hook
+  const assignedWorkers = roleData?.assignedWorkers || [];
   
   // Helper function to get department name by ID
   const getDepartmentName = (departmentId: string | null) => {
@@ -96,7 +95,7 @@ const AssignWorkersToRole: React.FC<AssignWorkersToRoleProps> = ({
       // Assign each worker individually since mutation expects roleId and data
       for (const workerId of selectedWorkerIds) {
         console.log(`DEBUG - Assigning worker ${workerId} to role ${roleId}`);
-        await assignRole.mutateAsync({
+        await assignRoleMutation.mutateAsync({
           roleId,
           data: { workerId },
         });
@@ -279,10 +278,10 @@ const AssignWorkersToRole: React.FC<AssignWorkersToRoleProps> = ({
             </button>
             <button
               onClick={handleAssignWorkers}
-              disabled={selectedWorkerIds.length === 0 || assignRole.isPending}
+              disabled={selectedWorkerIds.length === 0 || assignRoleMutation.isPending}
               className="px-4 py-2 bg-blue-600 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
             >
-              {assignRole.isPending ? (
+              {assignRoleMutation.isPending ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                   Assigning...
