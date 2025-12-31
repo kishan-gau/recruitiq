@@ -51,7 +51,7 @@ constructor() {
       });
 
       await this.client.connect();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to connect to Redis for token blacklist:', error);
       // Continue without Redis - fallback to in-memory
       this.isConnected = false;
@@ -79,7 +79,7 @@ constructor() {
       });
       
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to blacklist token:', error);
       return false;
     }
@@ -100,7 +100,7 @@ constructor() {
       const result = await this.client.get(key);
       
       return result !== null;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to check token blacklist:', error);
       return false; // Fail open on errors
     }
@@ -123,7 +123,7 @@ constructor() {
       logger.info('All tokens blacklisted for user', { userId });
       
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to blacklist user tokens:', error);
       return false;
     }
@@ -150,7 +150,7 @@ constructor() {
 
       // If token was issued before blacklist time, it's invalid
       return tokenIssuedAt < parseInt(blacklistedAt, 10);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to check user tokens blacklist:', error);
       return false;
     }
@@ -174,7 +174,7 @@ constructor() {
       });
       
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to remove token from blacklist:', error);
       return false;
     }
@@ -209,7 +209,7 @@ constructor() {
         userBlacklists: keys.filter(k => k.startsWith('blacklist:user:')).length,
         tokenBlacklists: keys.filter(k => !k.startsWith('blacklist:user:')).length,
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to get blacklist stats:', error);
       return { error: error.message };
     }
