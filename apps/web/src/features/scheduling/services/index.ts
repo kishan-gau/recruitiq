@@ -5,3 +5,4 @@ export { workersService } from './workers.service';
 export { stationsService } from './stations.service';
 export { availabilityService } from './availability.service';
 export { rolesService } from './roles.service';
+export { shiftSwapsService } from './shiftSwaps.service';
