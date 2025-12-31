@@ -19,6 +19,8 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: ErrorResponse;
   meta?: ResponseMeta;
+  // Allow resource-specific properties (e.g., employee, employees, etc.)
+  [key: string]: any;
 }
 
 /**

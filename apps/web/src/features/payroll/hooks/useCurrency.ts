@@ -27,6 +27,10 @@ export function useCurrencyConfig() {
       return {
         baseCurrency: 'USD',
         supportedCurrencies: ['USD', 'EUR', 'GBP', 'CAD'],
+        auto_update_rates: false,
+        rate_update_frequency: 'daily',
+        default_rate_source: 'manual',
+        allow_manual_rates: true,
       };
     },
   });
