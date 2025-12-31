@@ -357,6 +357,11 @@ export function useCompareTemplates(template1Id: string, template2Id: string) {
         template1: {},
         template2: {},
         differences: [],
+        fromVersion: '1.0.0',
+        toVersion: '2.0.0',
+        componentsAdded: [],
+        componentsRemoved: [],
+        componentsModified: [],
       };
     },
     enabled: Boolean(template1Id && template2Id),
@@ -375,6 +380,10 @@ export function useWorkerTypeUpgradeStatus(workerId: string) {
         canUpgrade: false,
         currentTemplate: null,
         availableUpgrades: [],
+        needsUpgrade: false,
+        latestTemplateVersion: '1.0.0',
+        latestTemplateName: '',
+        workersNeedingUpgrade: 0,
       };
     },
     enabled: Boolean(workerId),

@@ -287,6 +287,7 @@ export interface WorkerTypeUpgradeStatusResponse {
 export interface WorkerTypeUpgradePreviewResponse {
   success: boolean;
   preview: WorkerTypeUpgradePreview;
+  data?: WorkerTypeUpgradePreview; // Alias for preview
 }
 
 /** API response for template comparison */

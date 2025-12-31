@@ -59,6 +59,10 @@ export interface PayComponent extends BaseEntity {
   
   description?: string;
   status: Status;
+  
+  // Additional properties used in components
+  calculationMethod?: string; // Alias for calculationType
+  isActive?: boolean;
 }
 
 /**
@@ -117,6 +121,8 @@ export interface CreatePayComponentRequest {
   gaapCategory?: GAAPCategory;
   description?: string;
   status?: Status;
+  calculationMethod?: string; // Alias for calculationType
+  isActive?: boolean;
 }
 
 /**

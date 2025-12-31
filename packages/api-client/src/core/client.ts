@@ -448,4 +448,25 @@ export class APIClient {
   public getCsrfToken(): string | null {
     return this.tokenStorage.getCsrfToken();
   }
+
+  // Pay Component methods (delegate to PaylinqClient)
+  public async listPayComponents(filters?: any) {
+    return this.paylinq.listPayComponents(filters);
+  }
+
+  public async getPayComponent(id: string) {
+    return this.paylinq.getPayComponent(id);
+  }
+
+  public async createPayComponent(data: any) {
+    return this.paylinq.createPayComponent(data);
+  }
+
+  public async updatePayComponent(id: string, data: any) {
+    return this.paylinq.updatePayComponent(id, data);
+  }
+
+  public async deletePayComponent(id: string) {
+    return this.paylinq.deletePayComponent(id);
+  }
 }

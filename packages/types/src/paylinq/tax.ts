@@ -42,7 +42,11 @@ export interface TaxRuleSet {
   createdBy?: string;
   updatedBy?: string;
   deletedBy?: string;
+  name?: string; // Alias for taxName
 }
+
+// Alias for backward compatibility
+export type TaxRule = TaxRuleSet;
 
 /**
  * Tax bracket (for progressive taxes)
