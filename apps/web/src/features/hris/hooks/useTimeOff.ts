@@ -85,3 +85,7 @@ export function useRejectTimeOffRequest() {
     },
   });
 }
+
+
+// Alias for backward compatibility
+export { useTimeOffRequests as useTimeOff };

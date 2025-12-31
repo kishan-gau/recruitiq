@@ -8,7 +8,15 @@ import type { AuditFields } from './common.types';
 export type { ApiError } from './api.types';
 
 export type TimeOffStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
-export type TimeOffType = 'vacation' | 'sick' | 'personal' | 'unpaid' | 'other';
+export type TimeOffType = 
+  | 'vacation' 
+  | 'sick' 
+  | 'personal' 
+  | 'unpaid' 
+  | 'bereavement' 
+  | 'maternity' 
+  | 'paternity' 
+  | 'other';
 
 export interface TimeOffRequest extends AuditFields {
   id: string;

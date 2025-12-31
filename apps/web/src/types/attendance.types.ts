@@ -17,6 +17,8 @@ export interface AttendanceRecord extends AuditFields {
   clockOutTime?: string; // ISO 8601 or HH:MM
   totalHoursWorked: number;
   notes?: string;
+  isManualEntry?: boolean;
+  manualEntryReason?: string;
 }
 
 export interface CreateAttendanceRecordDTO {
@@ -26,6 +28,9 @@ export interface CreateAttendanceRecordDTO {
   clockInTime?: string;
   clockOutTime?: string;
   notes?: string;
+  isManualEntry?: boolean;
+  manualEntryReason?: string;
+  createdBy?: string;
 }
 
 export interface UpdateAttendanceRecordDTO extends Partial<CreateAttendanceRecordDTO> {}
