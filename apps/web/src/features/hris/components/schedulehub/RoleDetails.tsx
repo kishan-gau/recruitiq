@@ -2,7 +2,7 @@ import { ArrowLeft, Edit, Users, CheckCircle, XCircle, Calendar } from 'lucide-r
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
-import { useRole, useRoleWorkers } from '@/hooks/schedulehub/useRoles';
+import { useRole, useRoleWorkers } from '@/hooks';
 
 import AssignWorkersToRole from './AssignWorkersToRole';
 import RoleForm from './RoleForm';

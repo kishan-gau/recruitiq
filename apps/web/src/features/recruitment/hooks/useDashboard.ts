@@ -122,13 +122,5 @@ export function useDashboardNotifications(): UseQueryResult<any[], Error> {
   });
 }
 
-// Export all hooks
-export {
-  useDashboard as default,
-  useDashboard,
-  useDashboardInsights,
-  useDashboardPerformance,
-  useDashboardActivities,
-  useDashboardTeamStats,
-  useDashboardNotifications,
-};
+// Export default
+export default useDashboard;

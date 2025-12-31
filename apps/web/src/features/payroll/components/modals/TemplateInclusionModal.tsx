@@ -1,8 +1,8 @@
 import { X, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-import { usePayStructureTemplates } from '@/hooks/usePayStructures';
-import type { TemplateInclusion } from '@/hooks/usePayStructures';
+import { usePayStructureTemplates } from '@/hooks';
+import type { TemplateInclusion } from '@/hooks';
 
 interface TemplateInclusionModalProps {
   isOpen: boolean;

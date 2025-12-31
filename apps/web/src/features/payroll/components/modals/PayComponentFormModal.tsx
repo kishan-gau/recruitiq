@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 
 import CurrencySelector from '@/components/ui/CurrencySelector';
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Input, TextArea, Select } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
-import { type ForfaitRule } from '@/hooks/useForfaitRules';
+import { type ForfaitRule } from '@/hooks';
 
 import FormulaBuilder from './FormulaBuilder';
 

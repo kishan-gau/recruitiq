@@ -1,7 +1,7 @@
 import { CheckCircle2, XCircle, Clock, Users } from 'lucide-react';
 import { useMemo } from 'react';
 
-import { useTodayAttendance } from '@/hooks/useAttendance';
+import { useTodayAttendance } from '@/hooks';
 
 export default function TodayAttendanceView() {
   const { data: attendanceRecords, isLoading } = useTodayAttendance();

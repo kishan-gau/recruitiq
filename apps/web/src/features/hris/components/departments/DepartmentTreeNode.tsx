@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useToast } from '@/contexts/ToastContext';
-import { useDeleteDepartment } from '@/hooks/useDepartments';
+import { useDeleteDepartment } from '@/hooks';
 import type { DepartmentHierarchy } from '@/types/department.types';
 import { handleApiError } from '@/utils/errorHandler';
 

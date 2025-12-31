@@ -10,8 +10,8 @@ import type { ForfaitairBenefitConfig } from '@recruitiq/types';
 
 import {
   useAssignComponent,
-} from '@/hooks/useEmployeeComponents';
-import { usePayComponents } from '@/hooks/usePayComponents';
+} from '@/hooks';
+import { usePayComponents } from '@/hooks';
 
 
 interface AssignEmployeeComponentModalProps {

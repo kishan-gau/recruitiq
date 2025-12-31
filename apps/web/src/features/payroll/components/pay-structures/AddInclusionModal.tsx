@@ -19,7 +19,7 @@ import {
   useUpdateTemplateInclusion,
   type TemplateInclusion,
   type CreateTemplateInclusionInput,
-} from '@/hooks/usePayStructures';
+} from '@/hooks';
 
 interface AddInclusionModalProps {
   parentTemplateId: string;

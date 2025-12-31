@@ -21,7 +21,7 @@ import AssignEmployeeComponentModal from '@/components/modals/AssignEmployeeComp
 import {
   useEmployeeComponentAssignments,
   useRemoveComponentAssignment,
-} from '@/hooks/useEmployeeComponents';
+} from '@/hooks';
 
 interface EmployeeComponentsListProps {
   employeeId: string;

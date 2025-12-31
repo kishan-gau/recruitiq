@@ -11,7 +11,7 @@ import {
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
+import { useErrorHandler } from '@/hooks';
 import { 
   useRole, 
   useCreateRole, 

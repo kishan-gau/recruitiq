@@ -17,7 +17,7 @@ import {
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
+import { useErrorHandler } from '@/hooks';
 import {
   usePendingSwaps,
   useApproveSwap,

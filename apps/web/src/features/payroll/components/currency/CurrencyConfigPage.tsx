@@ -5,9 +5,9 @@ import {
   useUpdateCurrencyConfig,
   useCacheStats,
   useClearCache,
-} from '../../hooks/useCurrency';
-import Button from '../ui/Button';
-import { CURRENCY_SYMBOLS, CURRENCY_NAMES } from '../ui/CurrencyDisplay';
+} from '@/hooks';
+import Button from '@recruitiq/ui';
+import { CURRENCY_SYMBOLS, CURRENCY_NAMES } from '../shared/CurrencyDisplay';
 
 const AVAILABLE_CURRENCIES = [
   'USD', 'SRD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CNY', 'INR', 'BRL',

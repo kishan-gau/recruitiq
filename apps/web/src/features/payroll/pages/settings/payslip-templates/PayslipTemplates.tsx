@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 
 import { useToast } from '@/contexts/ToastContext';
 import { TemplateCard, TemplateAssignmentModal } from '@/features/payroll/components/payslip-templates';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 import { handleApiError } from '@/utils/errorHandler';
 
 export default function PayslipTemplates() {

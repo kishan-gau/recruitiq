@@ -7,13 +7,13 @@ import { Modal, Button, Input } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 
-import { useDepartments } from '../hooks/useDepartments';
+import { useDepartments } from '@/hooks';
 import { 
   useWorkers, 
   useRoleWorkers, 
   useAssignWorkerToRole, 
   useUnassignRole 
-} from '../hooks/useWorkers';
+} from '@/hooks' // was: from '../hooks/useWorkers';
 import type { Worker, Role } from '../types';
 
 interface AssignWorkersToRoleProps {

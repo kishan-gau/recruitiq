@@ -5,7 +5,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useShiftTemplates } from '../../hooks/schedulehub/useShiftTemplates';
 import { useStationCoverage } from '../../hooks/schedulehub/useStationCoverage';
 import type { Shift, CalendarTimeSlot, ShiftTemplate } from '../../types/schedulehub';
-import { formatTime } from '../../utils/dateUtils';
+import { formatTime } from '@/utils';
 import { useTemplateBasedTimeSlots, TimeSlotPresets } from '../../utils/time-slot-generator';
 
 interface StationDropdownFilterProps {

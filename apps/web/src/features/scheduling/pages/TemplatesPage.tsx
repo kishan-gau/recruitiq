@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { ShiftTemplates } from '../../features/scheduling/components';
+import { ShiftTemplates } from '@features/scheduling/components';
 
 export default function TemplatesPage() {
   return (

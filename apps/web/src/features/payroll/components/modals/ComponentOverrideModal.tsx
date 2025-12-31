@@ -1,9 +1,9 @@
 import { AlertCircle, DollarSign, Percent } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Input, TextArea } from '@/components/ui/FormField';
-import { usePayStructureComponents, useAddPayStructureOverride } from '@/hooks/usePayStructures';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Input, TextArea } from '@recruitiq/ui';
+import { usePayStructureComponents, useAddPayStructureOverride } from '@/hooks';
 
 interface ComponentOverrideModalProps {
   isOpen: boolean;

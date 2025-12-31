@@ -1,10 +1,10 @@
 import { FileDown } from 'lucide-react';
 import { useState } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Select, Input } from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Select, Input } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 import { handleApiError } from '@/utils/errorHandler';
 
 interface ReportConfigModalProps {

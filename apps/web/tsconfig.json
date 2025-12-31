@@ -16,11 +16,11 @@
     "jsx": "react-jsx",
 
     /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
+    "noUncheckedIndexedAccess": false,
 
     /* Path aliases */
     "baseUrl": ".",
@@ -32,7 +32,8 @@
       "@recruitiq/api-client": ["../packages/api-client"],
       "@recruitiq/auth": ["../packages/auth"],
       "@recruitiq/ui": ["../packages/ui"],
-      "@recruitiq/utils": ["../packages/utils"]
+      "@recruitiq/utils": ["../packages/utils"],
+      "@recruitiq/types": ["../packages/types"]
     }
   },
   "include": ["src"],

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { ScheduleAnalytics } from '../../features/scheduling/components';
+import { ScheduleAnalytics } from '@features/scheduling/components';
 
 export default function ScheduleAnalyticsPage() {
   return (

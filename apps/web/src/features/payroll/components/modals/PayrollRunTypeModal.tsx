@@ -26,10 +26,10 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Input, TextArea, Select } from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Input, TextArea, Select } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 
 interface PayrollRunType {
   id: string;

@@ -1,8 +1,8 @@
 import { User } from 'lucide-react';
 import { useState } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
-import FormField, { TextArea } from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, TextArea } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
 
 interface ApprovalModalProps {

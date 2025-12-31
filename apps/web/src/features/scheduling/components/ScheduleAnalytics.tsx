@@ -32,9 +32,9 @@ import {
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useRoles } from '@/hooks/schedulehub/useRoles';
-import { useScheduleStats } from '@/hooks/schedulehub/useScheduleStats';
-import { useStations } from '@/hooks/schedulehub/useStations';
+import { useRoles } from '@/hooks';
+import { useScheduleStats } from '@/hooks';
+import { useStations } from '@/hooks';
 import { useErrorHandler } from '@/utils/errorHandler';
 
 interface AnalyticsTimeframe {

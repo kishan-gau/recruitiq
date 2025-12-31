@@ -6,9 +6,9 @@ import { useNavigate } from 'react-router-dom';
 import CreateVersionModal from '@/components/modals/CreateVersionModal';
 import UpgradeWorkersModal from '@/components/modals/UpgradeWorkersModal';
 import VersionComparisonModal from '@/components/modals/VersionComparisonModal';
-import Badge from '@/components/ui/Badge';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
-import { useDeletePayStructureTemplate } from '@/hooks/usePayStructures';
+import Badge from '@recruitiq/ui';
+import ConfirmDialog from '@recruitiq/ui';
+import { useDeletePayStructureTemplate } from '@/hooks';
 import { useTemplateVersions } from '@/hooks/useTemplateVersions';
 
 interface TemplateVersionHistoryProps {

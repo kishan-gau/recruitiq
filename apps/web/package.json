@@ -19,6 +19,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@recruitiq/api-client": "workspace:*",
     "@recruitiq/auth": "workspace:*",
+    "@recruitiq/types": "workspace:*",
     "@recruitiq/ui": "workspace:*",
     "@recruitiq/utils": "workspace:*",
     "@tanstack/react-query": "^5.90.12",

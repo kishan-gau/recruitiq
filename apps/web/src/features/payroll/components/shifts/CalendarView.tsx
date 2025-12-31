@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Clock, User, MapPin, AlertTriangle } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 
-import { formatTime } from '../../utils/dateUtils';
+import { formatTime } from '@/utils';
 
 interface Shift {
   id: string;

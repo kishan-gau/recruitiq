@@ -2,10 +2,10 @@ import { AlertCircle, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import CurrencyDisplay from '@/components/ui/CurrencyDisplay';
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Input } from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Input } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 import { handleApiError } from '@/utils/errorHandler';
 
 interface ProcessPayrollModalProps {

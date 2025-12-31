@@ -15,7 +15,7 @@ import {
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 
-import { useErrorHandler } from '../../../shared/hooks/useErrorHandler';
+import { useErrorHandler } from '@/hooks';
 import { useRole, useRoleWorkers } from '../hooks';
 
 import AssignWorkersToRole from './AssignWorkersToRole';

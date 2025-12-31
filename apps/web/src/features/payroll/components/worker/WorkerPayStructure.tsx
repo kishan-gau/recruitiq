@@ -3,12 +3,12 @@ import { useState } from 'react';
 
 import AssignPayStructureModal from '@/components/modals/AssignPayStructureModal';
 import WorkerPayStructureOverrides from '@/components/pay-structures/WorkerPayStructureOverrides';
-import Badge from '@/components/ui/Badge';
-import StatusBadge from '@/components/ui/StatusBadge';
+import Badge from '@recruitiq/ui';
+import StatusBadge from '@recruitiq/ui';
 import {
   useCurrentWorkerPayStructure,
   useWorkerPayStructureHistory,
-} from '@/hooks/usePayStructures';
+} from '@/hooks';
 import { formatDate } from '@/utils/helpers';
 
 interface WorkerPayStructureProps {

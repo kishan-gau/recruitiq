@@ -5,9 +5,9 @@
 
 import React, { useState } from 'react';
 
-import { useEmployeeFeedback } from '../../hooks/useFeedback';
+import { useEmployeeFeedback } from '@/hooks';
 import type { Feedback } from '../../types/feedback.types';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate } from '@/utils';
 
 interface FeedbackListProps {
   employeeId: string;

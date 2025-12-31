@@ -26,10 +26,10 @@ import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@recruitiq/ui';
 
-import Badge from '@/components/ui/Badge';
-import Card from '@/components/ui/Card';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
+import Badge from '@recruitiq/ui';
+import Card from '@recruitiq/ui';
+import Input from '@recruitiq/ui';
+import Select from '@recruitiq/ui';
 import {
   usePendingApprovals,
   useApproveSwap,

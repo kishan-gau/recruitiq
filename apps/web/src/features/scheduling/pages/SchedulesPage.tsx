@@ -5,8 +5,8 @@ import {
   CalendarView,
   ShiftManagement,
   WorkerScheduling
-} from '../../features/scheduling/components';
-import { useErrorHandler } from '../../hooks/common';
+} from '@features/scheduling/components';
+import { useErrorHandler } from '@/hooks';
 
 export default function SchedulesPage() {
   const navigate = useNavigate();

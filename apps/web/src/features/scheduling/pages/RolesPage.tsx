@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { RoleManagement } from '../../features/scheduling/components';
+import { RoleManagement } from '@features/scheduling/components';
 
 export default function RolesPage() {
   return (

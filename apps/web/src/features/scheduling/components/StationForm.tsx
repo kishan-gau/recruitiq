@@ -18,7 +18,7 @@ import {
   useCreateStation,
   useUpdateStation
 } from '../hooks';
-import { useLocations } from '../hooks/useLocations';
+import { useLocations } from '@/hooks' // was: from '../hooks/useLocations';
 import type { Station } from '../types';
 
 interface StationFormData {

@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { useCreatePerformanceReview, useUpdatePerformanceReview } from '@/hooks/usePerformance';
+import { useCreatePerformanceReview, useUpdatePerformanceReview } from '@/hooks';
 import { apiClient } from '@/services/api';
 import type { PerformanceReview, ReviewType } from '@/types/performance.types';
 
