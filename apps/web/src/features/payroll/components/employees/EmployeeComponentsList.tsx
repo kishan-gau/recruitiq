@@ -28,7 +28,7 @@ interface EmployeeComponentsListProps {
   employeeName?: string;
 }
 
-export default function EmployeeComponentsList({ employeeId, employeeName }: EmployeeComponentsListProps) {
+export default function EmployeeComponentsList({ _employeeId, employeeName }: EmployeeComponentsListProps) {
   const [showAddModal, setShowAddModal] = useState(false);
 
   // Fetch data
@@ -36,13 +36,13 @@ export default function EmployeeComponentsList({ employeeId, employeeName }: Emp
     data: assignments,
     isLoading: isLoadingAssignments,
     error: assignmentsError,
-  } = useEmployeeComponentAssignments(employeeId);
+  } = useEmployeeComponentAssignments(_employeeId);
 
   const removeAssignment = useRemoveComponentAssignment();
 
   const handleRemoveAssignment = async (assignmentId: string) => {
     if (confirm('Are you sure you want to remove this component assignment?')) {
-      await removeAssignment.mutateAsync({ employeeId, assignmentId });
+      await removeAssignment.mutateAsync({ _employeeId, assignmentId });
     }
   };
 

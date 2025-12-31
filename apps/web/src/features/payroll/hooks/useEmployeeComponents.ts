@@ -5,14 +5,14 @@ import { PaylinqClient, APIClient } from '@recruitiq/api-client';
 /**
  * Hook to fetch employee's component assignments
  */
-export function useEmployeeComponentAssignments(employeeId: string) {
+export function useEmployeeComponentAssignments(_employeeId: string) {
   const apiClient = new APIClient();
   const paylinqClient = new PaylinqClient(apiClient);
 
   return useQuery({
     queryKey: ['employeeComponentAssignments', employeeId],
     queryFn: async () => {
-      const response = await paylinqClient.getEmployeeComponentAssignments(employeeId);
+      const response = await paylinqClient.getEmployeeComponentAssignments(_employeeId);
       return response.data;
     },
     enabled: !!employeeId,
@@ -43,7 +43,7 @@ export function useAssignComponent() {
       });
       return response.data;
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeComponentAssignments', employeeId],
       });
@@ -69,10 +69,10 @@ export function useUpdateComponentAssignment() {
       assignmentId: string;
       updates: any;
     }) => {
-      const response = await paylinqClient.updateComponentAssignment(employeeId, assignmentId, updates);
+      const response = await paylinqClient.updateComponentAssignment(_employeeId, assignmentId, updates);
       return response.data;
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeComponentAssignments', employeeId],
       });
@@ -96,9 +96,9 @@ export function useRemoveComponentAssignment() {
       employeeId: string;
       assignmentId: string;
     }) => {
-      await paylinqClient.removeComponentAssignment(employeeId, assignmentId);
+      await paylinqClient.removeComponentAssignment(_employeeId, assignmentId);
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeComponentAssignments', employeeId],
       });

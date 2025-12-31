@@ -159,14 +159,14 @@ export function useDeleteWorkerTypeTemplate() {
 /**
  * Fetches worker type assignments for an employee
  */
-export function useEmployeeWorkerTypeAssignments(employeeId: string) {
+export function useEmployeeWorkerTypeAssignments(_employeeId: string) {
   const apiClient = new APIClient();
   const paylinqClient = new PaylinqClient(apiClient);
 
   return useQuery({
     queryKey: ['employeeWorkerTypeAssignments', employeeId],
     queryFn: async () => {
-      const response = await paylinqClient.getEmployeeWorkerTypeAssignments(employeeId);
+      const response = await paylinqClient.getEmployeeWorkerTypeAssignments(_employeeId);
       return response.data.assignments || response.data;
     },
     enabled: !!employeeId,
@@ -202,7 +202,7 @@ export function useAssignWorkerType() {
       });
       return response.data;
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeWorkerTypeAssignments', employeeId],
       });
@@ -243,7 +243,7 @@ export function useTerminateWorkerTypeAssignment() {
       );
       return response.data;
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeWorkerTypeAssignments', employeeId],
       });
@@ -372,7 +372,7 @@ export function useExecuteWorkerTypeUpgrade() {
         throw error;
       }
     },
-    onSuccess: (_, { employeeId }) => {
+    onSuccess: (_, { _employeeId }) => {
       queryClient.invalidateQueries({
         queryKey: ['employeeWorkerTypeAssignments', employeeId],
       });

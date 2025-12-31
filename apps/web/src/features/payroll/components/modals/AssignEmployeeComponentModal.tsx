@@ -62,7 +62,7 @@ export default function AssignEmployeeComponentModal({
   });
 
   const { data: componentsData } = usePayComponents();
-  const assignComponent = useAssignComponent(employeeId);
+  const assignComponent = useAssignComponent(_employeeId);
 
   // Handle both array and object responses from API
   const components = Array.isArray(componentsData) 

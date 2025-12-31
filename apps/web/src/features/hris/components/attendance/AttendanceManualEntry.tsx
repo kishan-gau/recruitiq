@@ -41,7 +41,7 @@ export default function AttendanceManualEntry({
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.employeeId) {
+    if (!formData._employeeId) {
       newErrors.employeeId = 'Employee is required';
     }
 
@@ -144,7 +144,7 @@ export default function AttendanceManualEntry({
             </label>
             <select
               value={formData.employeeId}
-              onChange={(e) => handleChange('employeeId', e.target.value)}
+              onChange={(e) => handleChange('_employeeId', e.target.value)}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white ${
                 errors.employeeId ? 'border-red-500' : 'border-slate-300'
               }`}

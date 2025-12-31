@@ -7,7 +7,7 @@ const CONTRACTS_QUERY_KEY = ['contracts'];
 /**
  * Hook to fetch contracts list
  */
-export function useContracts(filters?: { search?: string; employeeId?: string; status?: string; contractType?: string }) {
+export function useContracts(filters?: { search?: string; _employeeId?: string; status?: string; contractType?: string }) {
   return useQuery({
     queryKey: [...CONTRACTS_QUERY_KEY, filters],
     queryFn: () => contractsService.listContracts(filters),
@@ -29,10 +29,10 @@ export function useContract(contractId?: string) {
 /**
  * Hook to get contracts for an employee
  */
-export function useEmployeeContracts(employeeId?: string) {
+export function useEmployeeContracts(_employeeId?: string) {
   return useQuery({
     queryKey: [...CONTRACTS_QUERY_KEY, 'employee', employeeId],
-    queryFn: () => contractsService.getEmployeeContracts(employeeId!),
+    queryFn: () => contractsService.getEmployeeContracts(_employeeId!),
     enabled: !!employeeId,
   });
 }
@@ -87,8 +87,8 @@ export function useGenerateContractFromTemplate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ templateId, employeeId, data }: { templateId: string; employeeId: string; data?: any }) =>
-      contractsService.generateFromTemplate(templateId, employeeId, data),
+    mutationFn: ({ templateId, employeeId, data }: { templateId: string; _employeeId: string; data?: any }) =>
+      contractsService.generateFromTemplate(templateId, _employeeId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CONTRACTS_QUERY_KEY });
     },

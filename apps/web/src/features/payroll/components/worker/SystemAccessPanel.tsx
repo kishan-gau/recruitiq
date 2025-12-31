@@ -29,7 +29,7 @@ export default function SystemAccessPanel({
   const fetchUserAccount = async () => {
     try {
       setIsLoading(true);
-      const response = await paylinq.getEmployeeUserAccount(employeeId);
+      const response = await paylinq.getEmployeeUserAccount(_employeeId);
       
       if (response.success && response.data) {
         setUserAccount(response.data);
@@ -58,7 +58,7 @@ export default function SystemAccessPanel({
 
     setIsRevoking(true);
     try {
-      const response = await paylinq.revokeEmployeeAccess(employeeId);
+      const response = await paylinq.revokeEmployeeAccess(_employeeId);
       
       if (response.success) {
         showSuccess('System access revoked successfully');

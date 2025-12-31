@@ -7,7 +7,7 @@ export const contractsService = {
   /**
    * Lists contracts with optional filtering
    */
-  async listContracts(filters?: { search?: string; employeeId?: string; status?: string; contractType?: string }) {
+  async listContracts(filters?: { search?: string; _employeeId?: string; status?: string; contractType?: string }) {
     const response = await nexusClient.listContracts?.(filters);
     return response?.data?.contracts || response?.data || [];
   },
@@ -46,8 +46,8 @@ export const contractsService = {
   /**
    * Gets contracts for an employee
    */
-  async getEmployeeContracts(employeeId: string) {
-    const response = await nexusClient.getEmployeeContracts?.(employeeId);
+  async getEmployeeContracts(_employeeId: string) {
+    const response = await nexusClient.getEmployeeContracts?.(_employeeId);
     return response?.data?.contracts || response?.data || [];
   },
 

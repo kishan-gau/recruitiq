@@ -71,12 +71,12 @@ export default function BulkUserAccessManagement() {
     }
   };
 
-  const handleSelectEmployee = (employeeId: string) => {
+  const handleSelectEmployee = (_employeeId: string) => {
     const newSelected = new Set(selectedEmployees);
-    if (newSelected.has(employeeId)) {
-      newSelected.delete(employeeId);
+    if (newSelected.has(_employeeId)) {
+      newSelected.delete(_employeeId);
     } else {
-      newSelected.add(employeeId);
+      newSelected.add(_employeeId);
     }
     setSelectedEmployees(newSelected);
   };
@@ -97,7 +97,7 @@ export default function BulkUserAccessManagement() {
     setCurrentAction('grant');
     const results: BulkOperationResult[] = [];
 
-    for (const employeeId of selectedEmployees) {
+    for (const _employeeId of selectedEmployees) {
       const employee = employees.find((emp) => emp.id === employeeId);
       const employeeName = employee
         ? `${employee.firstName} ${employee.lastName}`
@@ -166,14 +166,14 @@ export default function BulkUserAccessManagement() {
     setCurrentAction('revoke');
     const results: BulkOperationResult[] = [];
 
-    for (const employeeId of selectedEmployees) {
+    for (const _employeeId of selectedEmployees) {
       const employee = employees.find((emp) => emp.id === employeeId);
       const employeeName = employee
         ? `${employee.firstName} ${employee.lastName}`
         : 'Unknown Employee';
 
       try {
-        await employeesService.revokeSystemAccess(employeeId);
+        await employeesService.revokeSystemAccess(_employeeId);
 
         results.push({
           employeeId,

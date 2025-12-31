@@ -406,9 +406,9 @@ function DetailPane({ title, children, onClose }: { title: string; children: Rea
 }
 
 /* ---------- Detail weergave ---------- */
-function EmployeeDetails({ employeeId }: { employeeId: string }) {
-  const { data: employee, isLoading, error } = useEmployee(employeeId);
-  const { data: history } = useEmploymentHistory(employeeId);
+function EmployeeDetails({ employeeId }: { _employeeId: string }) {
+  const { data: employee, isLoading, error } = useEmployee(_employeeId);
+  const { data: history } = useEmploymentHistory(_employeeId);
 
   if (isLoading) return <div className="text-sm text-gray-600">Bezig met laden…</div>;
   if (error) return <div className="text-sm text-red-600">{getErrorMessage(error, 'Kon details niet laden')}</div>;
@@ -604,7 +604,7 @@ function RehireForm({ employeeId, onSubmit, onCancel }: {
   onSubmit: (payload: RehireEmployeeDTO) => void;
   onCancel: () => void;
 }) {
-  const { data: eligibility } = useRehireEligibility(employeeId);
+  const { data: eligibility } = useRehireEligibility(_employeeId);
   const [date, setDate] = useState('');
   return (
     <form

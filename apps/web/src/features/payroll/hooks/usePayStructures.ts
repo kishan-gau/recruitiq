@@ -569,7 +569,7 @@ export function useReorderPayStructureComponents() {
 /**
  * Hook to get current worker pay structure
  */
-export function useCurrentWorkerPayStructure(employeeId: string, asOfDate?: string) {
+export function useCurrentWorkerPayStructure(_employeeId: string, asOfDate?: string) {
   const { paylinq } = usePaylinqAPI();
 
   return useQuery({
@@ -578,7 +578,7 @@ export function useCurrentWorkerPayStructure(employeeId: string, asOfDate?: stri
       try {
         // Only pass asOfDate if it's defined to avoid sending "undefined" string
         const params = asOfDate ? { asOfDate } : undefined;
-        const response = await paylinq.getCurrentWorkerPayStructure(employeeId, params);
+        const response = await paylinq.getCurrentWorkerPayStructure(_employeeId, params);
         // Return null if no structure exists (React Query v5 doesn't allow undefined)
         return response?.workerPayStructure ?? null;
       } catch (error: any) {
@@ -596,13 +596,13 @@ export function useCurrentWorkerPayStructure(employeeId: string, asOfDate?: stri
 /**
  * Hook to get worker pay structure history
  */
-export function useWorkerPayStructureHistory(employeeId: string) {
+export function useWorkerPayStructureHistory(_employeeId: string) {
   const { paylinq } = usePaylinqAPI();
 
   return useQuery({
     queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, employeeId, 'history'],
     queryFn: async () => {
-      const response = await paylinq.getWorkerPayStructureHistory(employeeId);
+      const response = await paylinq.getWorkerPayStructureHistory(_employeeId);
       return response.workerPayStructures || [];
     },
     enabled: !!employeeId,
@@ -618,13 +618,13 @@ export function useAssignPayStructureToWorker() {
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async ({ employeeId, data }: { employeeId: string; data: any }) => {
-      const response = await paylinq.assignPayStructureToWorker(employeeId, data);
+    mutationFn: async ({ employeeId, data }: { _employeeId: string; data: any }) => {
+      const response = await paylinq.assignPayStructureToWorker(_employeeId, data);
       // Backend returns { success, assignment, message }
       return { assignment: response.assignment, employeeId };
     },
-    onSuccess: ({ employeeId }) => {
-      queryClient.invalidateQueries({ queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, employeeId] });
+    onSuccess: ({ _employeeId }) => {
+      queryClient.invalidateQueries({ queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, _employeeId] });
       success('Pay structure assigned successfully');
     },
     onError: (err: any) => {
@@ -642,12 +642,12 @@ export function useUpgradeWorkerPayStructure() {
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async ({ employeeId, newTemplateId, effectiveFrom }: { employeeId: string; newTemplateId: string; effectiveFrom: string }) => {
-      const response = await paylinq.upgradeWorkerPayStructure(employeeId, { newTemplateId, effectiveFrom });
+    mutationFn: async ({ employeeId, newTemplateId, effectiveFrom }: { _employeeId: string; newTemplateId: string; effectiveFrom: string }) => {
+      const response = await paylinq.upgradeWorkerPayStructure(_employeeId, { newTemplateId, effectiveFrom });
       return response.workerPayStructure;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, data.employeeId] });
+      queryClient.invalidateQueries({ queryKey: [...WORKER_PAY_STRUCTURES_QUERY_KEY, data._employeeId] });
       success('Worker upgraded to new template version successfully');
     },
     onError: (err: any) => {
@@ -685,8 +685,8 @@ export function useAddPayStructureOverride() {
   const { success, error } = useToast();
 
   return useMutation({
-    mutationFn: async ({ employeeId, data }: { employeeId: string; data: any }) => {
-      const response = await paylinq.addPayStructureOverride(employeeId, data);
+    mutationFn: async ({ employeeId, data }: { _employeeId: string; data: any }) => {
+      const response = await paylinq.addPayStructureOverride(_employeeId, data);
       return response.override;
     },
     onSuccess: (data) => {

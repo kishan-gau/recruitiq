@@ -530,21 +530,21 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   // Debug useEffect moved to after weekDays declaration
 
   // Helper function to get employee display name
-  const getEmployeeName = (employeeId: string | undefined): string => {
-    if (!employeeId) {
-      console.log(`DEBUG: getEmployeeName called with no employeeId`);
+  const getEmployeeName = (_employeeId: string | undefined): string => {
+    if (!_employeeId) {
+      console.log(`DEBUG: getEmployeeName called with no _employeeId`);
       return 'Unassigned';
     }
     
-    console.log(`DEBUG: getEmployeeName called with ID: ${employeeId}`);
+    console.log(`DEBUG: getEmployeeName called with ID: ${_employeeId}`);
     console.log(`DEBUG: Available worker names:`, Object.keys(workerNames));
     
     const name = workerNames[employeeId];
     if (name) {
-      console.log(`DEBUG: Using worker name for ID ${employeeId}: ${name}`);
+      console.log(`DEBUG: Using worker name for ID ${_employeeId}: ${name}`);
       return name;
     }
-    console.log(`DEBUG: No name found for worker ID ${employeeId}, using ID as fallback`);
+    console.log(`DEBUG: No name found for worker ID ${_employeeId}, using ID as fallback`);
     return employeeId;
   };
 
@@ -1292,7 +1292,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                       </div>
                       <div className="flex items-center gap-1 mt-0.5 opacity-80">
                         <User className="w-3 h-3" />
-                        <span className="truncate">{getEmployeeName(shift.employeeId)}</span>
+                        <span className="truncate">{getEmployeeName(shift._employeeId)}</span>
                       </div>
                     </div>
                   ))}

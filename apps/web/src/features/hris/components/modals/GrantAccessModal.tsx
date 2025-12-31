@@ -86,7 +86,7 @@ export default function GrantAccessModal({
         accessData.password = customPassword;
       }
 
-      await employeesService.grantSystemAccess(employeeId, accessData);
+      await employeesService.grantSystemAccess(_employeeId, accessData);
 
       toast.success('System access granted successfully');
       onSuccess?.();

@@ -119,7 +119,7 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
 
       if (existingConfig) {
         // Update existing worker's scheduling configuration
-        await workersService.updateWorker(employeeId, configData);
+        await workersService.updateWorker(_employeeId, configData);
         toast.success('Scheduling configuration updated successfully');
       } else {
         // Create new configuration
@@ -130,7 +130,7 @@ const WorkerSchedulingConfig: React.FC<WorkerSchedulingConfigProps> = ({
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['schedulehub', 'workers'] });
-      queryClient.invalidateQueries({ queryKey: ['schedulehub', 'worker', employeeId] });
+      queryClient.invalidateQueries({ queryKey: ['schedulehub', 'worker', _employeeId] });
 
       onClose();
     } catch (error: any) {

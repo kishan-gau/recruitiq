@@ -8,7 +8,7 @@ const GOALS_QUERY_KEY = ['goals'];
 /**
  * Hook to fetch performance reviews
  */
-export function usePerformanceReviews(filters?: { search?: string; employeeId?: string; status?: string; year?: number }) {
+export function usePerformanceReviews(filters?: { search?: string; _employeeId?: string; status?: string; year?: number }) {
   return useQuery({
     queryKey: [...PERFORMANCE_QUERY_KEY, filters],
     queryFn: () => performanceService.listPerformanceReviews(filters),
@@ -30,10 +30,10 @@ export function usePerformanceReview(reviewId?: string) {
 /**
  * Hook to fetch goals for an employee
  */
-export function useGoals(employeeId?: string, filters?: any) {
+export function useGoals(_employeeId?: string, filters?: any) {
   return useQuery({
     queryKey: [...GOALS_QUERY_KEY, employeeId, filters],
-    queryFn: () => performanceService.listGoals(employeeId, filters),
+    queryFn: () => performanceService.listGoals(_employeeId, filters),
     enabled: !!employeeId,
   });
 }
@@ -41,10 +41,10 @@ export function useGoals(employeeId?: string, filters?: any) {
 /**
  * Hook to fetch performance statistics
  */
-export function usePerformanceStatistics(employeeId?: string) {
+export function usePerformanceStatistics(_employeeId?: string) {
   return useQuery({
     queryKey: [...PERFORMANCE_QUERY_KEY, 'statistics', employeeId],
-    queryFn: () => performanceService.getPerformanceStatistics(employeeId!),
+    queryFn: () => performanceService.getPerformanceStatistics(_employeeId!),
     enabled: !!employeeId,
   });
 }
@@ -124,7 +124,7 @@ export function useUpdateGoalProgress() {
 /**
  * Hook to get feedback for an employee
  */
-export function useEmployeeFeedback(employeeId?: string) {
+export function useEmployeeFeedback(_employeeId?: string) {
   return useQuery({
     queryKey: ['feedback', employeeId],
     queryFn: async () => 

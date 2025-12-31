@@ -29,7 +29,7 @@ export default function SystemAccessPanel({
     try {
       setIsLoading(true);
       setError(null);
-      const response = await employeesService.getUserAccountStatus(employeeId);
+      const response = await employeesService.getUserAccountStatus(_employeeId);
       setUserAccount(response.data || null);
     } catch (err: any) {
       // 404 means no user account exists (not an error state)
@@ -60,7 +60,7 @@ export default function SystemAccessPanel({
 
     try {
       setIsRevoking(true);
-      await employeesService.revokeSystemAccess(employeeId);
+      await employeesService.revokeSystemAccess(_employeeId);
       toast.success('System access revoked successfully');
       await fetchUserAccount();
     } catch (err: any) {
