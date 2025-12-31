@@ -8,7 +8,7 @@ import { useState, useMemo } from 'react';
 
 import UserAccessAuditLog from '@/components/employee/UserAccessAuditLog';
 import { useToast } from '@/contexts/ToastContext';
-import { useEmployees } from '@/hooks/useEmployees';
+import { useEmployees } from '@/hooks';
 import { employeesService } from '@/services/employees.service';
 import { handleApiError } from '@/utils/errorHandler';
 

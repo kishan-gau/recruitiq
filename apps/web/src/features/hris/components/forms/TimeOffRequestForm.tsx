@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { useCreateTimeOffRequest, useUpdateTimeOffRequest } from '@/hooks/useTimeOff';
+import { useCreateTimeOffRequest, useUpdateTimeOffRequest } from '@/hooks';
 import { employeesService } from '@/services/employees.service';
 import type { TimeOffRequest, TimeOffType } from '@/types/timeOff.types';
 

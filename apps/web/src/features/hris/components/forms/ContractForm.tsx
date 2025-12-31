@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 
-import { useCreateContract, useUpdateContract } from '@/hooks/useContracts';
+import { useCreateContract, useUpdateContract } from '@/hooks';
 import { apiClient } from '@/services/api';
 import type { Contract } from '@/types/contract.types';
 

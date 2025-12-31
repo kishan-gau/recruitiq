@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Dialog } from '@recruitiq/ui';
 import { FormField } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 
 interface CreateVersionModalProps {
   isOpen: boolean;

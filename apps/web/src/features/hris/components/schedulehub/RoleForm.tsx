@@ -1,8 +1,8 @@
 import { X, Shield } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 
-import { useCreateRole, useUpdateRole } from '@/hooks/schedulehub/useRoles';
-import { useDepartments } from '@/hooks/useDepartments';
+import { useCreateRole, useUpdateRole } from '@/hooks';
+import { useDepartments } from '@/hooks';
 import type { Department } from '@/types/department.types';
 
 interface RoleFormProps {

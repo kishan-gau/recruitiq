@@ -8,9 +8,9 @@ import { Dialog } from '@recruitiq/ui';
 import { FormField, Input, TextArea } from '@recruitiq/ui';
 import MetadataBuilder from '@/components/ui/MetadataBuilder';
 import { useToast } from '@/hooks/useToast';
-import { type ForfaitRule } from '@/hooks/useForfaitRules';
-import { usePayComponents } from '@/hooks/usePayComponents';
-import type { PayStructureComponent } from '@/hooks/usePayStructures';
+import { type ForfaitRule } from '@/hooks';
+import { usePayComponents } from '@/hooks';
+import type { PayStructureComponent } from '@/hooks';
 
 interface PayStructureComponentModalProps {
   isOpen: boolean;

@@ -9,7 +9,7 @@ import {
   useUpdateTemplateInclusion,
   useDeleteTemplateInclusion,
   type TemplateInclusion,
-} from '@/hooks/usePayStructures';
+} from '@/hooks';
 
 interface TemplateInclusionsPanelProps {
   templateId: string;

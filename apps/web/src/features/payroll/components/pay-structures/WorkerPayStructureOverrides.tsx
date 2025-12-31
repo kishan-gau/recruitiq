@@ -2,8 +2,8 @@ import { Plus, Edit2, Trash2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useState } from 'react';
 
 import WorkerOverrideModal from '@/components/modals/WorkerOverrideModal';
-import type { PayStructureComponent } from '@/hooks/usePayStructures';
-import { useWorkerOverrides, useCreateWorkerOverride, useUpdateWorkerOverride, useDeleteWorkerOverride } from '@/hooks/useWorkerOverrides';
+import type { PayStructureComponent } from '@/hooks';
+import { useWorkerOverrides, useCreateWorkerOverride, useUpdateWorkerOverride, useDeleteWorkerOverride } from '@/hooks';
 
 interface WorkerPayStructureOverridesProps {
   employeeId: string;

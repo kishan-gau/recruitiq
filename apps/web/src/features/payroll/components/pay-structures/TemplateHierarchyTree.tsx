@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight, Link2, Box, Circle } from 'lucide-react';
 import { useState } from 'react';
 
-import { useResolvedPayStructureTemplate, type ResolvedPayStructureTemplate, type PayStructureTemplate } from '@/hooks/usePayStructures';
+import { useResolvedPayStructureTemplate, type ResolvedPayStructureTemplate, type PayStructureTemplate } from '@/hooks';
 
 interface TemplateHierarchyTreeProps {
   templateId: string;

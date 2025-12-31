@@ -8,7 +8,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import {
   useCurrentWorkerPayStructure,
   useWorkerPayStructureHistory,
-} from '@/hooks/usePayStructures';
+} from '@/hooks';
 import { formatDate } from '@/utils/helpers';
 
 interface WorkerPayStructureProps {

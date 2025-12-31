@@ -3,8 +3,8 @@ import { useState } from 'react';
 
 import { useAuth } from '@recruitiq/auth';
 
-import { useCreateAttendanceRecord } from '@/hooks/useAttendance';
-import { useEmployees } from '@/hooks/useEmployees';
+import { useCreateAttendanceRecord } from '@/hooks';
+import { useEmployees } from '@/hooks';
 
 
 interface AttendanceManualEntryProps {

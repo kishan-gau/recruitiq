@@ -2,7 +2,7 @@ import { AlertTriangle, ArrowRight, Calendar, CheckCircle, Users, XCircle } from
 import { useState, useMemo } from 'react';
 
 import { Dialog } from '@recruitiq/ui';
-import { useWorkerTypeUpgradeStatus, usePreviewWorkerTypeUpgrade, useUpgradeWorkersToTemplate } from '@/hooks/useWorkerTypes';
+import { useWorkerTypeUpgradeStatus, usePreviewWorkerTypeUpgrade, useUpgradeWorkersToTemplate } from '@/hooks';
 
 
 interface UpgradeWorkersModalProps {

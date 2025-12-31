@@ -5,7 +5,7 @@ import { RunTypeSelector } from '@/components/common/RunTypeSelector';
 import { Dialog } from '@recruitiq/ui';
 import { FormField, Input } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 import { handleApiError } from '@/utils/errorHandler';
 
 interface CreatePayrollRunModalProps {

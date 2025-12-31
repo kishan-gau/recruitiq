@@ -15,7 +15,7 @@ import {
   useUpdateTemplateInclusion,
   type TemplateInclusion,
   type PayStructureTemplate,
-} from '@/hooks/usePayStructures';
+} from '@/hooks';
 
 import AddInclusionModal from './AddInclusionModal';
 

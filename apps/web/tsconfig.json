@@ -32,7 +32,8 @@
       "@recruitiq/api-client": ["../packages/api-client"],
       "@recruitiq/auth": ["../packages/auth"],
       "@recruitiq/ui": ["../packages/ui"],
-      "@recruitiq/utils": ["../packages/utils"]
+      "@recruitiq/utils": ["../packages/utils"],
+      "@recruitiq/types": ["../packages/types"]
     }
   },
   "include": ["src"],

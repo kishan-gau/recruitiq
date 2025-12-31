@@ -127,6 +127,9 @@ importers:
       '@recruitiq/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@recruitiq/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@recruitiq/ui':
         specifier: workspace:*
         version: link:../../packages/ui

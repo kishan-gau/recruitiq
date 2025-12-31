@@ -2,7 +2,7 @@ import { Plus, Edit, Trash2, Users, Shield } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useRoles, useDeleteRole } from '@/hooks/schedulehub/useRoles';
+import { useRoles, useDeleteRole } from '@/hooks';
 
 import RoleForm from './RoleForm';
 

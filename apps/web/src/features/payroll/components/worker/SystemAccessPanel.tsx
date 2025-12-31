@@ -2,7 +2,7 @@ import { Shield, CheckCircle, XCircle, Calendar, Mail, Settings } from 'lucide-r
 import { useState, useEffect } from 'react';
 
 import { useToast } from '@/hooks/useToast';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 import { formatDate } from '@/utils/helpers';
 
 import GrantAccessModal from '../modals/GrantAccessModal';

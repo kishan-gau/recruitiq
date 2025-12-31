@@ -7,7 +7,7 @@ import type {
 } from '@recruitiq/types';
 
 import { useToast } from '@/contexts/ToastContext';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 import { handleApiError } from '@/utils/errorHandler';
 
 

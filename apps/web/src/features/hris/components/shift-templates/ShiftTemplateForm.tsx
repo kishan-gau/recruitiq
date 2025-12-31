@@ -13,8 +13,8 @@ import { z } from 'zod';
 import { handleFormError } from '@recruitiq/utils';
 
 import { useToast } from '@/contexts/ToastContext';
-import { useRoles } from '@/hooks/schedulehub/useRoles';
-import { useStations } from '@/hooks/schedulehub/useStations';
+import { useRoles } from '@/hooks';
+import { useStations } from '@/hooks';
 import type { Station, Role } from '@/types/schedulehub';
 import type {
   CreateShiftTemplateInput,

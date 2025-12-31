@@ -1,9 +1,9 @@
 import { X, UserPlus, Trash2, AlertCircle, Users, Search } from 'lucide-react';
 import React, { useState } from 'react';
 
-import { useRoleWorkers, useAssignWorkerToRole, useUnassignRole } from '@/hooks/schedulehub/useRoles';
-import { useWorkers } from '@/hooks/schedulehub/useScheduleStats';
-import { useDepartments } from '@/hooks/useDepartments';
+import { useRoleWorkers, useAssignWorkerToRole, useUnassignRole } from '@/hooks';
+import { useWorkers } from '@/hooks';
+import { useDepartments } from '@/hooks';
 
 interface AssignWorkersToRoleProps {
   roleId: string;

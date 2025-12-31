@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Badge from '@recruitiq/ui';
 import { Dialog } from '@recruitiq/ui';
 import { FormField, Input, TextArea } from '@recruitiq/ui';
-import { usePayStructureTemplates, useAssignPayStructureToWorker, usePayStructureComponents } from '@/hooks/usePayStructures';
+import { usePayStructureTemplates, useAssignPayStructureToWorker, usePayStructureComponents } from '@/hooks';
 
 interface AssignPayStructureModalProps {
   isOpen: boolean;

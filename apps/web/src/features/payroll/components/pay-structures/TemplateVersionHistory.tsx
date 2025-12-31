@@ -8,7 +8,7 @@ import UpgradeWorkersModal from '@/components/modals/UpgradeWorkersModal';
 import VersionComparisonModal from '@/components/modals/VersionComparisonModal';
 import Badge from '@recruitiq/ui';
 import ConfirmDialog from '@recruitiq/ui';
-import { useDeletePayStructureTemplate } from '@/hooks/usePayStructures';
+import { useDeletePayStructureTemplate } from '@/hooks';
 import { useTemplateVersions } from '@/hooks/useTemplateVersions';
 
 interface TemplateVersionHistoryProps {

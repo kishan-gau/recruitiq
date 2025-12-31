@@ -5,7 +5,7 @@ import type { Reconciliation, ReconciliationStatus } from '@recruitiq/types';
 
 import { Dialog } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
-import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
+import { usePaylinqAPI } from '@/hooks';
 import { handleApiError } from '@/utils/errorHandler';
 import { formatCurrency, formatDate } from '@/utils/formatting';
 
