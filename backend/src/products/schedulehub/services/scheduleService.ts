@@ -1309,20 +1309,6 @@ class ScheduleService {
               continue;
             }
             
-            const sessionSummary = {};
-            for (const [employeeId, shifts] of this.sessionShifts.entries()) {
-              sessionSummary[employeeId] = shifts.length;
-            }
-              totalEmployeesWithShifts: this.sessionShifts.size,
-              shiftsPerEmployee: sessionSummary
-            });
-            
-              totalRequested: generationSummary.totalShiftsRequested,
-              generated: generationSummary.shiftsGenerated,
-              partial: generationSummary.partialCoverage,
-              uncovered: generationSummary.noCoverage
-            });
-            
             // Generate shifts only for this specific day
             const templateShifts = await this.generateShiftsFromDedicatedTemplate(
               client, 
@@ -1336,27 +1322,11 @@ class ScheduleService {
               options
             );
             
-              templateId: template.id,
-              templateName: template.templateName,
-              requested: templateShifts.requested,
-              generated: templateShifts.generated,
-              partial: templateShifts.partial,
-              uncovered: templateShifts.uncovered,
-              warnings: templateShifts.warnings.length
-            });
-            
             generationSummary.totalShiftsRequested += templateShifts.requested;
             generationSummary.shiftsGenerated += templateShifts.generated;
             generationSummary.partialCoverage += templateShifts.partial;
             generationSummary.noCoverage += templateShifts.uncovered;
             generationSummary.warnings.push(...templateShifts.warnings);
-            
-              totalRequested: generationSummary.totalShiftsRequested,
-              totalGenerated: generationSummary.shiftsGenerated,
-              totalPartial: generationSummary.partialCoverage,
-              totalUncovered: generationSummary.noCoverage,
-              totalWarnings: generationSummary.warnings.length
-            });
           }
         }
       } else {
@@ -1571,13 +1541,6 @@ class ScheduleService {
    * @returns {Object} Generation summary
    */
   async generateShiftsFromTemplates(client, scheduleId, startDate, endDate, templateIds, templateDayMapping = {}, allowPartialTime = false, organizationId, userId) {
-      scheduleId,
-      templateIds,
-      templateDayMapping: JSON.stringify(templateDayMapping, null, 2),
-      startDate: startDate.toString(),
-      endDate: endDate.toString()
-    });
-
     const generationSummary = {
       totalShiftsRequested: 0,
       shiftsGenerated: 0,
@@ -1645,13 +1608,6 @@ class ScheduleService {
         userId,
         { allowPartialTime }
       );
-      
-        requested: templateShifts.requested,
-        generated: templateShifts.generated,
-        partial: templateShifts.partial,
-        uncovered: templateShifts.uncovered,
-        warnings: templateShifts.warnings.length
-      });
       
       generationSummary.totalShiftsRequested += templateShifts.requested;
       generationSummary.shiftsGenerated += templateShifts.generated;
@@ -1727,18 +1683,6 @@ class ScheduleService {
     const formattedStartTime = startTime.includes(':') && startTime.split(':').length === 2 ? `${startTime}:00` : startTime;
     const formattedEndTime = endTime.includes(':') && endTime.split(':').length === 2 ? `${endTime}:00` : endTime;
     
-      roleId,
-      stationId, 
-      shiftDate: dateString,
-      dayOfWeek,
-      startTime: formattedStartTime,
-      endTime: formattedEndTime,
-      originalStartTime: startTime,
-      originalEndTime: endTime,
-      organizationId,
-      allowPartialTime
-    });
-    
     // Find workers who:
     // 1. Have the required role
     // 2. Are available (recurring or specific date availability)
@@ -1809,19 +1753,6 @@ class ScheduleService {
       ORDER BY ${orderBy}
       LIMIT 50
     `;
-
-    // 🐛 DEBUG: Let's break down the query to see which condition is excluding workers
-      organizationId,
-      roleId,
-      dayOfWeek,
-      formattedStartTime,
-      formattedEndTime,
-      originalStartTime: startTime,
-      originalEndTime: endTime,
-      shiftDate: shiftDate.toISOString().split('T')[0],
-      timeCondition,
-      allowPartialTime
-    });
 
     // Step 1: Check basic employee filter
     const step1Query = `
@@ -1921,23 +1852,6 @@ class ScheduleService {
     // DEBUG: Check time condition evaluation
     if (vivaanDebugResult.rows.length > 0) {
       const availability = vivaanDebugResult.rows[0];
-        timeCondition,
-        availability: {
-          availability_type: availability.availability_type,
-          day_of_week: availability.day_of_week,
-          start_time: availability.start_time,
-          end_time: availability.end_time,
-          specific_date: availability.specific_date
-        },
-        parameters: {
-          dayOfWeek,
-          formattedStartTime,
-          formattedEndTime,
-          originalStartTime: startTime,
-          originalEndTime: endTime,
-          shiftDate: shiftDate.toISOString().split('T')[0]
-        }
-      });
     }
 
     const result = await client.query(query, [
@@ -1949,26 +1863,12 @@ class ScheduleService {
       shiftDate.toISOString().split('T')[0] // Date only in YYYY-MM-DD format
     ]);
 
-      date: dateString,
-      dayOfWeek,
-      originalTimeSlot: `${startTime}-${endTime}`,
-      formattedTimeSlot: `${formattedStartTime}-${formattedEndTime}`,
-      queryResultCount: result.rows.length,
-      workers: result.rows.map(w => ({ id: w.id, name: `${w.first_name} ${w.last_name}` }))
-    });
-
     // Filter out workers with session conflicts (cross-template overlap prevention)
     // Skip this filtering if we're debugging to see total potential workers
     const availableWorkers = skipSessionConflictCheck ? result.rows : result.rows.filter(worker => {
       const hasConflict = this.hasSessionConflict(worker.id, shiftDate, startTime, endTime);
       if (hasConflict) {
         const workerSessionShifts = this.sessionShifts.get(worker.id) || [];
-          workerId: worker.id,
-          name: `${worker.first_name} ${worker.last_name}`,
-          date: dateString,
-          currentShiftTime: `${startTime}-${endTime}`,
-          existingShifts: workerSessionShifts.map(s => `${s.date} ${s.startTime}-${s.endTime}`)
-        });
       }
       return !hasConflict;
     });
@@ -1988,18 +1888,6 @@ class ScheduleService {
       });
     }
 
-      date: dateString,
-      beforeConflictFilter: result.rows.length,
-      afterConflictFilter: availableWorkers.length,
-      sessionConflictFilterSkipped: skipSessionConflictCheck,
-      finalWorkers: availableWorkers.map(w => ({ 
-        id: w.id, 
-        name: `${w.first_name} ${w.last_name}`,
-        roleId: w.role_id,
-        employmentStatus: w.employment_status
-      }))
-    });
-
     return availableWorkers;
   }
 
@@ -2008,16 +1896,6 @@ class ScheduleService {
    * @param {Object} options - Generation options including allowPartialTime
    */
   async generateShiftsFromDedicatedTemplate(client, scheduleId, template, startDate, endDate, applicableDays, organizationId, userId, options = {}) {
-      templateId: template.id,
-      templateName: template.templateName,
-      applicableDays,
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-      templateKeys: Object.keys(template),
-      roleRequirements: template.roleRequirements,
-      rolesProperty: template.roles
-    });
-    
     const summary = {
       requested: 0,
       generated: 0,
@@ -2119,14 +1997,6 @@ class ScheduleService {
               true // Skip session conflict check to see total available
             );
             
-              date: shiftDate.toDateString(),
-              timeSlot: `${template.startTime}-${template.endTime}`,
-              roleId: roleReq.roleId,
-              stationId,
-              availableWorkers: availableWorkers.length,
-              allPotentialWorkers: allPotentialWorkers.length
-            });
-
             // Enhanced exclusion analysis - provides specific reasons and actions
             // Run this ALWAYS when no workers available, regardless of potential worker count
             try {
@@ -2167,13 +2037,6 @@ class ScheduleService {
                 if (allPotentialWorkers.length > 0) {
                   // Workers exist but have session conflicts - this indicates multiple templates competing
                   warningMessage += ` - ${allPotentialWorkers.length} workers found but have conflicting shifts from other templates in this generation session`;
-                    date: shiftDate.toDateString(),
-                    timeSlot: `${template.startTime}-${template.endTime}`,
-                    roleId: roleReq.roleId,
-                    stationId,
-                    workersWithConflicts: allPotentialWorkers.length,
-                    sessionShiftsCount: this.sessionShifts.size
-                  });
                 }
                 
                 summary.warnings.push(warningMessage);
@@ -2244,14 +2107,8 @@ class ScheduleService {
               ]
             );
             
-            
             // Track shift in session for cross-template conflict detection
             this.addShiftToSession(worker.id, shiftDate, actualStartTime, actualEndTime);
-              workerId: worker.id,
-              date: shiftDate.toDateString(),
-              time: `${actualStartTime}-${actualEndTime}`,
-              totalWorkerShifts: this.sessionShifts.get(worker.id)?.length || 0
-            });
             
             summary.generated++;
           }
@@ -2450,10 +2307,6 @@ class ScheduleService {
         throw new Error(`Validation error: ${error.details[0].message}`);
       }
       
-        templateIds: value.templateIds,
-        templateDayMapping: JSON.stringify(value.templateDayMapping, null, 2)
-      });
-
       // Check if schedule exists and is editable
       const scheduleCheck = await client.query(
         `SELECT id, schedule_name, description, start_date, end_date, status, version 
