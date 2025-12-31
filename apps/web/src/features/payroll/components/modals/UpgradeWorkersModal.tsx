@@ -2,8 +2,8 @@ import { format } from 'date-fns';
 import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
-import FormField from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 
 

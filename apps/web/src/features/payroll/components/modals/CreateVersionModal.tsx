@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
-import FormField from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 

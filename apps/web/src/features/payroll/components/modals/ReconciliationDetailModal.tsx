@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 
 import type { Reconciliation, ReconciliationStatus } from '@recruitiq/types';
 
-import Dialog from '@/components/ui/Dialog';
+import { Dialog } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { handleApiError } from '@/utils/errorHandler';

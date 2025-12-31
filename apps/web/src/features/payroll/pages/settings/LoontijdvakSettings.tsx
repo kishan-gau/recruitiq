@@ -21,9 +21,9 @@ import { Link } from 'react-router-dom';
 
 import { APIClient, PaylinqClient } from '@recruitiq/api-client';
 
-import { FormSection, FormGrid, FormField } from '@/components/form/FormField';
-import { SelectWithSearch } from '@/components/form/SelectWithSearch';
-import { Input } from '@/components/ui/FormField';
+import { FormSection, FormGrid, FormField } from '@recruitiq/ui';
+import { SelectWithSearch } from '@recruitiq/ui';
+import { Input } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 
 

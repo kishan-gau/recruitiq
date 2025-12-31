@@ -2,8 +2,8 @@ import { Calendar } from 'lucide-react';
 import { useState } from 'react';
 
 import { RunTypeSelector } from '@/components/common/RunTypeSelector';
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Input } from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Input } from '@recruitiq/ui';
 import { useToast } from '@/hooks/useToast';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { handleApiError } from '@/utils/errorHandler';

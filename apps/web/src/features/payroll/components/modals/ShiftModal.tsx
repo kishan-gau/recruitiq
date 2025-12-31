@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Input, Select } from '@/components/ui/FormField';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Input, Select } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 import { usePaylinqAPI } from '@/hooks/usePaylinqAPI';
 import { handleApiError } from '@/utils/errorHandler';

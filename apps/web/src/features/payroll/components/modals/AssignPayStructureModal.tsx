@@ -1,9 +1,9 @@
 import { AlertCircle, Eye, Package } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-import Badge from '@/components/ui/Badge';
-import Dialog from '@/components/ui/Dialog';
-import FormField, { Input, TextArea } from '@/components/ui/FormField';
+import Badge from '@recruitiq/ui';
+import { Dialog } from '@recruitiq/ui';
+import { FormField, Input, TextArea } from '@recruitiq/ui';
 import { usePayStructureTemplates, useAssignPayStructureToWorker, usePayStructureComponents } from '@/hooks/usePayStructures';
 
 interface AssignPayStructureModalProps {

@@ -17,7 +17,7 @@ import {
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { FormSection } from '@/components/form/FormField';
+import { FormSection } from '@recruitiq/ui';
 import { useToast } from '@/contexts/ToastContext';
 
 interface NotificationPreference {

@@ -1,7 +1,7 @@
 import { AlertTriangle, ArrowRight, Calendar, CheckCircle, Users, XCircle } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
-import Dialog from '@/components/ui/Dialog';
+import { Dialog } from '@recruitiq/ui';
 import { useWorkerTypeUpgradeStatus, usePreviewWorkerTypeUpgrade, useUpgradeWorkersToTemplate } from '@/hooks/useWorkerTypes';
 
 

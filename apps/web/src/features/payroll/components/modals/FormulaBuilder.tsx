@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-import FormField, { Input, Select } from '@/components/ui/FormField';
+import { FormField, Input, Select } from '@recruitiq/ui';
 
 import { usePaylinqAPI } from '../../hooks/usePaylinqAPI';
 

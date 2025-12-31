@@ -1,6 +1,6 @@
 import { ArrowRight, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
-import Dialog from '@/components/ui/Dialog';
+import { Dialog } from '@recruitiq/ui';
 import { useCompareTemplates } from '@/hooks/useWorkerTypes';
 
 interface TemplateComparisonModalProps {

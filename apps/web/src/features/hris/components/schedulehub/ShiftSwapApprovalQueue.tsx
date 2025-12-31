@@ -26,7 +26,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@recruitiq/ui';
 
-import Badge from '@/components/ui/Badge';
+import Badge from '@recruitiq/ui';
 import Card from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';

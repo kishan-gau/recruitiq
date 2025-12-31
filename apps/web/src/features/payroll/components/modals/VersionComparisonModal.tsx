@@ -1,7 +1,7 @@
 import { Plus, Minus, Edit } from 'lucide-react';
 
-import Badge from '@/components/ui/Badge';
-import Dialog from '@/components/ui/Dialog';
+import Badge from '@recruitiq/ui';
+import { Dialog } from '@recruitiq/ui';
 import { useCompareVersions } from '@/hooks/useCompareVersions';
 
 

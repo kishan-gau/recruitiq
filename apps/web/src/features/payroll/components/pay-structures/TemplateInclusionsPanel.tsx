@@ -2,7 +2,7 @@ import { Plus, Edit2, Trash2, Check, X, Link2, ChevronRight } from 'lucide-react
 import { useState } from 'react';
 
 import TemplateInclusionModal from '@/components/modals/TemplateInclusionModal';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import ConfirmDialog from '@recruitiq/ui';
 import {
   useTemplateInclusions,
   useAddTemplateInclusion,
