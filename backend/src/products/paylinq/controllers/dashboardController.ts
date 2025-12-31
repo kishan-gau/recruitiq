@@ -7,9 +7,15 @@
  */
 
 import DashboardService from '../services/dashboardService.js';
-
-const dashboardService = new DashboardService();
 import logger from '../../../utils/logger.js';
+
+// Create service instance (can be overridden for testing)
+let dashboardService = new DashboardService();
+
+// Export function to set service instance (for testing)
+export const setDashboardService = (service) => {
+  dashboardService = service;
+};
 
 /**
  * Get dashboard overview statistics

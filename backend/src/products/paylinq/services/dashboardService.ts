@@ -88,7 +88,7 @@ constructor(repository = null) {
       recentActivity,
       pendingApprovals: []  // TODO: Get actual pending approvals
     };
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting dashboard overview', {
       error: error.message,
       organizationId
@@ -111,7 +111,7 @@ constructor(repository = null) {
 
     const stats = await this.repository.getPayrollMetrics(organizationId, start, end);
     return stats;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting payroll stats', {
       error: error.message,
       organizationId
@@ -129,7 +129,7 @@ constructor(repository = null) {
     try {
       const stats = await this.repository.getEmployeeMetrics(organizationId);
       return stats;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting employee stats', {
       error: error.message,
       organizationId
@@ -148,7 +148,7 @@ constructor(repository = null) {
     try {
       const activities = await this.repository.getRecentActivity(organizationId, limit);
       return activities;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting recent activity', {
       error: error.message,
       organizationId

@@ -281,15 +281,36 @@ constructor() {
 
   /**
    * Convert amount from one currency to another
-   * @param {Object} params - Conversion parameters
+   * Supports both object-based parameters and individual parameters for backward compatibility
+   * @param {string|Object} organizationIdOrParams - Organization ID or params object
+   * @param {number} amount - Amount to convert (if using individual params)
+   * @param {string} fromCurrency - Source currency (if using individual params)
+   * @param {string} toCurrency - Target currency (if using individual params)
+   * @param {Object} options - Additional options (if using individual params)
    * @returns {Object} Conversion result
    */
-  async convertAmount(params) {
+  async convertAmount(organizationIdOrParams, amount = null, fromCurrency = null, toCurrency = null, options = {}) {
+    // Support both calling patterns: convertAmount(params) and convertAmount(orgId, amount, from, to, options)
+    let params;
+    if (typeof organizationIdOrParams === 'object' && organizationIdOrParams !== null) {
+      // Object-based parameters (original pattern)
+      params = organizationIdOrParams;
+    } else {
+      // Individual parameters (test pattern)
+      params = {
+        organizationId: organizationIdOrParams,
+        amount,
+        fromCurrency,
+        toCurrency,
+        ...options
+      };
+    }
+
     const {
       organizationId,
-      amount,
-      fromCurrency,
-      toCurrency,
+      amount: convertAmountValue,
+      fromCurrency: from,
+      toCurrency: to,
       roundingMethod = 'half_up',
       decimalPlaces = 2,
       effectiveDate = new Date(),
@@ -299,19 +320,20 @@ constructor() {
     } = params;
 
     // Get exchange rate
-    const exchangeRate = await this.getExchangeRate(organizationId, fromCurrency, toCurrency, effectiveDate);
+    const exchangeRate = await this.getExchangeRate(organizationId, from, to, effectiveDate);
 
     // Convert amount
-    const convertedAmount = amount * exchangeRate.rate;
+    const convertedAmount = convertAmountValue * exchangeRate.rate;
 
     // Round according to method
     const roundedAmount = this.roundAmount(convertedAmount, decimalPlaces, roundingMethod);
 
     const result = {
-      fromCurrency,
-      toCurrency,
-      fromAmount: amount,
+      fromCurrency: from,
+      toCurrency: to,
+      fromAmount: convertAmountValue,
       toAmount: roundedAmount,
+      convertedAmount: roundedAmount, // Alias for backward compatibility with tests
       rate: exchangeRate.rate,
       exchangeRateId: exchangeRate.id || null,
       source: exchangeRate.source,
@@ -323,9 +345,9 @@ constructor() {
       try {
         const conversionRecord = await this.repository.logConversion({
           organizationId,
-          fromCurrency,
-          toCurrency,
-          fromAmount: amount,
+          fromCurrency: from,
+          toCurrency: to,
+          fromAmount: convertAmountValue,
           toAmount: roundedAmount,
           exchangeRateId: exchangeRate.id,
           rateUsed: exchangeRate.rate,
@@ -347,14 +369,49 @@ constructor() {
     }
 
     logger.info('Currency conversion completed', {
-      fromCurrency,
-      toCurrency,
-      amount,
+      fromCurrency: from,
+      toCurrency: to,
+      amount: convertAmountValue,
       convertedAmount: roundedAmount,
       rate: exchangeRate.rate
     });
 
     return result;
+  }
+
+  /**
+   * Batch convert multiple amounts (simplified signature for tests)
+   * @param {string} organizationId - Organization ID
+   * @param {Array} amounts - Array of {amount, fromCurrency, toCurrency} objects
+   * @returns {Array} Array of conversion results
+   */
+  async convertBatch(organizationId, amounts) {
+    const results = [];
+    
+    for (const item of amounts) {
+      try {
+        const result = await this.convertAmount(
+          organizationId,
+          item.amount,
+          item.fromCurrency,
+          item.toCurrency
+        );
+        results.push({
+          success: true,
+          ...result
+        });
+      } catch (error) {
+        results.push({
+          success: false,
+          error: error.message,
+          amount: item.amount,
+          fromCurrency: item.fromCurrency,
+          toCurrency: item.toCurrency
+        });
+      }
+    }
+    
+    return results;
   }
 
   /**
@@ -501,31 +558,99 @@ constructor() {
 
   /**
    * Create a new exchange rate
+   * Supports both object-based and individual parameters
    * @param {Object} rateData - Exchange rate data
+   * @param {string} organizationId - Organization ID (optional if in rateData)
+   * @param {string} userId - User ID creating the rate (optional if in rateData)
    * @returns {Object} Created exchange rate
    */
-  async createExchangeRate(rateData) {
-    const rate = await this.repository.createRate(rateData);
+  async createExchangeRate(rateData, organizationId = null, userId = null) {
+    // Support both patterns: createExchangeRate(data) and createExchangeRate(data, orgId, userId)
+    const finalData = {
+      ...rateData,
+      organizationId: organizationId || rateData.organizationId,
+      createdBy: userId || rateData.createdBy
+    };
+
+    // Validate rate is positive
+    if (finalData.rate <= 0) {
+      throw new Error('Exchange rate must be positive');
+    }
+
+    // Validate currencies are different
+    if (finalData.fromCurrency === finalData.toCurrency) {
+      throw new Error('Cannot create exchange rate for same currency pair');
+    }
+
+    const rate = await this.repository.createRate(finalData, organizationId || rateData.organizationId, userId || rateData.createdBy);
     
-    // Invalidate both cache layers for this currency pair
-    await this.invalidateRateCache(rateData.organizationId, rateData.fromCurrency, rateData.toCurrency);
+    // Invalidate all caches
+    await this.invalidateAllCaches();
     
     return rate;
   }
 
   /**
    * Update an exchange rate
-   * @param {number} id - Rate ID
-   * @param {Object} updateData - Data to update
+   * @param {string} rateId - Rate ID
+   * @param {Object} updates - Data to update
+   * @param {string} organizationId - Organization ID
+   * @param {string} userId - User ID performing the update
    * @returns {Object} Updated exchange rate
    */
-  async updateExchangeRate(id, updateData) {
-    const rate = await this.repository.updateRate(id, updateData);
+  async updateExchangeRate(rateId, updates, organizationId, userId) {
+    const rate = await this.repository.updateRate(rateId, updates, organizationId, userId);
     
     // Invalidate all caches (we don't know which pairs are affected)
     await this.invalidateAllCaches();
     
     return rate;
+  }
+
+  /**
+   * Deactivate an exchange rate
+   * @param {string} rateId - Rate ID
+   * @param {string} organizationId - Organization ID
+   * @param {string} userId - User ID performing the deactivation
+   * @returns {boolean} Success status
+   */
+  async deactivateExchangeRate(rateId, organizationId, userId) {
+    const result = await this.repository.deactivateRate(rateId, organizationId, userId);
+    
+    // Invalidate all caches
+    await this.invalidateAllCaches();
+    
+    return result;
+  }
+
+  /**
+   * Get rate history for a currency pair
+   * @param {string} organizationId - Organization ID
+   * @param {string} fromCurrency - Source currency code
+   * @param {string} toCurrency - Target currency code
+   * @param {Object} options - Query options (startDate, endDate, etc.)
+   * @returns {Array} Rate history
+   */
+  async getRateHistory(organizationId, fromCurrency, toCurrency, options = {}) {
+    return await this.repository.getRateHistory(organizationId, fromCurrency, toCurrency, options);
+  }
+
+  /**
+   * Clear cache for a specific currency pair
+   * @param {string} organizationId - Organization ID
+   * @param {string} fromCurrency - Source currency code
+   * @param {string} toCurrency - Target currency code
+   */
+  clearCacheForPair(organizationId, fromCurrency, toCurrency) {
+    const cacheKey = `rate:${organizationId}:${fromCurrency}:${toCurrency}`;
+    this.cache.del(cacheKey);
+    
+    // Also clear from Redis if available
+    if (this.redisClient && this.useRedisCache) {
+      this.redisClient.del(cacheKey).catch((err) => {
+        logger.warn('Failed to clear Redis cache for pair', { error: err.message, cacheKey });
+      });
+    }
   }
 
   /**

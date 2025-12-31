@@ -20,6 +20,26 @@
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
+// Mock repository methods
+const mockGetPayrollMetrics = jest.fn();
+const mockGetEmployeeMetrics = jest.fn();
+const mockGetTimesheetMetrics = jest.fn();
+const mockGetUpcomingPayrolls = jest.fn();
+const mockGetRecentActivityRepo = jest.fn();
+
+// Mock dashboard repository before service
+jest.mock('../../../../src/products/paylinq/repositories/dashboardRepository.js', () => {
+  return {
+    default: jest.fn().mockImplementation(() => ({
+      getPayrollMetrics: mockGetPayrollMetrics,
+      getEmployeeMetrics: mockGetEmployeeMetrics,
+      getTimesheetMetrics: mockGetTimesheetMetrics,
+      getUpcomingPayrolls: mockGetUpcomingPayrolls,
+      getRecentActivity: mockGetRecentActivityRepo
+    }))
+  };
+});
+
 // Mock dependencies before importing controller
 const mockGetDashboardOverview = jest.fn();
 const mockGetPayrollStats = jest.fn();
@@ -78,6 +98,11 @@ describe('Dashboard Controller', () => {
     mockGetPayrollStats.mockClear();
     mockGetEmployeeStats.mockClear();
     mockGetRecentActivity.mockClear();
+    mockGetPayrollMetrics.mockClear();
+    mockGetEmployeeMetrics.mockClear();
+    mockGetTimesheetMetrics.mockClear();
+    mockGetUpcomingPayrolls.mockClear();
+    mockGetRecentActivityRepo.mockClear();
     mockRes.status.mockClear();
     mockRes.json.mockClear();
   });
