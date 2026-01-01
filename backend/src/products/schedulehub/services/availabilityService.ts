@@ -3,7 +3,7 @@
  * Business logic for worker availability management
  */
 
-import pool from '../../../config/database.js';
+import { query as dbQuery } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import Joi from 'joi';
 import { 

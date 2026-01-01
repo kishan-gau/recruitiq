@@ -3,7 +3,7 @@
  * Business logic for role and worker role assignment management
  */
 
-import pool from '../../../config/database.js';
+import { query as dbQuery } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import type { RoleData } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';

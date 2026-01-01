@@ -3,7 +3,7 @@
  * Business logic for time off request management
  */
 
-import pool from '../../../config/database.js';
+import { query as dbQuery } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import Joi from 'joi';
 import { dateOnlyRequired } from '../../../validators/dateValidators.js';
@@ -141,7 +141,10 @@ constructor() {
       }
 
       query += ` ORDER BY start_date DESC`;
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.time_off_requests'
+      });
       return { success: true, data: result.rows };
     } catch (_error) {
       this.logger.error('Error fetching worker requests:', error);
@@ -177,7 +180,10 @@ constructor() {
       }
 
       query += ` ORDER BY r.created_at DESC`;
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.time_off_requests'
+      });
       return { success: true, data: result.rows };
     } catch (_error) {
       this.logger.error('Error listing requests:', error);
@@ -187,12 +193,17 @@ constructor() {
 
   async getRequestById(requestId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT r.*, e.first_name || ' ' || e.last_name as worker_name
          FROM scheduling.time_off_requests r
          JOIN hris.employee e ON r.employee_id = e.id
          WHERE r.id = $1 AND r.organization_id = $2`,
-        [requestId, organizationId]
+        [requestId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.time_off_requests'
+        }
       );
       
       if (result.rows.length === 0) {
@@ -208,13 +219,18 @@ constructor() {
 
   async getPendingRequests(organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT r.*, e.first_name || ' ' || e.last_name as worker_name
          FROM scheduling.time_off_requests r
          JOIN hris.employee e ON r.employee_id = e.id
          WHERE r.organization_id = $1 AND r.status = 'pending'
          ORDER BY r.created_at`,
-        [organizationId]
+        [organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.time_off_requests'
+        }
       );
       return { success: true, data: result.rows };
     } catch (_error) {

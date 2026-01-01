@@ -3,7 +3,7 @@
  * Business logic for worker management (synced from Nexus HRIS)
  */
 
-import pool from '../../../config/database.js';
+import { query as dbQuery } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import type { WorkerData, WorkerSearchFilters, WorkerAvailabilityData } from '../../../types/schedulehub.types.js';
 import { ValidationError } from '../../../utils/errors.js';
@@ -167,7 +167,7 @@ constructor() {
    */
   async getWorkerById(workerId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT 
           e.id,
           e.employee_number as employee_id,
@@ -199,7 +199,12 @@ constructor() {
         LEFT JOIN hris.department d 
           ON e.department_id = d.id AND e.organization_id = d.organization_id
         WHERE e.id = $1 AND e.organization_id = $2`,
-        [workerId, organizationId]
+        [workerId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'hris.employee'
+        }
       );
 
       if (result.rows.length === 0) {
