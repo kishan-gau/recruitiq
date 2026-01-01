@@ -11,7 +11,7 @@
  * From PWA Proposal Phase 3: Push Notifications
  */
 
-import { apiClient } from '@recruitiq/api-client';
+import { apiClient, type NotificationPreferences } from '@recruitiq/api-client';
 
 /**
  * Check if push notifications are supported
@@ -224,7 +224,7 @@ export async function getPreferences() {
 /**
  * Update notification preferences
  */
-export async function updatePreferences(preferences: any) {
+export async function updatePreferences(preferences: Partial<NotificationPreferences>) {
   try {
     const response = await apiClient.notifications.updatePreferences(preferences);
     return response.data;
@@ -246,48 +246,12 @@ export async function sendTestNotification(title?: string, body?: string) {
     throw error;
   }
 }
-    console.log('Push subscription:', subscription);
-
-    return subscription;
-  } catch (error) {
-    console.error('Failed to subscribe to push:', error);
-    return null;
-  }
-}
 
 /**
- * Unsubscribe from push notifications
- */
-export async function unsubscribeFromPush(): Promise<boolean> {
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
-
-    if (subscription) {
-      await subscription.unsubscribe();
-      // TODO: Remove subscription from backend
-      console.log('Unsubscribed from push');
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error('Failed to unsubscribe from push:', error);
-    return false;
-  }
-}
-
-/**
- * Get current push subscription
+ * Get current push subscription (alias)
  */
 export async function getPushSubscription(): Promise<PushSubscription | null> {
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    return await registration.pushManager.getSubscription();
-  } catch (error) {
-    console.error('Failed to get push subscription:', error);
-    return null;
-  }
+  return getCurrentSubscription();
 }
 
 /**
@@ -342,29 +306,24 @@ export const NOTIFICATION_TYPES = {
   },
 } as const;
 
-/**
- * User notification preferences
- */
-export interface NotificationPreferences {
-  scheduleReminders: boolean;
-  payrollUpdates: boolean;
-  hrAnnouncements: boolean;
-  actionRequired: boolean;
-}
+// Re-export type from API client for convenience
+export type { NotificationPreferences } from '@recruitiq/api-client';
 
 const PREFERENCES_KEY = 'notification_preferences';
 
 /**
- * Save notification preferences
+ * Save notification preferences (deprecated - use backend API instead)
+ * @deprecated Use updatePreferences() which saves to backend
  */
-export function saveNotificationPreferences(preferences: NotificationPreferences): void {
+export function saveNotificationPreferences(preferences: Partial<NotificationPreferences>): void {
   localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
 }
 
 /**
- * Load notification preferences
+ * Load notification preferences (deprecated - use backend API instead)
+ * @deprecated Use getPreferences() which fetches from backend
  */
-export function loadNotificationPreferences(): NotificationPreferences {
+export function loadNotificationPreferences(): Partial<NotificationPreferences> {
   const stored = localStorage.getItem(PREFERENCES_KEY);
   if (stored) {
     try {

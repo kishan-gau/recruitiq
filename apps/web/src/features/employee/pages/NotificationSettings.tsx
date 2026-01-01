@@ -10,6 +10,7 @@ import {
   updatePreferences,
   sendTestNotification,
   getCurrentSubscription,
+  type NotificationPreferences,
 } from '@/services/pushNotifications';
 
 /**
@@ -29,7 +30,7 @@ export default function NotificationSettings() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [preferences, setPreferences] = useState<any>({
+  const [preferences, setPreferences] = useState<Partial<NotificationPreferences>>({
     enabled: true,
     scheduleReminders: true,
     payrollUpdates: true,

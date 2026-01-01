@@ -421,7 +421,10 @@ export class ScheduleHubClient {
    * @param location Optional geolocation coordinates
    */
   async clockIn(location?: { latitude: number; longitude: number }) {
-    return this.client.post<ApiResponse<any>>(
+    return this.client.post<ApiResponse<{
+      event: any;
+      message: string;
+    }>>(
       `${this.basePath}/clock-in`,
       { location }
     );
@@ -432,7 +435,11 @@ export class ScheduleHubClient {
    * @param location Optional geolocation coordinates
    */
   async clockOut(location?: { latitude: number; longitude: number }) {
-    return this.client.post<ApiResponse<any>>(
+    return this.client.post<ApiResponse<{
+      event: any;
+      timeEntry: any;
+      message: string;
+    }>>(
       `${this.basePath}/clock-out`,
       { location }
     );
