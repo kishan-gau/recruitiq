@@ -23,7 +23,7 @@ import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../../../../src/config/database.js';
 import { query } from '../../../../src/config/database.js';
-import TaxCalculationService from '../../../../src/products/paylinq/services/taxCalculationService.js';
+import { TaxCalculationService } from '../../../../src/products/paylinq/services/taxCalculationService.js';
 import { createTestEmployee } from '../helpers/employeeTestHelper.js';
 
 describe('Tax Calculation Scenarios - Integration Tests', () => {

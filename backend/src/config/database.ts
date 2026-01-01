@@ -78,9 +78,9 @@ export const query = async (text, params, organizationId = null, metadata = {}) 
     
     return result;
   } catch (_error) {
-    logQueryError(modifiedText, modifiedParams, error, metadata);
-    logger.error('Database query error:', { text, error: error.message });
-    throw error;
+    logQueryError(modifiedText, modifiedParams, _error, metadata);
+    logger.error('Database query error:', { text, error: _error.message });
+    throw _error;
   }
 };
 

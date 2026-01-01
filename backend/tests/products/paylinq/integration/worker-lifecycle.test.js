@@ -24,7 +24,7 @@ import { v4 as uuidv4 } from 'uuid';
 import pool from '../../../../src/config/database.js';
 import { query } from '../../../../src/config/database.js';
 import PayrollService from '../../../../src/products/paylinq/services/payrollService.js';
-import TaxCalculationService from '../../../../src/products/paylinq/services/taxCalculationService.js';
+import { TaxCalculationService } from '../../../../src/products/paylinq/services/taxCalculationService.js';
 
 describe('Worker Lifecycle - Integration Tests', () => {
   let organizationId;
