@@ -15,6 +15,20 @@ echo "=========================================="
 # No need to wait - the database is guaranteed to be ready at this point
 echo "✅ PostgreSQL is ready (running in initdb context)!"
 
+# Detect the correct SQL scripts path based on mounted volumes
+# Supports multiple Docker Compose configurations
+if [ -d "/backend/docker-init" ]; then
+    SQL_SCRIPTS_DIR="/backend/docker-init"
+    echo "📁 Using SQL scripts from: $SQL_SCRIPTS_DIR (root docker-compose mount)"
+elif [ -d "/docker-init" ]; then
+    SQL_SCRIPTS_DIR="/docker-init"
+    echo "📁 Using SQL scripts from: $SQL_SCRIPTS_DIR (backend docker-compose mount)"
+else
+    echo "❌ ERROR: Cannot find SQL scripts directory!"
+    echo "   Checked: /backend/docker-init and /docker-init"
+    exit 1
+fi
+
 # Set PostgreSQL configuration variables for tenant creation
 echo "🔧 Setting up tenant creation variables..."
 
@@ -40,7 +54,7 @@ else
 fi
 
 echo "📦 Phase 1: Creating Database Schema..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /backend/docker-init/01-create-schema.sql
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$SQL_SCRIPTS_DIR/01-create-schema.sql"
 
 if [ $? -eq 0 ]; then
     echo "✅ Phase 1 Complete: Database schema created successfully"
@@ -50,7 +64,7 @@ else
 fi
 
 echo "🌱 Phase 2: Loading Production Seeds..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /backend/docker-init/02-production-seeds.sql
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$SQL_SCRIPTS_DIR/02-production-seeds.sql"
 
 if [ $? -eq 0 ]; then
     echo "✅ Phase 2 Complete: Production seeds loaded successfully"
@@ -60,7 +74,7 @@ else
 fi
 
 echo "🏢 Phase 3: Creating Default Tenant (if configured)..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f /backend/docker-init/03-create-tenant.sql
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$SQL_SCRIPTS_DIR/03-create-tenant.sql"
 
 if [ $? -eq 0 ]; then
     echo "✅ Phase 3 Complete: Tenant creation completed"
