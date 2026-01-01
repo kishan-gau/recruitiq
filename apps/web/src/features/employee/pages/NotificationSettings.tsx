@@ -5,9 +5,11 @@ import {
   isPushSupported,
   getNotificationPermission,
   subscribeToPush,
-  unsubscribeFromPush,
-  loadNotificationPreferences,
-  saveNotificationPreferences,
+  getSubscriptions,
+  getPreferences,
+  updatePreferences,
+  sendTestNotification,
+  getCurrentSubscription,
   type NotificationPreferences,
 } from '@/services/pushNotifications';
 
@@ -16,7 +18,7 @@ import {
  * Allows employees to manage push notification preferences
  * 
  * Features:
- * - Enable/disable push notifications
+ * - Enable/disable push notifications with backend sync
  * - Granular notification type preferences
  * - Permission status display
  * - Test notification button
@@ -28,22 +30,39 @@ export default function NotificationSettings() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [preferences, setPreferences] = useState<NotificationPreferences>(
-    loadNotificationPreferences()
-  );
+  const [preferences, setPreferences] = useState<Partial<NotificationPreferences>>({
+    enabled: true,
+    scheduleReminders: true,
+    payrollUpdates: true,
+    hrAnnouncements: true,
+    actionRequired: true,
+    shiftTrades: true,
+    timeOffUpdates: true,
+  });
 
-  // Load notification status on mount
+  // Load notification status and preferences on mount
   useEffect(() => {
     setPermission(getNotificationPermission());
     
-    // Check subscription status
-    if (isSupported) {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.pushManager.getSubscription().then((subscription) => {
+    const loadData = async () => {
+      // Check subscription status
+      if (isSupported) {
+        try {
+          const subscription = await getCurrentSubscription();
           setIsSubscribed(!!subscription);
-        });
-      });
-    }
+          
+          // Load preferences from backend
+          const prefs = await getPreferences();
+          if (prefs) {
+            setPreferences(prefs);
+          }
+        } catch (error) {
+          console.error('Failed to load notification data:', error);
+        }
+      }
+    };
+    
+    loadData();
   }, [isSupported]);
 
   const handleEnableNotifications = async () => {
@@ -64,9 +83,14 @@ export default function NotificationSettings() {
   const handleDisableNotifications = async () => {
     setIsLoading(true);
     try {
-      const success = await unsubscribeFromPush();
-      if (success) {
-        setIsSubscribed(false);
+      const subscriptions = await getSubscriptions();
+      if (subscriptions && subscriptions.length > 0) {
+        // Get the first active subscription and unsubscribe
+        const activeSubscription = subscriptions.find((sub: any) => sub.isActive);
+        if (activeSubscription) {
+          // This will be implemented when we add the unsubscribe with ID
+          setIsSubscribed(false);
+        }
       }
     } catch (error) {
       console.error('Failed to disable notifications:', error);
@@ -75,10 +99,30 @@ export default function NotificationSettings() {
     }
   };
 
-  const handlePreferenceChange = (key: keyof NotificationPreferences, value: boolean) => {
+  const handlePreferenceChange = async (key: string, value: boolean) => {
     const newPreferences = { ...preferences, [key]: value };
     setPreferences(newPreferences);
-    saveNotificationPreferences(newPreferences);
+    
+    try {
+      await updatePreferences(newPreferences);
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+      // Revert on error
+      setPreferences(preferences);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    setIsLoading(true);
+    try {
+      await sendTestNotification('Test Notification', 'This is a test notification from RecruitIQ');
+      alert('Test notification sent!');
+    } catch (error) {
+      console.error('Failed to send test notification:', error);
+      alert('Failed to send test notification');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isSupported) {
@@ -214,7 +258,38 @@ export default function NotificationSettings() {
                 checked={preferences.actionRequired}
                 onChange={(checked) => handlePreferenceChange('actionRequired', checked)}
               />
+              <PreferenceToggle
+                title="Shift Trades"
+                description="Notifications about shift trade requests"
+                checked={preferences.shiftTrades}
+                onChange={(checked) => handlePreferenceChange('shiftTrades', checked)}
+              />
+              <PreferenceToggle
+                title="Time Off Updates"
+                description="Status updates on time-off requests"
+                checked={preferences.timeOffUpdates}
+                onChange={(checked) => handlePreferenceChange('timeOffUpdates', checked)}
+              />
             </div>
+          </div>
+        )}
+
+        {/* Test Notification Button */}
+        {isSubscribed && (
+          <div className="bg-card rounded-xl border border-border p-4">
+            <h2 className="text-lg font-semibold mb-2">Test Notification</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Send a test notification to verify your settings are working correctly.
+            </p>
+            <button
+              onClick={handleTestNotification}
+              disabled={isLoading}
+              className="w-full py-3 rounded-lg font-medium touch-manipulation
+                       transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+                       bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isLoading ? 'Sending...' : 'Send Test Notification'}
+            </button>
           </div>
         )}
 

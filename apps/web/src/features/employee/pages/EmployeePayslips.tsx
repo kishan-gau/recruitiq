@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DollarSign, Download, Share2, Eye, ChevronRight, Calendar } from 'lucide-react';
+import { apiClient } from '@recruitiq/api-client';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Employee Payslips Page
  * Mobile-optimized payslip viewer
  * 
  * Features:
- * - List of payslips
- * - YTD summary
+ * - List of payslips with real API data
+ * - YTD summary with real calculations
  * - Download/share functionality
  * - Mobile-optimized PDF viewing
  * 
@@ -15,14 +17,50 @@ import { DollarSign, Download, Share2, Eye, ChevronRight, Calendar } from 'lucid
  */
 export default function EmployeePayslips() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [ytdSummary, setYtdSummary] = useState<any>(null);
+  const [payslips, setPayslips] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
 
-  // TODO: Fetch from API
-  const ytdSummary = {
-    grossPay: 45678.50,
-    netPay: 34892.75,
-    taxes: 8234.25,
-    deductions: 2551.50,
-  };
+  // Fetch YTD summary when year changes
+  useEffect(() => {
+    const fetchYtdSummary = async () => {
+      if (!user?.employeeId) return;
+      
+      try {
+        const response = await apiClient.paylinq.getEmployeeYtdSummary(user.employeeId, selectedYear);
+        if (response.data) {
+          setYtdSummary(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch YTD summary:', error);
+      }
+    };
+
+    fetchYtdSummary();
+  }, [selectedYear, user]);
+
+  // Fetch payslips
+  useEffect(() => {
+    const fetchPayslips = async () => {
+      if (!user?.employeeId) return;
+      
+      setIsLoading(true);
+      try {
+        const response = await apiClient.paylinq.getEmployeePaychecks(user.employeeId);
+        if (response.data) {
+          setPayslips(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch payslips:', error);
+        setPayslips([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPayslips();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background pb-safe">
@@ -55,22 +93,28 @@ export default function EmployeePayslips() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <SummaryItem 
-              label="Gross Pay" 
-              amount={ytdSummary.grossPay} 
-            />
-            <SummaryItem 
-              label="Net Pay" 
-              amount={ytdSummary.netPay} 
-            />
-            <SummaryItem 
-              label="Taxes" 
-              amount={ytdSummary.taxes} 
-            />
-            <SummaryItem 
-              label="Deductions" 
-              amount={ytdSummary.deductions} 
-            />
+            {ytdSummary ? (
+              <>
+                <SummaryItem 
+                  label="Gross Pay" 
+                  amount={ytdSummary.ytdGrossPay || 0} 
+                />
+                <SummaryItem 
+                  label="Net Pay" 
+                  amount={ytdSummary.ytdNetPay || 0} 
+                />
+                <SummaryItem 
+                  label="Taxes" 
+                  amount={ytdSummary.ytdTaxes || 0} 
+                />
+                <SummaryItem 
+                  label="Deductions" 
+                  amount={ytdSummary.ytdDeductions || 0} 
+                />
+              </>
+            ) : (
+              <div className="col-span-2 text-center py-4">Loading...</div>
+            )}
           </div>
         </div>
 
@@ -84,28 +128,27 @@ export default function EmployeePayslips() {
           </div>
 
           <div className="space-y-3">
-            {/* TODO: Replace with actual payslips from API */}
-            <PayslipCard
-              date="December 31, 2025"
-              period="Dec 16 - Dec 31"
-              grossAmount={1923.00}
-              netAmount={1456.50}
-              status="paid"
-            />
-            <PayslipCard
-              date="December 15, 2025"
-              period="Dec 1 - Dec 15"
-              grossAmount={1923.00}
-              netAmount={1456.50}
-              status="paid"
-            />
-            <PayslipCard
-              date="November 30, 2025"
-              period="Nov 16 - Nov 30"
-              grossAmount={1923.00}
-              netAmount={1456.50}
-              status="paid"
-            />
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Loading payslips...
+              </div>
+            ) : payslips.length > 0 ? (
+              payslips.slice(0, 5).map((payslip) => (
+                <PayslipCard
+                  key={payslip.id}
+                  id={payslip.id}
+                  date={new Date(payslip.payDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  period={`${new Date(payslip.payPeriodStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${new Date(payslip.payPeriodEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                  grossAmount={payslip.grossPay}
+                  netAmount={payslip.netPay}
+                  status={payslip.status}
+                />
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No payslips available
+              </div>
+            )}
           </div>
         </div>
 
@@ -161,24 +204,37 @@ function SummaryItem({ label, amount }: SummaryItemProps) {
  * Payslip Card Component
  */
 interface PayslipCardProps {
+  id: string;
   date: string;
   period: string;
   grossAmount: number;
   netAmount: number;
-  status: 'paid' | 'pending' | 'processing';
+  status: 'paid' | 'pending' | 'processing' | 'approved';
 }
 
-function PayslipCard({ date, period, grossAmount, netAmount, status }: PayslipCardProps) {
+function PayslipCard({ id, date, period, grossAmount, netAmount, status }: PayslipCardProps) {
   const [showActions, setShowActions] = useState(false);
 
   const handleView = () => {
     // TODO: Open payslip viewer modal or new page
-    console.log('View payslip');
+    console.log('View payslip:', id);
   };
 
-  const handleDownload = () => {
-    // TODO: Download payslip PDF
-    console.log('Download payslip');
+  const handleDownload = async () => {
+    try {
+      const response = await apiClient.paylinq.downloadPayslipPdf(id);
+      const blob = response.data;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `payslip-${date}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download payslip:', error);
+    }
   };
 
   const handleShare = () => {

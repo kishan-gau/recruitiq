@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
+import { apiClient } from '@recruitiq/api-client';
 
 /**
  * Employee Schedule Page
@@ -10,11 +11,14 @@ import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react
  * - Swipeable day cards
  * - Shift details
  * - Time-off request link
+ * - Real API integration with ScheduleHub
  * 
  * From PWA Proposal Phase 2: Time & Attendance Module
  */
 export default function EmployeeSchedule() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Get week days starting from selectedDate
   const getWeekDays = () => {
@@ -39,6 +43,27 @@ export default function EmployeeSchedule() {
     newDate.setDate(selectedDate.getDate() + (direction === 'prev' ? -7 : 7));
     setSelectedDate(newDate);
   };
+
+  // Fetch shifts for the selected date
+  useEffect(() => {
+    const fetchShifts = async () => {
+      setIsLoading(true);
+      try {
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        const response = await apiClient.schedulehub.getEmployeeShifts({ date: dateStr });
+        if (response.data) {
+          setShifts(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch shifts:', error);
+        setShifts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchShifts();
+  }, [selectedDate]);
 
   return (
     <div className="min-h-screen bg-background pb-safe">
@@ -138,18 +163,25 @@ export default function EmployeeSchedule() {
 
         {/* Shift Cards */}
         <div className="space-y-3">
-          {/* TODO: Replace with actual shifts from API */}
-          <ShiftCard
-            startTime="9:00 AM"
-            endTime="5:00 PM"
-            duration="8 hours"
-            location="Main Office"
-            role="Customer Service"
-            status="scheduled"
-          />
-          
-          {/* Empty state if no shifts */}
-          {/* <EmptyScheduleState date={selectedDate} /> */}
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading shifts...
+            </div>
+          ) : shifts.length > 0 ? (
+            shifts.map((shift) => (
+              <ShiftCard
+                key={shift.id}
+                startTime={shift.startTime}
+                endTime={shift.endTime}
+                duration={calculateDuration(shift.startTime, shift.endTime)}
+                location={shift.stationName || 'N/A'}
+                role={shift.roleName || 'N/A'}
+                status={shift.status || 'scheduled'}
+              />
+            ))
+          ) : (
+            <EmptyScheduleState date={selectedDate} />
+          )}
         </div>
 
         {/* Quick Actions */}
@@ -265,4 +297,24 @@ function ActionButton({ label, onClick, variant }: ActionButtonProps) {
       {label}
     </button>
   );
+}
+
+/**
+ * Helper function to calculate shift duration
+ */
+function calculateDuration(startTime: string, endTime: string): string {
+  try {
+    const start = new Date(`2000-01-01 ${startTime}`);
+    const end = new Date(`2000-01-01 ${endTime}`);
+    const diffMs = end.getTime() - start.getTime();
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (minutes === 0) {
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+    }
+    return `${hours}h ${minutes}m`;
+  } catch (error) {
+    return 'N/A';
+  }
 }
