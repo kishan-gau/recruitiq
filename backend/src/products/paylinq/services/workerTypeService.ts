@@ -89,7 +89,7 @@ constructor(repository = null, payStructureRepository = null) {
       await this.checkWorkerTypeLimit(organizationId);
 
       // Check for duplicate code (only active records)
-      const existing = await this.workerTypeRepository.findTemplateByCode(
+      const existing = await this.workerTypeRepository.findByCode(
         value.code,
         organizationId
       );
