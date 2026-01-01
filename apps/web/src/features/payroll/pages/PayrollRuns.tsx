@@ -12,6 +12,7 @@ import {
   useApprovePayroll,
   useProcessPayroll,
 } from '../hooks/usePayrollRuns';
+import { WorkflowStepper } from '../components/WorkflowStepper';
 
 // StatusBadge component
 function StatusBadge({ status }: { status: string }) {
@@ -482,8 +483,19 @@ export default function PayrollRunsPage() {
               className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
               onClick={() => setSelectedRun(null)}
             />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Loonrun Details</h3>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-6">Loonrun Details</h3>
+              
+              {/* Workflow Progress Indicator */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-4">Workflow Status</h4>
+                <WorkflowStepper 
+                  currentStatus={selectedRun.status} 
+                  showLabels={true}
+                  showDescriptions={false}
+                />
+              </div>
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
