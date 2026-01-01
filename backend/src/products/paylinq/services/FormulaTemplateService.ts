@@ -5,7 +5,7 @@
  * Supports global templates (available to all orgs) and org-specific custom templates.
  */
 
-import pool from '../../../config/database.js';
+import { query as dbQuery } from '../../../config/database.js';
 import formulaEngine from '../../../services/formula/FormulaEngine.js';
 import { ValidationError, NotFoundError, ForbiddenError } from '../../../middleware/errorHandler.js';
 
@@ -78,7 +78,10 @@ constructor(formulaEngineInstance = null) {
     
     query += ` ORDER BY is_popular DESC, usage_count DESC, template_name ASC`;
     
-    const result = await pool.query(query, params);
+    const result = await dbQuery(query, params, organizationId, {
+      operation: 'SELECT',
+      table: 'payroll.formula_template'
+    });
     return result.rows;
   }
 
@@ -94,7 +97,10 @@ constructor(formulaEngineInstance = null) {
         AND (is_global = true OR organization_id = $2)
     `;
     
-    const result = await pool.query(queryText, [templateId, organizationId]);
+    const result = await dbQuery(queryText, [templateId, organizationId], organizationId, {
+      operation: 'SELECT',
+      table: 'payroll.formula_template'
+    });
     
     if (result.rows.length === 0) {
       throw new NotFoundError('Template not found or access denied');
@@ -115,7 +121,10 @@ constructor(formulaEngineInstance = null) {
         AND (is_global = true OR organization_id = $2)
     `;
     
-    const result = await pool.query(queryText, [templateCode, organizationId]);
+    const result = await dbQuery(queryText, [templateCode, organizationId], organizationId, {
+      operation: 'SELECT',
+      table: 'payroll.formula_template'
+    });
     
     if (result.rows.length === 0) {
       throw new NotFoundError('Template not found');
@@ -173,10 +182,15 @@ constructor(formulaEngineInstance = null) {
     }
 
     // Check for duplicate template code
-    const existing = await pool.query(
+    const existing = await dbQuery(
       `SELECT id FROM payroll.formula_template 
        WHERE template_code = $1 AND organization_id = $2 AND is_active = true`,
-      [template_code, organizationId]
+      [template_code, organizationId],
+      organizationId,
+      {
+        operation: 'SELECT',
+        table: 'payroll.formula_template'
+      }
     );
 
     if (existing.rows.length > 0) {
@@ -202,7 +216,7 @@ constructor(formulaEngineInstance = null) {
       RETURNING *
     `;
 
-    const result = await pool.query(query, [
+    const result = await dbQuery(query, [
       organizationId,
       template_code,
       template_name,
@@ -216,7 +230,10 @@ constructor(formulaEngineInstance = null) {
       tags,
       complexity_level,
       userId
-    ]);
+    ], organizationId, {
+      operation: 'INSERT',
+      table: 'payroll.formula_template'
+    });
 
     return result.rows[0];
   }
@@ -234,11 +251,16 @@ constructor(formulaEngineInstance = null) {
 
     try {
       // Verify template exists and belongs to org (not global)
-      const existing = await pool.query(
+      const existing = await dbQuery(
       `SELECT id, is_global, organization_id 
        FROM payroll.formula_template 
        WHERE id = $1 AND (organization_id = $2 OR is_global = true) AND is_active = true`,
-      [templateId, organizationId]
+      [templateId, organizationId],
+      organizationId,
+      {
+        operation: 'SELECT',
+        table: 'payroll.formula_template'
+      }
     );
 
     if (existing.rows.length === 0) {
@@ -330,7 +352,11 @@ constructor(formulaEngineInstance = null) {
       RETURNING *
     `;
 
-    const result = await pool.query(query, params);
+    const result = await dbQuery(query, params, organizationId, {
+      operation: 'UPDATE',
+      table: 'payroll.formula_template',
+      userId
+    });
     console.log('✅ FormulaTemplateService.updateTemplate succeeded');
     return result.rows[0];
     } catch (_error) {
@@ -347,11 +373,16 @@ constructor(formulaEngineInstance = null) {
    */
   async deleteTemplate(templateId, organizationId, userId) {
     // Verify template exists and belongs to org (not global)
-    const existing = await pool.query(
+    const existing = await dbQuery(
       `SELECT id, is_global, organization_id 
        FROM payroll.formula_template 
        WHERE id = $1 AND (organization_id = $2 OR is_global = true) AND is_active = true`,
-      [templateId, organizationId]
+      [templateId, organizationId],
+      organizationId,
+      {
+        operation: 'SELECT',
+        table: 'payroll.formula_template'
+      }
     );
 
     if (existing.rows.length === 0) {
@@ -369,7 +400,11 @@ constructor(formulaEngineInstance = null) {
       RETURNING id
     `;
 
-    await pool.query(query, [userId, templateId]);
+    await dbQuery(query, [userId, templateId], organizationId, {
+      operation: 'UPDATE',
+      table: 'payroll.formula_template',
+      userId
+    });
     return { success: true, id: templateId };
   }
 
@@ -387,11 +422,16 @@ constructor(formulaEngineInstance = null) {
       const template = await this.getTemplateById(templateId, organizationId);
     
     // Increment usage count
-    await pool.query(
+    await dbQuery(
       `UPDATE payroll.formula_template 
        SET usage_count = usage_count + 1 
        WHERE id = $1`,
-      [templateId]
+      [templateId],
+      organizationId,
+      {
+        operation: 'UPDATE',
+        table: 'payroll.formula_template'
+      }
     );
 
     // Substitute parameters in formula expression
@@ -470,7 +510,10 @@ constructor(formulaEngineInstance = null) {
       LIMIT $2
     `;
     
-    const result = await pool.query(query, [organizationId, limit]);
+    const result = await dbQuery(query, [organizationId, limit], organizationId, {
+      operation: 'SELECT',
+      table: 'payroll.formula_template'
+    });
     return result.rows;
   }
 
@@ -491,7 +534,10 @@ constructor(formulaEngineInstance = null) {
       ORDER BY usage_count DESC, template_name ASC
     `;
     
-    const result = await pool.query(query, [category, organizationId]);
+    const result = await dbQuery(query, [category, organizationId], organizationId, {
+      operation: 'SELECT',
+      table: 'payroll.formula_template'
+    });
     return result.rows;
   }
 
@@ -512,7 +558,10 @@ constructor(formulaEngineInstance = null) {
         usage_count DESC
     `;
     
-    const result = await pool.query(query, [organizationId, tags]);
+    const result = await dbQuery(query, [organizationId, tags], organizationId, {
+      operation: 'SELECT',
+      table: 'payroll.formula_template'
+    });
     return result.rows;
   }
 }
