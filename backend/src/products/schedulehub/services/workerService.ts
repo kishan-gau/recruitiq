@@ -224,7 +224,7 @@ constructor() {
    */
   async getWorkerByEmployeeId(employeeId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT 
           e.id,
           e.id as employee_id,
@@ -252,7 +252,12 @@ constructor() {
         LEFT JOIN scheduling.worker_scheduling_config wsc 
           ON e.id = wsc.employee_id AND e.organization_id = wsc.organization_id
         WHERE e.id = $1 AND e.organization_id = $2`,
-        [employeeId, organizationId]
+        [employeeId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'hris.employee'
+        }
       );
 
       if (result.rows.length === 0) {
@@ -356,7 +361,10 @@ constructor() {
       query += ` OFFSET $${paramCount}`;
       params.push(offset);
 
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'hris.employee'
+      });
 
       // Get total count
       let countQuery = `SELECT COUNT(*) FROM hris.employee e WHERE e.organization_id = $1 AND e.employment_status = 'active'`;
@@ -384,7 +392,10 @@ constructor() {
         countParams.push(employmentType);
       }
       
-      const countResult = await pool.query(countQuery, countParams);
+      const countResult = await dbQuery(countQuery, countParams, organizationId, {
+        operation: 'SELECT',
+        table: 'hris.employee'
+      });
       const totalCount = parseInt(countResult.rows[0].count);
 
       return {
@@ -723,7 +734,7 @@ constructor() {
    */
   async getWorkerAvailabilitySummary(workerId, organizationId, startDate, endDate) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT 
           day_of_week,
           start_time,
@@ -739,7 +750,12 @@ constructor() {
           (availability_type IN ('one_time', 'unavailable') AND specific_date BETWEEN $3 AND $4)
         )
         ORDER BY day_of_week, start_time`,
-        [workerId, organizationId, startDate, endDate]
+        [workerId, organizationId, startDate, endDate],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.worker_availability'
+        }
       );
 
       return {
@@ -793,7 +809,10 @@ constructor() {
       query += ` LIMIT $${paramCount}`;
       params.push(limit);
 
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.shifts'
+      });
 
       return {
         success: true,

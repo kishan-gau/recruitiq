@@ -172,7 +172,10 @@ constructor(poolInstance = null) {
       }
 
       // Get total count
-      const countResult = await pool.query(countQuery, countParams);
+      const countResult = await dbQuery(countQuery, countParams, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.worker_availability'
+      });
       const total = parseInt(countResult.rows[0].total_count);
 
       // Build main query with same filters
@@ -237,7 +240,10 @@ constructor(poolInstance = null) {
       query += ` OFFSET $${paramCount}`;
       params.push(offset);
 
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.worker_availability'
+      });
 
       // Calculate pagination metadata
       const totalPages = Math.ceil(total / limit);
@@ -306,7 +312,10 @@ constructor(poolInstance = null) {
         specific_date,
         start_time`;
 
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.worker_availability'
+      });
 
       // Transform DB format to API format and return consistent format
       return {
@@ -511,7 +520,7 @@ constructor(poolInstance = null) {
       const dayOfWeek = new Date(date).getUTCDay();
 
       // Check for specific unavailability on this date
-      const unavailableCheck = await pool.query(
+      const unavailableCheck = await dbQuery(
         `SELECT id FROM scheduling.worker_availability
          WHERE employee_id = $1 
          AND organization_id = $2
@@ -522,7 +531,12 @@ constructor(poolInstance = null) {
            (start_time < $5 AND end_time >= $5) OR
            (start_time >= $4 AND end_time <= $5)
          )`,
-        [workerId, organizationId, date, startTime, endTime]
+        [workerId, organizationId, date, startTime, endTime],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.worker_availability'
+        }
       );
 
       if (unavailableCheck.rows.length > 0) {
@@ -534,7 +548,7 @@ constructor(poolInstance = null) {
       }
 
       // Check for one-time availability
-      const oneTimeCheck = await pool.query(
+      const oneTimeCheck = await dbQuery(
         `SELECT id, priority FROM scheduling.worker_availability
          WHERE employee_id = $1 
          AND organization_id = $2
@@ -542,7 +556,12 @@ constructor(poolInstance = null) {
          AND specific_date = $3
          AND start_time <= $4 
          AND end_time >= $5`,
-        [workerId, organizationId, date, startTime, endTime]
+        [workerId, organizationId, date, startTime, endTime],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.worker_availability'
+        }
       );
 
       if (oneTimeCheck.rows.length > 0) {
@@ -555,7 +574,7 @@ constructor(poolInstance = null) {
       }
 
       // Check for recurring availability
-      const recurringCheck = await pool.query(
+      const recurringCheck = await dbQuery(
         `SELECT id, priority FROM scheduling.worker_availability
          WHERE employee_id = $1 
          AND organization_id = $2
@@ -564,7 +583,12 @@ constructor(poolInstance = null) {
          AND start_time <= $4 
          AND end_time >= $5
          AND (effective_to IS NULL OR effective_to >= $6)`,
-        [workerId, organizationId, dayOfWeek, startTime, endTime, date]
+        [workerId, organizationId, dayOfWeek, startTime, endTime, date],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.worker_availability'
+        }
       );
 
       if (recurringCheck.rows.length > 0) {
@@ -661,7 +685,10 @@ constructor(poolInstance = null) {
         priority_order,
         e.last_name, e.first_name`;
 
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'hris.employee'
+      });
 
       return {
         success: true,
