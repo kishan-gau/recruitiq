@@ -6,6 +6,32 @@
 
 import logger from '../../utils/logger.js';
 
+/**
+ * Context data for integration logging
+ */
+export interface IntegrationContext {
+  userId?: string;
+  organizationId?: string;
+  requestId?: string;
+  sourceProduct?: string;
+  targetProduct?: string;
+  correlationId?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Options for retry/circuit breaker configuration
+ */
+export interface IntegrationRetryOptions {
+  maxRetries?: number;
+  initialDelayMs?: number;
+  maxDelayMs?: number;
+  backoffMultiplier?: number;
+  failureThreshold?: number;
+  successThreshold?: number;
+  timeout?: number;
+}
+
 class IntegrationErrorHandler {
   constructor() {
     this.logger = logger;
@@ -33,7 +59,7 @@ class IntegrationErrorHandler {
    * @param {Object} options - Override default retry/circuit breaker config
    * @returns {Promise<Object>} Result with success flag and data/error
    */
-  async executeWithRetry(integrationName, integrationFn, context = {}, options = {}) {
+  async executeWithRetry(integrationName: string, integrationFn: () => Promise<unknown>, context: IntegrationContext = {}, options: IntegrationRetryOptions = {}) {
     const config = { ...this.retryConfig, ...options };
     const startTime = Date.now();
 
@@ -89,7 +115,7 @@ class IntegrationErrorHandler {
           executionTimeMs
         };
 
-      } catch (_error) {
+      } catch (error) {
         lastError = error;
 
         // Record failure
@@ -151,7 +177,7 @@ class IntegrationErrorHandler {
    * @param {Object} options - Override default config
    * @returns {Promise<Object>} Always returns success with integration result
    */
-  async executeNonBlocking(integrationName, integrationFn, context = {}, options = {}) {
+  async executeNonBlocking(integrationName: string, integrationFn: () => Promise<unknown>, context: IntegrationContext = {}, options: IntegrationRetryOptions = {}) {
     try {
       const result = await this.executeWithRetry(integrationName, integrationFn, context, options);
       
@@ -169,7 +195,7 @@ class IntegrationErrorHandler {
         integrationResult: result
       };
 
-    } catch (_error) {
+    } catch (error) {
       // Should never happen since executeWithRetry catches all errors
       this.logger.error('[Integration] Unexpected error in non-blocking execution', {
         integration: integrationName,

@@ -12,15 +12,20 @@ import { ValidationError, NotFoundError, ConflictError } from '../../utils/error
 import logger from '../../utils/logger.js';
 import VPSRepository from '../../repositories/VPSRepository.js';
 
+export interface WaitForVPSReadyOptions {
+  timeout?: number;
+  interval?: number;
+}
+
 class VPSService {
   /**
    * Constructor with dependency injection
    * @param {VPSRepository} repository - Optional repository instance for testing
    */
   
-  repository: any;
+  repository: VPSRepository;
 
-constructor(repository = null) {
+constructor(repository: VPSRepository | null = null) {
     this.repository = repository || new VPSRepository();
   }
 
@@ -98,7 +103,7 @@ constructor(repository = null) {
       });
 
       return vps;
-    } catch (_error) {
+    } catch (error) {
       // 6. Log errors with context
       logger.error('Error creating VPS', {
         error: error.message,
@@ -242,7 +247,7 @@ constructor(repository = null) {
    * @returns {Promise<Object>} VPS object when ready
    * @throws {Error} If timeout reached or VPS enters error/locked/blocked state
    */
-  async waitForVPSReady(vpsId, organizationId, options = {}) {
+  async waitForVPSReady(vpsId: string, organizationId: string, options: WaitForVPSReadyOptions = {}): Promise<unknown> {
     const timeout = options.timeout || 300000; // 5 minutes default
     const interval = options.interval || 5000; // 5 seconds default
     const startTime = Date.now();

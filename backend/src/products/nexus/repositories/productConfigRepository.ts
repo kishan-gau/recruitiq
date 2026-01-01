@@ -30,7 +30,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [organizationId, productId], organizationId);
       return result.rows.map(row => new ProductConfig(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding configs', { organizationId, productId, error: error.message });
       throw error;
     }
@@ -47,7 +47,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [organizationId, productId, configKey], organizationId);
       return result.rows.length > 0 ? new ProductConfig(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding config by key', { organizationId, productId, configKey, error: error.message });
       throw error;
     }
@@ -67,7 +67,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [productId], null);
       return result.rows.map(row => new ProductConfig(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding configs by product', { productId, error: error.message });
       throw error;
     }
@@ -85,7 +85,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [organizationId, productId], organizationId);
       return result.rows.map(row => new ProductConfig(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding sensitive configs', { organizationId, productId, error: error.message });
       throw error;
     }
@@ -127,7 +127,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, values, configData.organizationId);
       return new ProductConfig(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error upserting config', { organizationId: configData.organizationId, error: error.message });
       throw error;
     }
@@ -155,7 +155,7 @@ constructor(database = null) {
         configKey
       ], organizationId);
       return result.rows.length > 0 ? new ProductConfig(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating config value', { organizationId, productId, configKey, error: error.message });
       throw error;
     }
@@ -173,7 +173,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [organizationId, productId, configKey], organizationId);
       return result.rows.length > 0;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting config', { organizationId, productId, configKey, error: error.message });
       throw error;
     }
@@ -190,7 +190,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [organizationId, productId], organizationId);
       return result.rowCount;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting all configs', { organizationId, productId, error: error.message });
       throw error;
     }
@@ -207,7 +207,7 @@ constructor(database = null) {
         configMap[config.configKey] = config.configValue;
       });
       return configMap;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting config map', { organizationId, productId, error: error.message });
       throw error;
     }

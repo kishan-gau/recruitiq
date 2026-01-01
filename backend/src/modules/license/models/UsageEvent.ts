@@ -37,7 +37,7 @@ class UsageEvent {
   }
 
   // Get events by customer ID
-  static async findByCustomerId(customerId, filters = {}) {
+  static async findByCustomerId(customerId: string, filters: { eventType?: string; since?: Date | string; until?: Date | string; limit?: number } = {}) {
     let query = 'SELECT * FROM usage_events WHERE customer_id = $1'
     const params = [customerId]
     let paramCount = 1

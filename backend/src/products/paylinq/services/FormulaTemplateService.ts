@@ -97,7 +97,7 @@ constructor(repository = null, formulaEngineInstance = null) {
           `Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`
         );
       }
-    } catch (_error) {
+    } catch (error) {
       // Convert FormulaParseError to ValidationError for proper 400 status
       if (error.name === 'FormulaParseError' || _error.message.includes('token') || _error.message.includes('parse')) {
         throw new ValidationError(`Invalid formula syntax: ${_error.message}`);
@@ -116,7 +116,7 @@ constructor(repository = null, formulaEngineInstance = null) {
     let parsed;
     try {
       parsed = await this.formulaEngine.parse(formulaToValidate);
-    } catch (_error) {
+    } catch (error) {
       // If validation passed but parsing failed, re-throw as ValidationError
       throw new ValidationError(`Formula parsing failed: ${_error.message}`);
     }
@@ -189,7 +189,7 @@ constructor(repository = null, formulaEngineInstance = null) {
             if (!validation.valid) {
               throw new ValidationError(`Invalid formula: ${validation.errors.map(e => e.message).join(', ')}`);
             }
-          } catch (_error) {
+          } catch (error) {
             // Convert FormulaParseError to ValidationError
             if (error.name === 'FormulaParseError' || _error.message.includes('token') || _error.message.includes('parse')) {
               throw new ValidationError(`Invalid formula syntax: ${_error.message}`);
@@ -201,7 +201,7 @@ constructor(repository = null, formulaEngineInstance = null) {
           let parsed;
           try {
             parsed = await this.formulaEngine.parse(formulaToValidate);
-          } catch (_error) {
+          } catch (error) {
             throw new ValidationError(`Formula parsing failed: ${_error.message}`);
           }
           updates['formula_ast'] = JSON.stringify(parsed);  // Fixed: parsed IS the AST
@@ -226,11 +226,11 @@ constructor(repository = null, formulaEngineInstance = null) {
     const result = await this.repository.update(templateId, updates, organizationId, userId);
     console.log('✅ FormulaTemplateService.updateTemplate succeeded');
     return result;
-    } catch (_error) {
+    } catch (error) {
       console.error('❌ FormulaTemplateService.updateTemplate ERROR:');
-      console.error('  Error type:', error.constructor.name);
+      console.error('  Error type:', _error.constructor.name);
       console.error('  Error message:', _error.message);
-      console.error('  Error stack:', error.stack);
+      console.error('  Error stack:', _error.stack);
       throw _error;
     }
   }
@@ -311,7 +311,7 @@ constructor(repository = null, formulaEngineInstance = null) {
           `Generated formula is invalid: ${validation.errors.map(e => e.message).join(', ')}`
         );
       }
-    } catch (_error) {
+    } catch (error) {
       // Convert FormulaParseError to ValidationError
       if (error.name === 'FormulaParseError' || _error.message.includes('token') || _error.message.includes('parse')) {
         throw new ValidationError(`Invalid formula syntax in generated formula: ${_error.message}`);
@@ -327,7 +327,7 @@ constructor(repository = null, formulaEngineInstance = null) {
       template_name: template.template_name,
       parameters: parameterValues
       };
-    } catch (_error) {
+    } catch (error) {
       throw _error;
     }
   }  /**

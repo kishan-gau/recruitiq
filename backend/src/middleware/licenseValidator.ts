@@ -10,6 +10,18 @@
 import axios from 'axios';
 import NodeCache from 'node-cache';
 
+/**
+ * Options for validateLicense middleware
+ */
+export interface ValidateLicenseOptions {
+  /** Feature to validate (e.g., 'payroll', 'recruitment') */
+  feature?: string;
+  /** Action to validate (e.g., 'create', 'export') */
+  action?: string;
+  /** Fail closed if Portal unreachable (default: false) */
+  strict?: boolean;
+}
+
 // License cache with 24 hour TTL
 const licenseCache = new NodeCache({ 
   stdTTL: 86400, // 24 hours
@@ -84,13 +96,10 @@ async function validateWithPortal(params) {
  * License validation middleware factory
  * Creates middleware that validates license for specific features/actions
  * 
- * @param {Object} options - Middleware options
- * @param {string} [options.feature] - Feature to validate (e.g., 'payroll', 'recruitment')
- * @param {string} [options.action] - Action to validate (e.g., 'create', 'export')
- * @param {boolean} [options.strict] - Fail closed if Portal unreachable
+ * @param {ValidateLicenseOptions} options - Middleware options
  * @returns {Function} Express middleware
  */
-export function validateLicense(options = {}) {
+export function validateLicense(options: ValidateLicenseOptions = {}) {
   const { feature, action, strict = false } = options;
 
   return async function licenseValidatorMiddleware(req, res, next) {
@@ -131,7 +140,7 @@ export function validateLicense(options = {}) {
       req.licenseInfo = validationResult;
       next();
 
-    } catch (_error) {
+    } catch (error) {
       console.error('[LicenseValidator] Portal validation failed:', error.message);
 
       // Fallback: Use locally cached license
@@ -231,7 +240,7 @@ export function checkLimit(limitType, countFn) {
       }
 
       next();
-    } catch (_error) {
+    } catch (error) {
       console.error(`[LicenseValidator] Failed to check ${limitType} limit:`, error.message);
       // Allow on error to avoid blocking operations
       next();

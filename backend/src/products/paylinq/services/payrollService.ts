@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Payroll Service
  * 
  * Business logic layer for payroll processing, employee management, and payroll run execution.
@@ -24,6 +24,7 @@ import type {
   PayrollRunData,
   TimesheetData
 } from '../../../types/paylinq.types.js';
+import type { ServiceFilterOptions, GenericOptions } from '../../../types/common.types.js';
 
 class PayrollService {
   payrollRepository: PayrollRepository;
@@ -32,11 +33,7 @@ class PayrollService {
   payStructureService: PayStructureService;
   payrollRunTypeService: PayrollRunTypeService;
   payrollRunCalculationService: PayrollRunCalculationService;
-  employeeRecordSchema: Joi.ObjectSchema;
-  compensationSchema: Joi.ObjectSchema;
-  compensationUpdateSchema: Joi.ObjectSchema;
-  payrollRunSchema: Joi.ObjectSchema;
-  timesheetSchema: Joi.ObjectSchema;
+  // Schema types are inferred from the property initializers below
 
   constructor(
     payrollRepository: PayrollRepository | null = null,
@@ -392,9 +389,9 @@ class PayrollService {
       });
 
       return enrichedRecord;
-    } catch (err) {
-      logger.error('Error creating employee record', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating employee record', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -404,7 +401,7 @@ class PayrollService {
    * @param {Object} filters - Optional filters (including pagination)
    * @returns {Promise<Object>} Employee records with pagination
    */
-  async getEmployeesByOrganization(organizationId, filters = {}) {
+  async getEmployeesByOrganization(organizationId: string, filters: ServiceFilterOptions = {}) {
     try {
       const result = await this.payrollRepository.findByOrganization(organizationId, filters);
       
@@ -415,9 +412,9 @@ class PayrollService {
       
       // Legacy: return array directly for backward compatibility
       return Array.isArray(result) ? result : result.employees || [];
-    } catch (err) {
-      logger.error('Error fetching employees', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching employees', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -447,13 +444,13 @@ class PayrollService {
       };
 
       return enrichedRecord;
-    } catch (err) {
+    } catch (error) {
       logger.error('Error fetching employee record', {
-        error: err.message,
+        error: error.message,
         employeeRecordId,
         organizationId,
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -488,14 +485,14 @@ class PayrollService {
       });
 
       return true;
-    } catch (err) {
+    } catch (error) {
       logger.error('Error deleting employee record', {
-        error: err.message,
+        error: error.message,
         employeeRecordId,
         organizationId,
         userId,
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -506,7 +503,7 @@ class PayrollService {
    * @param {Object} filters - Optional filters (startDate, endDate, limit)
    * @returns {Promise<Array>} Payroll history records
    */
-  async getEmployeePayrollHistory(employeeRecordId, organizationId, filters = {}) {
+  async getEmployeePayrollHistory(employeeRecordId: string, organizationId: string, filters: ServiceFilterOptions = {}) {
     try {
       const employee = await this.payrollRepository.findEmployeeRecordById(
         employeeRecordId,
@@ -525,13 +522,13 @@ class PayrollService {
       );
 
       return history;
-    } catch (err) {
+    } catch (error) {
       logger.error('Error fetching employee payroll history', {
-        error: err.message,
+        error: error.message,
         employeeRecordId,
         organizationId,
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -591,7 +588,7 @@ class PayrollService {
       };
 
       // Transform updates to database field names
-      const dbUpdates = {};
+      const dbUpdates: Record<string, unknown> = {};
       Object.keys(updates).forEach(key => {
         if (fieldMapping[key]) {
           // Skip firstName/lastName as they're not in payroll table
@@ -672,7 +669,16 @@ class PayrollService {
         if (!existingCompensation && compensationAmount > 0) {
           // Create compensation record from metadata
           // CRITICAL: Use employee_id (HRIS ID), not employeeRecordId (payroll config ID)
-          const newCompensation = {
+          const newCompensation: {
+            employeeId: string;
+            compensationType: string;
+            amount: number;
+            currency: string;
+            effectiveFrom: string;
+            payFrequency: string;
+            isCurrent: boolean;
+            overtimeRate?: number | null;
+          } = {
             employeeId: currentRecord.employee_id, // HRIS employee ID from payroll config
             compensationType,
             amount: compensationAmount,
@@ -754,9 +760,9 @@ class PayrollService {
       });
 
       return updatedRecord;
-    } catch (err) {
-      logger.error('Error updating employee record', { error: err.message, employeeRecordId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating employee record', { error: error.message, employeeRecordId });
+      throw error;
     }
   }
 
@@ -795,9 +801,9 @@ class PayrollService {
       });
 
       return compensation;
-    } catch (err) {
-      logger.error('Error creating compensation', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating compensation', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -810,9 +816,9 @@ class PayrollService {
   async getCurrentCompensation(employeeRecordId, organizationId) {
     try {
       return await this.payrollRepository.findCurrentCompensation(employeeRecordId, organizationId);
-    } catch (err) {
-      logger.error('Error fetching current compensation', { error: err.message, employeeRecordId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching current compensation', { error: error.message, employeeRecordId });
+      throw error;
     }
   }
 
@@ -825,9 +831,9 @@ class PayrollService {
   async getCompensationById(compensationId, organizationId) {
     try {
       return await this.payrollRepository.findCompensationById(compensationId, organizationId);
-    } catch (err) {
-      logger.error('Error fetching compensation by ID', { error: err.message, compensationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching compensation by ID', { error: error.message, compensationId });
+      throw error;
     }
   }
 
@@ -840,9 +846,9 @@ class PayrollService {
   async getCompensationHistory(employeeRecordId, organizationId) {
     try {
       return await this.payrollRepository.findCompensationHistory(employeeRecordId, organizationId);
-    } catch (err) {
-      logger.error('Error fetching compensation history', { error: err.message, employeeRecordId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching compensation history', { error: error.message, employeeRecordId });
+      throw error;
     }
   }
 
@@ -871,13 +877,13 @@ class PayrollService {
       if (summary.firstHireDate) {
         const hireDate = new Date(summary.firstHireDate);
         const now = new Date();
-        summary.totalYearsOfService = (now - hireDate) / (1000 * 60 * 60 * 24 * 365.25);
+        summary.totalYearsOfService = (now.getTime() - hireDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
       }
 
       return summary;
-    } catch (err) {
-      logger.error('Error fetching compensation summary', { error: err.message, employeeRecordId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching compensation summary', { error: error.message, employeeRecordId });
+      throw error;
     }
   }
 
@@ -908,9 +914,9 @@ class PayrollService {
       }
       
       return updated;
-    } catch (err) {
-      logger.error('Error updating compensation', { error: err.message, compensationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating compensation', { error: error.message, compensationId });
+      throw error;
     }
   }
 
@@ -934,9 +940,9 @@ class PayrollService {
       }
       
       return deleted;
-    } catch (err) {
-      logger.error('Error deleting compensation', { error: err.message, compensationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error deleting compensation', { error: error.message, compensationId });
+      throw error;
     }
   }
 
@@ -969,13 +975,13 @@ class PayrollService {
         runTypeName: runType.typeName,
         organizationId
       });
-    } catch (err) {
-      if (err instanceof ValidationError) {
-        throw err;
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
       }
       logger.warn('Run type validation failed, proceeding with default', {
         runType: value.runType,
-        error: err.message,
+        error: error.message,
         organizationId
       });
     }
@@ -1004,9 +1010,9 @@ class PayrollService {
       });
 
       return payrollRun;
-    } catch (err) {
-      logger.error('Error creating payroll run', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating payroll run', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -1040,7 +1046,8 @@ class PayrollService {
       await this.payrollRepository.updatePayrollRun(
         payrollRunId,
         { status: 'calculating' },
-        organizationId
+        organizationId,
+        userId
       );
 
       logger.info('Starting payroll calculation', { payrollRunId, organizationId });
@@ -1059,10 +1066,10 @@ class PayrollService {
           payrollRunId,
           organizationId
         });
-      } catch (err) {
+      } catch (error) {
         logger.warn('Failed to resolve run type components, will include all components', {
           runType: payrollRun.run_type,
-          error: err.message,
+          error: error.message,
           payrollRunId,
           organizationId
         });
@@ -1667,7 +1674,7 @@ class PayrollService {
 
         } catch (empErr) {
           logger.error('Error calculating paycheck for employee', {
-            employeeId: employeeId,
+            employeeId: employee.employee_id,
             employeeConfigId: employee.id,
             error: empErr.message
           });
@@ -1710,9 +1717,9 @@ class PayrollService {
         paychecks
       };
 
-    } catch (err) {
-      logger.error('Error calculating payroll', { error: err.message, payrollRunId });
-      throw err;
+    } catch (error) {
+      logger.error('Error calculating payroll', { error: error.message, payrollRunId });
+      throw error;
     }
   }
 
@@ -1722,13 +1729,13 @@ class PayrollService {
    * @param {Object} filters - Optional filters
    * @returns {Promise<Array>} Payroll runs
    */
-  async getPayrollRuns(organizationId, filters = {}) {
+  async getPayrollRuns(organizationId: string, filters: ServiceFilterOptions = {}) {
     try {
       // FIX: Repository expects (organizationId, filters) not (filters, organizationId)
       return await this.payrollRepository.findPayrollRuns(organizationId, filters);
-    } catch (err) {
-      logger.error('Error fetching payroll runs', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching payroll runs', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -1747,9 +1754,9 @@ class PayrollService {
       }
       
       return await this.payrollRepository.findPaychecksByRun(payrollRunId, organizationId);
-    } catch (err) {
-      logger.error('Error fetching paychecks', { error: err.message, payrollRunId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching paychecks', { error: error.message, payrollRunId });
+      throw error;
     }
   }
 
@@ -1794,9 +1801,9 @@ class PayrollService {
       });
 
       return timesheet;
-    } catch (err) {
-      logger.error('Error creating timesheet', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating timesheet', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -1823,9 +1830,9 @@ class PayrollService {
       });
 
       return timesheet;
-    } catch (err) {
-      logger.error('Error approving timesheet', { error: err.message, timesheetId });
-      throw err;
+    } catch (error) {
+      logger.error('Error approving timesheet', { error: error.message, timesheetId });
+      throw error;
     }
   }
 
@@ -1852,9 +1859,9 @@ class PayrollService {
       });
 
       return timesheet;
-    } catch (err) {
-      logger.error('Error rejecting timesheet', { error: err.message, timesheetId });
-      throw err;
+    } catch (error) {
+      logger.error('Error rejecting timesheet', { error: error.message, timesheetId });
+      throw error;
     }
   }
 
@@ -1864,12 +1871,12 @@ class PayrollService {
    * @param {Object} filters - Optional filters
    * @returns {Promise<Array>} Timesheets pending approval
    */
-  async getTimesheetsForApproval(organizationId, filters = {}) {
+  async getTimesheetsForApproval(organizationId: string, filters: ServiceFilterOptions = {}) {
     try {
       return await this.payrollRepository.findTimesheetsForApproval(filters, organizationId);
-    } catch (err) {
-      logger.error('Error fetching timesheets for approval', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching timesheets for approval', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -1881,7 +1888,7 @@ class PayrollService {
    * @param {Object} filters - Optional filters
    * @returns {Promise<Array>} Payroll runs
    */
-  async getPayrollRunsByOrganization(organizationId, filters = {}) {
+  async getPayrollRunsByOrganization(organizationId: string, filters: ServiceFilterOptions = {}) {
     return this.getPayrollRuns(organizationId, filters);
   }
 
@@ -1900,9 +1907,9 @@ class PayrollService {
       }
 
       return payrollRun;
-    } catch (err) {
-      logger.error('Error fetching payroll run', { error: err.message, payrollRunId, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching payroll run', { error: error.message, payrollRunId, organizationId });
+      throw error;
     }
   }
 
@@ -1929,9 +1936,9 @@ class PayrollService {
 
       logger.info('Payroll run updated', { payrollRunId, organizationId });
       return payrollRun;
-    } catch (err) {
-      logger.error('Error updating payroll run', { error: err.message, payrollRunId, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating payroll run', { error: error.message, payrollRunId, organizationId });
+      throw error;
     }
   }
 
@@ -1966,14 +1973,15 @@ class PayrollService {
           status: 'calculated',
           updated_by: userId
         },
-        organizationId
+        organizationId,
+        userId
       );
 
       logger.info('Payroll run marked for review', { payrollRunId, organizationId, userId });
       return updated;
-    } catch (err) {
-      logger.error('Error marking payroll run for review', { error: err.message, payrollRunId, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error marking payroll run for review', { error: error.message, payrollRunId, organizationId });
+      throw error;
     }
   }
 
@@ -2003,14 +2011,15 @@ class PayrollService {
           approved_by: userId,
           approved_at: nowUTC()
         },
-        organizationId
+        organizationId,
+        userId
       );
 
       logger.info('Payroll run finalized', { payrollRunId, organizationId, userId });
       return finalized;
-    } catch (err) {
-      logger.error('Error finalizing payroll run', { error: err.message, payrollRunId, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error finalizing payroll run', { error: error.message, payrollRunId, organizationId });
+      throw error;
     }
   }
 
@@ -2041,9 +2050,9 @@ class PayrollService {
 
       logger.info('Payroll run deleted', { payrollRunId, organizationId, userId });
       return deleted;
-    } catch (err) {
-      logger.error('Error deleting payroll run', { error: err.message, payrollRunId, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error deleting payroll run', { error: error.message, payrollRunId, organizationId });
+      throw error;
     }
   }
 
@@ -2065,12 +2074,12 @@ class PayrollService {
    * @param {Object} filters - Filter options
    * @returns {Promise<Array>} Paychecks
    */
-  async getPaychecksByOrganization(organizationId, filters = {}) {
+  async getPaychecksByOrganization(organizationId: string, filters: ServiceFilterOptions = {}) {
     try {
       return await this.payrollRepository.findPaychecksByOrganization(organizationId, filters);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching paychecks by organization', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         organizationId,
         filters,
       });
@@ -2087,9 +2096,9 @@ class PayrollService {
   async getPaycheckById(paycheckId, organizationId) {
     try {
       return await this.payrollRepository.findPaycheckById(paycheckId, organizationId);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching paycheck by ID', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         paycheckId,
         organizationId,
       });
@@ -2104,12 +2113,12 @@ class PayrollService {
    * @param {Object} filters - Filter options
    * @returns {Promise<Array>} Paychecks
    */
-  async getPaychecksByEmployee(employeeId, organizationId, filters = {}) {
+  async getPaychecksByEmployee(employeeId: string, organizationId: string, filters: ServiceFilterOptions = {}) {
     try {
       return await this.payrollRepository.findPaychecksByEmployee(employeeId, organizationId, filters);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching paychecks by employee', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         employeeId,
         organizationId,
         filters,
@@ -2150,9 +2159,9 @@ class PayrollService {
       });
 
       return updated;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating paycheck', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         paycheckId,
         organizationId,
       });
@@ -2201,13 +2210,13 @@ class PayrollService {
       });
 
       return updated;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error voiding paycheck', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         paycheckId,
         organizationId,
       });
-      throw _error;
+      throw error;
     }
   }
 
@@ -2219,7 +2228,7 @@ class PayrollService {
    * @param {Object} adjustments - Adjustments to apply
    * @returns {Promise<Object>} New paycheck
    */
-  async reissuePaycheck(paycheckId, organizationId, userId, adjustments = {}) {
+  async reissuePaycheck(paycheckId: string, organizationId: string, userId: string, adjustments: GenericOptions = {}) {
     try {
       const originalPaycheck = await this.payrollRepository.findPaycheckById(paycheckId, organizationId);
       
@@ -2233,7 +2242,7 @@ class PayrollService {
       }
 
       // Validate adjustments (prevent negative amounts)
-      if (adjustments.grossPay !== undefined && adjustments.grossPay < 0) {
+      if (adjustments.grossPay !== undefined && (adjustments.grossPay as number) < 0) {
         throw new Error('Invalid adjustment: gross pay cannot be negative');
       }
 
@@ -2274,13 +2283,13 @@ class PayrollService {
 
       // Return the new paycheck
       return this.payrollRepository.findPaycheckById(newPaycheck.id, organizationId);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error reissuing paycheck', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         paycheckId,
         organizationId,
       });
-      throw _error;
+      throw error;
     }
   }
 
@@ -2314,13 +2323,13 @@ class PayrollService {
       }
 
       return deleted;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error deleting paycheck', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         paycheckId,
         organizationId,
       });
-      throw _error;
+      throw error;
     }
   }
 
@@ -2400,13 +2409,13 @@ class PayrollService {
         temporaryPassword: userAccount.temporaryPassword,
         requiresPasswordChange: userAccount.requiresPasswordChange
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error granting system access', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         employeeId,
         organizationId
       });
-      throw _error;
+      throw error;
     }
   }
 
@@ -2463,13 +2472,13 @@ class PayrollService {
         success: true,
         message: 'System access revoked successfully'
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error revoking system access', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         employeeId,
         organizationId
       });
-      throw _error;
+      throw error;
     }
   }
 
@@ -2513,13 +2522,13 @@ class PayrollService {
         lastLoginAt: userAccount.last_login_at,
         createdAt: userAccount.created_at
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting user account status', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         employeeId,
         organizationId
       });
-      throw _error;
+      throw error;
     }
   }
 
@@ -2565,13 +2574,13 @@ class PayrollService {
         accountStatus: updated.account_status,
         isActive: updated.is_active
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating employee access', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         employeeId,
         organizationId
       });
-      throw _error;
+      throw error;
     }
   }
 
@@ -2585,6 +2594,10 @@ class PayrollService {
   async getEmployeeYtdSummary(employeeId, organizationId, year = null) {
     try {
       const targetYear = year || new Date().getFullYear();
+      
+      // Dynamic import for database client
+      const dbModule = await import('../../../config/database');
+      const dbClient = dbModule.default;
       
       const sql = `
         SELECT 
@@ -2603,7 +2616,7 @@ class PayrollService {
           AND deleted_at IS NULL
       `;
 
-      const result = await db(sql, [employeeId, organizationId, targetYear], organizationId);
+      const result = await dbClient.query(sql, [employeeId, organizationId, targetYear]);
 
       if (result.rows.length === 0 || result.rows[0].paycheck_count === 0) {
         return {
@@ -2630,9 +2643,9 @@ class PayrollService {
         firstPayPeriod: row.first_pay_period,
         lastPayPeriod: row.last_pay_period
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching employee YTD summary', {
-        error: _error.message,
+        error: error instanceof Error ? error.message : String(error),
         employeeId,
         organizationId,
         year: year || new Date().getFullYear()

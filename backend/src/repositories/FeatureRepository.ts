@@ -11,18 +11,44 @@ import logger from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import { mapDbToApi } from '../utils/dtoMapper.js';
 
+export interface FindByProductFilters {
+  status?: string;
+  category?: string;
+  isAddOn?: boolean;
+  minTier?: string;
+}
+
+export interface FindByProductOptions {
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+}
+
+export interface FindAllFilters {
+  productId?: string;
+  status?: string;
+  search?: string;
+}
+
+export interface FindAllOptions {
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+}
+
+export interface FindAllResult {
+  features: unknown[];
+  total: number;
+  limit: number;
+  offset: number;
+  pages: number;
+}
+
 export class FeatureRepository {
   protected tableName: string;
   protected logger: typeof logger;
 
-  
-
-  logger: any;
-
-
-  tableName: string;
-
-constructor() {
+  constructor() {
     this.tableName = 'features';
     this.logger = logger;
   }
@@ -47,7 +73,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findById', {
         table: this.tableName,
         id,
@@ -79,7 +105,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findByKey', {
         table: this.tableName,
         productId,
@@ -97,7 +123,7 @@ constructor() {
    * @param {Object} options - Query options (limit, offset, orderBy)
    * @returns {Promise<Array>}
    */
-  async findByProduct(productId, filters = {}, options = {}) {
+  async findByProduct(productId: string, filters: FindByProductFilters = {}, options: FindByProductOptions = {}): Promise<unknown[]> {
     try {
       const { limit = 100, offset = 0, orderBy = 'category, feature_name' } = options;
       
@@ -148,7 +174,7 @@ constructor() {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findByProduct', {
         table: this.tableName,
         productId,
@@ -165,7 +191,7 @@ constructor() {
    * @param {Object} options - Query options
    * @returns {Promise<Object>} { features: [], total: number }
    */
-  async findAll(filters = {}, options = {}) {
+  async findAll(filters: FindAllFilters = {}, options: FindAllOptions = {}): Promise<FindAllResult> {
     try {
       const { limit = 50, offset = 0, orderBy = 'f.created_at DESC' } = options;
       
@@ -222,7 +248,7 @@ constructor() {
         offset,
         pages: Math.ceil(total / limit)
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findAll', {
         table: this.tableName,
         filters,
@@ -291,7 +317,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in create', {
         table: this.tableName,
         data,
@@ -369,7 +395,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in update', {
         table: this.tableName,
         id,
@@ -414,7 +440,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in deprecate', {
         table: this.tableName,
         id,
@@ -446,7 +472,7 @@ constructor() {
         isValid: missingFeatures.length === 0,
         missingFeatures
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in validateDependencies', {
         table: this.tableName,
         featureId,
@@ -478,7 +504,7 @@ constructor() {
         hasConflicts: conflictingFeatures.length > 0,
         conflictingFeatures
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in checkConflicts', {
         table: this.tableName,
         featureId,

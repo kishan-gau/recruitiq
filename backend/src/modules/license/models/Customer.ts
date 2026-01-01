@@ -80,7 +80,7 @@ class Customer {
         instance,
         license: licenseResult.rows[0]
       }
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK')
       throw error
     } finally {
@@ -89,7 +89,7 @@ class Customer {
   }
 
   // Get all customers with filters
-  static async findAll(filters = {}) {
+  static async findAll(filters: { tier?: string; status?: string; deploymentType?: string; search?: string } = {}) {
     let query = `
       SELECT 
         c.*,

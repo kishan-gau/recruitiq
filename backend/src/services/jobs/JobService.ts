@@ -4,7 +4,7 @@
  */
 
 import type { JobData, JobSearchFilters, JobStatistics, PaginatedResponse } from '../../types/recruitment.types.js';
-import { JobRepository } from '../../repositories/JobRepository.js';
+import { JobRepository, type PublishedJobFilters } from '../../repositories/JobRepository.js';
 import Organization from '../../models/Organization.js';
 import logger from '../../utils/logger.js';
 import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.js';
@@ -412,7 +412,7 @@ export class JobService {
    * @param {Object} filters - Optional filters
    * @returns {Promise<Array>}
    */
-  async getPublishedJobs(organizationId, filters = {}) {
+  async getPublishedJobs(organizationId: string, filters: PublishedJobFilters = {}) {
     try {
       const jobs = await this.jobRepository.getPublishedJobs(organizationId, filters);
 

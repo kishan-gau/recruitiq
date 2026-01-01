@@ -161,7 +161,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
       metrics,
       upcomingRenewals: upcomingRenewals.rows,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to fetch dashboard metrics', { 
       error: error.message, 
       stack: error.stack 
@@ -237,7 +237,7 @@ router.get('/analytics', requirePlatformPermission('portal.view'), async (req, r
         licenseActivity: licenseActivity.rows,
       },
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to fetch analytics', { 
       error: error.message,
       period: req.query.period,

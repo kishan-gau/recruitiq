@@ -115,7 +115,7 @@ export async function hashPassword(
   try {
     const hash = await bcrypt.hash(plaintext, SALT_ROUNDS);
     return hash;
-  } catch (_error) {
+  } catch (error) {
     throw new Error(`Failed to hash password: ${(error as Error).message}`);
   }
 }
@@ -155,7 +155,7 @@ export async function verifyPassword(
   try {
     const isMatch = await bcrypt.compare(plaintext, hash);
     return isMatch;
-  } catch (_error) {
+  } catch (error) {
     // Catch bcryptjs errors (invalid hash format, etc.)
     return false;
   }
@@ -177,7 +177,7 @@ export async function verifyPassword(
  * @example
  * try {
  *   validatePasswordComplexity('weak');
- * } catch (_error) {
+ * } catch (error) {
  *   console.error(error.message); // "Password must be at least 12 characters"
  * }
  */

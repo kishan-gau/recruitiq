@@ -39,7 +39,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDepartmentDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding department by ID', { id, organizationId, error: error.message });
       throw error;
     }
@@ -81,7 +81,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDepartmentDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding all departments', { filters, organizationId, error: error.message });
       throw error;
     }
@@ -101,7 +101,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [departmentCode, organizationId], organizationId);
       return result.rows[0] ? mapDepartmentDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding department by code', { departmentCode, organizationId, error: error.message });
       throw error;
     }
@@ -135,7 +135,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return mapDepartmentDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating department', { departmentData, organizationId, error: error.message });
       throw error;
     }
@@ -175,7 +175,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDepartmentDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating department', { id, departmentData, organizationId, error: error.message });
       throw error;
     }
@@ -195,7 +195,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rowCount > 0;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting department', { id, organizationId, error: error.message });
       throw error;
     }
@@ -238,7 +238,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [organizationId], organizationId);
       return result.rows.map(row => mapDepartmentDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting department hierarchy', { organizationId, error: error.message });
       throw error;
     }

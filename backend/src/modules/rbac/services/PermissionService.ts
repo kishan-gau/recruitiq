@@ -20,7 +20,7 @@ constructor(permissionModel = null) {
   async list(filters = {}) {
     try {
       return await this.permissionModel.findAll(filters);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error listing permissions', {
         error: error.message,
         filters
@@ -35,7 +35,7 @@ constructor(permissionModel = null) {
   async getGrouped() {
     try {
       return await this.permissionModel.findGrouped();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting grouped permissions', {
         error: error.message
       });
@@ -49,7 +49,7 @@ constructor(permissionModel = null) {
   async getByProduct(product) {
     try {
       return await this.permissionModel.findAll({ product });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting permissions by product', {
         error: error.message,
         product
@@ -68,7 +68,7 @@ constructor(permissionModel = null) {
         throw new Error('Permission not found');
       }
       return permission;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting permission by ID', {
         error: error.message,
         id
@@ -87,7 +87,7 @@ constructor(permissionModel = null) {
         throw new Error('Permission not found');
       }
       return permission;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting permission by code', {
         error: error.message,
         code

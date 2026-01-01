@@ -82,7 +82,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating performance review', { 
         error: error.message,
         organizationId,
@@ -122,7 +122,7 @@ constructor() {
       }
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting performance review', { 
         error: error.message,
         id,
@@ -236,7 +236,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing performance reviews', { 
         error: error.message,
         filters,
@@ -318,7 +318,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating performance review', { 
         error: error.message,
         id,
@@ -369,7 +369,7 @@ constructor() {
       });
 
       return { success: true, message: 'Performance review deleted successfully' };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting performance review', { 
         error: error.message,
         id,
@@ -412,7 +412,7 @@ constructor() {
         average_rating: null,
         recent_reviews: 0
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting reviews statistics', { 
         error: error.message,
         organizationId 
@@ -453,7 +453,7 @@ constructor() {
         overdue_goals: 0,
         recent_goals: 0
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting goals statistics', { 
         error: error.message,
         organizationId 

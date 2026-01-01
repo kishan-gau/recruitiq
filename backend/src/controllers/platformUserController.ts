@@ -99,7 +99,7 @@ export const createPlatformUser = async (req, res) => {
         createdAt: user.created_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating platform user', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
@@ -175,7 +175,7 @@ export const listPlatformUsers = async (req, res) => {
         offset: parseInt(offset)
       }
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error listing platform users', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
@@ -225,7 +225,7 @@ export const getPlatformUser = async (req, res) => {
         updatedAt: user.updated_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting platform user', { error: error.message, userId: req.params.id });
     res.status(500).json({
       success: false,
@@ -311,7 +311,7 @@ export const updatePlatformUser = async (req, res) => {
         updatedAt: user.updated_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating platform user', { error: error.message, userId: req.params.id });
     res.status(500).json({
       success: false,
@@ -387,7 +387,7 @@ export const changePassword = async (req, res) => {
       success: true,
       message: 'Password changed successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error changing password', { error: error.message, userId: req.params.id });
     res.status(500).json({
       success: false,
@@ -436,7 +436,7 @@ export const deactivatePlatformUser = async (req, res) => {
       success: true,
       message: 'Platform user deactivated successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deactivating platform user', { error: error.message, userId: req.params.id });
     res.status(500).json({
       success: false,
@@ -477,7 +477,7 @@ export const reactivatePlatformUser = async (req, res) => {
       success: true,
       message: 'Platform user reactivated successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error reactivating platform user', { error: error.message, userId: req.params.id });
     res.status(500).json({
       success: false,

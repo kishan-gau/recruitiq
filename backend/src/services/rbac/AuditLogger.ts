@@ -60,6 +60,38 @@ export const RBAC_SEVERITY = {
   CRITICAL: 'critical'
 };
 
+/**
+ * Options for querying user audit logs
+ */
+export interface UserAuditLogOptions {
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Context information for audit log entries
+ */
+export interface AuditContext {
+  userAgent?: string;
+  ip?: string;
+  endpoint?: string;
+  method?: string;
+  userEmail?: string;
+  targetUserEmail?: string;
+  performedByEmail?: string;
+  reason?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Options for querying organization audit logs
+ */
+export interface OrganizationAuditLogOptions {
+  limit?: number;
+  offset?: number;
+  eventType?: string;
+}
+
 class AuditLogger {
   /**
    * Logs a permission check (success or failure)
@@ -80,7 +112,15 @@ class AuditLogger {
     granted, 
     resource, 
     action,
-    context = {} 
+    context = {} as AuditContext
+  }: {
+    userId: string;
+    organizationId: string;
+    permission: string;
+    granted: boolean;
+    resource: string;
+    action: string;
+    context?: AuditContext;
   }) {
     const eventType = granted 
       ? RBAC_EVENTS.PERMISSION_CHECK_SUCCESS 
@@ -139,7 +179,16 @@ class AuditLogger {
     roleName,
     operation, // 'assigned' | 'revoked'
     performedBy,
-    context = {} 
+    context = {} as AuditContext
+  }: {
+    userId: string;
+    targetUserId: string;
+    organizationId: string;
+    roleId: string;
+    roleName: string;
+    operation: 'assigned' | 'revoked';
+    performedBy: string;
+    context?: AuditContext;
   }) {
     const eventType = operation === 'assigned' 
       ? RBAC_EVENTS.ROLE_ASSIGNED 
@@ -191,7 +240,15 @@ class AuditLogger {
     resource, 
     action,
     reason,
-    context = {} 
+    context = {} as AuditContext
+  }: {
+    userId: string;
+    organizationId: string;
+    permission: string;
+    resource: string;
+    action: string;
+    reason: string;
+    context?: AuditContext;
   }) {
     const details = {
       permission,
@@ -241,7 +298,14 @@ class AuditLogger {
     attemptedRole,
     currentRole,
     reason,
-    context = {} 
+    context = {} as AuditContext
+  }: {
+    userId: string;
+    organizationId: string;
+    attemptedRole: string;
+    currentRole: string;
+    reason: string;
+    context?: AuditContext;
   }) {
     const details = {
       attemptedRole,
@@ -296,7 +360,15 @@ class AuditLogger {
     permissions,
     operation,
     reason,
-    context = {} 
+    context = {} as AuditContext
+  }: {
+    userId: string;
+    organizationId: string;
+    affectedUsers: string[];
+    permissions: string[];
+    operation: string;
+    reason: string;
+    context?: AuditContext;
   }) {
     const details = {
       affectedUserCount: affectedUsers.length,
@@ -365,7 +437,7 @@ class AuditLogger {
           table: 'security_events'
         }
       );
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to persist security event', {
         error: error.message,
         eventType: event.eventType
@@ -423,7 +495,7 @@ class AuditLogger {
           details: { failureCount, ipAddress }
         });
       }
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to check repeated failures', {
         error: error.message,
         userId,
@@ -465,7 +537,7 @@ class AuditLogger {
         userId: event.userId,
         organizationId: event.organizationId
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to create security alert', {
         error: error.message,
         eventType: event.eventType
@@ -481,7 +553,7 @@ class AuditLogger {
    * @param {Object} options - Query options
    * @returns {Promise<Array>} Audit log entries
    */
-  async getUserAuditLog(userId, organizationId, options = {}) {
+  async getUserAuditLog(userId: string, organizationId: string, options: UserAuditLogOptions = {}): Promise<unknown[]> {
     const limit = Math.min(options.limit || 100, 1000);
     const offset = options.offset || 0;
 
@@ -512,7 +584,7 @@ class AuditLogger {
    * @param {Object} options - Query options
    * @returns {Promise<Array>} Audit log entries
    */
-  async getOrganizationAuditLog(organizationId, options = {}) {
+  async getOrganizationAuditLog(organizationId: string, options: OrganizationAuditLogOptions = {}): Promise<unknown[]> {
     const limit = Math.min(options.limit || 100, 1000);
     const offset = options.offset || 0;
     const eventType = options.eventType || 'rbac_%';

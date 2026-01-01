@@ -4,6 +4,16 @@
  */
 
 /**
+ * Options for string and object sanitization
+ */
+export interface SanitizeOptions {
+  trim?: boolean;
+  removeNullBytes?: boolean;
+  normalizeUnicode?: boolean;
+  maxLength?: number | null;
+}
+
+/**
  * SQL Injection Prevention
  */
 
@@ -251,7 +261,7 @@ export function normalizeUnicode(str) {
  * @param {object} options - Sanitization options
  * @returns {string} Sanitized string
  */
-export function sanitizeString(str, options = {}) {
+export function sanitizeString(str: string | unknown, options: SanitizeOptions = {}): string {
   const {
     trim = true,
     removeNullBytes: nullBytes = true,
@@ -288,7 +298,7 @@ export function sanitizeString(str, options = {}) {
  * @param {object} options - Sanitization options
  * @returns {object} Sanitized object
  */
-export function sanitizeObject(obj, options = {}) {
+export function sanitizeObject<T>(obj: T, options: SanitizeOptions = {}): T {
   if (typeof obj !== 'object' || obj === null) return obj;
   
   if (Array.isArray(obj)) {

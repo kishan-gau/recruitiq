@@ -204,7 +204,7 @@ constructor(taxCalculationService = null, loontijdvakService = null) {
 
       return result;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Bonus tax calculation failed', {
         error: _error.message,
         params: validated,

@@ -26,6 +26,50 @@ import cloudWatchClient from '../integrations/cloudwatch.js';
 import datadogClient from '../integrations/datadog.js';
 
 // ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+/**
+ * Metadata for security events
+ */
+interface EventMetadata {
+  reason?: string;
+  message?: string;
+  userId?: string;
+  username?: string;
+  userEmail?: string;
+  ip?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Security event structure
+ */
+interface SecurityEvent {
+  type: string;
+  timestamp: Date;
+  metadata: EventMetadata;
+  severity: string;
+}
+
+/**
+ * Security alert structure for notifications
+ */
+interface SecurityAlert {
+  id: string;
+  type: string;
+  severity: string;
+  timestamp: Date;
+  event: SecurityEvent;
+  metadata: EventMetadata;
+  description: string;
+  message: string;
+  channels?: string[];
+}
+
+// ============================================================================
 // CENTRAL MONITORING DATABASE
 // ============================================================================
 
@@ -50,7 +94,7 @@ if (config.deployment?.type === 'cloud' && config.centralMonitoring?.enabled) {
       
       await centralMonitoringPool.query('SELECT 1');
       // console.log('✓ Central monitoring database connected');
-    } catch (_error) {
+    } catch (error) {
       // console.error('✗ Failed to connect to central monitoring database:', error.message);
       centralMonitoringPool = null;
     }
@@ -171,14 +215,14 @@ constructor() {
    * Track a security event
    * 
    * @param {string} eventType - Type of security event
-   * @param {Object} metadata - Event metadata
+   * @param {EventMetadata} metadata - Event metadata
    */
-  trackEvent(eventType, metadata = {}) {
+  trackEvent(eventType: string, metadata: EventMetadata = {}): SecurityEvent | void {
     if (!MONITOR_CONFIG.enabled) {
       return;
     }
     
-    const event = {
+    const event: SecurityEvent = {
       type: eventType,
       timestamp: new Date(),
       metadata,
@@ -205,10 +249,10 @@ constructor() {
   /**
    * Send security event to central monitoring database (cloud only)
    * 
-   * @param {Object} event - Security event
-   * @param {Object} metadata - Event metadata
+   * @param {SecurityEvent} event - Security event
+   * @param {EventMetadata} metadata - Event metadata
    */
-  async sendToCentralMonitoring(event, metadata) {
+  async sendToCentralMonitoring(event: SecurityEvent, metadata: EventMetadata): Promise<void> {
     // Only for cloud deployments with central monitoring enabled
     if (config.deployment?.type !== 'cloud' || !centralMonitoringPool) {
       return;
@@ -238,7 +282,7 @@ constructor() {
       ];
       
       await centralMonitoringPool.query(query, values);
-    } catch (_error) {
+    } catch (error) {
       // Don't throw - just log locally to avoid monitoring loops
       logger.error('Failed to send security event to central monitoring', {
         error: error.message,
@@ -252,7 +296,7 @@ constructor() {
    * 
    * @param {Object} alert - Security alert
    */
-  async sendAlertToCentralDatabase(alert) {
+  async sendAlertToCentralDatabase(alert: SecurityAlert): Promise<void> {
     // Only for cloud deployments with central monitoring enabled
     if (config.deployment?.type !== 'cloud' || !centralMonitoringPool) {
       return;
@@ -279,7 +323,7 @@ constructor() {
       ];
       
       await centralMonitoringPool.query(query, values);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to send alert to central monitoring', {
         error: error.message,
         alertId: alert.id,
@@ -586,7 +630,7 @@ constructor() {
    * 
    * @param {Object} alert - Alert object
    */
-  async sendToChannels(alert) {
+  async sendToChannels(alert: SecurityAlert): Promise<void> {
     const channels = config.monitoring?.alertChannels || ['log'];
     
     for (const channel of channels) {
@@ -617,7 +661,7 @@ constructor() {
             // Already logged above
             break;
         }
-      } catch (_error) {
+      } catch (error) {
         logger.error('Failed to send alert through channel', {
           channel,
           alertType: alert.type,
@@ -632,7 +676,7 @@ constructor() {
    * 
    * @param {Object} alert - Alert object
    */
-  async sendEmailAlert(alert) {
+  async sendEmailAlert(alert: SecurityAlert): Promise<void> {
     // Email sending implementation would go here
     // This is a placeholder for the email service integration
     logger.info('Email alert sent (placeholder)', { alertId: alert.id });
@@ -643,7 +687,7 @@ constructor() {
    * 
    * @param {Object} alert - Alert object
    */
-  async sendSlackAlert(alert) {
+  async sendSlackAlert(alert: SecurityAlert): Promise<void> {
     // Slack webhook integration would go here
     logger.info('Slack alert sent (placeholder)', { alertId: alert.id });
   }
@@ -653,7 +697,7 @@ constructor() {
    * 
    * @param {Object} alert - Alert object
    */
-  async sendWebhookAlert(alert) {
+  async sendWebhookAlert(alert: SecurityAlert): Promise<void> {
     const webhookUrl = config.monitoring?.webhookUrl;
     
     if (!webhookUrl) {
@@ -674,7 +718,7 @@ constructor() {
       }
       
       logger.info('Webhook alert sent', { alertId: alert.id });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to send webhook alert', {
         alertId: alert.id,
         error: error.message,
@@ -687,7 +731,7 @@ constructor() {
    * 
    * @param {Object} alert - Alert object
    */
-  async sendCloudWatchAlert(alert) {
+  async sendCloudWatchAlert(alert: SecurityAlert): Promise<void> {
     if (cloudWatchClient.isEnabled()) {
       await cloudWatchClient.putAlert(alert);
       logger.info('CloudWatch alert sent', { alertId: alert.id });
@@ -699,7 +743,7 @@ constructor() {
    * 
    * @param {Object} alert - Alert object
    */
-  async sendDatadogAlert(alert) {
+  async sendDatadogAlert(alert: SecurityAlert): Promise<void> {
     if (datadogClient.isEnabled()) {
       await datadogClient.sendAlert(alert);
       logger.info('Datadog alert sent', { alertId: alert.id });

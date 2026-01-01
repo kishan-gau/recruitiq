@@ -11,18 +11,29 @@ import logger from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import { mapDbToApi } from '../utils/dtoMapper.js';
 
+/**
+ * Options for finding grants by feature
+ */
+export interface FindByFeatureOptions {
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Options for finding grants by organization
+ */
+export interface FindByOrganizationFilters {
+  productId?: string;
+  isActive?: boolean;
+  grantedVia?: string;
+  notExpired?: boolean;
+}
+
 export class FeatureGrantRepository {
   protected tableName: string;
   protected logger: typeof logger;
 
-  
-
-  logger: any;
-
-
-  tableName: string;
-
-constructor() {
+  constructor() {
     this.tableName = 'organization_feature_grants';
     this.logger = logger;
   }
@@ -53,7 +64,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findById', {
         table: this.tableName,
         id,
@@ -92,7 +103,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findActiveGrant', {
         table: this.tableName,
         organizationId,
@@ -142,7 +153,7 @@ constructor() {
       });
 
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findActiveGrantByKey', {
         table: this.tableName,
         organizationId,
@@ -160,7 +171,7 @@ constructor() {
    * @param {Object} filters - Optional filters (productId, isActive, grantedVia)
    * @returns {Promise<Array>}
    */
-  async findByOrganization(organizationId, filters = {}) {
+  async findByOrganization(organizationId: string, filters: FindByOrganizationFilters = {}) {
     try {
       let sql = `
         SELECT 
@@ -178,7 +189,7 @@ constructor() {
         WHERE ofg.organization_id = $1
       `;
       
-      const params = [organizationId];
+      const params: (string | boolean)[] = [organizationId];
       let paramIndex = 2;
 
       // Add filters
@@ -212,7 +223,7 @@ constructor() {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findByOrganization', {
         table: this.tableName,
         organizationId,
@@ -229,7 +240,7 @@ constructor() {
    * @param {Object} options - Query options
    * @returns {Promise<Array>}
    */
-  async findByFeature(featureId, options = {}) {
+  async findByFeature(featureId: string, options: FindByFeatureOptions = {}): Promise<unknown[]> {
     try {
       const { limit = 100, offset = 0 } = options;
 
@@ -250,7 +261,7 @@ constructor() {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findByFeature', {
         table: this.tableName,
         featureId,
@@ -318,7 +329,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in create', {
         table: this.tableName,
         data,
@@ -394,7 +405,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in update', {
         table: this.tableName,
         id,
@@ -432,7 +443,7 @@ constructor() {
       }
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in incrementUsage', {
         table: this.tableName,
         id,
@@ -482,7 +493,7 @@ constructor() {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in revoke', {
         table: this.tableName,
         id,
@@ -567,7 +578,7 @@ constructor() {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in bulkGrant', {
         table: this.tableName,
         organizationId,
@@ -624,7 +635,7 @@ constructor() {
       });
 
       return result.rowCount;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in bulkRevoke', {
         table: this.tableName,
         organizationId,
@@ -657,7 +668,7 @@ constructor() {
       });
 
       return result.rows[0].exists;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in exists', {
         table: this.tableName,
         organizationId,

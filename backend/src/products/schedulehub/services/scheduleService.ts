@@ -321,7 +321,7 @@ class ScheduleService {
 
       return mapScheduleDbToApi(result.rows[0]);
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating schedule:', error);
       throw error;
@@ -386,7 +386,7 @@ class ScheduleService {
         }
       };
 
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching schedule:', error);
       throw error;
     }
@@ -458,7 +458,7 @@ class ScheduleService {
         }
       };
 
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing schedules:', error);
       throw error;
     }
@@ -561,7 +561,7 @@ class ScheduleService {
         data: mapShiftsDbToApi([result.rows[0]])[0]
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating shift:', error);
       this.handleConstraintError(error, organizationId, userId);
@@ -642,7 +642,7 @@ class ScheduleService {
         data: result.rows[0]
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error updating shift:', error);
       throw error;
@@ -715,7 +715,7 @@ class ScheduleService {
         data: result.rows[0]
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error assigning worker to shift:', error);
       throw error;
@@ -763,7 +763,7 @@ class ScheduleService {
         data: result.rows[0]
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error unassigning worker from shift:', error);
       throw error;
@@ -890,7 +890,7 @@ class ScheduleService {
           : `Found ${conflicts.length} shift conflicts with published schedules that must be resolved before publication.`
       };
 
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error validating schedule for publication', {
         scheduleId,
         organizationId,
@@ -1020,7 +1020,7 @@ class ScheduleService {
         data: result.rows[0]
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error publishing schedule:', error);
       throw error;
@@ -1064,7 +1064,7 @@ class ScheduleService {
         data: result.rows[0]
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error cancelling shift:', error);
       throw error;
@@ -1108,7 +1108,7 @@ class ScheduleService {
         data: result.rows[0]
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error clocking in:', error);
       throw error;
@@ -1147,7 +1147,7 @@ class ScheduleService {
 
       return result.rows;
 
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching worker shifts:', error);
       throw error;
     }
@@ -1376,7 +1376,7 @@ class ScheduleService {
         generationSummary
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error auto-generating schedule:', error);
       
@@ -2198,7 +2198,7 @@ class ScheduleService {
         success: true,
         shifts: result.rows
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching shifts:', error);
       throw new Error('Failed to fetch shifts');
     }
@@ -2284,7 +2284,7 @@ class ScheduleService {
         coverageStats: result.rows,
         date: date
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching station coverage stats:', error);
       throw new Error('Failed to fetch station coverage statistics');
     }
@@ -2424,7 +2424,7 @@ class ScheduleService {
         generationSummary
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error regenerating schedule:', error);
       

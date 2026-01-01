@@ -176,7 +176,7 @@ export async function listApplications(req, res, next) {
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -260,7 +260,7 @@ export async function getApplication(req, res, next) {
         updatedAt: row.updated_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -381,7 +381,7 @@ export async function createApplication(req, res, next) {
         appliedAt: application.created_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -483,7 +483,7 @@ export async function updateApplication(req, res, next) {
         updatedAt: application.updated_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -533,7 +533,7 @@ export async function trackApplication(req, res, next) {
         updatedAt: row.updated_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -574,7 +574,7 @@ export async function deleteApplication(req, res, next) {
     logger.info(`Application deleted: ${applicationCheck.rows[0].tracking_code} by ${userEmail}`);
 
     res.json({ message: 'Application deleted successfully' });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }

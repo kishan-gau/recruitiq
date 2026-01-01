@@ -16,7 +16,7 @@ export const telemetryController = {
       const result = await UsageTracker.trackEvent(eventData)
 
       res.json(result)
-    } catch (_error) {
+    } catch (error) {
       console.error('Report usage error:', error)
       res.status(500).json({ 
         success: false,
@@ -40,7 +40,7 @@ export const telemetryController = {
       })
 
       res.json(result)
-    } catch (_error) {
+    } catch (error) {
       console.error('Heartbeat error:', error)
       res.status(500).json({ 
         success: false,
@@ -58,7 +58,7 @@ export const telemetryController = {
       const stats = await UsageTracker.getUsageStats(customerId, parseInt(days))
 
       res.json(stats)
-    } catch (_error) {
+    } catch (error) {
       console.error('Get usage stats error:', error)
       res.status(500).json({ error: 'Failed to fetch usage statistics' })
     }
@@ -73,7 +73,7 @@ export const telemetryController = {
       const activity = await UsageTracker.getRecentActivity(customerId, parseInt(limit))
 
       res.json({ activity })
-    } catch (_error) {
+    } catch (error) {
       console.error('Get recent activity error:', error)
       res.status(500).json({ error: 'Failed to fetch recent activity' })
     }
@@ -85,7 +85,7 @@ export const telemetryController = {
       const metrics = await UsageTracker.calculateGlobalMetrics()
 
       res.json(metrics)
-    } catch (_error) {
+    } catch (error) {
       console.error('Get global metrics error:', error)
       res.status(500).json({ error: 'Failed to fetch global metrics' })
     }

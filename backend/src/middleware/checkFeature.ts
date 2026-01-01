@@ -111,7 +111,7 @@ export const checkFeature = (featureName) => {
       req.hasFeature = (name) => features.includes(name);
       
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error(`Feature check error for ${featureName}:`, error);
       res.status(500).json({
         success: false,
@@ -225,7 +225,7 @@ export const checkFeatures = (featureNames) => {
       req.hasFeature = (name) => features.includes(name);
       
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Features check error:', error);
       res.status(500).json({
         success: false,

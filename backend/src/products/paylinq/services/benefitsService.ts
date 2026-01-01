@@ -1,4 +1,5 @@
 import type { BenefitType, BenefitPlanData, BenefitEnrollmentData, PlanType, CoverageLevel } from '../../../types/paylinq.types.js';
+import type { ServiceFilterOptions } from '../../../types/common.types.js';
 import PayrollRepository from '../repositories/payrollRepository.js';
 
 /**
@@ -123,7 +124,7 @@ class BenefitsService {
   /**
    * Get all benefit plans for an organization
    */
-  async getBenefitPlans(organizationId, filters = {}) {
+  async getBenefitPlans(organizationId: string, filters: ServiceFilterOptions = {}): Promise<unknown[]> {
     return await this.payrollRepository.findBenefitPlans(organizationId, filters);
   }
 

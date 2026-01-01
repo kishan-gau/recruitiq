@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Forfaitair Benefits Service
  * 
  * Manages forfaitair benefits (benefits in kind) for Suriname payroll system.
@@ -120,7 +120,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return components;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching tenant benefit library', {
         error: _error.message,
         organizationId,
@@ -153,7 +153,7 @@ constructor(repository = null, formulaEngine = null) {
       }
 
       return component;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching global benefit', {
         error: _error.message,
         componentCode
@@ -199,8 +199,8 @@ constructor(repository = null, formulaEngine = null) {
       if (validated.formula) {
         try {
           await this.formulaEngine.parseFormula(validated.formula);
-        } catch (err) {
-          throw new ValidationError(`Invalid formula: ${err.message}`);
+        } catch (error) {
+          throw new ValidationError(`Invalid formula: ${error.message}`);
         }
       }
 
@@ -224,7 +224,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return component;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error creating custom benefit', {
         error: _error.message,
         organizationId,
@@ -283,7 +283,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return created;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error cloning global benefit', {
         error: _error.message,
         globalComponentCode,
@@ -327,7 +327,7 @@ constructor(repository = null, formulaEngine = null) {
         globalComponents: [], // Always empty - no global components exist
         orgComponents: tenantComponents // Alias to tenant components
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching available benefits', {
         error: _error.message,
         organizationId
@@ -361,7 +361,7 @@ constructor(repository = null, formulaEngine = null) {
       let component;
       try {
         component = await this.getGlobalBenefitByCode(validated.componentCode);
-      } catch (err) {
+      } catch (error) {
         // Not global, check org-specific
         component = await this.repository.findByCode(validated.componentCode, organizationId);
         if (!component) {
@@ -397,7 +397,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return assignment;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error assigning benefit to employee', {
         error: _error.message,
         organizationId,
@@ -439,7 +439,7 @@ constructor(repository = null, formulaEngine = null) {
       });
 
       return benefits;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching employee benefits', {
         error: _error.message,
         employeeId,
@@ -471,7 +471,7 @@ constructor(repository = null, formulaEngine = null) {
       let component;
       try {
         component = await this.getGlobalBenefitByCode(componentCode);
-      } catch (err) {
+      } catch (error) {
         component = await this.repository.findByCode(componentCode, organizationId);
         if (!component) {
           throw new NotFoundError(`Component '${componentCode}' not found`);
@@ -533,7 +533,7 @@ constructor(repository = null, formulaEngine = null) {
       logger.info('Employee benefit calculated', result);
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error calculating employee benefit', {
         error: _error.message,
         employeeId,
@@ -566,7 +566,7 @@ constructor(repository = null, formulaEngine = null) {
       );
 
       logger.info('Benefit assignment removed', { assignmentId });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error removing benefit assignment', {
         error: _error.message,
         assignmentId,
@@ -596,7 +596,7 @@ constructor(repository = null, formulaEngine = null) {
       logger.info('Benefit statistics fetched', { organizationId, stats });
 
       return stats;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching benefit statistics', {
         error: _error.message,
         organizationId

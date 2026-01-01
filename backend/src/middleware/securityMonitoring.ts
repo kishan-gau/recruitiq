@@ -13,7 +13,7 @@ import logger from '../utils/logger.js';
  * @param {Object} req - Express request
  * @param {Object} user - User data (if available)
  */
-export function trackFailedLogin(req, user = {}) {
+export function trackFailedLogin(req: Request, user: { email?: string; username?: string } = {}) {
   securityMonitor.trackEvent(SecurityEventType.FAILED_LOGIN, {
     ip: req.ip || req.connection.remoteAddress,
     username: user.email || user.username || req.body.email || req.body.username,

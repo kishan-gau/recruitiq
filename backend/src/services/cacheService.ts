@@ -30,6 +30,13 @@
 import { createClient } from 'redis';
 import logger from '../utils/logger.js';
 
+/**
+ * Generic cache filters interface for key generation
+ */
+interface CacheFilters {
+  [key: string]: unknown;
+}
+
 class CacheService {
   
   client: any;
@@ -123,7 +130,7 @@ constructor() {
       
       logger.info('✅ CacheService initialized successfully');
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to initialize Redis cache:', {
         error: error.message,
         stack: error.stack
@@ -157,7 +164,7 @@ constructor() {
       
       logger.debug('Cache miss', { key });
       return null;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Cache get error', { 
         key, 
         error: error.message 
@@ -183,7 +190,7 @@ constructor() {
       await this.client.setEx(key, ttl, JSON.stringify(value));
       logger.debug('Cache set', { key, ttl });
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Cache set error', { 
         key, 
         error: error.message 
@@ -224,7 +231,7 @@ constructor() {
       }
       
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Cache delete error', { 
         key, 
         error: error.message 
@@ -247,7 +254,7 @@ constructor() {
     try {
       const result = await this.client.exists(key);
       return result === 1;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Cache exists error', { 
         key, 
         error: error.message 
@@ -287,7 +294,7 @@ constructor() {
         hitRate: parseFloat(hitRate),
         total
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to get cache stats', { error: error.message });
       return {
         connected: this.isConnected,
@@ -338,7 +345,7 @@ constructor() {
       await this.client.flushDb();
       logger.warn('All cache cleared (FLUSHDB)');
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Cache flush error', { error: error.message });
       return false;
     }
@@ -362,7 +369,7 @@ constructor() {
       try {
         await this.client.quit();
         logger.info('Redis connection closed gracefully');
-      } catch (_error) {
+      } catch (error) {
         logger.error('Error closing Redis connection', { 
           error: error.message 
         });
@@ -423,13 +430,14 @@ constructor() {
         await this.client.quit();
         this.isConnected = false;
         logger.info('Redis client disconnected gracefully');
-      } catch (_error) {
+      } catch (error) {
         logger.error('Error disconnecting Redis client:', { error: error.message });
         // Force disconnect
         try {
           await this.client.disconnect();
-        } catch (_e) {
-          // Ignore
+        } catch (error) {
+          // Ignore disconnect errors
+          void error;
         }
       }
     }
@@ -439,10 +447,10 @@ constructor() {
    * Generate cache key for department list
    * 
    * @param {string} organizationId - Organization UUID
-   * @param {Object} filters - Query filters (optional)
+   * @param {CacheFilters} filters - Query filters (optional)
    * @returns {string} Cache key
    */
-  getDepartmentsKey(organizationId, filters = {}) {
+  getDepartmentsKey(organizationId: string, filters: CacheFilters = {}): string {
     const filterKey = Object.keys(filters).length > 0 
       ? `:${JSON.stringify(filters)}` 
       : '';
@@ -453,10 +461,10 @@ constructor() {
    * Generate cache key for location list
    * 
    * @param {string} organizationId - Organization UUID
-   * @param {Object} filters - Query filters (optional)
+   * @param {CacheFilters} filters - Query filters (optional)
    * @returns {string} Cache key
    */
-  getLocationsKey(organizationId, filters = {}) {
+  getLocationsKey(organizationId: string, filters: CacheFilters = {}): string {
     const filterKey = Object.keys(filters).length > 0 
       ? `:${JSON.stringify(filters)}` 
       : '';

@@ -13,8 +13,43 @@
  */
 
 import validator from 'validator';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { ValidationError } from './errorHandler.js';
 import logger from '../utils/logger.js';
+
+/**
+ * Options for sanitizing query parameters
+ */
+interface SanitizeQueryParamsOptions {
+  /** Whether to allow array values in query params. Defaults to true */
+  allowArrays?: boolean;
+}
+
+/**
+ * Options for request body validation middleware
+ */
+interface ValidateRequestBodyOptions {
+  /** Maximum allowed nesting depth in JSON. Defaults to 5 */
+  maxDepth?: number;
+  /** Whether to strip XSS patterns from values. Defaults to true */
+  stripXSS?: boolean;
+  /** Whether to block dangerous patterns. Defaults to true */
+  blockDangerousPatterns?: boolean;
+}
+
+/**
+ * Options for query parameter validation middleware
+ */
+interface ValidateQueryParamsOptions {
+  /** Whether to allow array values in query params. Defaults to true */
+  allowArrays?: boolean;
+}
+
+/**
+ * Options for combined secure request middleware
+ * Combines options from validateRequestBody and validateQueryParams
+ */
+interface SecureRequestOptions extends ValidateRequestBodyOptions, ValidateQueryParamsOptions {}
 
 /**
  * Dangerous patterns based on OWASP recommendations
@@ -103,11 +138,14 @@ export function sanitizeHTML(value) {
 /**
  * Validate and sanitize query parameters
  * 
- * @param {Object} params - Query parameters object
- * @param {Object} options - Validation options
- * @returns {Object} Sanitized parameters
+ * @param {Record<string, unknown>} params - Query parameters object
+ * @param {SanitizeQueryParamsOptions} options - Validation options
+ * @returns {Record<string, unknown>} Sanitized parameters
  */
-export function sanitizeQueryParams(params, options = {}) {
+export function sanitizeQueryParams(
+  params: Record<string, unknown>,
+  options: SanitizeQueryParamsOptions = {}
+): Record<string, unknown> {
   const { allowArrays = true } = options;
 
   if (!params || typeof params !== 'object') {
@@ -256,26 +294,26 @@ function sanitizeObject(obj, depth = 0, maxDepth = 5, fieldName = '') {
 /**
  * Middleware: Validate and sanitize request body
  * 
- * @param {Object} options - Validation options
- * @returns {Function} Express middleware
+ * @param {ValidateRequestBodyOptions} options - Validation options
+ * @returns {RequestHandler} Express middleware
  */
-export function validateRequestBody(options = {}) {
+export function validateRequestBody(options: ValidateRequestBodyOptions = {}): RequestHandler {
   const { 
     maxDepth = 5,
     stripXSS = true,
     blockDangerousPatterns = true 
   } = options;
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       if (req.body && typeof req.body === 'object') {
         req.body = sanitizeObject(req.body, 0, maxDepth);
       }
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.warn('Request body validation failed', {
-        error: error.message,
-        userId: req.user?.id,
+        error: (error as Error).message,
+        userId: (req as any).user?.id,
         ipAddress: req.ip,
         route: req.route?.path,
       });
@@ -287,24 +325,24 @@ export function validateRequestBody(options = {}) {
 /**
  * Middleware: Validate and sanitize query parameters
  * 
- * @param {Object} options - Validation options
- * @returns {Function} Express middleware
+ * @param {ValidateQueryParamsOptions} options - Validation options
+ * @returns {RequestHandler} Express middleware
  */
-export function validateQueryParams(options = {}) {
+export function validateQueryParams(options: ValidateQueryParamsOptions = {}): RequestHandler {
   const { allowArrays = true } = options;
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       if (req.query) {
         // Just validate without reassigning (req.query is read-only after body-parser)
         // sanitizeQueryParams will throw if validation fails
-        sanitizeQueryParams(req.query, { allowArrays });
+        sanitizeQueryParams(req.query as Record<string, unknown>, { allowArrays });
       }
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.warn('Query params validation failed', {
-        error: error.message,
-        userId: req.user?.id,
+        error: (error as Error).message,
+        userId: (req as any).user?.id,
         ipAddress: req.ip,
         route: req.route?.path,
       });
@@ -316,10 +354,10 @@ export function validateQueryParams(options = {}) {
 /**
  * Middleware: Validate URL parameters (route params)
  * 
- * @returns {Function} Express middleware
+ * @returns {RequestHandler} Express middleware
  */
-export function validateUrlParams() {
-  return (req, res, next) => {
+export function validateUrlParams(): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       if (req.params) {
         for (const [key, value] of Object.entries(req.params)) {
@@ -341,10 +379,10 @@ export function validateUrlParams() {
         }
       }
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.warn('URL params validation failed', {
-        error: error.message,
-        userId: req.user?.id,
+        error: (error as Error).message,
+        userId: (req as any).user?.id,
         ipAddress: req.ip,
         route: req.route?.path,
         params: req.params,
@@ -358,15 +396,15 @@ export function validateUrlParams() {
  * Combined security validation middleware
  * Applies all security checks in sequence
  * 
- * @param {Object} options - Validation options
- * @returns {Function} Express middleware
+ * @param {SecureRequestOptions} options - Validation options
+ * @returns {RequestHandler} Express middleware
  */
-export function secureRequest(options = {}) {
+export function secureRequest(options: SecureRequestOptions = {}): RequestHandler {
   const bodyValidator = validateRequestBody(options);
   const queryValidator = validateQueryParams(options);
   const urlValidator = validateUrlParams();
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     urlValidator(req, res, (urlErr) => {
       if (urlErr) return next(urlErr);
 
@@ -428,7 +466,7 @@ export function blockFilePathInjection() {
       if (req.body) checkObject(req.body);
       if (req.query) checkObject(req.query);
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.warn('File path injection attempt detected', {
         userId: req.user?.id,
         ipAddress: req.ip,

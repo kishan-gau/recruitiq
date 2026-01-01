@@ -6,6 +6,27 @@
 import { BaseRepository } from './BaseRepository.js';
 import { query } from '../config/database.js';
 
+/**
+ * Options for finding interviews by interviewer
+ */
+export interface FindByInterviewerOptions {
+  status?: string | null;
+  dateFrom?: string | Date | null;
+  dateTo?: string | Date | null;
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Filters for counting interviews
+ */
+export interface InterviewCountFilters {
+  status?: string;
+  interview_type?: string;
+  scheduled_date?: string;
+  [key: string]: unknown;
+}
+
 // Use the custom query function that supports organizationId filtering
 const db = { query };
 
@@ -55,7 +76,7 @@ export class InterviewRepository extends BaseRepository {
       const dbRecord = result.rows[0];
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return mapDbToApi(dbRecord);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in create', {
         data,
         organizationId,
@@ -69,7 +90,7 @@ export class InterviewRepository extends BaseRepository {
   /**
    * Override count to handle organization filtering via applications
    */
-  async count(organizationId, filters = {}) {
+  async count(organizationId: string, filters: InterviewCountFilters = {}) {
     try {
       let query = `
         SELECT COUNT(*) as count 
@@ -79,7 +100,7 @@ export class InterviewRepository extends BaseRepository {
         AND i.deleted_at IS NULL
       `;
       
-      const params = [organizationId];
+      const params: unknown[] = [organizationId];
       let paramCount = 1;
 
       // Add filters
@@ -95,7 +116,7 @@ export class InterviewRepository extends BaseRepository {
       });
 
       return parseInt(result.rows[0].count);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in count', {
         filters: organizationId,
         table: this.tableName,
@@ -129,7 +150,7 @@ export class InterviewRepository extends BaseRepository {
       
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return mapDbToApi(dbRecord);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findById', {
         id,
         organizationId,
@@ -161,7 +182,7 @@ export class InterviewRepository extends BaseRepository {
 
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findAll', {
         organizationId,
         table: this.tableName,
@@ -206,7 +227,7 @@ export class InterviewRepository extends BaseRepository {
       
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return mapDbToApi(dbRecord);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in update', {
         id,
         data,
@@ -244,7 +265,7 @@ export class InterviewRepository extends BaseRepository {
       });
 
       return result.rows.length > 0;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in delete', {
         id,
         organizationId,
@@ -285,7 +306,7 @@ export class InterviewRepository extends BaseRepository {
       
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return mapDbToApi(dbRecord);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding interview with details:', error);
       throw error;
     }
@@ -315,7 +336,7 @@ export class InterviewRepository extends BaseRepository {
       
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding interviews by application:', error);
       throw error;
     }
@@ -324,7 +345,17 @@ export class InterviewRepository extends BaseRepository {
   /**
    * Find interviews by interviewer
    */
-  async findByInterviewer(interviewerId, organizationId, options = {}) {
+  async findByInterviewer(
+    interviewerId: string,
+    organizationId: string,
+    options: FindByInterviewerOptions = {}
+  ): Promise<{
+    interviews: unknown[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     try {
       const {
         status = null,
@@ -398,7 +429,7 @@ export class InterviewRepository extends BaseRepository {
         limit,
         totalPages: Math.ceil(total / limit)
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding interviews by interviewer:', error);
       throw error;
     }
@@ -526,7 +557,7 @@ export class InterviewRepository extends BaseRepository {
         limit,
         totalPages: Math.ceil(total / limit)
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error searching interviews:', error);
       throw error;
     }
@@ -570,7 +601,7 @@ export class InterviewRepository extends BaseRepository {
       
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting upcoming interviews:', error);
       throw error;
     }
@@ -592,7 +623,7 @@ export class InterviewRepository extends BaseRepository {
 
       const result = await db.query(query, [organizationId]);
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting interview count by status:', error);
       throw error;
     }
@@ -619,7 +650,7 @@ export class InterviewRepository extends BaseRepository {
       const result = await db.query(query, [organizationId]);
       return result.rows;
       */
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting interview count by type:', error);
       throw error;
     }
@@ -656,7 +687,7 @@ export class InterviewRepository extends BaseRepository {
 
       const result = await db.query(query, params);
       return result.rows.length > 0 ? result.rows[0] : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error checking scheduling conflict:', error);
       throw error;
     }
@@ -683,7 +714,7 @@ export class InterviewRepository extends BaseRepository {
 
       const result = await db.query(query, [feedback, rating, decision, id, organizationId]);
       return result.rows[0] || null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating interview feedback:', error);
       throw error;
     }

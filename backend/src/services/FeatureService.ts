@@ -5,18 +5,21 @@
  * This service is used by platform admins to manage the feature catalog
  */
 
-import FeatureRepository from '../repositories/FeatureRepository.js';
+import FeatureRepository, { 
+  FindAllFilters, 
+  FindAllOptions, 
+  FindAllResult,
+  FindByProductFilters,
+  FindByProductOptions 
+} from '../repositories/FeatureRepository.js';
 import FeatureGrantRepository from '../repositories/FeatureGrantRepository.js';
 import logger from '../utils/logger.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 
 export class FeatureService {
-  
-  featureRepo: any;
-
-  grantRepo: any;
-
-  logger: any;
+  private featureRepo: FeatureRepository;
+  private grantRepo: FeatureGrantRepository;
+  private logger: typeof logger;
 
 constructor() {
     this.featureRepo = new FeatureRepository();
@@ -59,7 +62,7 @@ constructor() {
       });
 
       return feature;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating feature', {
         data,
         error: error.message
@@ -96,7 +99,7 @@ constructor() {
       });
 
       return updated;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating feature', {
         featureId,
         data,
@@ -118,7 +121,7 @@ constructor() {
         throw new NotFoundError('Feature not found');
       }
       return feature;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting feature', {
         featureId,
         error: error.message
@@ -140,7 +143,7 @@ constructor() {
         throw new NotFoundError(`Feature '${featureKey}' not found`);
       }
       return feature;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting feature by key', {
         productId,
         featureKey,
@@ -156,10 +159,10 @@ constructor() {
    * @param {Object} options - Query options
    * @returns {Promise<Object>}
    */
-  async listFeatures(filters = {}, options = {}) {
+  async listFeatures(filters: FindAllFilters = {}, options: FindAllOptions = {}): Promise<FindAllResult> {
     try {
       return await this.featureRepo.findAll(filters, options);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing features', {
         filters,
         error: error.message
@@ -175,10 +178,10 @@ constructor() {
    * @param {Object} options - Query options
    * @returns {Promise<Array>}
    */
-  async listProductFeatures(productId, filters = {}, options = {}) {
+  async listProductFeatures(productId: string, filters: FindByProductFilters = {}, options: FindByProductOptions = {}): Promise<unknown[]> {
     try {
       return await this.featureRepo.findByProduct(productId, filters, options);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing product features', {
         productId,
         error: error.message
@@ -222,7 +225,7 @@ constructor() {
       });
 
       return deprecated;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deprecating feature', {
         featureId,
         error: error.message
@@ -261,7 +264,7 @@ constructor() {
       });
 
       return updated;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating rollout', {
         featureId,
         percentage,
@@ -360,7 +363,7 @@ constructor() {
       );
 
       return dependents;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding dependent features', {
         featureId,
         error: error.message

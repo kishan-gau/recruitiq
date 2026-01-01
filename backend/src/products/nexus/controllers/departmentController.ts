@@ -28,7 +28,7 @@ class DepartmentController {
       
       // Service now handles DTO transformation, no need to transform again
       res.status(201).json({ success: true, department });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in createDepartment controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -46,7 +46,7 @@ class DepartmentController {
       
       // Service now handles DTO transformation, no need to transform again
       res.json({ success: true, department });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getDepartment controller', { error: error.message });
       const status = error.message === 'Department not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -69,7 +69,7 @@ class DepartmentController {
       
       // Service already transforms data using DTO
       res.json({ success: true, department });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in updateDepartment controller', { error: error.message });
       const status = error.message === 'Department not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -86,7 +86,7 @@ class DepartmentController {
       const { id } = req.params;
       await this.service.deleteDepartment(id, organizationId, userId);
       res.json({ success: true, message: 'Department deleted successfully' });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in deleteDepartment controller', { error: error.message });
       const status = error.message === 'Department not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -124,7 +124,7 @@ class DepartmentController {
           offset: result.offset
         }
       });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getDepartments controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -141,7 +141,7 @@ class DepartmentController {
       
       // Service already transforms data using DTO
       res.json({ success: true, departments: hierarchy });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getDepartmentHierarchy controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -158,7 +158,7 @@ class DepartmentController {
       
       // Service already transforms data using DTO
       res.json({ success: true, departments: structure });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getOrganizationStructure controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -180,7 +180,7 @@ class DepartmentController {
         includeSubdepartments === 'true'
       );
       res.json({ success: true, employees: employees });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getDepartmentEmployees controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }

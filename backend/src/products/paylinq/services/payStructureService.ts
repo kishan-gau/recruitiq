@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pay Structure Service
  * 
  * Business logic for pay structure template management, versioning,
@@ -191,7 +191,7 @@ class PayStructureService {
       });
 
       return template;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to create pay structure template:', error);
       throw _error;
     }
@@ -464,8 +464,8 @@ class PayStructureService {
         // Parse and validate formula
         const parsed = await this.formulaEngine.parseFormula(value.formulaExpression);
         value.formulaAst = parsed;
-      } catch (err) {
-        throw new ValidationError(`Invalid formula: ${err.message}`);
+      } catch (error) {
+        throw new ValidationError(`Invalid formula: ${error.message}`);
       }
     }
 
@@ -512,8 +512,8 @@ class PayStructureService {
       try {
         const parsed = await this.formulaEngine.parseFormula(updates.formulaExpression);
         updates.formulaAst = parsed;
-      } catch (err) {
-        throw new ValidationError(`Invalid formula: ${err.message}`);
+      } catch (error) {
+        throw new ValidationError(`Invalid formula: ${error.message}`);
       }
     }
 
@@ -627,7 +627,7 @@ class PayStructureService {
       });
 
       return assignment;
-    } catch (_error) {
+    } catch (error) {
       // Handle constraint violation for overlapping assignments
       if (_error.message && _error.message.includes('unique_current_worker_structure')) {
         throw new ValidationError(
@@ -696,8 +696,8 @@ class PayStructureService {
     if (value.overrideType === 'formula' && value.overrideFormula) {
       try {
         await this.formulaEngine.parseFormula(value.overrideFormula);
-      } catch (err) {
-        throw new ValidationError(`Invalid override formula: ${err.message}`);
+      } catch (error) {
+        throw new ValidationError(`Invalid override formula: ${error.message}`);
       }
     }
 
@@ -932,14 +932,14 @@ class PayStructureService {
           context.grossEarnings = (context.grossEarnings || 0) + value;
           context.gross_earnings = context.grossEarnings; // Keep both formats
         }
-      } catch (err) {
+      } catch (error) {
         logger.error('Component calculation failed', {
           component: component.componentCode,
-          error: err.message,
+          error: error.message,
           employeeId,
           organizationId
         });
-        throw new Error(`Failed to calculate component ${component.componentCode}: ${err.message}`);
+        throw new Error(`Failed to calculate component ${component.componentCode}: ${error.message}`);
       }
     }
 
@@ -1453,7 +1453,7 @@ class PayStructureService {
         );
 
         results.successful++;
-      } catch (_error) {
+      } catch (error) {
         logger.error('Error upgrading worker', { workerId, error: _error.message });
         results.failed++;
         results.errors.push({
@@ -1542,7 +1542,7 @@ class PayStructureService {
   async getCurrentWorkerStructure(employeeId, organizationId, asOfDate = null) {
     try {
       return await this.repository.getCurrentWorkerStructure(employeeId, organizationId, asOfDate);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching current worker structure', {
         error: _error.message,
         employeeId,
@@ -1561,7 +1561,7 @@ class PayStructureService {
   async getWorkerStructureHistory(employeeId, organizationId) {
     try {
       return await this.repository.getWorkerStructureHistory(employeeId, organizationId);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching worker structure history', {
         error: _error.message,
         employeeId,
@@ -1625,7 +1625,7 @@ class PayStructureService {
         organizationId,
         userId
       );
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error assigning template to worker', {
         error: _error.message,
         employeeId,
@@ -1764,7 +1764,7 @@ class PayStructureService {
       });
 
       return dtoMapper.mapTemplateInclusionDbToApi(inclusion);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error adding included template', {
         error: _error.message,
         parentTemplateId,
@@ -1787,7 +1787,7 @@ class PayStructureService {
       );
 
       return inclusions.map(inc => dtoMapper.mapTemplateInclusionDbToApi(inc));
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting included templates', {
         error: _error.message,
         parentTemplateId,
@@ -1870,7 +1870,7 @@ class PayStructureService {
       });
 
       return dtoMapper.mapTemplateInclusionDbToApi(updated);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating included template', {
         error: _error.message,
         inclusionId,
@@ -1926,7 +1926,7 @@ class PayStructureService {
       });
 
       return { success: true };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error removing included template', {
         error: _error.message,
         inclusionId,
@@ -1956,7 +1956,7 @@ class PayStructureService {
         template: dtoMapper.mapPayStructureTemplateDbToApi(template),
         resolvedStructure: resolved
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting composite structure', {
         error: _error.message,
         templateId,

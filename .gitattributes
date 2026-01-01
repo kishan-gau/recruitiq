@@ -1,0 +1,48 @@
+# Git Line Ending Configuration
+# Ensures consistent line endings across Windows/Linux/Mac development
+
+# Auto-detect text files and normalize to LF in repository
+* text=auto eol=lf
+
+# Explicitly declare shell scripts as LF (CRITICAL for Linux containers)
+*.sh text eol=lf
+
+# SQL and database scripts
+*.sql text eol=lf
+
+# JavaScript/TypeScript - normalize to LF
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+
+# Configuration files
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Windows-specific files should keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

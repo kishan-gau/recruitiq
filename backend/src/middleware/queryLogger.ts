@@ -5,6 +5,14 @@
  */
 
 import logger from '../utils/logger.js';
+import type { Pool, QueryResult } from 'pg';
+
+/** Metadata passed with query for logging context */
+export interface QueryMetadata {
+  userId?: string;
+  ip?: string;
+  endpoint?: string;
+}
 
 // Suspicious patterns to detect
 const SUSPICIOUS_PATTERNS = [
@@ -53,7 +61,7 @@ const queryStats = {
 /**
  * Analyze query for suspicious patterns
  */
-export function analyzeQuery(query, params = []) {
+export function analyzeQuery(query: string, params: unknown[] = []) {
   const analysis = {
     isSuspicious: false,
     alerts: [],
@@ -99,7 +107,7 @@ export function analyzeQuery(query, params = []) {
 /**
  * Log query execution
  */
-export function logQuery(query, params = [], metadata = {}) {
+export function logQuery(query: string, params: unknown[] = [], metadata: QueryMetadata = {}) {
   queryStats.total++;
 
   const analysis = analyzeQuery(query, params);
@@ -153,7 +161,7 @@ export function logSlowQuery(query, params, executionTime, threshold = 1000) {
 /**
  * Log query error
  */
-export function logQueryError(query, params, error, metadata = {}) {
+export function logQueryError(query: string, params: unknown[], error: Error, metadata: QueryMetadata = {}) {
   queryStats.errors++;
 
   // Check if error might be from SQL injection attempt
@@ -207,10 +215,10 @@ export function resetStats() {
 /**
  * Wrapper for pool.query that adds logging
  */
-export function createLoggedQuery(pool) {
+export function createLoggedQuery(pool: Pool) {
   const originalQuery = pool.query.bind(pool);
 
-  return async function loggedQuery(text, params, metadata = {}) {
+  return async function loggedQuery(text: string, params: unknown[] = [], metadata: QueryMetadata = {}): Promise<QueryResult> {
     const startTime = Date.now();
 
     try {
@@ -225,7 +233,7 @@ export function createLoggedQuery(pool) {
       logSlowQuery(text, params || [], executionTime);
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       // Log error
       logQueryError(text, params || [], error, metadata);
       throw error;

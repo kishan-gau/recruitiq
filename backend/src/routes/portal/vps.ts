@@ -19,7 +19,7 @@ router.get('/test-mode', async (req, res, next) => {
       success: true,
       testMode: status
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -36,7 +36,7 @@ router.get('/', async (req, res, next) => {
       vpsList,
       testMode: vpsService.getTestModeStatus().enabled
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -52,7 +52,7 @@ router.get('/:vpsName', async (req, res, next) => {
       success: true,
       vps
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -73,7 +73,7 @@ router.post('/', async (req, res, next) => {
         ? 'VPS created in TEST MODE - no real resources created'
         : 'VPS created successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -89,7 +89,7 @@ router.post('/:vpsName/start', async (req, res, next) => {
       success: true,
       message: 'VPS start command sent'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -102,7 +102,7 @@ router.post('/:vpsName/stop', async (req, res, next) => {
       success: true,
       message: 'VPS stop command sent'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -115,7 +115,7 @@ router.post('/:vpsName/reboot', async (req, res, next) => {
       success: true,
       message: 'VPS reboot command sent'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -128,7 +128,7 @@ router.delete('/:vpsName', async (req, res, next) => {
       success: true,
       message: 'VPS deletion scheduled'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -144,7 +144,7 @@ router.get('/:vpsName/snapshots', async (req, res, next) => {
       success: true,
       snapshots
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -161,7 +161,7 @@ router.post('/:vpsName/snapshots', async (req, res, next) => {
         ? 'Snapshot created in TEST MODE - no real snapshot created'
         : 'Snapshot created successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -175,7 +175,7 @@ router.delete('/:vpsName/snapshots/:snapshotId', async (req, res, next) => {
       success: true,
       message: 'Snapshot deleted'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -189,7 +189,7 @@ router.post('/:vpsName/snapshots/:snapshotId/revert', async (req, res, next) => 
       success: true,
       message: 'Reverting to snapshot'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -205,7 +205,7 @@ router.get('/:vpsName/firewall', async (req, res, next) => {
       success: true,
       firewall
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -219,7 +219,7 @@ router.put('/:vpsName/firewall', async (req, res, next) => {
       success: true,
       message: 'Firewall rules updated'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });
@@ -235,7 +235,7 @@ router.get('/:vpsName/usage', async (req, res, next) => {
       success: true,
       usage
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 });

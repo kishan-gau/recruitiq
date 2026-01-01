@@ -4,14 +4,14 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "node",
-    "allowJs": true,
+    "allowJs": false,
     "checkJs": false,
 
     // Output
     "outDir": "./dist",
     "rootDir": "./src",
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "sourceMap": true,
     "removeComments": false,
 
@@ -73,6 +73,13 @@
     "coverage",
     "**/*.test.ts",
     "**/*.test.js",
-    "**/__tests__/**"
+    "**/__tests__/**",
+    "knexfile.js",
+    "jest.config.js",
+    "eslint.config.js",
+    "scripts/**/*",
+    "migrations/**/*",
+    "seeds/**/*",
+    "docker-init/**/*"
   ]
 }

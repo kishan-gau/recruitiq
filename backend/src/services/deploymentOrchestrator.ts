@@ -63,7 +63,7 @@ constructor() {
         throw new Error('Health check failed');
       }
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Deployment failed:', error);
       await this.updateDeploymentStatus(deploymentId, 'failed', error.message);
       throw error;
@@ -305,7 +305,7 @@ DOMAIN=${slug}.recruitiq.nl
 
       this.log(deploymentId, '✅ Health check passed');
       return true;
-    } catch (_error) {
+    } catch (error) {
       this.log(deploymentId, `❌ Health check failed: ${error.message}`);
       return false;
     }

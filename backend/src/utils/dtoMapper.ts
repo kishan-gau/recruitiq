@@ -212,7 +212,16 @@ const LIST_RESPONSE_FIELDS = {
  * @param {string} options.entity - Entity type for list filtering (jobs, candidates, etc.)
  * @returns {Object} Mapped data for API response
  */
-export function mapDbToApi(dbData, options = {}) {
+
+interface MapDbToApiOptions {
+  includeAll?: boolean;
+  only?: string[] | null;
+  exclude?: string[];
+  isList?: boolean;
+  entity?: string | null;
+}
+
+export function mapDbToApi(dbData: unknown, options: MapDbToApiOptions = {}): unknown {
   if (!dbData || typeof dbData !== 'object') {
     return dbData;
   }
@@ -285,7 +294,13 @@ export function mapDbToApi(dbData, options = {}) {
  * @param {Object} options.defaults - Default values to merge
  * @returns {Object} Mapped data for database operations
  */
-export function mapApiToDb(apiData, options = {}) {
+
+interface MapApiToDbOptions {
+  allowedFields?: string[] | null;
+  defaults?: Record<string, unknown>;
+}
+
+export function mapApiToDb(apiData: unknown, options: MapApiToDbOptions = {}): unknown {
   if (!apiData || typeof apiData !== 'object') {
     return apiData;
   }

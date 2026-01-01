@@ -14,6 +14,11 @@
 import db from '../config/knex.js';
 import logger from '../utils/logger.js';
 
+/**
+ * Generic filter type for dynamic query parameters
+ */
+export type KnexFilters = Record<string, unknown>;
+
 class BaseKnexRepository {
   tableName: string;
   db: any;
@@ -53,7 +58,7 @@ class BaseKnexRepository {
         .first();
       
       return record || null;
-    } catch (_error) {
+    } catch (error) {
       logger.error(`Error finding ${this.tableName} by ID`, {
         error: error.message,
         id,
@@ -102,7 +107,7 @@ class BaseKnexRepository {
       
       const records = await query;
       return records;
-    } catch (_error) {
+    } catch (error) {
       logger.error(`Error finding all ${this.tableName}`, {
         error: error.message,
         organizationId,
@@ -119,7 +124,7 @@ class BaseKnexRepository {
    * @param {Object} filters - Additional filters
    * @returns {Promise<number>}
    */
-  async count(organizationId, filters = {}) {
+  async count(organizationId: string, filters: KnexFilters = {}) {
     try {
       let query = this.baseQuery(organizationId);
       
@@ -132,7 +137,7 @@ class BaseKnexRepository {
       
       const result = await query.count('* as count').first();
       return parseInt(result.count, 10);
-    } catch (_error) {
+    } catch (error) {
       logger.error(`Error counting ${this.tableName}`, {
         error: error.message,
         organizationId,
@@ -172,7 +177,7 @@ class BaseKnexRepository {
       });
       
       return record;
-    } catch (_error) {
+    } catch (error) {
       logger.error(`Error creating ${this.tableName}`, {
         error: error.message,
         organizationId,
@@ -216,7 +221,7 @@ class BaseKnexRepository {
       });
       
       return record;
-    } catch (_error) {
+    } catch (error) {
       logger.error(`Error updating ${this.tableName}`, {
         error: error.message,
         id,
@@ -256,7 +261,7 @@ class BaseKnexRepository {
       }
       
       return deleted;
-    } catch (_error) {
+    } catch (error) {
       logger.error(`Error soft deleting ${this.tableName}`, {
         error: error.message,
         id,
@@ -290,7 +295,7 @@ class BaseKnexRepository {
       }
       
       return deleted;
-    } catch (_error) {
+    } catch (error) {
       logger.error(`Error hard deleting ${this.tableName}`, {
         error: error.message,
         id,

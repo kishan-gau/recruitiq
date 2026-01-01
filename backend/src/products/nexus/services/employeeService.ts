@@ -186,7 +186,7 @@ constructor() {
 
       // Transform DB employee (snake_case) to API format (camelCase)
       return mapEmployeeDbToApi(employee);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating employee', { 
         error: error.message,
         organizationId,
@@ -228,7 +228,7 @@ constructor() {
 
       // Transform DB employee to API format
       return mapEmployeeDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting employee', { 
         error: error.message,
         id,
@@ -340,7 +340,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing employees', { 
         error: error.message,
         filters,
@@ -461,7 +461,7 @@ constructor() {
 
       // Transform complete employee data (with relationships) to API format
       return mapEmployeeDbToApi(fetchResult.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating employee', { 
         error: error.message,
         id,
@@ -512,7 +512,7 @@ constructor() {
       });
 
       return { success: true, message: 'Employee deleted successfully' };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting employee', { 
         error: error.message,
         id,
@@ -562,7 +562,7 @@ constructor() {
 
       // Transform DB employees to API format
       return mapEmployeesDbToApi(result.rows);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error searching employees', { 
         error: error.message,
         searchTerm,
@@ -600,7 +600,7 @@ constructor() {
 
       // Transform DB employee to API format
       return mapEmployeeDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting employee by email', { 
         error: error.message,
         email,
@@ -638,7 +638,7 @@ constructor() {
 
       // Transform DB employee to API format
       return mapEmployeeDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting employee by number', { 
         error: error.message,
         employeeNumber,

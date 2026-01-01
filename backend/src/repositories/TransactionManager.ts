@@ -104,7 +104,7 @@ export class TransactionManager {
       logger.debug('Transaction committed successfully');
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       try {
         // Rollback on error
         await client.query('ROLLBACK');
@@ -197,7 +197,7 @@ export class TransactionManager {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await this.execute(callback);
-      } catch (_error) {
+      } catch (error) {
         lastError = error as Error;
 
         const isLastAttempt = attempt === maxRetries;
@@ -247,7 +247,7 @@ export class TransactionManager {
    *         await client.query(`SAVEPOINT ${savepoint}`);
    *         await client.query('INSERT INTO users ...');
    *         await client.query(`RELEASE SAVEPOINT ${savepoint}`);
-   *       } catch (_error) {
+   *       } catch (error) {
    *         await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
    *         // Continue with outer transaction
    *       }
@@ -269,7 +269,7 @@ export class TransactionManager {
 
         try {
           await nestedCallbacks[i](client, savepointName);
-        } catch (_error) {
+        } catch (error) {
           logger.warn('Nested operation failed', {
             savepoint: savepointName,
             error: (error as Error).message,

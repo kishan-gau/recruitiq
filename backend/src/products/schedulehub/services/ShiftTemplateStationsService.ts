@@ -103,7 +103,7 @@ constructor(repository = null) {
       // Transform to API format
       return mapShiftTemplateStationDbToApi(created);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error assigning station to shift template', {
         error: error.message,
         data,
@@ -143,7 +143,7 @@ constructor(repository = null) {
         userId
       });
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error unassigning station from shift template', {
         error: error.message,
         shiftTemplateId,
@@ -168,7 +168,7 @@ constructor(repository = null) {
       // Transform to API format
       return mapShiftTemplateStationsDbToApi(associations);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error retrieving stations for shift template', {
         error: error.message,
         shiftTemplateId,
@@ -191,7 +191,7 @@ constructor(repository = null) {
       // Transform to API format
       return mapShiftTemplateStationsDbToApi(associations);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error retrieving templates for station', {
         error: error.message,
         stationId,
@@ -234,7 +234,7 @@ constructor(repository = null) {
       // Transform to API format
       return mapShiftTemplateStationsDbToApi(created);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error bulk assigning stations to shift template', {
         error: error.message,
         data,
@@ -277,7 +277,7 @@ constructor(repository = null) {
       // Transform to API format
       return mapShiftTemplateStationsDbToApi(updated);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating shift template stations', {
         error: error.message,
         data,
@@ -313,7 +313,7 @@ constructor(repository = null) {
 
       return removedCount;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error removing all stations from shift template', {
         error: error.message,
         shiftTemplateId,
@@ -335,7 +335,7 @@ constructor(repository = null) {
     try {
       return await this.repository.exists(shiftTemplateId, stationId, organizationId);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error checking station assignment', {
         error: error.message,
         shiftTemplateId,

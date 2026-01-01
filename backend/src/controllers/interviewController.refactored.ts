@@ -22,7 +22,7 @@ export async function createInterview(req, res, next) {
       data: interview,
       message: 'Interview scheduled successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -46,7 +46,7 @@ export async function getInterview(req, res, next) {
       success: true,
       interview: interview
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -66,7 +66,7 @@ export async function updateInterview(req, res, next) {
       data: interview,
       message: 'Interview updated successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -85,7 +85,7 @@ export async function deleteInterview(req, res, next) {
       success: true,
       message: 'Interview deleted successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -135,7 +135,7 @@ export async function listInterviews(req, res, next) {
         totalPages: result.totalPages
       }
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -154,7 +154,7 @@ export async function getApplicationInterviews(req, res, next) {
       success: true,
       data: interviews
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -196,7 +196,7 @@ export async function getInterviewerInterviews(req, res, next) {
         totalPages: result.totalPages
       }
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -219,7 +219,7 @@ export async function getUpcomingInterviews(req, res, next) {
       success: true,
       data: interviews
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -236,7 +236,7 @@ export async function getInterviewStatistics(req, res, next) {
       success: true,
       data: stats
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -268,7 +268,7 @@ export async function submitInterviewFeedback(req, res, next) {
       data: interview,
       message: 'Feedback submitted successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -289,7 +289,7 @@ export async function cancelInterview(req, res, next) {
       data: interview,
       message: 'Interview cancelled successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -309,7 +309,7 @@ export async function completeInterview(req, res, next) {
       data: interview,
       message: 'Interview marked as completed'
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }

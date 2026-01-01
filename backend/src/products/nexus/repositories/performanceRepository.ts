@@ -47,7 +47,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding review', { id, error: error.message });
       throw error;
     }
@@ -81,7 +81,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding reviews', { error: error.message });
       throw error;
     }
@@ -109,7 +109,7 @@ constructor(database = null) {
         completed: parseInt(result.rows[0].completed) || 0,
         averageRating: parseFloat(result.rows[0].averageRating) || 0
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting reviews statistics', { error: error.message });
       throw error;
     }
@@ -138,7 +138,7 @@ constructor(database = null) {
       ];
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating review', { error: error.message });
       throw error;
     }
@@ -168,7 +168,7 @@ constructor(database = null) {
       ];
       const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating review', { error: error.message });
       throw error;
     }
@@ -181,7 +181,7 @@ constructor(database = null) {
       const sql = `SELECT * FROM ${this.goalTable} WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL`;
       const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding goal', { error: error.message });
       throw error;
     }
@@ -210,7 +210,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding goals', { error: error.message });
       throw error;
     }
@@ -236,7 +236,7 @@ constructor(database = null) {
         cancelled: parseInt(result.rows[0].cancelled) || 0,
         averageCompletion: parseFloat(result.rows[0].averageCompletion) || 0
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting goals statistics', { error: error.message });
       throw error;
     }
@@ -262,7 +262,7 @@ constructor(database = null) {
       ];
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating goal', { error: error.message });
       throw error;
     }
@@ -285,7 +285,7 @@ constructor(database = null) {
       const params = [dbData.goal_description, dbData.completion_percentage, dbData.status, userId, id, organizationId];
       const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating goal', { error: error.message });
       throw error;
     }
@@ -311,7 +311,7 @@ constructor(database = null) {
       ];
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating feedback', { error: error.message });
       throw error;
     }
@@ -329,7 +329,7 @@ constructor(database = null) {
       `;
       const result = await this.query(sql, [employeeId, organizationId, limit], organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding feedback', { error: error.message });
       throw error;
     }

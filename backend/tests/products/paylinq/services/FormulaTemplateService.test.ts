@@ -79,8 +79,23 @@ describe('FormulaTemplateService', () => {
     mockFormulaEngine.validate.mockResolvedValue({ valid: true, errors: [] });
     mockFormulaEngine.parse.mockResolvedValue({ type: 'multiply', args: [] });
     
-    // Create service instance with mocked formulaEngine
-    service = new FormulaTemplateService(mockFormulaEngine);
+    // Create mock repository with all required methods
+    const mockRepository = {
+      findAll: jest.fn(),
+      findById: jest.fn(),
+      findByCode: jest.fn(),
+      existsByCode: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      incrementUsageCount: jest.fn(),
+      findPopular: jest.fn(),
+      findRecommendedByCategory: jest.fn(),
+      findByTags: jest.fn(),
+    };
+    
+    // Create service instance with mocked repository and formulaEngine
+    service = new FormulaTemplateService(mockRepository, mockFormulaEngine);
   });
 
   // ==================== GET TEMPLATES ====================

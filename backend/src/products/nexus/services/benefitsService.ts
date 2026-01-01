@@ -85,7 +85,7 @@ constructor(integrationService = null) {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating benefit plan', { 
         error: error.message,
         organizationId,
@@ -119,7 +119,7 @@ constructor(integrationService = null) {
       }
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting benefit plan', { 
         error: error.message,
         id,
@@ -206,7 +206,7 @@ constructor(integrationService = null) {
         limit,
         offset
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing benefit plans', { 
         error: error.message,
         filters,
@@ -274,7 +274,7 @@ constructor(integrationService = null) {
         pendingEnrollments: parseInt(summary.pending_enrollments) || 0,
         terminatedEnrollments: parseInt(summary.terminated_enrollments) || 0
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting enrollment summary', { 
         error: error.message,
         planId,
@@ -357,7 +357,7 @@ constructor(integrationService = null) {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating benefit plan', { 
         error: error.message,
         id,
@@ -494,7 +494,7 @@ constructor(integrationService = null) {
       }
 
       return enrollment;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error enrolling employee', { 
         error: error.message,
         organizationId,
@@ -582,7 +582,7 @@ constructor(integrationService = null) {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating enrollment', { 
         error: error.message,
         id,
@@ -641,7 +641,7 @@ constructor(integrationService = null) {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error terminating enrollment', { 
         error: error.message,
         id,
@@ -701,7 +701,7 @@ constructor(integrationService = null) {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing enrollments', { 
         error: error.message,
         organizationId,
@@ -740,7 +740,7 @@ constructor(integrationService = null) {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting employee enrollments', { 
         error: error.message,
         employeeId,
@@ -779,7 +779,7 @@ constructor(integrationService = null) {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting plan enrollments', { 
         error: error.message,
         planId,

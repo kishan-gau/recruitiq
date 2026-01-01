@@ -350,7 +350,7 @@ export function validateAndParseDate(dateInput, fieldName = 'date', timezone = D
 
   try {
     return parseDate(dateInput, timezone);
-  } catch (_error) {
+  } catch (error) {
     throw new Error(`Invalid ${fieldName}: ${error.message}`);
   }
 }

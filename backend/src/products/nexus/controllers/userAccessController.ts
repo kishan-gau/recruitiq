@@ -37,7 +37,7 @@ export const grantAccess = async (req, res) => {
       message: 'System access granted successfully',
       data: result
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error granting system access', { error, employeeId: req.params.employeeId });
 
     if (error.message.includes('not found')) {
@@ -90,7 +90,7 @@ export const getUserAccount = async (req, res) => {
       success: true,
       data: userAccount
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching user account', { error, employeeId: req.params.employeeId });
 
     if (error.message.includes('not found')) {
@@ -130,7 +130,7 @@ export const revokeAccess = async (req, res) => {
       success: true,
       message: 'System access revoked successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error revoking system access', { error, employeeId: req.params.employeeId });
 
     if (error.message.includes('not found')) {
@@ -176,7 +176,7 @@ export const updateAccess = async (req, res) => {
       message: 'Access settings updated successfully',
       data: result
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating access settings', { error, employeeId: req.params.employeeId });
 
     if (error.message.includes('not found')) {

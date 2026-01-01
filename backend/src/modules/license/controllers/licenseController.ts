@@ -16,7 +16,7 @@ export const licenseController = {
       }
 
       res.json({ license })
-    } catch (_error) {
+    } catch (error) {
       console.error('Get license error:', error)
       res.status(500).json({ error: 'Failed to fetch license' })
     }
@@ -64,7 +64,7 @@ export const licenseController = {
         message: 'License created successfully. Run onboarding script on tenant VPS to initialize tenant.',
         onboardingCommand: `node scripts/onboard-tenant.js --license-id=${license.id} --customer-id=${customer.id} --email=${customer.email} --name="${customer.name}"`
       })
-    } catch (_error) {
+    } catch (error) {
       console.error('Create license error:', error)
       res.status(500).json({ error: 'Failed to create license' })
     }
@@ -83,7 +83,7 @@ export const licenseController = {
       }
 
       res.json({ license })
-    } catch (_error) {
+    } catch (error) {
       console.error('Update license error:', error)
       res.status(500).json({ error: 'Failed to update license' })
     }
@@ -105,7 +105,7 @@ export const licenseController = {
         license,
         message: `License renewed for ${months} months`
       })
-    } catch (_error) {
+    } catch (error) {
       console.error('Renew license error:', error)
       res.status(500).json({ error: 'Failed to renew license' })
     }
@@ -126,7 +126,7 @@ export const licenseController = {
         license,
         message: 'License suspended'
       })
-    } catch (_error) {
+    } catch (error) {
       console.error('Suspend license error:', error)
       res.status(500).json({ error: 'Failed to suspend license' })
     }
@@ -147,7 +147,7 @@ export const licenseController = {
         license,
         message: 'License reactivated'
       })
-    } catch (_error) {
+    } catch (error) {
       console.error('Reactivate license error:', error)
       res.status(500).json({ error: 'Failed to reactivate license' })
     }
@@ -190,7 +190,7 @@ export const licenseController = {
       res.setHeader('Content-Disposition', `attachment; filename="recruitiq-${license.instance_key}.lic"`)
 
       res.json(licenseFile)
-    } catch (_error) {
+    } catch (error) {
       console.error('Generate license file error:', error)
       res.status(500).json({ error: 'Failed to generate license file' })
     }
@@ -204,7 +204,7 @@ export const licenseController = {
       const licenses = await License.getExpiring(parseInt(days))
 
       res.json({ licenses })
-    } catch (_error) {
+    } catch (error) {
       console.error('Get expiring licenses error:', error)
       res.status(500).json({ error: 'Failed to fetch expiring licenses' })
     }
@@ -222,7 +222,7 @@ export const licenseController = {
       }
 
       res.json({ message: 'License deleted', license })
-    } catch (_error) {
+    } catch (error) {
       console.error('Delete license error:', error)
       res.status(500).json({ error: 'Failed to delete license' })
     }

@@ -24,7 +24,7 @@ export const listRoles = async (req, res, next) => {
       roles,
       count: roles.length
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error listing roles', {
       error: error.message,
       organizationId: req.user.organizationId,
@@ -49,7 +49,7 @@ export const getRole = async (req, res, next) => {
       success: true,
       role
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.message === 'Role not found') {
       return res.status(404).json({
         success: false,
@@ -82,7 +82,7 @@ export const createRole = async (req, res, next) => {
       role,
       message: 'Role created successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.name === 'ValidationError' || error.message.includes('already exists')) {
       return res.status(400).json({
         success: false,
@@ -117,7 +117,7 @@ export const updateRole = async (req, res, next) => {
       role,
       message: 'Role updated successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.message === 'Role not found') {
       return res.status(404).json({
         success: false,
@@ -158,7 +158,7 @@ export const deleteRole = async (req, res, next) => {
       success: true,
       message: 'Role deleted successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.message === 'Role not found') {
       return res.status(404).json({
         success: false,
@@ -200,7 +200,7 @@ export const assignPermissions = async (req, res, next) => {
       role,
       message: 'Permissions assigned successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.message === 'Role not found') {
       return res.status(404).json({
         success: false,

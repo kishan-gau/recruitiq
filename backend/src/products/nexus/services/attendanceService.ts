@@ -84,7 +84,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error clocking in employee', { 
         error: error.message,
         organizationId,
@@ -164,7 +164,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error clocking out employee', { 
         error: error.message,
         employeeId,
@@ -204,7 +204,7 @@ constructor() {
       }
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting attendance record', { 
         error: error.message,
         id,
@@ -267,7 +267,7 @@ constructor() {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting employee attendance', { 
         error: error.message,
         employeeId,
@@ -309,7 +309,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting attendance summary', { 
         error: error.message,
         employeeId,
@@ -353,7 +353,7 @@ constructor() {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting daily attendance', { 
         error: error.message,
         date,
@@ -450,7 +450,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating attendance record', { 
         error: error.message,
         id,
@@ -500,7 +500,7 @@ constructor() {
       });
 
       return { success: true, message: 'Attendance record deleted successfully' };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting attendance record', { 
         error: error.message,
         id,
@@ -520,7 +520,7 @@ constructor() {
 
       const today = new Date().toISOString().split('T')[0];
       return await this.getDailyAttendance(today, organizationId);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting today\'s attendance', { 
         error: error.message,
         organizationId 
@@ -574,7 +574,7 @@ constructor() {
       });
 
       return stats;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting attendance statistics', { 
         error: error.message,
         organizationId 

@@ -11,7 +11,16 @@ import {
   ExecutionResult,
   FormulaExecutionError,
   DivisionByZeroError,
+  ASTNode,
 } from './FormulaTypes.js';
+
+/**
+ * Execution options for formula evaluation
+ */
+export interface FormulaExecutorOptions {
+  /** Value to return when division by zero occurs, instead of throwing error */
+  divideByZeroValue?: number;
+}
 
 class FormulaExecutor {
   /**
@@ -21,9 +30,9 @@ class FormulaExecutor {
    * @param {Object} options - Execution options
    * @returns {ExecutionResult}
    */
-  execute(ast, variables = {}, options = {}) {
+  execute(ast: ASTNode, variables: Record<string, number> = {}, options: FormulaExecutorOptions = {}): ExecutionResult {
     const startTime = Date.now();
-    const usedVariables = new Set();
+    const usedVariables = new Set<string>();
     
     try {
       const value = this.evaluateNode(ast, variables, options, usedVariables);
@@ -33,7 +42,7 @@ class FormulaExecutor {
         executionTime,
         variablesUsed: Array.from(usedVariables),
       });
-    } catch (_error) {
+    } catch (error) {
       if (error instanceof FormulaExecutionError) {
         throw error;
       }
@@ -44,7 +53,7 @@ class FormulaExecutor {
   /**
    * Evaluate a single node
    */
-  evaluateNode(node, variables, options, usedVariables = new Set()) {
+  evaluateNode(node: ASTNode, variables: Record<string, number>, options: FormulaExecutorOptions, usedVariables: Set<string> = new Set()): number {
     if (!node) {
       throw new FormulaExecutionError('Cannot evaluate null node');
     }
@@ -145,7 +154,7 @@ class FormulaExecutor {
   /**
    * Evaluate variable node
    */
-  evaluateVariable(node, variables, usedVariables) {
+  evaluateVariable(node: ASTNode, variables: Record<string, number>, usedVariables: Set<string>): number {
     const value = variables[node.name];
 
     if (value === undefined || value === null) {
@@ -176,7 +185,7 @@ class FormulaExecutor {
   /**
    * Evaluate division with zero check
    */
-  evaluateDivision(node, variables, options, usedVariables) {
+  evaluateDivision(node: ASTNode, variables: Record<string, number>, options: FormulaExecutorOptions, usedVariables: Set<string>): number {
     const left = this.evaluateNode(node.left, variables, options, usedVariables);
     const right = this.evaluateNode(node.right, variables, options, usedVariables);
 
@@ -193,7 +202,7 @@ class FormulaExecutor {
   /**
    * Evaluate modulo with zero check
    */
-  evaluateModulo(node, variables, options, usedVariables) {
+  evaluateModulo(node: ASTNode, variables: Record<string, number>, options: FormulaExecutorOptions, usedVariables: Set<string>): number {
     const left = this.evaluateNode(node.left, variables, options, usedVariables);
     const right = this.evaluateNode(node.right, variables, options, usedVariables);
 
@@ -207,7 +216,7 @@ class FormulaExecutor {
   /**
    * Evaluate conditional (IF/THEN/ELSE)
    */
-  evaluateConditional(node, variables, options, usedVariables) {
+  evaluateConditional(node: ASTNode, variables: Record<string, number>, options: FormulaExecutorOptions, usedVariables: Set<string>): number {
     const condition = this.evaluateNode(node.condition, variables, options, usedVariables);
     
     if (condition) {
@@ -220,8 +229,8 @@ class FormulaExecutor {
   /**
    * Evaluate function call
    */
-  evaluateFunction(node, variables, options, usedVariables) {
-    const args = node.args.map(arg => this.evaluateNode(arg, variables, options, usedVariables));
+  evaluateFunction(node: ASTNode, variables: Record<string, number>, options: FormulaExecutorOptions, usedVariables: Set<string>): number {
+    const args = node.args.map((arg: ASTNode) => this.evaluateNode(arg, variables, options, usedVariables));
 
     switch (node.name) {
       case Functions.MIN:
@@ -262,7 +271,7 @@ class FormulaExecutor {
    * @param {boolean} value 
    * @returns {number}
    */
-  booleanToNumber(value) {
+  booleanToNumber(value: boolean): number {
     return value ? 1 : 0;
   }
 
@@ -272,7 +281,7 @@ class FormulaExecutor {
    * @param {number} decimals 
    * @returns {number}
    */
-  roundResult(value, decimals = 2) {
+  roundResult(value: number, decimals: number = 2): number {
     const multiplier = Math.pow(10, decimals);
     return Math.round(value * multiplier) / multiplier;
   }

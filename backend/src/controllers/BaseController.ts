@@ -13,6 +13,7 @@
  * - Apply security headers and validation
  */
 
+import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger.js';
 import {
   ValidationError,
@@ -22,6 +23,15 @@ import {
   ConflictError,
   APIError,
 } from '../middleware/errorHandler.js';
+
+/**
+ * Options for success response builder
+ */
+interface SuccessOptions {
+  message?: string;
+  statusCode?: number;
+  pagination?: Record<string, unknown>;
+}
 
 /**
  * Base Controller Class
@@ -38,7 +48,7 @@ import {
  *       const data = this.getBody(req);
  *       const result = await this.service.create(data, this.getServiceOptions(req));
  *       this.created(res, result);
- *     } catch (_error) {
+ *     } catch (error) {
  *       this.handleError(error, res, next);
  *     }
  *   }
@@ -61,11 +71,12 @@ export class BaseController {
    * @returns {string} Organization UUID
    * @throws {UnauthorizedError} If user not authenticated
    */
-  getOrgId(req) {
-    if (!req.user?.organizationId) {
+  getOrgId(req: Request): string {
+    const user = (req as unknown as Record<string, unknown>).user as Record<string, unknown> | undefined;
+    if (!user?.organizationId) {
       throw new UnauthorizedError('Organization ID not found in request');
     }
-    return req.user.organizationId;
+    return user.organizationId as string;
   }
 
   /**
@@ -74,11 +85,12 @@ export class BaseController {
    * @returns {string} User UUID
    * @throws {UnauthorizedError} If user not authenticated
    */
-  getUserId(req) {
-    if (!req.user?.id) {
+  getUserId(req: Request): string {
+    const user = (req as unknown as Record<string, unknown>).user as Record<string, unknown> | undefined;
+    if (!user?.id) {
       throw new UnauthorizedError('User ID not found in request');
     }
-    return req.user.id;
+    return user.id as string;
   }
 
   /**
@@ -87,11 +99,12 @@ export class BaseController {
    * @returns {Object} User object
    * @throws {UnauthorizedError} If user not authenticated
    */
-  getUser(req) {
-    if (!req.user) {
+  getUser(req: Request): Record<string, unknown> {
+    const user = (req as unknown as Record<string, unknown>).user as Record<string, unknown> | undefined;
+    if (!user) {
       throw new UnauthorizedError('User not authenticated');
     }
-    return req.user;
+    return user;
   }
 
   /**
@@ -99,7 +112,7 @@ export class BaseController {
    * @param {Object} req - Express request object
    * @returns {Object} Path parameters (e.g., { id: '123' })
    */
-  getParams(req) {
+  getParams(req: Request): Record<string, string> {
     return req.params || {};
   }
 
@@ -108,8 +121,8 @@ export class BaseController {
    * @param {Object} req - Express request object
    * @returns {Object} Query parameters (e.g., { page: '1', limit: '20' })
    */
-  getQuery(req) {
-    return req.query || {};
+  getQuery(req: Request | unknown): Record<string, unknown> {
+    return (req as Request).query || {};
   }
 
   /**
@@ -117,7 +130,7 @@ export class BaseController {
    * @param {Object} req - Express request object
    * @returns {Object} Request body (already parsed by express.json())
    */
-  getBody(req) {
+  getBody(req: Request): Record<string, unknown> {
     return req.body || {};
   }
 
@@ -128,7 +141,7 @@ export class BaseController {
    * @param {*} defaultValue - Default value if not found
    * @returns {*} Parameter value or default
    */
-  getParam(req, name, defaultValue = undefined) {
+  getParam(req: Request, name: string, defaultValue: string | undefined = undefined): string | undefined {
     return this.getParams(req)[name] ?? defaultValue;
   }
 
@@ -139,7 +152,7 @@ export class BaseController {
    * @param {*} defaultValue - Default value if not found
    * @returns {*} Query parameter value or default
    */
-  getQueryParam(req, name, defaultValue = undefined) {
+  getQueryParam(req: Request, name: string, defaultValue: unknown = undefined): unknown {
     return this.getQuery(req)[name] ?? defaultValue;
   }
 
@@ -148,9 +161,9 @@ export class BaseController {
    * @param {Object} req - Express request object
    * @returns {Object} { page, limit }
    */
-  getPagination(req) {
-    const page = Math.max(1, parseInt(this.getQueryParam(req, 'page', '1')) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(this.getQueryParam(req, 'limit', '20')) || 20));
+  getPagination(req: Request): { page: number; limit: number } {
+    const page = Math.max(1, parseInt(this.getQueryParam(req, 'page', '1') as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(this.getQueryParam(req, 'limit', '20') as string) || 20));
 
     return { page, limit };
   }
@@ -160,7 +173,7 @@ export class BaseController {
    * @param {Object} req - Express request object
    * @returns {Object} Service options with organizationId and userId
    */
-  getServiceOptions(req) {
+  getServiceOptions(req: Request): { organizationId: string; userId: string; user: Record<string, unknown> } {
     return {
       organizationId: this.getOrgId(req),
       userId: this.getUserId(req),
@@ -178,10 +191,10 @@ export class BaseController {
    * @param {Object} data - Response data
    * @param {Object} options - Optional { message, statusCode, pagination }
    */
-  success(res, data, options = {}) {
+  success(res: Response, data: Record<string, unknown>, options: SuccessOptions = {}): Response {
     const { message, statusCode = 200, pagination } = options;
 
-    const response = {
+    const response: Record<string, unknown> = {
       success: true,
       ...data,
     };
@@ -203,7 +216,7 @@ export class BaseController {
    * @param {Object} data - Created resource(s)
    * @param {string} message - Optional success message
    */
-  created(res, data, message = 'Resource created successfully') {
+  created(res: Response, data: Record<string, unknown>, message: string = 'Resource created successfully'): Response {
     return this.success(res, data, { statusCode: 201, message });
   }
 
@@ -212,7 +225,7 @@ export class BaseController {
    * Used typically for DELETE requests
    * @param {Object} res - Express response object
    */
-  deleted(res) {
+  deleted(res: Response): Response {
     return res.status(204).send();
   }
 
@@ -222,7 +235,7 @@ export class BaseController {
    * @param {Object} data - Updated resource(s)
    * @param {string} message - Optional success message
    */
-  updated(res, data, message = 'Resource updated successfully') {
+  updated(res: Response, data: Record<string, unknown>, message: string = 'Resource updated successfully'): Response {
     return this.success(res, data, { message });
   }
 
@@ -233,7 +246,7 @@ export class BaseController {
    * @param {number} statusCode - HTTP status code
    * @param {string} errorCode - Machine-readable error code
    */
-  error(res, error, statusCode = 500, errorCode = 'INTERNAL_SERVER_ERROR') {
+  error(res: Response, error: string | Error, statusCode: number = 500, errorCode: string = 'INTERNAL_SERVER_ERROR'): Response {
     const message = typeof error === 'string' ? error : error.message || 'Internal server error';
 
     return res.status(statusCode).json({
@@ -264,7 +277,7 @@ export class BaseController {
    * @param {Object} res - Express response object
    * @param {Function} next - Express next middleware function
    */
-  handleError(error, res, next) {
+  handleError(error: Error & { statusCode?: number; code?: string; isOperational?: boolean; details?: unknown }, res: Response, next: NextFunction): Response | void {
     // Log the error with full context
     logger.error('Controller error', {
       errorName: error.constructor.name,
@@ -349,8 +362,8 @@ export class BaseController {
    *   this.created(res, { job });
    * }));
    */
-  asyncHandler(handler) {
-    return (req, res, next) => {
+  asyncHandler(handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>): (req: Request, res: Response, next: NextFunction) => void {
+    return (req: Request, res: Response, next: NextFunction): void => {
       Promise.resolve(handler(req, res, next)).catch(next);
     };
   }
@@ -365,7 +378,7 @@ export class BaseController {
    * @param {string[]} requiredFields - List of required field names
    * @throws {ValidationError} If any required field is missing
    */
-  validateRequired(req, requiredFields = []) {
+  validateRequired(req: Request, requiredFields: string[] = []): void {
     const body = this.getBody(req);
     const missing = requiredFields.filter((field) => !(field in body));
 
@@ -382,14 +395,14 @@ export class BaseController {
    * @param {string|string[]} requiredRoles - Role(s) required for access
    * @throws {ForbiddenError} If user lacks required role
    */
-  checkAuthorization(req, requiredRoles = []) {
-    if (!req.user) {
+  checkAuthorization(req: Request, requiredRoles: string | string[] = []): void {
+    if (!(req as Request & { user?: { role?: string } }).user) {
       throw new UnauthorizedError('User not authenticated');
     }
 
     const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
-    if (!roles.includes(req.user.role)) {
+    if (!roles.includes((req as Request & { user?: { role?: string } }).user?.role || '')) {
       throw new ForbiddenError(
         `This action requires one of these roles: ${roles.join(', ')}`
       );
@@ -404,10 +417,10 @@ export class BaseController {
    * @param {string} resourceOwnerId - ID of the resource owner
    * @throws {ForbiddenError} If user is not the resource owner
    */
-  checkResourceOwnership(req, resourceOwnerId) {
+  checkResourceOwnership(req: Request, resourceOwnerId: string): void {
     const userId = this.getUserId(req);
 
-    if (userId !== resourceOwnerId && req.user?.role !== 'admin') {
+    if (userId !== resourceOwnerId && (req as Request & { user?: { role?: string } }).user?.role !== 'admin') {
       throw new ForbiddenError('You do not have permission to modify this resource');
     }
   }
@@ -422,9 +435,9 @@ export class BaseController {
    * @param {string[]} allowedFields - List of fields that can be filtered
    * @returns {Object} Validated filter object
    */
-  getFilters(req, allowedFields = []) {
+  getFilters(req: unknown, allowedFields: string[] = []): Record<string, unknown> {
     const query = this.getQuery(req);
-    const filters = {};
+    const filters: Record<string, unknown> = {};
 
     Object.keys(query).forEach((key) => {
       // Skip pagination and special parameters
@@ -447,9 +460,9 @@ export class BaseController {
    * @param {string[]} allowedFields - List of fields that can be sorted
    * @returns {Object} { sortBy, sortOrder }
    */
-  getSort(req, allowedFields = []) {
-    const sortBy = this.getQueryParam(req, 'sort', 'createdAt');
-    const sortOrder = this.getQueryParam(req, 'order', 'DESC').toUpperCase();
+  getSort(req: Request, allowedFields: string[] = []): { sortBy: string; sortOrder: string } {
+    const sortBy = this.getQueryParam(req, 'sort', 'createdAt') as string;
+    const sortOrder = (this.getQueryParam(req, 'order', 'DESC') as string).toUpperCase();
 
     // Validate sort field
     if (allowedFields.length > 0 && !allowedFields.includes(sortBy)) {

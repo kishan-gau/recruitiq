@@ -3,6 +3,8 @@
  * Business logic for managing payroll deductions
  */
 
+import type { ServiceFilterOptions } from '../../../types/common.types.js';
+
 /**
  * Deduction types
  */
@@ -54,7 +56,7 @@ constructor(repository = null) {
   /**
    * Get deduction types
    */
-  async getDeductionTypes(organizationId, filters = {}) {
+  async getDeductionTypes(organizationId: string, filters: ServiceFilterOptions = {}): Promise<unknown[]> {
     if (this.repository && this.repository.getDeductionTypes) {
       return await this.repository.getDeductionTypes(organizationId, filters);
     }

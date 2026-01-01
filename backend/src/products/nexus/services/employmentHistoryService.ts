@@ -93,7 +93,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating initial employment', {
         employeeId: employeeData.employeeId,
         error: error.message
@@ -188,7 +188,7 @@ constructor() {
         employee: employeeResult.rows[0],
         employmentHistory: historyResult.rows[0]
       };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error terminating employee', {
         employeeId,
@@ -351,7 +351,7 @@ constructor() {
         employee: employeeResult.rows[0],
         employmentHistory: historyResult.rows[0]
       };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error rehiring employee', {
         employeeId,
@@ -389,7 +389,7 @@ constructor() {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting employment history', {
         employeeId,
         error: error.message
@@ -417,7 +417,7 @@ constructor() {
       });
 
       return result.rows[0] || null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting current employment', {
         employeeId,
         error: error.message
@@ -478,7 +478,7 @@ constructor() {
         terminationReason: record.termination_reason,
         terminationDate: record.termination_date
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error checking rehire eligibility', {
         employeeId,
         error: error.message

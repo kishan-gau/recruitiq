@@ -197,7 +197,7 @@ export function checkResourceOwnership(resourceIdParam, getResourceOwnerId) {
       }
 
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error checking resource ownership', {
         error: error.message,
         resourceIdParam,

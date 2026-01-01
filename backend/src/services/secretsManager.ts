@@ -25,6 +25,26 @@ import logger from '../utils/logger.js';
 import config from '../config/index.js';
 
 // ============================================================================
+// INTERFACES
+// ============================================================================
+
+/**
+ * Options for generating secrets (primarily used by Barbican provider)
+ */
+export interface GenerateSecretOptions {
+  /** Algorithm for secret generation (aes, rsa, dsa, ec, octets) */
+  algorithm?: string;
+  /** Key size in bits (128, 192, 256 for AES) */
+  bit_length?: number;
+  /** Encryption mode (cbc, gcm, etc.) */
+  mode?: string;
+  /** Type of secret (symmetric, asymmetric, passphrase, opaque) */
+  secret_type?: string;
+  /** Optional expiration date */
+  expiration?: Date;
+}
+
+// ============================================================================
 // SECRET PROVIDERS
 // ============================================================================
 
@@ -612,7 +632,7 @@ class BarbicanProvider extends SecretProvider {
    * @param {Date} options.expiration - Optional expiration date
    * @returns {Promise<string>} Secret reference URL
    */
-  async generateSecret(secretName, options = {}) {
+  async generateSecret(secretName: string, options: GenerateSecretOptions = {}): Promise<string> {
     const token = await this._getAuthToken();
     
     const payload = {
@@ -963,7 +983,7 @@ class SecretsManager {
    * @param {Object} options - Generation options (provider-specific)
    * @returns {Promise<string>} Secret reference or identifier
    */
-  async generateSecret(secretName, options = {}) {
+  async generateSecret(secretName: string, options: GenerateSecretOptions = {}): Promise<string> {
     await this.initialize();
     
     if (typeof this.provider.generateSecret !== 'function') {

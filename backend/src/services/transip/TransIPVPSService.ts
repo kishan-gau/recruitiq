@@ -21,6 +21,14 @@
 import { getTransIPClient, getSSHKeys, validateSSHKey } from '../../config/transip.js';
 import logger from '../../utils/logger.js';
 
+/**
+ * Options for VPS usage statistics query
+ */
+export interface UsageStatisticsOptions {
+  startDate?: Date;
+  endDate?: Date;
+}
+
 class TransIPVPSService {
   
   client: any;
@@ -49,7 +57,7 @@ constructor(client = null) {
       });
 
       return products;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching VPS products', {
         error: error.message,
         stack: error.stack,
@@ -76,7 +84,7 @@ constructor(client = null) {
       });
 
       return vpsList;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching VPS instances', {
         error: error.message,
         stack: error.stack,
@@ -105,7 +113,7 @@ constructor(client = null) {
       });
 
       return vps;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching VPS details', {
         vpsName,
         error: error.message,
@@ -203,7 +211,7 @@ constructor(client = null) {
           ? 'Test order completed successfully (no real VPS created)' 
           : 'VPS order placed successfully'
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error ordering VPS', {
         orderData,
         error: error.message,
@@ -240,7 +248,7 @@ constructor(client = null) {
           ? 'Test start command completed (no real VPS affected)' 
           : 'VPS start command sent'
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error starting VPS', {
         vpsName,
         error: error.message,
@@ -277,7 +285,7 @@ constructor(client = null) {
           ? 'Test stop command completed (no real VPS affected)' 
           : 'VPS stop command sent'
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error stopping VPS', {
         vpsName,
         error: error.message,
@@ -314,7 +322,7 @@ constructor(client = null) {
           ? 'Test reboot command completed (no real VPS affected)' 
           : 'VPS reboot command sent'
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error rebooting VPS', {
         vpsName,
         error: error.message,
@@ -361,7 +369,7 @@ constructor(client = null) {
           ? 'Test cancellation completed (no real VPS cancelled)' 
           : `VPS cancellation scheduled (${endTime})`
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error cancelling VPS', {
         vpsName,
         endTime,
@@ -392,7 +400,7 @@ constructor(client = null) {
       });
 
       return operatingSystems;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching operating systems', {
         error: error.message,
         stack: error.stack,
@@ -411,7 +419,7 @@ constructor(client = null) {
    * @param {Date} options.endDate - End date for statistics
    * @returns {Promise<Object>} Usage statistics
    */
-  async getUsageStatistics(vpsName, options = {}) {
+  async getUsageStatistics(vpsName: string, options: UsageStatisticsOptions = {}): Promise<unknown> {
     try {
       const { startDate, endDate } = options;
 
@@ -434,7 +442,7 @@ constructor(client = null) {
       });
 
       return statistics;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching VPS usage statistics', {
         vpsName,
         error: error.message,

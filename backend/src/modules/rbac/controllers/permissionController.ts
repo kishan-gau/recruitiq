@@ -22,7 +22,7 @@ export const listPermissions = async (req, res, next) => {
       permissions,
       count: permissions.length
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error listing permissions', {
       error: error.message,
       query: req.query
@@ -43,7 +43,7 @@ export const getGroupedPermissions = async (req, res, next) => {
       success: true,
       grouped
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting grouped permissions', {
       error: error.message
     });
@@ -67,7 +67,7 @@ export const getPermissionsByProduct = async (req, res, next) => {
       permissions,
       count: permissions.length
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting permissions by product', {
       error: error.message,
       product: req.params.product

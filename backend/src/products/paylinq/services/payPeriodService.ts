@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pay Period Service
  * Handles pay period configuration and calculations
  */
@@ -66,9 +66,9 @@ class PayPeriodService {
       );
 
       return result.rows[0] || null;
-    } catch (err) {
-      logger.error('Error fetching pay period config', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching pay period config', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -167,9 +167,9 @@ class PayPeriodService {
         logger.info('Pay period config created', { organizationId, configId: result.rows[0].id });
         return result.rows[0];
       }
-    } catch (err) {
-      logger.error('Error saving pay period config', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error saving pay period config', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -329,9 +329,9 @@ class PayPeriodService {
       const result = await this.db.query(sql, params, organizationId, { operation: 'SELECT', table: 'company_holiday' });
       
       return result.rows;
-    } catch (err) {
-      logger.error('Error fetching holidays', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching holidays', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -380,9 +380,9 @@ class PayPeriodService {
 
       logger.info('Holiday created', { organizationId, holidayId: result.rows[0].id });
       return result.rows[0];
-    } catch (err) {
-      logger.error('Error creating holiday', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating holiday', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -407,9 +407,9 @@ class PayPeriodService {
 
       logger.info('Holiday deleted', { organizationId, holidayId });
       return { success: true };
-    } catch (err) {
-      logger.error('Error deleting holiday', { error: err.message, organizationId, holidayId });
-      throw err;
+    } catch (error) {
+      logger.error('Error deleting holiday', { error: error.message, organizationId, holidayId });
+      throw error;
     }
   }
 

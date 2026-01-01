@@ -224,7 +224,7 @@ class PaylinqIntegrationService {
         message: 'Payroll successfully set up from Nexus contract'
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('[Paylinq] Error setting up payroll from Nexus contract', {
         error: _error.message,
@@ -374,7 +374,7 @@ class PaylinqIntegrationService {
         message: 'Benefits deduction successfully added to payroll'
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('[Paylinq] Error adding benefits deduction', {
         error: _error.message,
@@ -532,7 +532,7 @@ class PaylinqIntegrationService {
         message: 'Time entry successfully recorded in payroll'
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('[Paylinq] Error recording time entry', {
         error: _error.message,

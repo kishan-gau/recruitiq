@@ -63,7 +63,7 @@ constructor() {
       await client.query('COMMIT');
       this.logger.info('Time off request created', { requestId: result.rows[0].id, organizationId });
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating time off request:', error);
       throw error;
@@ -108,7 +108,7 @@ constructor() {
       await client.query('COMMIT');
       this.logger.info('Time off request reviewed', { requestId, approved, organizationId });
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error reviewing time off request:', error);
       throw error;
@@ -146,7 +146,7 @@ constructor() {
         table: 'scheduling.time_off_requests'
       });
       return { success: true, data: result.rows };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching worker requests:', error);
       throw error;
     }
@@ -185,7 +185,7 @@ constructor() {
         table: 'scheduling.time_off_requests'
       });
       return { success: true, data: result.rows };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing requests:', error);
       throw error;
     }
@@ -211,7 +211,7 @@ constructor() {
       }
       
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching request by ID:', error);
       throw error;
     }
@@ -233,7 +233,7 @@ constructor() {
         }
       );
       return { success: true, data: result.rows };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching pending requests:', error);
       throw error;
     }
@@ -255,7 +255,7 @@ constructor() {
       if (result.rows.length === 0) throw new Error('Request not found or cannot be cancelled');
       await client.query('COMMIT');
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error cancelling request:', error);
       throw error;

@@ -27,7 +27,7 @@ class ProductController {
         success: true,
         products
       });
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error.message,
@@ -50,7 +50,7 @@ class ProductController {
         success: true,
         product
       });
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Product not found') {
         return res.status(404).json({ 
           success: false,
@@ -80,7 +80,7 @@ class ProductController {
         success: true,
         product
       });
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Product not found') {
         return res.status(404).json({ 
           success: false,
@@ -109,7 +109,7 @@ class ProductController {
         success: true,
         products
       });
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error.message,
@@ -131,7 +131,7 @@ class ProductController {
         success: true,
         products
       });
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error.message,
@@ -153,7 +153,7 @@ class ProductController {
         success: true,
         products
       });
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error.message,
@@ -176,7 +176,7 @@ class ProductController {
         success: true,
         product
       });
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Product not found') {
         return res.status(404).json({ 
           success: false,
@@ -207,7 +207,7 @@ class ProductController {
         product,
         message: 'Product created successfully'
       });
-    } catch (_error) {
+    } catch (error) {
       if (error.message.includes('already exists')) {
         return res.status(409).json({ 
           success: false,
@@ -239,7 +239,7 @@ class ProductController {
         product,
         message: 'Product updated successfully'
       });
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Product not found') {
         return res.status(404).json({ 
           success: false,
@@ -271,7 +271,7 @@ class ProductController {
         product,
         message: 'Product deleted successfully'
       });
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Product not found') {
         return res.status(404).json({ 
           success: false,
@@ -315,7 +315,7 @@ class ProductController {
         success: true,
         products
       });
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ 
         success: false,
         error: error.message,

@@ -118,7 +118,7 @@ class VPSService {
         testMode: transipClient.isInTestMode(),
         createdAt: new Date().toISOString()
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('VPS creation failed', {
         organizationId,
         slug,
@@ -150,7 +150,7 @@ class VPSService {
         operatingSystem: result.vps.operatingSystem,
         hostname: result.vps.hostname
       };
-    } catch (_error) {
+    } catch (error) {
       if (error.response?.status === 404) {
         throw new NotFoundError(`VPS not found: ${vpsName}`);
       }

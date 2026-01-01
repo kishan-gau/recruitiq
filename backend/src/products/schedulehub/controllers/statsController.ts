@@ -135,7 +135,7 @@ class StatsController {
         success: true,
         data: stats,
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getStats controller:', error);
       next(error);
     }

@@ -87,7 +87,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating location', { 
         error: error.message,
         organizationId,
@@ -155,7 +155,7 @@ constructor() {
       }
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting location', { 
         error: error.message,
         id,
@@ -287,7 +287,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing locations', { 
         error: error.message,
         filters,
@@ -387,7 +387,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating location', { 
         error: error.message,
         id,
@@ -451,7 +451,7 @@ constructor() {
       });
 
       return { success: true, message: 'Location deleted successfully' };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting location', { 
         error: error.message,
         id,
@@ -485,7 +485,7 @@ constructor() {
       });
 
       return result.rows[0] || null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting primary location', { 
         error: error.message,
         organizationId 
@@ -549,7 +549,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error setting primary location', { 
         error: error.message,
         locationId,
@@ -587,7 +587,7 @@ constructor() {
       }
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting location by code', { 
         error: error.message,
         code,
@@ -635,7 +635,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting location statistics', { 
         error: error.message,
         id,
@@ -675,7 +675,7 @@ constructor() {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting all location statistics', { 
         error: error.message,
         organizationId 

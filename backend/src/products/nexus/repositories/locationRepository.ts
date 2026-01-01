@@ -37,7 +37,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [id, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding location by ID', { id, organizationId, error: error.message });
       throw error;
     }
@@ -83,7 +83,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding all locations', { filters, organizationId, error: error.message });
       throw error;
     }
@@ -103,7 +103,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [locationCode, organizationId], organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error finding location by code', { locationCode, organizationId, error: error.message });
       throw error;
     }
@@ -145,7 +145,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating location', { locationData, organizationId, error: error.message });
       throw error;
     }
@@ -199,7 +199,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, params, organizationId);
       return result.rows[0] ? mapDbToApi(result.rows[0]) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating location', { id, locationData, organizationId, error: error.message });
       throw error;
     }
@@ -219,7 +219,7 @@ constructor(database = null) {
 
       const result = await this.query(sql, [userId, id, organizationId], organizationId);
       return result.rowCount > 0;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting location', { id, organizationId, error: error.message });
       throw error;
     }

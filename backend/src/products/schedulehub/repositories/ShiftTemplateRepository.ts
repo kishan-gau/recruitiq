@@ -54,7 +54,7 @@ class ShiftTemplateRepository extends BaseRepository {
       });
 
       return result.rows[0] || null;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error finding shift template with stations', {
         error: error.message,
         id,
@@ -83,7 +83,7 @@ class ShiftTemplateRepository extends BaseRepository {
       });
 
       return result.rows[0] || null;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error finding station', {
         error: error.message,
         stationId,
@@ -113,7 +113,7 @@ class ShiftTemplateRepository extends BaseRepository {
         templateId,
         organizationId
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error clearing station assignments', {
         error: error.message,
         templateId,
@@ -145,7 +145,7 @@ class ShiftTemplateRepository extends BaseRepository {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error assigning station to template', {
         error: error.message,
         templateId,
@@ -188,7 +188,7 @@ class ShiftTemplateRepository extends BaseRepository {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error finding stations by template', {
         error: error.message,
         templateId,
@@ -226,7 +226,7 @@ class ShiftTemplateRepository extends BaseRepository {
         stationIds,
         organizationId
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error removing station assignments', {
         error: error.message,
         templateId,
@@ -257,7 +257,7 @@ class ShiftTemplateRepository extends BaseRepository {
       });
 
       return result.rows.length > 0;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error checking station assignment', {
         error: error.message,
         templateId,
@@ -298,7 +298,7 @@ class ShiftTemplateRepository extends BaseRepository {
         activeStations: parseInt(row.active_stations) || 0,
         stationNames: row.station_names || []
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting assignment statistics', {
         error: error.message,
         templateId,

@@ -165,7 +165,7 @@ export class CandidateService {
 
       // Remove sensitive data before returning
       return this.sanitizeCandidate(candidate);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating candidate', {
         error: error.message,
         organizationId: user.organization_id,
@@ -200,7 +200,7 @@ export class CandidateService {
       }
 
       return this.sanitizeCandidate(candidate);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting candidate', {
         error: error.message,
         candidateId: id,
@@ -264,7 +264,7 @@ export class CandidateService {
       });
 
       return this.sanitizeCandidate(updatedCandidate);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating candidate', {
         error: error.message,
         candidateId: id,
@@ -297,7 +297,7 @@ export class CandidateService {
       });
 
       return deleted;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error deleting candidate', {
         error: error.message,
         candidateId: id,
@@ -321,7 +321,7 @@ export class CandidateService {
       result.candidates = result.candidates.map(c => this.sanitizeCandidate(c));
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error searching candidates', {
         error: error.message,
         params,
@@ -349,7 +349,7 @@ export class CandidateService {
         byStatus: countByStatus,
         recent: recent.map(c => this.sanitizeCandidate(c))
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting candidate statistics', {
         error: error.message,
         organizationId: user.organization_id
@@ -395,7 +395,7 @@ export class CandidateService {
       });
 
       return this.sanitizeCandidate(updatedCandidate);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error updating candidate tags', {
         error: error.message,
         candidateId: id,
@@ -438,7 +438,7 @@ export class CandidateService {
         limit,
         remaining: limit - currentCount
       };
-    } catch (_error) {
+    } catch (error) {
       if (error instanceof BusinessRuleError || error instanceof NotFoundError) {
         throw error;
       }
@@ -497,7 +497,7 @@ export class CandidateService {
         try {
           const candidate = await this.create(data, user);
           results.success.push(candidate);
-        } catch (_error) {
+        } catch (error) {
           results.failed.push({
             data,
             error: error.message
@@ -514,7 +514,7 @@ export class CandidateService {
       });
 
       return results;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in bulk import', {
         error: error.message,
         count: candidatesData.length,

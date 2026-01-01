@@ -5,16 +5,44 @@ import { validateFileUploadSecurity, getAllowedFileTypes, sanitizeFilename } fro
 import virusScanner from '../utils/virusScanner.js';
 
 /**
+ * Options for createSecureUpload function
+ */
+export interface CreateSecureUploadOptions {
+  /** Upload context: 'resume', 'document', 'avatar', 'attachment' */
+  context?: string;
+  /** Form field name for the file */
+  fieldName?: string;
+  /** Allow multiple file uploads */
+  multiple?: boolean;
+  /** Maximum number of files when multiple is true */
+  maxFiles?: number;
+}
+
+/**
+ * Options for secureUploadPipeline function
+ */
+export interface SecureUploadPipelineOptions {
+  /** Upload context: 'resume', 'document', 'avatar', 'attachment' */
+  context?: string;
+  /** Form field name for the file */
+  fieldName?: string;
+  /** Allow multiple file uploads */
+  multiple?: boolean;
+  /** Skip virus scanning (not recommended for production) */
+  skipVirusScan?: boolean;
+}
+
+/**
  * Secure file upload middleware using Multer
  * Includes validation, virus scanning, and secure storage
  */
 
 /**
  * Create secure multer configuration
- * @param {object} options - Configuration options
+ * @param {CreateSecureUploadOptions} options - Configuration options
  * @returns {object} - Multer instance and error handler
  */
-export function createSecureUpload(options = {}) {
+export function createSecureUpload(options: CreateSecureUploadOptions = {}) {
   const {
     context = 'document', // resume, document, avatar, attachment
     fieldName = 'file',
@@ -53,7 +81,7 @@ export function createSecureUpload(options = {}) {
 
       // Check file size will be done by multer limits
       cb(null, true);
-    } catch (_error) {
+    } catch (error) {
       logger.error('File filter error:', {
         error: error.message,
         filename: file.originalname,
@@ -157,7 +185,7 @@ export function validateUploadSecurity(context = 'document') {
       });
 
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Upload security validation error:', {
         error: error.message,
         stack: error.stack,
@@ -230,7 +258,7 @@ export function scanUploadedFiles() {
       });
 
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Virus scan middleware error:', {
         error: error.message,
         stack: error.stack,
@@ -295,10 +323,10 @@ export function handleUploadErrors(err, req, res, next) {
 
 /**
  * Create complete secure upload pipeline
- * @param {object} options - Configuration options
+ * @param {SecureUploadPipelineOptions} options - Configuration options
  * @returns {Array} - Array of middleware functions
  */
-export function secureUploadPipeline(options = {}) {
+export function secureUploadPipeline(options: SecureUploadPipelineOptions = {}) {
   const { context = 'document', fieldName = 'file', multiple = false, skipVirusScan = false } = options;
   
   const { handler } = createSecureUpload({ context, fieldName, multiple });

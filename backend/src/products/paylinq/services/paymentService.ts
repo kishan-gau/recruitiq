@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Payment Service
  * 
  * Business logic layer for payment transaction processing and management.
@@ -84,9 +84,9 @@ class PaymentService {
       });
 
       return transaction;
-    } catch (err) {
-      logger.error('Error initiating payment', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error initiating payment', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -99,9 +99,9 @@ class PaymentService {
   async getPaymentTransactions(organizationId, filters = {}) {
     try {
       return await this.paymentRepository.findPaymentTransactions(filters, organizationId);
-    } catch (err) {
-      logger.error('Error fetching payment transactions', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching payment transactions', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -123,9 +123,9 @@ class PaymentService {
       }
 
       return transaction;
-    } catch (err) {
-      logger.error('Error fetching payment transaction', { error: err.message, transactionId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching payment transaction', { error: error.message, transactionId });
+      throw error;
     }
   }
 
@@ -161,9 +161,9 @@ class PaymentService {
       });
 
       return transaction;
-    } catch (err) {
-      logger.error('Error updating payment status', { error: err.message, transactionId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating payment status', { error: error.message, transactionId });
+      throw error;
     }
   }
 
@@ -202,9 +202,9 @@ class PaymentService {
       });
 
       return processed;
-    } catch (err) {
-      logger.error('Error processing payment', { error: err.message, transactionId });
-      throw err;
+    } catch (error) {
+      logger.error('Error processing payment', { error: error.message, transactionId });
+      throw error;
     }
   }
 
@@ -233,9 +233,9 @@ class PaymentService {
       });
 
       return transaction;
-    } catch (err) {
-      logger.error('Error handling payment failure', { error: err.message, transactionId });
-      throw err;
+    } catch (error) {
+      logger.error('Error handling payment failure', { error: error.message, transactionId });
+      throw error;
     }
   }
 
@@ -275,9 +275,9 @@ class PaymentService {
 
       // Attempt to process again
       return await this.processPayment(transactionId, organizationId, userId);
-    } catch (err) {
-      logger.error('Error retrying payment', { error: err.message, transactionId });
-      throw err;
+    } catch (error) {
+      logger.error('Error retrying payment', { error: error.message, transactionId });
+      throw error;
     }
   }
 
@@ -303,9 +303,9 @@ class PaymentService {
       });
 
       return transaction;
-    } catch (err) {
-      logger.error('Error reconciling payment', { error: err.message, transactionId });
-      throw err;
+    } catch (error) {
+      logger.error('Error reconciling payment', { error: error.message, transactionId });
+      throw error;
     }
   }
 
@@ -318,9 +318,9 @@ class PaymentService {
   async getPendingPayments(organizationId, scheduledBefore = null) {
     try {
       return await this.paymentRepository.findPendingPayments(organizationId, scheduledBefore);
-    } catch (err) {
-      logger.error('Error fetching pending payments', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching pending payments', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -342,9 +342,9 @@ class PaymentService {
         ...stats,
         methodBreakdown
       };
-    } catch (err) {
-      logger.error('Error fetching payment statistics', { error: err.message, payrollRunId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching payment statistics', { error: error.message, payrollRunId });
+      throw error;
     }
   }
 
@@ -363,10 +363,10 @@ class PaymentService {
         try {
           const result = await this.initiatePayment(transaction, organizationId, userId);
           results.push({ success: true, data: result });
-        } catch (err) {
+        } catch (error) {
           results.push({
             success: false,
-            error: err.message,
+            error: error.message,
             paycheckId: transaction.paycheckId
           });
         }
@@ -380,9 +380,9 @@ class PaymentService {
       });
 
       return results;
-    } catch (err) {
-      logger.error('Error in bulk payment initiation', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error in bulk payment initiation', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -408,16 +408,16 @@ class PaymentService {
         try {
           await this.processPayment(payment.id, organizationId, userId);
           results.processed++;
-        } catch (err) {
+        } catch (error) {
           results.failed++;
           results.errors.push({
             transactionId: payment.id,
-            error: err.message
+            error: error.message
           });
           
           await this.handlePaymentFailure(
             payment.id,
-            err.message,
+            error.message,
             organizationId,
             userId
           );
@@ -430,9 +430,9 @@ class PaymentService {
       });
 
       return results;
-    } catch (err) {
-      logger.error('Error processing scheduled payments', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error processing scheduled payments', { error: error.message, organizationId });
+      throw error;
     }
   }
 }

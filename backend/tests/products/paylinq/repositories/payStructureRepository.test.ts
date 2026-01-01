@@ -50,10 +50,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO pay_structure_templates'),
+        expect.stringContaining('INSERT INTO payroll.pay_structure_template'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'pay_structure_templates' }
+        { operation: 'INSERT', table: 'payroll.pay_structure_template', userId: testUserId }
       );
     });
   });
@@ -66,10 +66,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE id = $1'),
+        expect.stringContaining('FROM payroll.pay_structure_template'),
         [testTemplateId, testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'pay_structure_templates' }
+        { operation: 'SELECT', table: 'payroll.pay_structure_template' }
       );
     });
   });
@@ -82,10 +82,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('FROM pay_structure_templates'),
+        expect.stringContaining('FROM payroll.pay_structure_template'),
         [testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'pay_structure_templates' }
+        { operation: 'SELECT', table: 'payroll.pay_structure_template' }
       );
     });
 
@@ -94,10 +94,10 @@ describe('PayStructureRepository', () => {
       await repository.findTemplates(testOrgId, { status: 'active' });
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('AND status = $'),
+        expect.stringContaining('AND pst.status = $'),
         expect.arrayContaining([testOrgId, 'active']),
         testOrgId,
-        expect.any(Object)
+        { operation: 'SELECT', table: 'payroll.pay_structure_template' }
       );
     });
   });
@@ -111,10 +111,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE pay_structure_templates'),
+        expect.stringContaining('UPDATE payroll.pay_structure_template'),
         expect.any(Array),
         testOrgId,
-        { operation: 'UPDATE', table: 'pay_structure_templates' }
+        { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId: testUserId }
       );
     });
   });
@@ -127,10 +127,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE pay_structure_templates'),
+        expect.stringContaining('UPDATE payroll.pay_structure_template'),
         expect.any(Array),
         testOrgId,
-        { operation: 'UPDATE', table: 'pay_structure_templates' }
+        { operation: 'UPDATE', table: 'payroll.pay_structure_template', userId: testUserId }
       );
     });
   });
@@ -149,10 +149,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO structure_components'),
+        expect.stringContaining('INSERT INTO payroll.pay_structure_component'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'structure_components' }
+        { operation: 'INSERT', table: 'payroll.pay_structure_component', userId: testUserId }
       );
     });
   });
@@ -165,10 +165,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE template_id = $1'),
-        [testTemplateId, testOrgId],
+        expect.stringContaining('FROM payroll.pay_structure_component'),
+        [testTemplateId],
         testOrgId,
-        { operation: 'SELECT', table: 'structure_components' }
+        { operation: 'SELECT', table: 'payroll.pay_structure_component' }
       );
     });
   });
@@ -187,10 +187,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO worker_pay_structures'),
+        expect.stringContaining('INSERT INTO payroll.worker_pay_structure'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'worker_pay_structures' }
+        { operation: 'INSERT', table: 'payroll.worker_pay_structure', userId: testUserId }
       );
     });
   });
@@ -203,10 +203,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE employee_id = $1'),
+        expect.stringContaining('FROM payroll.worker_pay_structure'),
         expect.arrayContaining([testEmployeeId, testOrgId]),
         testOrgId,
-        { operation: 'SELECT', table: 'worker_pay_structures' }
+        { operation: 'SELECT', table: 'payroll.worker_pay_structure' }
       );
     });
   });
@@ -219,10 +219,10 @@ describe('PayStructureRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE employee_id = $1'),
-        [testEmployeeId, testOrgId],
+        expect.stringContaining('FROM payroll.worker_pay_structure'),
+        expect.arrayContaining([testEmployeeId, testOrgId]),
         testOrgId,
-        { operation: 'SELECT', table: 'worker_pay_structures' }
+        { operation: 'SELECT', table: 'payroll.worker_pay_structure' }
       );
     });
   });

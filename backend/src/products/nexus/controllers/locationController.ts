@@ -30,7 +30,7 @@ class LocationController {
       const apiLocation = mapLocationDbToApi(location);
       
       res.status(201).json({ success: true, location: apiLocation });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in createLocation controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -50,7 +50,7 @@ class LocationController {
       const apiLocation = mapLocationDbToApi(location);
       
       res.json({ success: true, location: apiLocation });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getLocation controller', { error: error.message });
       const status = error.message === 'Location not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -75,7 +75,7 @@ class LocationController {
       const apiLocation = mapLocationDbToApi(location);
       
       res.json({ success: true, location: apiLocation });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in updateLocation controller', { error: error.message });
       const status = error.message === 'Location not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -92,7 +92,7 @@ class LocationController {
       const { id } = req.params;
       await this.service.deleteLocation(id, organizationId, userId);
       res.json({ success: true, message: 'Location deleted successfully' });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in deleteLocation controller', { error: error.message });
       const status = error.message === 'Location not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -131,7 +131,7 @@ class LocationController {
           offset: result.offset 
         } 
       });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getLocations controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -151,7 +151,7 @@ class LocationController {
       const apiLocation = mapLocationDbToApi(location);
       
       res.json({ success: true, location: apiLocation });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getLocationByCode controller', { error: error.message });
       const status = error.message === 'Location not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -168,7 +168,7 @@ class LocationController {
       const { id } = req.params;
       const stats = await this.service.getLocationStats(id, organizationId);
       res.json({ success: true, stats });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getLocationStats controller', { error: error.message });
       const status = error.message === 'Location not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -184,7 +184,7 @@ class LocationController {
       const { organizationId } = req.user;
       const stats = await this.service.getAllLocationStats(organizationId);
       res.json({ success: true, stats });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getAllLocationStats controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }

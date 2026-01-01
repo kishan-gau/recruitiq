@@ -8,7 +8,7 @@
  * - push_notification_log: Track sent notifications for auditing
  */
 
-exports.up = async function(knex) {
+export async function up(knex) {
   // Create push_notification_subscription table
   await knex.schema.withSchema('hris').createTable('push_notification_subscription', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
@@ -38,7 +38,7 @@ exports.up = async function(knex) {
     table.uuid('deleted_by');
     
     // Foreign keys
-    table.foreign('organization_id').references('id').inTable('core.organization').onDelete('CASCADE');
+    table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('employee_id').references('id').inTable('hris.employee').onDelete('CASCADE');
     
     // Indexes
@@ -74,7 +74,7 @@ exports.up = async function(knex) {
     table.uuid('updated_by');
     
     // Foreign keys
-    table.foreign('organization_id').references('id').inTable('core.organization').onDelete('CASCADE');
+    table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('employee_id').references('id').inTable('hris.employee').onDelete('CASCADE');
     
     // Unique constraint - one preference record per employee
@@ -103,7 +103,7 @@ exports.up = async function(knex) {
     table.timestamp('clicked_at', { useTz: true });
     
     // Foreign keys
-    table.foreign('organization_id').references('id').inTable('core.organization').onDelete('CASCADE');
+    table.foreign('organization_id').references('id').inTable('organizations').onDelete('CASCADE');
     table.foreign('employee_id').references('id').inTable('hris.employee').onDelete('CASCADE');
     table.foreign('subscription_id').references('id').inTable('hris.push_notification_subscription').onDelete('SET NULL');
     
@@ -125,10 +125,10 @@ exports.up = async function(knex) {
     COMMENT ON COLUMN hris.push_notification_subscription.auth_key IS 'Auth secret for encryption';
     COMMENT ON COLUMN hris.push_notification_log.status IS 'Delivery status: sent, failed, clicked';
   `);
-};
+}
 
-exports.down = async function(knex) {
+export async function down(knex) {
   await knex.schema.withSchema('hris').dropTableIfExists('push_notification_log');
   await knex.schema.withSchema('hris').dropTableIfExists('push_notification_preference');
   await knex.schema.withSchema('hris').dropTableIfExists('push_notification_subscription');
-};
+}

@@ -33,7 +33,7 @@ class RoleController {
       );
 
       res.status(201).json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in createRole controller:', error);
       next(error);
     }
@@ -57,7 +57,7 @@ class RoleController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in updateRole controller:', error);
       next(error);
     }
@@ -83,7 +83,7 @@ class RoleController {
         success: true, 
         roles: result.data || result  // Handle both old and new service formats
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in listRoles controller:', error);
       next(error);
     }
@@ -105,7 +105,7 @@ class RoleController {
       }
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getRoleById controller:', error);
       next(error);
     }
@@ -128,7 +128,7 @@ class RoleController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getRoleWorkers controller:', error);
       next(error);
     }
@@ -156,7 +156,7 @@ class RoleController {
       );
 
       res.status(201).json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in assignWorker controller:', error);
       next(error);
     }
@@ -178,7 +178,7 @@ class RoleController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in removeWorker controller:', error);
       next(error);
     }
@@ -201,7 +201,7 @@ class RoleController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getWorkerRoles controller:', error);
       next(error);
     }
@@ -232,7 +232,7 @@ class RoleController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in updateWorkerRole controller:', error);
       next(error);
     }
@@ -261,7 +261,7 @@ class RoleController {
       );
 
       res.json({ success: true, message: 'Role deleted successfully', role: result.data });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in deleteRole controller:', error);
       next(error);
     }

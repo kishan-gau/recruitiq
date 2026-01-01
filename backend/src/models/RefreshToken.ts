@@ -2,11 +2,18 @@ import db from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
+interface RefreshTokenMetadata {
+  userAgent?: string | null;
+  ipAddress?: string | null;
+  deviceFingerprint?: string | null;
+  deviceName?: string | null;
+}
+
 class RefreshToken {
   /**
    * Create a new refresh token with optional device/session metadata
    */
-  static async create(userId, token, expiresAt, metadata = {}) {
+  static async create(userId: string, token: string, expiresAt: Date, metadata: RefreshTokenMetadata = {}) {
     const id = uuidv4();
     
     // Extract device info from metadata
@@ -80,7 +87,7 @@ class RefreshToken {
    * Rotate a refresh token (revoke old, create new)
    * Implements token rotation security pattern
    */
-  static async rotate(oldToken, userId, newToken, expiresAt, metadata = {}) {
+  static async rotate(oldToken: string, userId: string, newToken: string, expiresAt: Date, metadata: RefreshTokenMetadata = {}) {
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
@@ -107,7 +114,7 @@ class RefreshToken {
 
       await client.query('COMMIT');
       return insertResult.rows[0];
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     } finally {

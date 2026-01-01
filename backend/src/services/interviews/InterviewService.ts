@@ -4,7 +4,7 @@
  */
 
 import type { InterviewData, InterviewFeedbackData, SchedulingConflict } from '../../types/recruitment.types.js';
-import { InterviewRepository } from '../../repositories/InterviewRepository.js';
+import { InterviewRepository, FindByInterviewerOptions } from '../../repositories/InterviewRepository.js';
 import { ApplicationRepository } from '../../repositories/ApplicationRepository.js';
 import logger from '../../utils/logger.js';
 import { ValidationError, BusinessRuleError, NotFoundError } from '../../middleware/errorHandler.js';
@@ -348,7 +348,7 @@ export class InterviewService {
   /**
    * Get interviews for a specific interviewer
    */
-  async getByInterviewer(interviewerId, user, options = {}) {
+  async getByInterviewer(interviewerId: string, user: { organization_id: string }, options: FindByInterviewerOptions = {}) {
     try {
       const organizationId = user.organization_id;
 

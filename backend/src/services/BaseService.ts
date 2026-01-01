@@ -119,7 +119,7 @@ export abstract class BaseService<T extends { id: string }> {
    * // OR with try-catch
    * try {
    *   const validated = await this.validate(data, schema);
-   * } catch (_error) {
+   * } catch (error) {
    *   if (error instanceof ValidationError) {
    *     // Handle validation errors
    *   }
@@ -178,7 +178,7 @@ export abstract class BaseService<T extends { id: string }> {
     try {
       const value = await this.validate<V>(data, schema);
       return { isValid: true, value };
-    } catch (_error) {
+    } catch (error) {
       if (error instanceof ValidationError) {
         return {
           isValid: false,

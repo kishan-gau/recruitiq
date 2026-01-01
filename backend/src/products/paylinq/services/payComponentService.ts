@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Pay Component Service
  * 
  * Business logic layer for pay component management, component formulas, and custom employee components.
@@ -230,9 +230,9 @@ constructor(repository = null) {
       });
 
       return apiComponent;
-    } catch (err) {
-      logger.error('Error creating pay component', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating pay component', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -249,9 +249,9 @@ constructor(repository = null) {
         components: mapComponentsDbToApi(result.components),
         total: result.total
       };
-    } catch (err) {
-      logger.error('Error fetching pay components', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching pay components', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -273,9 +273,9 @@ constructor(repository = null) {
       }
 
       return mapComponentDbToApi(component);
-    } catch (err) {
-      logger.error('Error fetching pay component', { error: err.message, componentId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching pay component', { error: error.message, componentId });
+      throw error;
     }
   }
 
@@ -324,9 +324,9 @@ constructor(repository = null) {
 
       // Transform DB result to API format
       return mapComponentDbToApi(component);
-    } catch (err) {
-      logger.error('Error updating pay component', { error: err.message, componentId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating pay component', { error: error.message, componentId });
+      throw error;
     }
   }
 
@@ -375,16 +375,16 @@ constructor(repository = null) {
       }
 
       return deleted;
-    } catch (err) {
+    } catch (error) {
       // Enhance error message for "in use" scenario
-      if (err.message.includes('assigned to employees')) {
+      if (error.message.includes('assigned to employees')) {
         throw new ConflictError(
           'Cannot delete this pay component because it is currently assigned to one or more employees. ' +
           'Please remove all employee assignments first, or deactivate the component instead.'
         );
       }
-      logger.error('Error deleting pay component', { error: err.message, componentId });
-      throw err;
+      logger.error('Error deleting pay component', { error: error.message, componentId });
+      throw error;
     }
   }
 
@@ -403,10 +403,10 @@ constructor(repository = null) {
         try {
           const result = await this.createPayComponent(component, organizationId, userId);
           results.push({ success: true, data: result });
-        } catch (err) {
+        } catch (error) {
           results.push({
             success: false,
-            error: err.message,
+            error: error.message,
             componentCode: component.componentCode
           });
         }
@@ -420,9 +420,9 @@ constructor(repository = null) {
       });
 
       return results;
-    } catch (err) {
-      logger.error('Error in bulk component creation', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error in bulk component creation', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -475,9 +475,9 @@ constructor(repository = null) {
         createdAt: formula.created_at,
         createdBy: formula.created_by
       };
-    } catch (err) {
-      logger.error('Error creating component formula', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating component formula', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -490,9 +490,9 @@ constructor(repository = null) {
   async getFormulasByComponent(componentId, organizationId) {
     try {
       return await this.payComponentRepository.findFormulasByComponent(componentId, organizationId);
-    } catch (err) {
-      logger.error('Error fetching component formulas', { error: err.message, componentId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching component formulas', { error: error.message, componentId });
+      throw error;
     }
   }
 
@@ -549,9 +549,9 @@ constructor(repository = null) {
         organizationId,
         filters
       );
-    } catch (err) {
-      logger.error('Error fetching employee component assignments', { error: err.message, employeeId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching employee component assignments', { error: error.message, employeeId });
+      throw error;
     }
   }
 
@@ -579,9 +579,9 @@ constructor(repository = null) {
       });
 
       return assignment;
-    } catch (err) {
-      logger.error('Error updating employee assignment', { error: err.message, assignmentId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating employee assignment', { error: error.message, assignmentId });
+      throw error;
     }
   }
 
@@ -603,9 +603,9 @@ constructor(repository = null) {
       logger.info('Employee assignment deleted', { assignmentId, organizationId });
 
       return result;
-    } catch (err) {
-      logger.error('Error deleting employee assignment', { error: err.message, assignmentId });
-      throw err;
+    } catch (error) {
+      logger.error('Error deleting employee assignment', { error: error.message, assignmentId });
+      throw error;
     }
   }
 
@@ -692,13 +692,13 @@ constructor(repository = null) {
         createdAt: created.created_at,
         createdBy: created.created_by
       };
-    } catch (err) {
+    } catch (error) {
       logger.error('Error assigning component to employee', { 
-        error: err.message, 
+        error: error.message, 
         employeeId: assignmentData.employeeId,
         componentId: assignmentData.componentId 
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -711,9 +711,9 @@ constructor(repository = null) {
     try {
       const components = await this.payComponentRepository.findActivePayComponentsForPayroll(organizationId);
       return mapComponentsDbToApi(components);
-    } catch (err) {
-      logger.error('Error fetching active pay components for payroll', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching active pay components for payroll', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -760,14 +760,14 @@ constructor(repository = null) {
         componentName: component.componentName,
         componentCode: component.componentCode,
       };
-    } catch (err) {
+    } catch (error) {
       logger.error('Error executing formula', {
-        error: err.message,
+        error: error.message,
         componentId,
         variables,
         organizationId,
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -788,10 +788,10 @@ constructor(repository = null) {
         variables: formulaEngine.extractVariables(ast),
         ast: formulaEngine.astToJSON(ast),
       };
-    } catch (err) {
+    } catch (error) {
       return {
         valid: false,
-        errors: [{ message: err.message, type: 'error' }],
+        errors: [{ message: error.message, type: 'error' }],
         warnings: [],
       };
     }
@@ -805,9 +805,9 @@ constructor(repository = null) {
   testFormula(formula) {
     try {
       return formulaEngine.test(formula);
-    } catch (err) {
-      logger.error('Error testing formula', { error: err.message, formula });
-      throw new ValidationError(`Formula test failed: ${err.message}`);
+    } catch (error) {
+      logger.error('Error testing formula', { error: error.message, formula });
+      throw new ValidationError(`Formula test failed: ${error.message}`);
     }
   }
 

@@ -43,7 +43,7 @@ class VirusScanner {
         logger.info(`ClamAV virus scanner available: ${stdout.trim()}`);
         return true;
       }
-    } catch (_error) {
+    } catch (error) {
       logger.warn('ClamAV not available, virus scanning will be skipped', {
         error: error.message,
       });
@@ -81,7 +81,7 @@ class VirusScanner {
       );
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Buffer scan error:', {
         error: error.message,
         filename,
@@ -117,7 +117,7 @@ class VirusScanner {
       } else {
         return await this.mockScan(filePath);
       }
-    } catch (_error) {
+    } catch (error) {
       logger.error('File scan error:', {
         error: error.message,
         filePath,
@@ -186,7 +186,7 @@ class VirusScanner {
         scanner: 'clamav',
         message: 'Unexpected scan result, file rejected for safety',
       };
-    } catch (_error) {
+    } catch (error) {
       // Exit code 1 means virus found
       if (error.code === 1 && error.stdout && error.stdout.includes('FOUND')) {
         const match = error.stdout.match(/(.+):\s(.+)\sFOUND/);
@@ -306,7 +306,7 @@ export function virusScanMiddleware(options: { required?: boolean } = {}) {
       }
 
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Virus scan middleware error:', {
         error: error.message,
         filename: req.file?.originalname,

@@ -66,7 +66,7 @@ class LicenseGenerator {
       }
 
       return licenseFile
-    } catch (_error) {
+    } catch (error) {
       console.error('License file generation error:', error)
       throw new Error('Failed to generate license file')
     }
@@ -89,7 +89,7 @@ class LicenseGenerator {
 
       const signature = sign.sign(privateKey, 'base64')
       return signature
-    } catch (_error) {
+    } catch (error) {
       console.error('Data signing error:', error)
       throw new Error('Failed to sign data - ensure RSA keys are generated')
     }
@@ -113,7 +113,7 @@ class LicenseGenerator {
       verify.end()
 
       return verify.verify(publicKey, signature, 'base64')
-    } catch (_error) {
+    } catch (error) {
       console.error('Signature verification error:', error)
       return false
     }
@@ -155,7 +155,7 @@ class LicenseGenerator {
         reason: 'License file is valid',
         data: payload
       }
-    } catch (_error) {
+    } catch (error) {
       console.error('License file parsing error:', error)
       return {
         valid: false,
@@ -192,7 +192,7 @@ class LicenseGenerator {
     try {
       const publicKeyPath = path.join(process.cwd(), 'keys', 'public.key')
       return await fs.readFile(publicKeyPath, 'utf8')
-    } catch (_error) {
+    } catch (error) {
       console.error('Get public key error:', error)
       throw new Error('Failed to read public key')
     }

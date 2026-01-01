@@ -18,6 +18,31 @@ import {
   FormulaValidationError,
 } from './FormulaTypes.js';
 
+/**
+ * Options for formula validation
+ */
+export interface FormulaValidatorOptions {
+  /** List of variable names available in the current context */
+  availableVariables?: string[];
+}
+
+/**
+ * AST Node type for formula validation
+ */
+interface ASTNode {
+  type: string;
+  value?: number;
+  name?: string;
+  left?: ASTNode;
+  right?: ASTNode;
+  operand?: ASTNode;
+  condition?: ASTNode;
+  thenBranch?: ASTNode;
+  elseBranch?: ASTNode;
+  functionName?: string;
+  arguments?: ASTNode[];
+}
+
 class FormulaValidator {
   
   validFunctions: any;
@@ -35,7 +60,7 @@ constructor() {
    * @param {Object} options - Validation options
    * @returns {ValidationResult}
    */
-  validate(ast, options = {}) {
+  validate(ast: ASTNode, options: FormulaValidatorOptions = {}): ValidationResult {
     const result = new ValidationResult(true);
     
     try {
@@ -44,7 +69,7 @@ constructor() {
       // Additional semantic checks
       this.checkSemantics(ast, result);
       
-    } catch (_error) {
+    } catch (error) {
       result.addError(error.message);
     }
 
@@ -54,7 +79,7 @@ constructor() {
   /**
    * Validate a single node recursively
    */
-  validateNode(node, result, options) {
+  validateNode(node: ASTNode, result: ValidationResult, options: FormulaValidatorOptions): void {
     if (!node) {
       result.addError('Invalid node: null or undefined');
       return;
@@ -111,7 +136,7 @@ constructor() {
   /**
    * Validate literal node
    */
-  validateLiteral(node, result) {
+  validateLiteral(node: ASTNode, result: ValidationResult): void {
     if (typeof node.value !== 'number') {
       result.addError(`Literal value must be a number, got: ${typeof node.value}`);
     }
@@ -124,7 +149,7 @@ constructor() {
   /**
    * Validate variable node
    */
-  validateVariable(node, result, options) {
+  validateVariable(node: ASTNode, result: ValidationResult, options: FormulaValidatorOptions): void {
     if (!node.name) {
       result.addError('Variable name is required');
       return;
@@ -157,7 +182,7 @@ constructor() {
   /**
    * Validate binary operation
    */
-  validateBinaryOp(node, result, options) {
+  validateBinaryOp(node: ASTNode, result: ValidationResult, options: FormulaValidatorOptions): void {
     this.validateNode(node.left, result, options);
     this.validateNode(node.right, result, options);
 
@@ -170,7 +195,7 @@ constructor() {
   /**
    * Validate comparison operation
    */
-  validateComparison(node, result, options) {
+  validateComparison(node: ASTNode, result: ValidationResult, options: FormulaValidatorOptions): void {
     this.validateNode(node.left, result, options);
     this.validateNode(node.right, result, options);
   }
@@ -178,7 +203,7 @@ constructor() {
   /**
    * Validate logical operation
    */
-  validateLogical(node, result, options) {
+  validateLogical(node: ASTNode, result: ValidationResult, options: FormulaValidatorOptions): void {
     this.validateNode(node.left, result, options);
     this.validateNode(node.right, result, options);
   }
@@ -186,14 +211,14 @@ constructor() {
   /**
    * Validate unary operation
    */
-  validateUnary(node, result, options) {
+  validateUnary(node: ASTNode, result: ValidationResult, options: FormulaValidatorOptions): void {
     this.validateNode(node.operand, result, options);
   }
 
   /**
    * Validate conditional (IF/THEN/ELSE)
    */
-  validateConditional(node, result, options) {
+  validateConditional(node: ASTNode, result: ValidationResult, options: FormulaValidatorOptions): void {
     this.validateNode(node.condition, result, options);
     this.validateNode(node.thenBranch, result, options);
     this.validateNode(node.elseBranch, result, options);
@@ -202,7 +227,7 @@ constructor() {
   /**
    * Validate function call
    */
-  validateFunction(node, result, options) {
+  validateFunction(node: ASTNode, result: ValidationResult, options: FormulaValidatorOptions): void {
     // Check function name
     if (!this.validFunctions.includes(node.name)) {
       result.addError(

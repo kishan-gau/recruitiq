@@ -801,7 +801,7 @@ constructor(database = null) {
       // Return updated worker type with pay config
       return await this.findById(workerTypeId, organizationId);
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       
       logger.error('Failed to update worker type', {

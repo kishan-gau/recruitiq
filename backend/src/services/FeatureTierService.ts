@@ -14,15 +14,28 @@ import FeatureAccessService from './FeatureAccessService.js';
 import logger from '../utils/logger.js';
 import { NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 
+export interface GrantAddonOptions {
+  reason?: string;
+  expiresAt?: Date | string | null;
+  usageLimit?: number | null;
+}
+
+export interface ManualGrantOptions {
+  reason?: string;
+  expiresAt?: Date | string | null;
+  usageLimit?: number | null;
+  config?: Record<string, unknown> | null;
+}
+
 export class FeatureTierService {
   
-  accessService: any;
+  accessService: FeatureAccessService;
 
-  featureRepo: any;
+  featureRepo: FeatureRepository;
 
-  grantRepo: any;
+  grantRepo: FeatureGrantRepository;
 
-  logger: any;
+  logger: typeof logger;
 
 constructor() {
     this.featureRepo = new FeatureRepository();
@@ -62,7 +75,7 @@ constructor() {
       return features.filter(f => 
         f.minTier && includedTiers.includes(f.minTier)
       );
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting tier features', {
         productId,
         tier,
@@ -159,7 +172,7 @@ constructor() {
       });
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error syncing tier features', {
         organizationId,
         productId,
@@ -220,7 +233,7 @@ constructor() {
           netChange: targetFeatures.length - currentFeatures.length
         }
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error previewing tier change', {
         organizationId,
         productId,
@@ -240,7 +253,7 @@ constructor() {
    * @param {Object} options - Optional grant settings (expiresAt, usageLimit, etc.)
    * @returns {Promise<Object>}
    */
-  async grantAddon(organizationId, featureId, grantedBy, options = {}) {
+  async grantAddon(organizationId: string, featureId: string, grantedBy: string, options: GrantAddonOptions = {}) {
     try {
       const feature = await this.featureRepo.findById(featureId);
       if (!feature) {
@@ -304,7 +317,7 @@ constructor() {
       });
 
       return grant;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error granting add-on', {
         organizationId,
         featureId,
@@ -346,7 +359,7 @@ constructor() {
       });
 
       return revoked;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error revoking add-on', {
         grantId,
         error: error.message
@@ -363,7 +376,7 @@ constructor() {
    * @param {Object} options - Grant settings
    * @returns {Promise<Object>}
    */
-  async manualGrant(organizationId, featureId, grantedBy, options = {}) {
+  async manualGrant(organizationId: string, featureId: string, grantedBy: string, options: ManualGrantOptions = {}) {
     try {
       const feature = await this.featureRepo.findById(featureId);
       if (!feature) {
@@ -400,7 +413,7 @@ constructor() {
       });
 
       return grant;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error manual grant', {
         organizationId,
         featureId,
@@ -459,7 +472,7 @@ constructor() {
       });
 
       return grant;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error granting trial', {
         organizationId,
         featureId,

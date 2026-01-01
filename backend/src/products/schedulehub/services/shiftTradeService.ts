@@ -66,7 +66,7 @@ constructor() {
       await client.query('COMMIT');
       this.logger.info('Swap offer created', { offerId: result.rows[0].id, organizationId });
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating swap offer:', error);
       throw error;
@@ -115,7 +115,7 @@ constructor() {
       await client.query('COMMIT');
       this.logger.info('Swap request created', { requestId: result.rows[0].id, organizationId });
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating swap request:', error);
       throw error;
@@ -180,7 +180,7 @@ constructor() {
 
       await client.query('COMMIT');
       return { success: true, message: request.requires_approval ? 'Pending manager approval' : 'Swap completed' };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error accepting swap request:', error);
       throw error;
@@ -225,7 +225,7 @@ constructor() {
       await client.query('COMMIT');
       this.logger.info('Swap approved and completed', { offerId, organizationId });
       return { success: true, message: 'Swap approved and completed' };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error approving swap:', error);
       throw error;
@@ -259,7 +259,7 @@ constructor() {
         table: 'scheduling.shift_swap_offers'
       });
       return { success: true, data: result.rows };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching open offers:', error);
       throw error;
     }
@@ -283,7 +283,7 @@ constructor() {
 
       if (result.rows.length === 0) throw new Error('Offer not found or cannot be cancelled');
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error cancelling offer:', error);
       throw error;
     }
@@ -313,7 +313,7 @@ constructor() {
         return { success: false, error: 'Swap offer not found' };
       }
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching swap offer:', error);
       throw error;
     }
@@ -344,7 +344,7 @@ constructor() {
         table: 'scheduling.shift_swap_offers'
       });
       return { success: true, data: result.rows };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching worker offers:', error);
       throw error;
     }
@@ -367,7 +367,7 @@ constructor() {
         }
       );
       return { success: true, data: result.rows };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching offer requests:', error);
       throw error;
     }
@@ -397,7 +397,7 @@ constructor() {
         }
       );
       return { success: true, data: result.rows };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching pending approvals:', error);
       throw error;
     }
@@ -439,7 +439,7 @@ constructor() {
       await client.query('COMMIT');
       this.logger.info('Swap rejected', { offerId, organizationId, rejectorId });
       return { success: true, message: 'Swap request rejected' };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error rejecting swap:', error);
       throw error;

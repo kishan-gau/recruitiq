@@ -27,7 +27,7 @@ class ShiftTradeController {
       );
 
       res.status(201).json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in createSwapOffer controller:', error);
       next(error);
     }
@@ -53,7 +53,7 @@ class ShiftTradeController {
       );
 
       res.status(201).json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in requestSwap controller:', error);
       next(error);
     }
@@ -78,7 +78,7 @@ class ShiftTradeController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in acceptSwapRequest controller:', error);
       next(error);
     }
@@ -103,7 +103,7 @@ class ShiftTradeController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in approveSwap controller:', error);
       next(error);
     }
@@ -126,7 +126,7 @@ class ShiftTradeController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getOpenOffers controller:', error);
       next(error);
     }
@@ -149,7 +149,7 @@ class ShiftTradeController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getWorkerOffers controller:', error);
       next(error);
     }
@@ -170,7 +170,7 @@ class ShiftTradeController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getOfferRequests controller:', error);
       next(error);
     }
@@ -191,7 +191,7 @@ class ShiftTradeController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in cancelOffer controller:', error);
       next(error);
     }
@@ -213,7 +213,7 @@ class ShiftTradeController {
       }
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getOfferById controller:', error);
       next(error);
     }
@@ -231,7 +231,7 @@ class ShiftTradeController {
       const result = await this.shiftTradeService.getPendingApprovals(organizationId, managerId);
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getPendingApprovals controller:', error);
       next(error);
     }
@@ -251,7 +251,7 @@ class ShiftTradeController {
       const result = await this.shiftTradeService.getWorkerOffers(userId, organizationId, status);
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getMyOffers controller:', error);
       next(error);
     }
@@ -276,7 +276,7 @@ class ShiftTradeController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in rejectSwap controller:', error);
       next(error);
     }

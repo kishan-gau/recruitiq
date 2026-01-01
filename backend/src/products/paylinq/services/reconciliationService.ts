@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Reconciliation Service
  * 
  * Business logic layer for payroll reconciliation, variance tracking, and adjustments.
@@ -110,9 +110,9 @@ class ReconciliationService {
       });
 
       return reconciliation;
-    } catch (err) {
-      logger.error('Error starting reconciliation', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error starting reconciliation', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -125,9 +125,9 @@ class ReconciliationService {
   async getReconciliations(organizationId, filters = {}) {
     try {
       return await this.reconciliationRepository.findReconciliations(filters, organizationId);
-    } catch (err) {
-      logger.error('Error fetching reconciliations', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching reconciliations', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -168,9 +168,9 @@ class ReconciliationService {
         ...reconciliation,
         summary
       };
-    } catch (err) {
-      logger.error('Error fetching reconciliation', { error: err.message, reconciliationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching reconciliation', { error: error.message, reconciliationId });
+      throw error;
     }
   }
 
@@ -199,9 +199,9 @@ class ReconciliationService {
       });
 
       return reconciliation;
-    } catch (err) {
-      logger.error('Error updating reconciliation', { error: err.message, reconciliationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating reconciliation', { error: error.message, reconciliationId });
+      throw error;
     }
   }
 
@@ -231,9 +231,9 @@ class ReconciliationService {
       });
 
       return deleted;
-    } catch (err) {
-      logger.error('Error deleting reconciliation', { error: err.message, reconciliationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error deleting reconciliation', { error: error.message, reconciliationId });
+      throw error;
     }
   }
 
@@ -298,9 +298,9 @@ class ReconciliationService {
       });
 
       return reconciliation;
-    } catch (err) {
-      logger.error('Error completing reconciliation', { error: err.message, reconciliationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error completing reconciliation', { error: error.message, reconciliationId });
+      throw error;
     }
   }
 
@@ -351,9 +351,9 @@ class ReconciliationService {
       });
 
       return item;
-    } catch (err) {
-      logger.error('Error adding reconciliation item', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error adding reconciliation item', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -386,9 +386,9 @@ class ReconciliationService {
         organizationId,
         filters
       );
-    } catch (err) {
-      logger.error('Error fetching reconciliation items', { error: err.message, reconciliationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching reconciliation items', { error: error.message, reconciliationId });
+      throw error;
     }
   }
 
@@ -417,9 +417,9 @@ class ReconciliationService {
       });
 
       return item;
-    } catch (err) {
-      logger.error('Error updating reconciliation item', { error: err.message, itemId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating reconciliation item', { error: error.message, itemId });
+      throw error;
     }
   }
 
@@ -452,9 +452,9 @@ class ReconciliationService {
       });
 
       return item;
-    } catch (err) {
-      logger.error('Error resolving reconciliation item', { error: err.message, itemId });
-      throw err;
+    } catch (error) {
+      logger.error('Error resolving reconciliation item', { error: error.message, itemId });
+      throw error;
     }
   }
 
@@ -488,9 +488,9 @@ class ReconciliationService {
       });
 
       return adjustment;
-    } catch (err) {
-      logger.error('Error creating payroll adjustment', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating payroll adjustment', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -503,9 +503,9 @@ class ReconciliationService {
   async getAdjustmentsByRun(payrollRunId, organizationId) {
     try {
       return await this.reconciliationRepository.findAdjustmentsByRun(payrollRunId, organizationId);
-    } catch (err) {
-      logger.error('Error fetching adjustments by run', { error: err.message, payrollRunId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching adjustments by run', { error: error.message, payrollRunId });
+      throw error;
     }
   }
 
@@ -531,9 +531,9 @@ class ReconciliationService {
       });
 
       return adjustment;
-    } catch (err) {
-      logger.error('Error applying payroll adjustment', { error: err.message, adjustmentId });
-      throw err;
+    } catch (error) {
+      logger.error('Error applying payroll adjustment', { error: error.message, adjustmentId });
+      throw error;
     }
   }
 
@@ -550,9 +550,9 @@ class ReconciliationService {
         organizationId,
         { hasVariance: true }
       );
-    } catch (err) {
-      logger.error('Error identifying discrepancies', { error: err.message, reconciliationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error identifying discrepancies', { error: error.message, reconciliationId });
+      throw error;
     }
   }
 }

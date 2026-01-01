@@ -95,7 +95,7 @@ export function createTransIPClient() {
     });
 
     return client;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to initialize TransIP client', {
       error: error.message,
       stack: error.stack

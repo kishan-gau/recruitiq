@@ -21,7 +21,7 @@ class ReportsController {
       const { organizationId } = req.user;
       const report = await this.service.getHeadcountReport(organizationId, req.query);
       res.json({ success: true, data: report });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getHeadcountReport controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -45,7 +45,7 @@ class ReportsController {
 
       const report = await this.service.getTurnoverReport(organizationId, startDate, endDate);
       res.json({ success: true, data: report });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getTurnoverReport controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -69,7 +69,7 @@ class ReportsController {
 
       const report = await this.service.getTimeOffReport(organizationId, startDate, endDate);
       res.json({ success: true, data: report });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getTimeOffReport controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -93,7 +93,7 @@ class ReportsController {
 
       const report = await this.service.getAttendanceReport(organizationId, startDate, endDate);
       res.json({ success: true, data: report });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getAttendanceReport controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -117,7 +117,7 @@ class ReportsController {
 
       const report = await this.service.getPerformanceReport(organizationId, startDate, endDate);
       res.json({ success: true, data: report });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getPerformanceReport controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -132,7 +132,7 @@ class ReportsController {
       const { organizationId } = req.user;
       const report = await this.service.getBenefitsReport(organizationId);
       res.json({ success: true, data: report });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getBenefitsReport controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -147,7 +147,7 @@ class ReportsController {
       const { organizationId } = req.user;
       const report = await this.service.getDashboardReport(organizationId);
       res.json({ success: true, data: report });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getDashboardReport controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }

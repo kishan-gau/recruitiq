@@ -11,6 +11,31 @@
 
 import logger from '../utils/logger.js';
 import { ValidationError } from './errorHandler.js';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+
+/**
+ * Options for createProtectionMiddleware
+ */
+interface CreateProtectionMiddlewareOptions {
+  additionalProtected?: string[];
+}
+
+/**
+ * Options for createWhitelistMiddleware
+ */
+interface CreateWhitelistMiddlewareOptions {
+  strict?: boolean;
+}
+
+/**
+ * Options for protectMassAssignment (combined options)
+ */
+interface ProtectMassAssignmentOptions {
+  allowedFields?: string[] | null;
+  additionalProtected?: string[];
+  strict?: boolean;
+  maxDepth?: number;
+}
 
 /**
  * Protected fields that should never be mass-assigned
@@ -175,11 +200,11 @@ function enforceWhitelist(body, allowedFields, strict = false) {
  * @param {Array<string>} options.additionalProtected - Additional fields to protect
  * @returns {Function} Express middleware
  */
-export function createProtectionMiddleware(options = {}) {
+export function createProtectionMiddleware(options: CreateProtectionMiddlewareOptions = {}): RequestHandler {
   const { additionalProtected = [] } = options;
   const additionalSet = new Set(additionalProtected);
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (req.body && typeof req.body === 'object') {
       req.body = stripProtectedFields(req.body, additionalSet);
     }
@@ -201,16 +226,16 @@ export function createProtectionMiddleware(options = {}) {
  * @param {boolean} options.strict - Throw error if unknown fields present
  * @returns {Function} Express middleware
  */
-export function createWhitelistMiddleware(allowedFields, options = {}) {
+export function createWhitelistMiddleware(allowedFields: string[], options: CreateWhitelistMiddlewareOptions = {}): RequestHandler {
   const { strict = false } = options;
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       if (req.body && typeof req.body === 'object') {
         req.body = enforceWhitelist(req.body, allowedFields, strict);
       }
       next();
-    } catch (_error) {
+    } catch (error) {
       next(error);
     }
   };
@@ -292,7 +317,7 @@ export function validateObjectStructure(maxDepth = 3) {
         checkDepth(req.query);
       }
       next();
-    } catch (_error) {
+    } catch (error) {
       next(error);
     }
   };
@@ -315,7 +340,7 @@ export function validateObjectStructure(maxDepth = 3) {
  * @param {Object} options - Configuration options
  * @returns {Function} Express middleware
  */
-export function protectMassAssignment(options = {}) {
+export function protectMassAssignment(options: ProtectMassAssignmentOptions = {}): RequestHandler {
   const {
     allowedFields = null,
     additionalProtected = [],
@@ -323,7 +348,7 @@ export function protectMassAssignment(options = {}) {
     maxDepth = 3,
   } = options;
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
       // Step 1: Validate object structure (prevent prototype pollution)
       if (req.body) {
@@ -343,7 +368,7 @@ export function protectMassAssignment(options = {}) {
       }
 
       next();
-    } catch (_error) {
+    } catch (error) {
       next(error);
     }
   };

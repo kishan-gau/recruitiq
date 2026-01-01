@@ -1,102 +1,88 @@
 #!/bin/bash
 
-# RecruitIQ Pure SQL Database Initialization
-# This script runs during PostgreSQL container startup using only SQL scripts
-# No Node.js installation required - everything runs with psql
+# RecruitIQ Database Initialization
+# This script runs during PostgreSQL container startup
+# It ONLY creates database extensions - schema is handled by Knex migrations
 
 set -e
 
-echo "🚀 Starting RecruitIQ Database Initialization (SQL Mode)..."
+echo "=========================================="
+echo "RecruitIQ Database Initialization"
 echo "Database: $POSTGRES_DB"
 echo "User: $POSTGRES_USER"
 echo "=========================================="
 
-# Note: PostgreSQL is already ready when docker-entrypoint-initdb.d scripts run
-# No need to wait - the database is guaranteed to be ready at this point
-echo "✅ PostgreSQL is ready (running in initdb context)!"
+# PostgreSQL is already ready when docker-entrypoint-initdb.d scripts run
+echo "[OK] PostgreSQL is ready (running in initdb context)"
 
 # Detect the correct SQL scripts path based on mounted volumes
-# Supports multiple Docker Compose configurations
 if [ -d "/backend/docker-init" ]; then
     SQL_SCRIPTS_DIR="/backend/docker-init"
-    echo "📁 Using SQL scripts from: $SQL_SCRIPTS_DIR (root docker-compose mount)"
+    echo "[INFO] Using SQL scripts from: $SQL_SCRIPTS_DIR (root docker-compose mount)"
 elif [ -d "/docker-init" ]; then
     SQL_SCRIPTS_DIR="/docker-init"
-    echo "📁 Using SQL scripts from: $SQL_SCRIPTS_DIR (backend docker-compose mount)"
+    echo "[INFO] Using SQL scripts from: $SQL_SCRIPTS_DIR (backend docker-compose mount)"
 else
-    echo "❌ ERROR: Cannot find SQL scripts directory!"
+    echo "[ERROR] Cannot find SQL scripts directory!"
     echo "   Checked: /backend/docker-init and /docker-init"
     exit 1
 fi
 
-# Set PostgreSQL configuration variables for tenant creation
-echo "🔧 Setting up tenant creation variables..."
+# Phase 1: Create extensions only
+echo ""
+echo "=========================================="
+echo "Phase 1: Creating Database Extensions"
+echo "=========================================="
 
-if [ -n "$DEFAULT_LICENSE_ID" ] && [ -n "$DEFAULT_CUSTOMER_ID" ] && [ -n "$DEFAULT_CUSTOMER_EMAIL" ] && [ -n "$DEFAULT_CUSTOMER_NAME" ]; then
-    echo "📋 Tenant creation parameters found:"
-    echo "   License ID: $DEFAULT_LICENSE_ID"
-    echo "   Customer ID: $DEFAULT_CUSTOMER_ID" 
-    echo "   Customer Email: $DEFAULT_CUSTOMER_EMAIL"
-    echo "   Customer Name: $DEFAULT_CUSTOMER_NAME"
-    
-    # Set configuration variables for PostgreSQL session
-    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-        ALTER DATABASE "$POSTGRES_DB" SET myapp.default_license_id = '$DEFAULT_LICENSE_ID';
-        ALTER DATABASE "$POSTGRES_DB" SET myapp.default_customer_id = '$DEFAULT_CUSTOMER_ID';
-        ALTER DATABASE "$POSTGRES_DB" SET myapp.default_customer_email = '$DEFAULT_CUSTOMER_EMAIL';
-        ALTER DATABASE "$POSTGRES_DB" SET myapp.default_customer_name = '$DEFAULT_CUSTOMER_NAME';
-EOSQL
-    
-    echo "✅ Tenant variables configured"
-else
-    echo "ℹ️  No tenant creation parameters provided"
-    echo "   To create a default tenant, set: DEFAULT_LICENSE_ID, DEFAULT_CUSTOMER_ID, DEFAULT_CUSTOMER_EMAIL, DEFAULT_CUSTOMER_NAME"
-fi
-
-echo "📦 Phase 1: Creating Database Schema..."
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$SQL_SCRIPTS_DIR/01-create-schema.sql"
 
 if [ $? -eq 0 ]; then
-    echo "✅ Phase 1 Complete: Database schema created successfully"
+    echo "[OK] Phase 1 Complete: Database extensions created"
 else
-    echo "❌ Phase 1 Failed: Schema creation failed"
+    echo "[ERROR] Phase 1 Failed: Extension creation failed"
     exit 1
 fi
 
-echo "🌱 Phase 2: Loading Production Seeds..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$SQL_SCRIPTS_DIR/02-production-seeds.sql"
-
-if [ $? -eq 0 ]; then
-    echo "✅ Phase 2 Complete: Production seeds loaded successfully"
-else
-    echo "❌ Phase 2 Failed: Seeds loading failed"
-    exit 1
-fi
-
-echo "🏢 Phase 3: Creating Default Tenant (if configured)..."
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -f "$SQL_SCRIPTS_DIR/03-create-tenant.sql"
-
-if [ $? -eq 0 ]; then
-    echo "✅ Phase 3 Complete: Tenant creation completed"
-else
-    echo "❌ Phase 3 Failed: Tenant creation failed"
-    exit 1
-fi
+# ============================================================================
+# IMPORTANT: Phase 2 (Seeds) and Phase 3 (Tenant Creation) are DISABLED
+# ============================================================================
+#
+# Database schema and seeds are managed ENTIRELY by Knex migrations
+# running in the backend container via startup.sh.
+#
+# Why?
+# 1. Single source of truth for database schema (Knex migrations)
+# 2. Proper migration tracking in knex_migrations table
+# 3. Consistent schema between development and production
+# 4. No "relation already exists" errors on startup
+# 5. Better control over schema versioning and rollbacks
+#
+# How it works:
+# 1. PostgreSQL starts -> this script creates ONLY extensions
+# 2. Backend starts -> startup.sh runs npm run migrate:latest
+# 3. Knex creates all tables via migrations/
+# 4. Seeds run if needed via seeds/production/
+#
+# Files involved:
+# - backend/migrations/*.js (schema definitions)
+# - backend/seeds/production/*.js (seed data)
+# - backend/scripts/startup.sh (orchestration)
+# ============================================================================
 
 echo ""
-echo "🎉 RecruitIQ Database Initialization Complete!"
-echo "======================================="
-
-if [ -n "$DEFAULT_LICENSE_ID" ]; then
-    echo "🏢 Created tenant organization: $DEFAULT_CUSTOMER_NAME"
-    echo "📧 Admin email: $DEFAULT_CUSTOMER_EMAIL"
-    echo "🔑 Generated admin password has been displayed above"
-    echo "🌐 You can now start the backend server and login"
-else
-    echo "ℹ️  No default tenant was created"
-    echo "   Run the setup script with tenant parameters to create one"
-fi
-
+echo "=========================================="
+echo "Phase 2 and 3: SKIPPED"
+echo "=========================================="
+echo "[INFO] Schema creation delegated to Knex migrations"
+echo "[INFO] Backend startup.sh will run: npm run migrate:latest"
 echo ""
-echo "🚀 Ready for development!"
-echo "======================================="
+echo "=========================================="
+echo "Database Initialization Complete!"
+echo "=========================================="
+echo ""
+echo "[INFO] PostgreSQL is ready with extensions:"
+echo "       - uuid-ossp (UUID generation)"
+echo "       - pgcrypto (cryptographic functions)"
+echo ""
+echo "[INFO] Waiting for backend container to run Knex migrations..."
+echo "=========================================="

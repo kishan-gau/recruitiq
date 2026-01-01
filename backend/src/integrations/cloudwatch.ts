@@ -57,7 +57,7 @@ class CloudWatchClient {
         namespace: this.namespace,
         region: this.region,
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to initialize CloudWatch client', {
         error: error.message,
       });
@@ -105,7 +105,7 @@ class CloudWatchClient {
         unit,
         dimensions,
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to send CloudWatch metric', {
         metricName,
         error: error.message,

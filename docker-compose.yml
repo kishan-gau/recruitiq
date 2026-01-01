@@ -85,16 +85,22 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./backend/src:/app/src:ro
-      - ./backend/package.json:/app/package.json:ro
-      - ./backend/package-lock.json:/app/package-lock.json:ro
-      - ./apps:/app/apps:ro  # Mount apps directory for frontend validation
-      - backend_dev_logs:/app/logs
-      - backend_dev_uploads:/app/uploads
-      - /app/node_modules  # Anonymous volume for node_modules
+      # Mount source code for hot-reload (paths match Dockerfile structure: /app/backend/)
+      - ./backend/src:/app/backend/src:ro
+      - ./backend/scripts:/app/backend/scripts:ro
+      - ./backend/package.json:/app/backend/package.json:ro
+      - ./backend/knexfile.js:/app/backend/knexfile.js:ro
+      - ./backend/migrations:/app/backend/migrations:ro
+      - ./backend/seeds:/app/backend/seeds:ro
+      # Mount apps directory for frontend validation
+      - ./apps:/app/apps:ro
+      # Named volumes for logs and uploads
+      - backend_dev_logs:/app/backend/logs
+      - backend_dev_uploads:/app/backend/uploads
+      # NOTE: node_modules volumes REMOVED - use the dependencies installed in Docker image
+      # Adding node_modules volumes would create EMPTY directories that override the built-in dependencies
     networks:
       - recruitiq_dev_network
-    # Command removed - let Dockerfile CMD execute startup script
 
   # Deployment Service
   # deployment-service:

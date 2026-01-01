@@ -25,7 +25,7 @@ class ProductFeatureController {
       }
 
       res.json(features);
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -39,7 +39,7 @@ class ProductFeatureController {
       const { productId, featureKey } = req.params;
       const feature = await productFeatureService.getFeature(productId, featureKey);
       res.json(feature);
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Feature not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -62,7 +62,7 @@ class ProductFeatureController {
 
       const features = await productFeatureService.getAvailableFeatures(productId, tier);
       res.json(features);
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -88,7 +88,7 @@ class ProductFeatureController {
       );
 
       res.json({ isAvailable });
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -102,7 +102,7 @@ class ProductFeatureController {
       const { productId } = req.params;
       const stats = await productFeatureService.getFeatureStats(productId);
       res.json(stats);
-    } catch (_error) {
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
@@ -123,7 +123,7 @@ class ProductFeatureController {
 
       const feature = await productFeatureService.createFeature(featureData, userId);
       res.status(201).json(feature);
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Product not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -145,7 +145,7 @@ class ProductFeatureController {
 
       const feature = await productFeatureService.updateFeature(productId, featureKey, req.body, userId);
       res.json(feature);
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Feature not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -175,7 +175,7 @@ class ProductFeatureController {
       );
 
       res.json(feature);
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Feature not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -194,7 +194,7 @@ class ProductFeatureController {
 
       const feature = await productFeatureService.enableFeature(productId, featureKey, userId);
       res.json(feature);
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Feature not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -213,7 +213,7 @@ class ProductFeatureController {
 
       const feature = await productFeatureService.disableFeature(productId, featureKey, userId);
       res.json(feature);
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Feature not found') {
         return res.status(404).json({ error: error.message });
       }
@@ -232,7 +232,7 @@ class ProductFeatureController {
 
       await productFeatureService.deleteFeature(productId, featureKey, userId);
       res.status(204).send();
-    } catch (_error) {
+    } catch (error) {
       if (error.message === 'Feature not found') {
         return res.status(404).json({ error: error.message });
       }

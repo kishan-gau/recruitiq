@@ -55,7 +55,7 @@ export class CandidateRepository extends BaseRepository {
       // Import DTO mapper for specialized mapping
       const { mapCandidateWithApplicationsDto } = await import('../utils/dtoMapper');
       return mapCandidateWithApplicationsDto(dbRecord);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findByIdWithApplications', {
         id,
         organizationId,
@@ -193,7 +193,7 @@ export class CandidateRepository extends BaseRepository {
         limit: parseInt(limit, 10),
         totalPages: Math.ceil(total / limit)
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in search', {
         params,
         organizationId,
@@ -229,7 +229,7 @@ export class CandidateRepository extends BaseRepository {
         acc[row.status] = parseInt(row.count, 10);
         return acc;
       }, {});
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getCountByStatus', {
         organizationId,
         error: error.message
@@ -263,7 +263,7 @@ export class CandidateRepository extends BaseRepository {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getRecent', {
         limit,
         organizationId,
@@ -321,7 +321,7 @@ export class CandidateRepository extends BaseRepository {
       );
 
       return result.rows[0] || null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in updateTags', {
         id,
         tags,

@@ -6,10 +6,10 @@
 
 set -e
 
-echo "🔧 Initializing database schema and seeds..."
+echo "ðŸ”§ Initializing database schema and seeds..."
 
 # Wait for database to be ready
-echo "⏳ Waiting for database connection..."
+echo "â³ Waiting for database connection..."
 until node -e "
 const pool = require('./src/config/database.js').default;
 pool.query('SELECT 1').then(() => {
@@ -23,14 +23,14 @@ pool.query('SELECT 1').then(() => {
   sleep 2
 done
 
-echo "✅ Database connection established"
+echo "âœ… Database connection established"
 
 # Run migrations
-echo "📋 Running database migrations..."
+echo "ðŸ“‹ Running database migrations..."
 npm run migrate:latest
 
 # Run production seeds
-echo "🌱 Running production seeds..."
+echo "ðŸŒ± Running production seeds..."
 npm run seed:production
 
-echo "✅ Database initialization completed"
+echo "âœ… Database initialization completed"

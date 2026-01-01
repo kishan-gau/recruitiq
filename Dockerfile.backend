@@ -29,17 +29,33 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Copy packages directory for workspace resolution
 COPY packages ./packages
 
-# Copy backend package.json
+# Copy backend package.json first (for dependency installation)
 COPY backend/package.json ./backend/package.json
 
 # Install all dependencies (including dev) using pnpm
+# This creates proper Linux symlinks in node_modules
 RUN pnpm install --frozen-lockfile
 
-# Copy source code and scripts
-COPY --chown=nodejs:nodejs backend/ ./backend
+# Copy source code and scripts (excluding node_modules)
+# Note: We copy in parts to avoid overwriting the node_modules created by pnpm
+COPY --chown=nodejs:nodejs backend/src ./backend/src
+COPY --chown=nodejs:nodejs backend/scripts ./backend/scripts
+COPY --chown=nodejs:nodejs backend/migrations ./backend/migrations
+COPY --chown=nodejs:nodejs backend/seeds ./backend/seeds
+COPY --chown=nodejs:nodejs backend/docker-init ./backend/docker-init
+COPY --chown=nodejs:nodejs backend/eslint.config.js ./backend/
+COPY --chown=nodejs:nodejs backend/jest.config.js ./backend/
+COPY --chown=nodejs:nodejs backend/knexfile.js ./backend/
+COPY --chown=nodejs:nodejs backend/tsconfig.json ./backend/
 
 # Make startup script executable
 RUN chmod +x backend/scripts/startup.sh
+
+# Create dist directory for TypeScript output (owned by nodejs)
+RUN mkdir -p /app/backend/dist && chown -R nodejs:nodejs /app/backend/dist
+
+# Set backend as working directory for runtime
+WORKDIR /app/backend
 
 # Switch to non-root user
 USER nodejs
@@ -47,8 +63,8 @@ USER nodejs
 # Expose port
 EXPOSE 3001
 
-# Development command with automatic migrations
-CMD ["./backend/scripts/startup.sh"]
+# Development command with automatic migrations (use absolute path or dumb-init)
+CMD ["/bin/bash", "/app/backend/scripts/startup.sh"]
 
 # Production builder stage
 FROM base AS builder
@@ -61,14 +77,21 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Copy packages directory for workspace resolution
 COPY packages ./packages
 
-# Copy backend package.json
+# Copy backend package.json first (for dependency installation)
 COPY backend/package.json ./backend/package.json
 
 # Install production dependencies using pnpm
+# This creates proper Linux symlinks in node_modules
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy backend source code
-COPY backend/ ./backend
+# Copy backend source code (excluding node_modules)
+# Note: We copy in parts to avoid overwriting the node_modules created by pnpm
+COPY backend/src ./backend/src
+COPY backend/scripts ./backend/scripts
+COPY backend/migrations ./backend/migrations
+COPY backend/seeds ./backend/seeds
+COPY backend/docker-init ./backend/docker-init
+COPY backend/knexfile.js ./backend/
 
 # Production stage
 FROM node:20-alpine AS production

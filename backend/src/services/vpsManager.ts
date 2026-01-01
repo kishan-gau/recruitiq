@@ -175,7 +175,7 @@ class VPSManager {
       
       return vps;
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     } finally {
@@ -220,7 +220,7 @@ class VPSManager {
       
       logger.info(`✅ Organization ${organizationId} removed from VPS`);
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     } finally {
@@ -311,7 +311,7 @@ class VPSManager {
       
       logger.info(`✅ VPS ${vpsId} decommissioned`);
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     } finally {

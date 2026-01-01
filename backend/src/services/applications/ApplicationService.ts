@@ -4,7 +4,7 @@
  */
 
 import type { ApplicationData, ApplicationSearchFilters, PaginatedResponse } from '../../types/recruitment.types.js';
-import { ApplicationRepository } from '../../repositories/ApplicationRepository.js';
+import { ApplicationRepository, FindByJobOptions } from '../../repositories/ApplicationRepository.js';
 import { JobRepository } from '../../repositories/JobRepository.js';
 import { CandidateRepository } from '../../repositories/CandidateRepository.js';
 import Organization from '../../models/Organization.js';
@@ -290,7 +290,7 @@ export class ApplicationService {
   /**
    * Get applications for a specific job
    */
-  async getByJob(jobId, user, options = {}) {
+  async getByJob(jobId: string, user: { organization_id: string }, options: FindByJobOptions = {}) {
     try {
       const organizationId = user.organization_id;
 

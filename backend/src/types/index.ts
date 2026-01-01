@@ -8,3 +8,4 @@ export * from './api.types.js';
 export * from './errors.types.js';
 export * from './request.types.js';
 export * from './product.types.js';
+export * from './common.types.js';

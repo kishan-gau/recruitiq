@@ -32,7 +32,7 @@ export async function createJob(req, res, next) {
     const job = await jobService.create(req.validatedBody, organizationId, userId);
     
     return res.sendCreated('job', job);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -59,7 +59,7 @@ export async function getJob(req, res, next) {
     );
     
     return res.sendSuccess({ resource: 'job', data: job }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -79,7 +79,7 @@ export async function getJobBySlug(req, res, next) {
     const job = await jobService.getBySlug(slug);
     
     return res.sendSuccess({ resource: 'job', data: job }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -101,7 +101,7 @@ export async function updateJob(req, res, next) {
     const job = await jobService.update(id, req.validatedBody, organizationId, userId);
     
     return res.sendSuccess({ resource: 'job', data: job }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -122,7 +122,7 @@ export async function deleteJob(req, res, next) {
     await jobService.delete(id, organizationId, userId);
     
     return res.sendDeleted('Job deleted successfully');
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -191,7 +191,7 @@ export async function listJobs(req, res, next) {
         hasPrev: result.page > 1
       }
     }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -213,7 +213,7 @@ export async function getJobStatistics(req, res, next) {
       resource: 'statistics',
       data: stats
     }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -240,7 +240,7 @@ export async function toggleJobPublish(req, res, next) {
       data: job,
       message: `Job ${publish ? 'published' : 'unpublished'} successfully`
     }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -267,7 +267,7 @@ export async function closeJob(req, res, next) {
       data: job,
       message: 'Job closed successfully'
     }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -307,7 +307,7 @@ export async function getPublishedJobs(req, res, next) {
       resource: 'jobs',
       data: jobs
     }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -331,7 +331,7 @@ export async function getJobsByHiringManager(req, res, next) {
       resource: 'jobs',
       data: jobs
     }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -353,7 +353,7 @@ export async function checkJobLimit(req, res, next) {
       resource: 'limit_info',
       data: limitInfo
     }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -422,7 +422,7 @@ export async function updatePortalSettings(req, res, next) {
       data: job,
       message: 'Portal settings updated successfully'
     }, 200);
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }

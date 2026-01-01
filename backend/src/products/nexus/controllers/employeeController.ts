@@ -23,7 +23,7 @@ class EmployeeController {
       const { organization_id: organizationId, id: userId } = req.user;
       const employee = await this.service.createEmployee(req.body, organizationId, userId);
       res.status(201).json({ success: true, employee });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in createEmployee controller', { error: error.message });
       res.status(400).json({ success: false, error: error.message });
     }
@@ -39,7 +39,7 @@ class EmployeeController {
       const { id } = req.params;
       const employee = await this.service.getEmployee(id, organizationId);
       res.json({ success: true, employee });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getEmployee controller', { error: error.message });
       const status = error.message === 'Employee not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -83,7 +83,7 @@ class EmployeeController {
         limit: options.limit,
         offset: options.offset
       });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in listEmployees controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -99,7 +99,7 @@ class EmployeeController {
       const { id } = req.params;
       const employee = await this.service.updateEmployee(id, req.body, organizationId, userId);
       res.json({ success: true, employee });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in updateEmployee controller', { error: error.message });
       const status = error.message === 'Employee not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -116,7 +116,7 @@ class EmployeeController {
       const { id } = req.params;
       const employee = await this.service.terminateEmployee(id, req.body, organizationId, userId);
       res.json({ success: true, employee });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in terminateEmployee controller', { error: error.message });
       const status = error.message === 'Employee not found' ? 404 : 400;
       res.status(status).json({ success: false, error: error.message });
@@ -138,7 +138,7 @@ class EmployeeController {
         userId
       );
       res.json({ success: true, rehire: result });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in rehireEmployee controller', { error: error.message });
       const status = error.message === 'Employee not found' ? 404 : 
                      error.message.includes('not terminated') ? 400 :
@@ -160,7 +160,7 @@ class EmployeeController {
         organizationId
       );
       res.json({ success: true, employmentHistory: history });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getEmploymentHistory controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -179,7 +179,7 @@ class EmployeeController {
         organizationId
       );
       res.json({ success: true, eligibility });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in checkRehireEligibility controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -195,7 +195,7 @@ class EmployeeController {
       const { id } = req.params;
       await this.service.deleteEmployee(id, organizationId, userId);
       res.json({ success: true, message: 'Employee deleted successfully' });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in deleteEmployee controller', { error: error.message });
       const status = error.message === 'Employee not found' ? 404 : 500;
       res.status(status).json({ success: false, error: error.message });
@@ -211,7 +211,7 @@ class EmployeeController {
       const { organization_id: organizationId } = req.user;
       const orgChart = await this.service.getOrgChart(organizationId);
       res.json({ success: true, orgChart });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getOrgChart controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }
@@ -232,7 +232,7 @@ class EmployeeController {
 
       const employees = await this.service.searchEmployees(q, organizationId, { limit: parseInt(limit) });
       res.json({ success: true, employees });
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in searchEmployees controller', { error: error.message });
       res.status(500).json({ success: false, error: error.message });
     }

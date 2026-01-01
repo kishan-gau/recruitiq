@@ -6,9 +6,40 @@
  * Uses the new Feature Management System with caching and proper access control
  */
 
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import FeatureAccessService from '../services/FeatureAccessService.js';
 import logger from '../utils/logger.js';
 import { query } from '../config/database.js';
+
+/**
+ * Options for requireFeature middleware
+ */
+export interface RequireFeatureOptions {
+  /** Track usage when accessed (default: true) */
+  trackUsage?: boolean;
+  /** Amount to increment usage by (default: 1) */
+  usageAmount?: number;
+}
+
+/**
+ * Options for requireAnyFeature middleware
+ */
+export interface RequireAnyFeatureOptions {
+  /** Track usage when accessed (default: true) */
+  trackUsage?: boolean;
+  /** Amount to increment usage by (default: 1) */
+  usageAmount?: number;
+}
+
+/**
+ * Options for requireAllFeatures middleware
+ */
+export interface RequireAllFeaturesOptions {
+  /** Track usage when accessed (default: true) */
+  trackUsage?: boolean;
+  /** Amount to increment usage by (default: 1) */
+  usageAmount?: number;
+}
 
 const accessService = new FeatureAccessService();
 
@@ -25,7 +56,7 @@ async function getProductId(productSlug) {
       { operation: 'getProductId' }
     );
     return result.rows[0]?.id || null;
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting product ID', { productSlug, error: error.message });
     return null;
   }
@@ -48,10 +79,10 @@ async function getProductId(productSlug) {
  * @param {number} options.usageAmount - Amount to increment usage by (default: 1)
  * @returns {Function} Express middleware function
  */
-export function requireFeature(productSlug, featureKey, options = {}) {
+export function requireFeature(productSlug: string, featureKey: string, options: RequireFeatureOptions = {}): RequestHandler {
   const { trackUsage = true, usageAmount = 1 } = options;
 
-  return async (req, res, next) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Get organization ID from authenticated user
       const organizationId = req.user?.organizationId || req.organizationId;
@@ -127,7 +158,7 @@ export function requireFeature(productSlug, featureKey, options = {}) {
       };
 
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in requireFeature middleware', {
         productSlug,
         featureKey,
@@ -158,8 +189,8 @@ export function requireFeature(productSlug, featureKey, options = {}) {
  * @param {Object} options - Optional settings
  * @returns {Function} Express middleware function
  */
-export function requireAnyFeature(productSlug, featureKeys, options = {}) {
-  return async (req, res, next) => {
+export function requireAnyFeature(productSlug: string, featureKeys: string[], options: RequireAnyFeatureOptions = {}): RequestHandler {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const organizationId = req.user?.organizationId || req.organizationId;
 
@@ -210,7 +241,7 @@ export function requireAnyFeature(productSlug, featureKeys, options = {}) {
       };
 
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in requireAnyFeature middleware', {
         productSlug,
         featureKeys,
@@ -240,8 +271,8 @@ export function requireAnyFeature(productSlug, featureKeys, options = {}) {
  * @param {Object} options - Optional settings
  * @returns {Function} Express middleware function
  */
-export function requireAllFeatures(productSlug, featureKeys, options = {}) {
-  return async (req, res, next) => {
+export function requireAllFeatures(productSlug: string, featureKeys: string[], options: RequireAllFeaturesOptions = {}): RequestHandler {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const organizationId = req.user?.organizationId || req.organizationId;
 
@@ -303,7 +334,7 @@ export function requireAllFeatures(productSlug, featureKeys, options = {}) {
       );
 
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in requireAllFeatures middleware', {
         productSlug,
         featureKeys,
@@ -334,8 +365,8 @@ export function requireAllFeatures(productSlug, featureKeys, options = {}) {
  * @param {Array<string>} featureKeys - Array of feature keys to check
  * @returns {Function} Express middleware function
  */
-export function checkFeatureAvailability(productSlug, featureKeys) {
-  return async (req, res, next) => {
+export function checkFeatureAvailability(productSlug: string, featureKeys: string[]): RequestHandler {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const organizationId = req.user?.organizationId || req.organizationId;
 
@@ -364,7 +395,7 @@ export function checkFeatureAvailability(productSlug, featureKeys) {
 
       req.features = features;
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in checkFeatureAvailability middleware', {
         productSlug,
         featureKeys,
@@ -391,8 +422,8 @@ export function checkFeatureAvailability(productSlug, featureKeys) {
  * 
  * @returns {Function} Express middleware function
  */
-export function enforceUsageLimit() {
-  return async (req, res, next) => {
+export function enforceUsageLimit(): RequestHandler {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Feature info should be attached by requireFeature middleware
       if (!req.feature) {
@@ -421,7 +452,7 @@ export function enforceUsageLimit() {
       }
 
       next();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in enforceUsageLimit middleware', {
         error: error.message
       });

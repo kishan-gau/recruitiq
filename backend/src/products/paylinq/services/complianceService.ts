@@ -13,6 +13,7 @@ import {
   mapAuditLogToDto,
   mapAuditLogsToDto
 } from '../dto/complianceDto.js';
+import type { ServiceFilterOptions } from '../../../types/common.types.js';
 
 class ComplianceService {
   
@@ -56,7 +57,7 @@ constructor(complianceRepository = null, payrollRepository = null) {
   /**
    * Get all compliance rules for an organization
    */
-  async getComplianceRules(organizationId, filters = {}) {
+  async getComplianceRules(organizationId: string, filters: ServiceFilterOptions = {}): Promise<unknown[]> {
     const result = await this.complianceRepository.findComplianceRulesByType(organizationId, filters);
     return mapComplianceRulesToDto(result);
   }
@@ -155,7 +156,7 @@ constructor(complianceRepository = null, payrollRepository = null) {
   /**
    * Get compliance violations with optional filters
    */
-  async getComplianceViolations(organizationId, filters = {}) {
+  async getComplianceViolations(organizationId: string, filters: ServiceFilterOptions = {}): Promise<unknown[]> {
     const result = await this.complianceRepository.findComplianceViolations(organizationId, filters);
     return mapComplianceViolationsToDto(result);
   }
@@ -253,7 +254,7 @@ constructor(complianceRepository = null, payrollRepository = null) {
   /**
    * Get audit trail for an entity
    */
-  async getAuditTrail(entityType, entityId, organizationId, filters = {}) {
+  async getAuditTrail(entityType: string, entityId: string, organizationId: string, filters: ServiceFilterOptions = {}): Promise<unknown[]> {
     const result = await this.complianceRepository.findAuditLogs(entityType, entityId, organizationId, filters);
     return mapAuditLogsToDto(result);
   }

@@ -89,7 +89,7 @@ async function getTierLimits(tier) {
         basePrice: preset.base_price
       }
     };
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching tier limits from License Manager:', error);
     // Return fallback limits on error
     return {
@@ -131,7 +131,7 @@ async function configureSharedTenantAsync(deploymentId, organizationId, slug, vp
     });
 
     logger.info(`✅ Shared tenant ${slug} configured successfully`);
-  } catch (_error) {
+  } catch (error) {
     logger.error(`❌ Shared tenant configuration failed for ${slug}:`, error);
     // Error is already logged in orchestrator
   }
@@ -184,7 +184,7 @@ async function deployTenantViaDeploymentService(deploymentId, organizationId, or
     // The deployment service will send a callback to /api/portal/deployments/callback
     // when deployment completes or fails
 
-  } catch (_error) {
+  } catch (error) {
     logger.error(`❌ Deployment Service deployment failed for ${slug}:`, error);
     
     // Update deployment status to failed
@@ -390,7 +390,7 @@ router.post('/instances',
         });
       }
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       logger.error('Provisioning error:', error);
       res.status(500).json({ 
@@ -510,7 +510,7 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
       deploymentOrchestrator.clearDeploymentLogs(deploymentId);
     }, 3600000); // Keep logs for 1 hour
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('VPS provisioning failed:', error);
     throw error;
   }
@@ -556,7 +556,7 @@ router.get('/instances/:deploymentId/status',
         logs: logs.length > 0 ? logs : null
       });
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Status check error:', error);
       res.status(500).json({ error: 'Failed to get status' });
     }
@@ -581,7 +581,7 @@ router.get('/instances/:deploymentId/logs',
         logs
       });
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching logs:', error);
       res.status(500).json({ error: 'Failed to fetch logs' });
     }
@@ -613,7 +613,7 @@ router.get('/clients',
 
       res.json(result.rows);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching clients:', error);
       res.status(500).json({ error: 'Failed to fetch clients' });
     }
@@ -631,7 +631,7 @@ router.get('/vps/available',
     try {
       const availableVPS = await vpsManager.getAvailableSharedVPS();
       res.json(availableVPS);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting available VPS:', error);
       res.status(500).json({ error: 'Failed to get VPS list' });
     }
@@ -649,7 +649,7 @@ router.get('/vps',
     try {
       const allVPS = await vpsManager.getAllVPS();
       res.json(allVPS);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting VPS:', error);
       res.status(500).json({ error: 'Failed to get VPS list' });
     }
@@ -667,7 +667,7 @@ router.get('/vps/stats',
     try {
       const stats = await vpsManager.getVPSStatistics();
       res.json(stats);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting VPS stats:', error);
       res.status(500).json({ error: 'Failed to get VPS statistics' });
     }
@@ -685,7 +685,7 @@ router.post('/vps',
     try {
       const vps = await vpsManager.registerVPS(req.body);
       res.json({ success: true, vps });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error registering VPS:', error);
       res.status(500).json({ error: 'Failed to register VPS' });
     }
@@ -721,7 +721,7 @@ router.get('/deployments/:id/logs',
         : sharedVPSOrchestrator.getLogs(id);
       
       res.json({ logs });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching deployment logs:', error);
       res.status(500).json({ error: 'Failed to fetch logs' });
     }
@@ -744,7 +744,7 @@ router.get('/deployment-service/health',
         enabled: USE_DEPLOYMENT_SERVICE,
         ...health
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error checking deployment service health:', error);
       res.status(500).json({ 
         success: false,
@@ -779,7 +779,7 @@ router.get('/deployment-service/ports',
         enabled: true,
         ...stats
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting port stats:', error);
       res.status(500).json({ 
         success: false,

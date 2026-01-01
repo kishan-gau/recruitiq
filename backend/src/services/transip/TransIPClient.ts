@@ -37,7 +37,7 @@ constructor() {
         try {
           const token = await this._generateToken();
           config.headers.Authorization = `Bearer ${token}`;
-        } catch (_error) {
+        } catch (error) {
           logger.error('Failed to generate TransIP token for request', {
             error: error.message
           });
@@ -97,7 +97,7 @@ constructor() {
       );
 
       return token;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to generate TransIP token', {
         error: error.message,
         username: this.username,
@@ -169,7 +169,7 @@ constructor() {
       });
 
       return response.data;
-    } catch (_error) {
+    } catch (error) {
       logger.error('TransIP API Error', {
         method,
         endpoint,

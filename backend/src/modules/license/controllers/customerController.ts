@@ -12,7 +12,7 @@ export const customerController = {
     try {
       const { tier, status, deploymentType, search } = req.query
 
-      const filters = {}
+      const filters: { tier?: string; status?: string; deploymentType?: string; search?: string } = {}
       if (tier) filters.tier = tier
       if (status) filters.status = status
       if (deploymentType) filters.deploymentType = deploymentType
@@ -21,7 +21,7 @@ export const customerController = {
       const customers = await Customer.findAll(filters)
 
       res.json({ customers })
-    } catch (_error) {
+    } catch (error) {
       console.error('Get customers error:', error)
       res.status(500).json({ error: 'Failed to fetch customers' })
     }
@@ -47,7 +47,7 @@ export const customerController = {
         usageStats,
         activity
       })
-    } catch (_error) {
+    } catch (error) {
       console.error('Get customer error:', error)
       res.status(500).json({ error: 'Failed to fetch customer' })
     }
@@ -97,7 +97,7 @@ export const customerController = {
       const customer = await Customer.create(customerData)
 
       res.status(201).json({ customer })
-    } catch (_error) {
+    } catch (error) {
       console.error('Create customer error:', error)
       res.status(500).json({ error: 'Failed to create customer' })
     }
@@ -116,7 +116,7 @@ export const customerController = {
       }
 
       res.json({ customer })
-    } catch (_error) {
+    } catch (error) {
       console.error('Update customer error:', error)
       res.status(500).json({ error: 'Failed to update customer' })
     }
@@ -134,7 +134,7 @@ export const customerController = {
       }
 
       res.json({ message: 'Customer deleted', customer })
-    } catch (_error) {
+    } catch (error) {
       console.error('Delete customer error:', error)
       res.status(500).json({ error: 'Failed to delete customer' })
     }
@@ -155,7 +155,7 @@ export const customerController = {
         summary,
         trends
       })
-    } catch (_error) {
+    } catch (error) {
       console.error('Get customer usage error:', error)
       res.status(500).json({ error: 'Failed to fetch usage data' })
     }

@@ -307,7 +307,7 @@ class PayslipPdfService {
         }
 
         doc.end();
-      } catch (_error) {
+      } catch (error) {
         reject(error);
       }
     });

@@ -51,7 +51,7 @@ router.get('/roles', requirePlatformPermission('portal.view'), async (req, res) 
       success: true,
       roles: result.rows || []
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to fetch roles', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
@@ -94,7 +94,7 @@ router.get('/roles/:id', requirePlatformPermission('portal.view'), async (req, r
       success: true,
       role: result.rows[0]
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to fetch role', { error: error.message, roleId: req.params.id });
     res.status(500).json({
       success: false,
@@ -159,7 +159,7 @@ router.post('/roles', requirePlatformPermission('portal.manage'), async (req, re
       success: true,
       role
     });
-  } catch (_error) {
+  } catch (error) {
     await client.query('ROLLBACK');
     logger.error('Failed to create role', { error: error.message });
     res.status(500).json({
@@ -249,7 +249,7 @@ router.put('/roles/:id', requirePlatformPermission('portal.manage'), async (req,
       success: true,
       message: 'Role updated successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     await client.query('ROLLBACK');
     logger.error('Failed to update role', { error: error.message, roleId: req.params.id });
     res.status(500).json({
@@ -295,7 +295,7 @@ router.delete('/roles/:id', requirePlatformPermission('portal.manage'), async (r
       success: true,
       message: 'Role deleted successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to delete role', { error: error.message, roleId: id });
     res.status(500).json({
       success: false,
@@ -334,7 +334,7 @@ router.get('/permissions', requirePlatformPermission('portal.view'), async (req,
       success: true,
       permissions: result.rows || []
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to fetch permissions', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
@@ -378,7 +378,7 @@ router.post('/permissions', requirePlatformPermission('portal.manage'), async (r
       success: true,
       permission: result.rows[0]
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to create permission', { error: error.message });
     res.status(500).json({
       success: false,
@@ -444,7 +444,7 @@ router.put('/permissions/:id', requirePlatformPermission('portal.manage'), async
       success: true,
       permission: result.rows[0]
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to update permission', { error: error.message, permissionId: req.params.id });
     res.status(500).json({
       success: false,
@@ -472,7 +472,7 @@ router.delete('/permissions/:id', requirePlatformPermission('portal.manage'), as
       success: true,
       message: 'Permission deleted successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to delete permission', { error: error.message, permissionId: req.params.id });
     res.status(500).json({
       success: false,

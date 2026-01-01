@@ -152,7 +152,7 @@ export async function listInterviews(req, res, next) {
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -234,7 +234,7 @@ export async function getInterview(req, res, next) {
         updatedAt: row.updated_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -334,7 +334,7 @@ export async function scheduleInterview(req, res, next) {
         createdAt: interview.created_at
       }
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -460,7 +460,7 @@ export async function updateInterview(req, res, next) {
     } else {
       res.json({ message: 'Interview updated successfully' });
     }
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -518,7 +518,7 @@ export async function submitFeedback(req, res, next) {
     logger.info(`Interview feedback submitted for ${id} by ${userEmail}`);
 
     res.json({ message: 'Feedback submitted successfully' });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -560,7 +560,7 @@ export async function cancelInterview(req, res, next) {
     logger.info(`Interview cancelled: ${id} by ${userEmail}`);
 
     res.json({ message: 'Interview cancelled successfully' });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }

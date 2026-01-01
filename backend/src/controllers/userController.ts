@@ -57,7 +57,7 @@ export async function listUsers(req, res, next) {
       }
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -92,7 +92,7 @@ export async function getUser(req, res, next) {
       }
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -164,7 +164,7 @@ export async function createUser(req, res, next) {
       }
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -209,7 +209,7 @@ export async function updateUser(req, res, next) {
       }
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -258,7 +258,7 @@ export async function updateUserRole(req, res, next) {
       }
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -299,7 +299,7 @@ export async function deleteUser(req, res, next) {
       message: 'User deleted successfully'
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -362,7 +362,7 @@ export async function updateUserStatus(req, res, next) {
       throw limitError;
     }
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }

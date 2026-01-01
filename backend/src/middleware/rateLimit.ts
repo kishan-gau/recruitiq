@@ -3,6 +3,63 @@ import { rateLimit } from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+
+/**
+ * Options for createLimiter method
+ */
+export interface CreateLimiterOptions {
+  /** Window in milliseconds (default: 15 minutes) */
+  windowMs?: number;
+  /** Max requests per window (default: 100) */
+  max?: number | ((req: Request) => number);
+  /** Error message when limit exceeded */
+  message?: string;
+  /** Skip counting successful requests */
+  skipSuccessfulRequests?: boolean;
+  /** Skip counting failed requests */
+  skipFailedRequests?: boolean;
+  /** Custom key generator function (user-based only, not IP-based) */
+  keyGenerator?: ((req: Request) => string | undefined) | null;
+  /** Skip function to bypass rate limiting */
+  skip?: ((req: Request) => boolean) | null;
+  /** Custom handler for rate limit exceeded */
+  handler?: ((req: Request, res: Response) => void) | null;
+  /** Callback when limit is reached */
+  onLimitReached?: ((req: Request) => void) | null;
+}
+
+/**
+ * Options for createEndpointLimiter function
+ */
+export interface CreateEndpointLimiterOptions {
+  /** Endpoint identifier */
+  endpoint?: string;
+  /** Window in milliseconds (default: 1 hour) */
+  windowMs?: number;
+  /** Max requests per window (default: 100) */
+  max?: number;
+  /** Error message when limit exceeded */
+  message?: string;
+}
+
+/**
+ * Options for createRoleBasedLimiter function
+ */
+export interface CreateRoleBasedLimiterOptions {
+  /** Admin limit per window (default: 10000) */
+  admin?: number;
+  /** Recruiter limit per window (default: 5000) */
+  recruiter?: number;
+  /** Hiring manager limit per window (default: 2000) */
+  hiring_manager?: number;
+  /** Member limit per window (default: 1000) */
+  member?: number;
+  /** Default limit for unknown roles (default: 100) */
+  default?: number;
+  /** Window in milliseconds (default: 1 hour) */
+  windowMs?: number;
+}
 
 /**
  * Enhanced rate limiting with Redis support
@@ -74,7 +131,7 @@ class RateLimitManager {
       });
 
       await this.redisClient.connect();
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to initialize Redis for rate limiting:', error);
       logger.warn('Falling back to memory-based rate limiting');
       this.redisEnabled = false;
@@ -112,10 +169,10 @@ class RateLimitManager {
 
   /**
    * Create rate limiter with configuration
-   * @param {object} options - Rate limiter options
+   * @param {CreateLimiterOptions} options - Rate limiter options
    * @returns {Function} - Express middleware
    */
-  createLimiter(options = {}) {
+  createLimiter(options: CreateLimiterOptions = {}): RequestHandler {
     const {
       windowMs = 15 * 60 * 1000, // 15 minutes default
       max = 100, // 100 requests default
@@ -318,10 +375,10 @@ export const uploadLimiter = rateLimitManager.createLimiter({
 
 /**
  * Create custom rate limiter with role-based limits
- * @param {object} limits - Role-based limit configuration
+ * @param {CreateRoleBasedLimiterOptions} limits - Role-based limit configuration
  * @returns {Function} - Express middleware
  */
-export function createRoleBasedLimiter(limits = {}) {
+export function createRoleBasedLimiter(limits: CreateRoleBasedLimiterOptions = {}): RequestHandler {
   const {
     admin = 10000, // Admin: 10k requests/hour
     recruiter = 5000, // Recruiter: 5k requests/hour
@@ -362,10 +419,10 @@ export function createRoleBasedLimiter(limits = {}) {
 
 /**
  * Create endpoint-specific rate limiter
- * @param {object} options - Configuration options
+ * @param {CreateEndpointLimiterOptions} options - Configuration options
  * @returns {Function} - Express middleware
  */
-export function createEndpointLimiter(options = {}) {
+export function createEndpointLimiter(options: CreateEndpointLimiterOptions = {}): RequestHandler {
   const {
     endpoint = 'custom',
     windowMs = 60 * 60 * 1000,

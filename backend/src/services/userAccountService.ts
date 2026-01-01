@@ -116,7 +116,7 @@ class UserAccountService {
       });
 
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error linking user account to employee', {
         error: error.message,
         userAccountId,
@@ -156,7 +156,7 @@ class UserAccountService {
       });
 
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error unlinking user account from employee', {
         error: error.message,
         employeeId

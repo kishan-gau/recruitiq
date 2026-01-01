@@ -12,11 +12,26 @@ import { ForbiddenError } from '../utils/errors.js';
 import logger from '../utils/logger.js';
 
 /**
+ * Options for requirePermission middleware
+ */
+export interface RequirePermissionOptions {
+  /** If true with array, user must have ALL permissions (default: false = any) */
+  requireAll?: boolean;
+}
+
+/**
+ * Options for checkUserPermissions function
+ */
+export interface CheckUserPermissionsOptions {
+  /** If true, user must have ALL permissions (default: false = any) */
+  requireAll?: boolean;
+}
+
+/**
  * RBAC middleware - checks if user has required permission(s)
  * 
  * @param {string|Array<string>} requiredPermission - Permission(s) required (e.g., 'payroll_runs:create')
- * @param {Object} options - Additional options
- * @param {boolean} options.requireAll - If true with array, user must have ALL permissions (default: false = any)
+ * @param {RequirePermissionOptions} options - Additional options
  * @returns {Function} Express middleware
  * 
  * @example
@@ -31,7 +46,7 @@ import logger from '../utils/logger.js';
  * // Multiple permissions (user must have ALL)
  * router.post('/sensitive', requirePermission(['data:write', 'data:delete'], { requireAll: true }), doSensitive);
  */
-export function requirePermission(requiredPermission, options = {}) {
+export function requirePermission(requiredPermission: string | string[], options: RequirePermissionOptions = {}) {
   return async (req, res, next) => {
     try {
       const { id: userId, organizationId } = req.user;
@@ -74,7 +89,7 @@ export function requirePermission(requiredPermission, options = {}) {
       }
       
       next();
-    } catch (_error) {
+    } catch (error) {
       next(error);
     }
   };
@@ -87,10 +102,10 @@ export function requirePermission(requiredPermission, options = {}) {
  * @param {string} userId - User UUID
  * @param {string} organizationId - Organization UUID
  * @param {Array<string>} permissions - Permission names to check
- * @param {Object} options - Options (requireAll)
+ * @param {CheckUserPermissionsOptions} options - Options (requireAll)
  * @returns {Promise<boolean>} True if user has required permissions
  */
-async function checkUserPermissions(userId, organizationId, permissions, options = {}) {
+async function checkUserPermissions(userId: string, organizationId: string, permissions: string[], options: CheckUserPermissionsOptions = {}): Promise<boolean> {
   const { requireAll = false } = options;
 
   const result = await query(
@@ -199,7 +214,7 @@ export function requireRole(...roleNames) {
       req.userRole = result.rows[0].name;
 
       next();
-    } catch (_error) {
+    } catch (error) {
       next(error);
     }
   };
@@ -245,7 +260,7 @@ export async function attachPermissions(req, res, next) {
     req.userRoles = rolesResult.rows.map(row => row.name);
 
     next();
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error attaching permissions', {
       error: error.message,
       userId: req.user?.id,

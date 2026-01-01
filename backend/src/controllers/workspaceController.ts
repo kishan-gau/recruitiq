@@ -96,7 +96,7 @@ export async function listWorkspaces(req, res, next) {
       }))
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -140,7 +140,7 @@ export async function getWorkspace(req, res, next) {
       }
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -215,7 +215,7 @@ export async function createWorkspace(req, res, next) {
       }
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -278,7 +278,7 @@ export async function updateWorkspace(req, res, next) {
       workspace: result.rows[0]
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -315,7 +315,7 @@ export async function deleteWorkspace(req, res, next) {
       message: 'Workspace deleted successfully'
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -359,7 +359,7 @@ export async function getWorkspaceMembers(req, res, next) {
       }))
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -433,7 +433,7 @@ export async function addWorkspaceMember(req, res, next) {
       }
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }
@@ -477,7 +477,7 @@ export async function removeWorkspaceMember(req, res, next) {
       message: 'Member removed successfully'
     });
 
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 }

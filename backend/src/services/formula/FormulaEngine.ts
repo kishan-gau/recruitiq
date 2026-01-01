@@ -14,23 +14,34 @@
  */
 
 import FormulaParser from './FormulaParser.js';
-import FormulaValidator from './FormulaValidator.js';
-import FormulaExecutor from './FormulaExecutor.js';
+import FormulaValidator, { FormulaValidatorOptions } from './FormulaValidator.js';
+import FormulaExecutor, { FormulaExecutorOptions } from './FormulaExecutor.js';
 import {
   FormulaParseError,
   FormulaValidationError,
   FormulaExecutionError,
   DivisionByZeroError,
+  ASTNode,
+  ExecutionResult,
+  ValidationResult,
 } from './FormulaTypes.js';
 import logger from '../../utils/logger.js';
 
+/**
+ * Combined options for FormulaEngine operations
+ */
+export interface FormulaEngineOptions extends FormulaValidatorOptions, FormulaExecutorOptions {
+  /** Whether to validate the formula before execution (default: true) */
+  validate?: boolean;
+}
+
 class FormulaEngine {
   
-  executor: any;
+  executor: FormulaExecutor;
 
-  parser: any;
+  parser: FormulaParser;
 
-  validator: any;
+  validator: FormulaValidator;
 
 constructor() {
     this.parser = new FormulaParser();
@@ -43,12 +54,12 @@ constructor() {
    * @param {string} formula - Formula expression
    * @returns {ASTNode}
    */
-  parse(formula) {
+  parse(formula: string): ASTNode {
     try {
       const ast = this.parser.parse(formula);
       logger.debug('Formula parsed successfully', { formula, ast });
       return ast;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Formula parse error', { formula, error: error.message });
       throw error;
     }
@@ -60,7 +71,7 @@ constructor() {
    * @param {Object} options - Validation options
    * @returns {ValidationResult}
    */
-  validate(formula, options = {}) {
+  validate(formula: string | ASTNode, options: FormulaValidatorOptions = {}): ValidationResult {
     try {
       const ast = typeof formula === 'string' ? this.parse(formula) : formula;
       const result = this.validator.validate(ast, options);
@@ -72,7 +83,7 @@ constructor() {
       });
       
       return result;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Formula validation error', { formula, error: error.message });
       throw error;
     }
@@ -85,7 +96,7 @@ constructor() {
    * @param {Object} options - Execution options
    * @returns {ExecutionResult}
    */
-  execute(formula, variables = {}, options = {}) {
+  execute(formula: string | ASTNode, variables: Record<string, number> = {}, options: FormulaEngineOptions = {}): ExecutionResult {
     try {
       const ast = typeof formula === 'string' ? this.parse(formula) : formula;
       
@@ -108,7 +119,7 @@ constructor() {
       });
       
       return result;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Formula execution error', {
         formula: typeof formula === 'string' ? formula : '[AST]',
         variables,
@@ -125,7 +136,7 @@ constructor() {
    * @param {Object} options - Options
    * @returns {number} Calculated value
    */
-  calculate(formula, variables = {}, options = {}) {
+  calculate(formula: string, variables: Record<string, number> = {}, options: FormulaEngineOptions = {}): number {
     const result = this.execute(formula, variables, options);
     return result.value;
   }
@@ -135,7 +146,7 @@ constructor() {
    * @param {ASTNode} ast 
    * @returns {Object}
    */
-  astToJSON(ast) {
+  astToJSON(ast: ASTNode): Record<string, unknown> {
     return JSON.parse(JSON.stringify(ast));
   }
 
@@ -144,7 +155,7 @@ constructor() {
    * @param {Object} json 
    * @returns {ASTNode}
    */
-  jsonToAST(json) {
+  jsonToAST(json: Record<string, unknown>): ASTNode {
     // Reconstruct AST nodes with proper prototypes
     return this._reconstructNode(json);
   }
@@ -152,7 +163,7 @@ constructor() {
   /**
    * Reconstruct node from JSON (internal)
    */
-  _reconstructNode(json) {
+  _reconstructNode(json: Record<string, unknown> | null): ASTNode | null {
     if (!json || !json.type) return null;
 
     const node = { ...json };
@@ -174,11 +185,11 @@ constructor() {
    * @param {string|ASTNode} formula 
    * @returns {string[]}
    */
-  extractVariables(formula) {
+  extractVariables(formula: string | ASTNode): string[] {
     try {
       const ast = typeof formula === 'string' ? this.parse(formula) : formula;
       return this.validator.extractVariables(ast);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error extracting variables', { formula, error: error.message });
       throw error;
     }
@@ -189,7 +200,7 @@ constructor() {
    * @param {string} formula 
    * @returns {Object} Test results with examples
    */
-  test(formula) {
+  test(formula: string): Record<string, unknown> {
     try {
       const ast = this.parse(formula);
       const variables = this.extractVariables(ast);
@@ -209,7 +220,7 @@ constructor() {
             result: result.value,
             success: true,
           };
-        } catch (_error) {
+        } catch (error) {
           return {
             variables: testVars,
             error: error.message,
@@ -224,7 +235,7 @@ constructor() {
         testCases: results,
         ast: this.astToJSON(ast),
       };
-    } catch (_error) {
+    } catch (error) {
       return {
         formula,
         error: error.message,
@@ -238,7 +249,7 @@ constructor() {
    * @param {string|ASTNode} formula 
    * @returns {Object}
    */
-  getStats(formula) {
+  getStats(formula: string | ASTNode): { variables: string[]; variableCount: number; nodeCount: number; complexity: string } {
     try {
       const ast = typeof formula === 'string' ? this.parse(formula) : formula;
       const variables = this.extractVariables(ast);
@@ -250,7 +261,7 @@ constructor() {
         nodeCount,
         complexity: nodeCount > 50 ? 'high' : nodeCount > 20 ? 'medium' : 'low',
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting formula stats', { formula, error: error.message });
       throw error;
     }

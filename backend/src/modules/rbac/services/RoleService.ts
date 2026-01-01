@@ -115,7 +115,7 @@ constructor(roleModel = null, permissionModel = null, auditModel = null) {
 
       // Return role with permissions
       return await this.roleModel.findByIdWithPermissions(role.id, organizationId);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error creating role', {
         error: error.message,
         data,
@@ -207,7 +207,7 @@ constructor(roleModel = null, permissionModel = null, auditModel = null) {
       });
 
       return await this.roleModel.findByIdWithPermissions(id, organizationId);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating role', {
         error: error.message,
         roleId: id,
@@ -257,7 +257,7 @@ constructor(roleModel = null, permissionModel = null, auditModel = null) {
       });
 
       return true;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error deleting role', {
         error: error.message,
         roleId: id,
@@ -317,7 +317,7 @@ constructor(roleModel = null, permissionModel = null, auditModel = null) {
       });
 
       return await this.roleModel.findByIdWithPermissions(roleId, organizationId);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error assigning permissions', {
         error: error.message,
         roleId,

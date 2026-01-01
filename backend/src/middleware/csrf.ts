@@ -107,7 +107,7 @@ export function csrfMiddleware(req, res, next) {
     }
     
     next();
-  } catch (_error) {
+  } catch (error) {
     logger.error('CSRF validation error', {
       error: error.message,
       method: req.method,
@@ -137,7 +137,7 @@ export function getCsrfToken(req, res) {
       csrfToken,
       expiresIn: 3600, // 1 hour in seconds
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('CSRF token generation error', {
       error: error.message,
       stack: error.stack,

@@ -27,7 +27,7 @@ class WorkerController {
       );
 
       res.status(201).json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in createWorker controller:', error);
       next(error);
     }
@@ -55,7 +55,7 @@ class WorkerController {
         success: true,
         data: worker
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getWorkerById controller:', error);
       next(error);
     }
@@ -86,7 +86,7 @@ class WorkerController {
         success: true,
         data: worker
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getWorkerByEmployeeId controller:', error);
       next(error);
     }
@@ -117,7 +117,7 @@ class WorkerController {
         workers: result.data,  // Use 'workers' key instead of 'data'
         pagination: result.pagination
       });
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in listWorkers controller:', error);
       next(error);
     }
@@ -141,7 +141,7 @@ class WorkerController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in updateWorker controller:', error);
       next(error);
     }
@@ -166,7 +166,7 @@ class WorkerController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in terminateWorker controller:', error);
       next(error);
     }
@@ -197,7 +197,7 @@ class WorkerController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getAvailabilitySummary controller:', error);
       next(error);
     }
@@ -225,7 +225,7 @@ class WorkerController {
       );
 
       res.json(result);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error in getShiftHistory controller:', error);
       next(error);
     }

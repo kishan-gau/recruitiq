@@ -19,7 +19,7 @@ export const assignRole = async (req, res, next) => {
       assignment,
       message: 'Role assigned successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.name === 'ValidationError' || 
         error.message.includes('not found') || 
         error.message.includes('specific to')) {
@@ -54,7 +54,7 @@ export const revokeRole = async (req, res, next) => {
       success: true,
       message: 'Role revoked successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.message.includes('not found')) {
       return res.status(404).json({
         success: false,
@@ -90,7 +90,7 @@ export const getUserRoles = async (req, res, next) => {
       roles,
       count: roles.length
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting user roles', {
       error: error.message,
       userId: req.params.userId,
@@ -117,7 +117,7 @@ export const getRoleUsers = async (req, res, next) => {
       users,
       count: users.length
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.message.includes('not found')) {
       return res.status(404).json({
         success: false,
@@ -152,7 +152,7 @@ export const getUserPermissions = async (req, res, next) => {
       permissions,
       count: permissions.length
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting user permissions', {
       error: error.message,
       userId: req.params.userId,
@@ -184,7 +184,7 @@ export const checkPermission = async (req, res, next) => {
       permissionCode,
       hasPermission
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error checking permission', {
       error: error.message,
       data: req.body,
@@ -217,7 +217,7 @@ export const bulkAssignRoles = async (req, res, next) => {
       count: results.length,
       message: 'Roles assigned successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     if (error.name === 'ValidationError' || error.message.includes('not found')) {
       return res.status(400).json({
         success: false,

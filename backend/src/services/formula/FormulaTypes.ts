@@ -238,7 +238,9 @@ export class FunctionNode extends ASTNode {
  * Formula validation error
  */
 export class FormulaValidationError extends Error {
-  constructor(message, details = {}) {
+  details: Record<string, unknown>;
+
+  constructor(message: string, details: Record<string, unknown> = {}) {
     super(message);
     this.name = 'FormulaValidationError';
     this.details = details;
@@ -249,7 +251,9 @@ export class FormulaValidationError extends Error {
  * Formula execution error
  */
 export class FormulaExecutionError extends Error {
-  constructor(message, details = {}) {
+  details: Record<string, unknown>;
+
+  constructor(message: string, details: Record<string, unknown> = {}) {
     super(message);
     this.name = 'FormulaExecutionError';
     this.details = details;
@@ -281,8 +285,18 @@ export class DivisionByZeroError extends FormulaExecutionError {
 /**
  * Formula execution result
  */
+export interface ExecutionMetadata {
+  executionTime?: number | null;
+  variablesUsed?: string[];
+  intermediateValues?: unknown[];
+  [key: string]: unknown;
+}
+
 export class ExecutionResult {
-  constructor(value, metadata = {}) {
+  value: unknown;
+  metadata: ExecutionMetadata;
+
+  constructor(value: unknown, metadata: ExecutionMetadata = {}) {
     this.value = value;
     this.metadata = {
       executionTime: null,

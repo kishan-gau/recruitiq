@@ -44,7 +44,7 @@ export function validateBody(schema) {
       });
 
       next();
-    } catch (_error) {
+    } catch (error) {
       // Extract validation error details
       const details = error.details?.map((detail) => ({
         field: detail.path.join('.'),
@@ -86,7 +86,7 @@ export function validateQuery(schema) {
       });
 
       next();
-    } catch (_error) {
+    } catch (error) {
       const details = error.details?.map((detail) => ({
         field: detail.path.join('.'),
         message: detail.message,
@@ -120,7 +120,7 @@ export function validateParams(schema) {
       req.validatedParams = validated;
 
       next();
-    } catch (_error) {
+    } catch (error) {
       const details = error.details?.map((detail) => ({
         field: detail.path.join('.'),
         message: detail.message,

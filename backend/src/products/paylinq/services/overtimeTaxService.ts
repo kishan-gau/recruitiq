@@ -236,7 +236,7 @@ constructor(repository = null) {
 
       return result;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Overtime tax calculation failed', {
         error: _error.message,
         params: validated,

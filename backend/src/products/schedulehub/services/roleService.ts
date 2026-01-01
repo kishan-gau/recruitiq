@@ -103,7 +103,7 @@ constructor() {
       
       // Transform database result back to API format
       return { success: true, data: mapRoleDbToApi(result.rows[0]) };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error creating role:', error);
       throw error;
@@ -135,7 +135,7 @@ constructor() {
       
       // Transform database results to API format
       return { success: true, data: mapRolesDbToApi(result.rows) };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error listing roles:', error);
       throw error;
     }
@@ -160,7 +160,7 @@ constructor() {
       
       // Transform database result to API format
       return { success: true, data: mapRoleDbToApi(result.rows[0]) };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching role:', error);
       throw error;
     }
@@ -219,7 +219,7 @@ constructor() {
       
       // Transform database result to API format
       return { success: true, data: mapRoleDbToApi(result.rows[0]) };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error updating role:', error);
       throw error;
@@ -256,7 +256,7 @@ constructor() {
       await client.query('COMMIT');
       this.logger.info('Worker assigned to role', { workerId, roleId, organizationId });
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error assigning worker to role:', error);
       throw error;
@@ -282,7 +282,7 @@ constructor() {
 
       if (result.rows.length === 0) throw new Error('Assignment not found');
       return { success: true, data: result.rows[0] };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error removing worker from role:', error);
       throw error;
     }
@@ -304,7 +304,7 @@ constructor() {
         }
       );
       return { success: true, data: result.rows };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching worker roles:', error);
       throw error;
     }
@@ -328,7 +328,7 @@ constructor() {
       );
       const workers = mapRoleWorkersDbToApi(result.rows);
       return { success: true, workers };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error fetching role workers:', error);
       throw error;
     }

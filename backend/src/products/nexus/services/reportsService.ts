@@ -117,7 +117,7 @@ constructor() {
         group_by: groupBy,
         data: result.rows
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error generating headcount report', { 
         error: error.message,
         organizationId 
@@ -210,7 +210,7 @@ constructor() {
           by_department: []
         }
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error generating turnover report', { 
         error: error.message,
         organizationId 
@@ -280,7 +280,7 @@ constructor() {
           by_leave_type: []
         }
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error generating time-off report', { 
         error: error.message,
         organizationId 
@@ -367,7 +367,7 @@ constructor() {
           by_employee: []
         }
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error generating attendance report', { 
         error: error.message,
         organizationId 
@@ -454,7 +454,7 @@ constructor() {
           by_department: []
         }
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error generating performance report', { 
         error: error.message,
         organizationId 
@@ -524,7 +524,7 @@ constructor() {
           by_plan: []
         }
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error generating benefits report', { 
         error: error.message,
         organizationId 
@@ -595,7 +595,7 @@ constructor() {
           documents: documents.rows[0]
         }
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error generating dashboard report', { 
         error: error.message,
         organizationId 

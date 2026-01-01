@@ -71,7 +71,7 @@ export async function healthCheck() {
       database: result.rows[0].database,
       timestamp: result.rows[0].now,
     };
-  } catch (_error) {
+  } catch (error) {
     logger.error('License Manager database health check failed:', { error: error.message });
     return {
       status: 'unhealthy',
@@ -87,7 +87,7 @@ export async function closeLicensePool() {
   try {
     await licensePool.end();
     logger.info('License Manager database pool closed');
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error closing License Manager database pool:', { error: error.message });
   }
 }

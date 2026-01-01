@@ -18,6 +18,11 @@ import { mapDbToApi, mapApiToDb } from '../utils/dtoMapper.js';
 // Use the custom query function that supports organizationId filtering
 const db = { query };
 
+/**
+ * Generic filter type for base repository queries
+ */
+export type BaseFilters = Record<string, unknown>;
+
 export class BaseRepository {
   tableName: string;
   logger: any;
@@ -55,7 +60,7 @@ export class BaseRepository {
 
       const dbRecord = result.rows[0] || null;
       return dbRecord ? mapDbToApi(dbRecord) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findById', {
         table: this.tableName,
         id,
@@ -99,7 +104,7 @@ export class BaseRepository {
       });
 
       return result.rows.map(row => mapDbToApi(row));
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findAll', {
         table: this.tableName,
         filters,
@@ -139,7 +144,7 @@ export class BaseRepository {
 
       const dbRecord = result.rows[0] || null;
       return dbRecord ? mapDbToApi(dbRecord) : null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findOneBy', {
         table: this.tableName,
         conditions,
@@ -191,7 +196,7 @@ export class BaseRepository {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in create', {
         table: this.tableName,
         data,
@@ -253,7 +258,7 @@ export class BaseRepository {
       });
 
       return mapDbToApi(result.rows[0]);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in update', {
         table: this.tableName,
         id,
@@ -303,7 +308,7 @@ export class BaseRepository {
       }
 
       return deleted;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in delete', {
         table: this.tableName,
         id,
@@ -320,10 +325,10 @@ export class BaseRepository {
    * @param {string} organizationId - Organization ID
    * @returns {Promise<number>}
    */
-  async count(filters = {}, organizationId) {
+  async count(filters: BaseFilters = {}, organizationId: string) {
     try {
       let query = `SELECT COUNT(*) as count FROM ${this.tableName} WHERE organization_id = $1 AND deleted_at IS NULL`;
-      const params = [organizationId];
+      const params: unknown[] = [organizationId];
       let paramIndex = 2;
 
       for (const [key, value] of Object.entries(filters)) {
@@ -340,7 +345,7 @@ export class BaseRepository {
       });
 
       return parseInt(result.rows[0].count, 10);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in count', {
         table: this.tableName,
         filters,
@@ -361,7 +366,7 @@ export class BaseRepository {
     try {
       const record = await this.findOneBy(conditions, organizationId);
       return record !== null;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in exists', {
         table: this.tableName,
         conditions,

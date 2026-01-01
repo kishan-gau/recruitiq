@@ -438,14 +438,14 @@ class ShiftTemplateService {
 
         return mapShiftTemplateDbToApi(completeTemplate);
 
-      } catch (_error) {
+      } catch (error) {
         await client.query('ROLLBACK');
         throw error;
       } finally {
         client.release();
       }
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error creating shift template', {
         error: error.message,
         data: { templateName: data?.templateName },
@@ -526,7 +526,7 @@ class ShiftTemplateService {
 
       return mapShiftTemplatesDbToApi(templatesWithStations);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error retrieving shift templates', {
         error: error.message,
         filters,
@@ -677,7 +677,7 @@ class ShiftTemplateService {
       
       return finalResult;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error retrieving shift template', {
         error: error.message,
         templateId: id,
@@ -824,14 +824,14 @@ class ShiftTemplateService {
         // Return updated template
         return await this.getById(id, organizationId);
 
-      } catch (_error) {
+      } catch (error) {
         await client.query('ROLLBACK');
         throw error;
       } finally {
         client.release();
       }
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating shift template', {
         error: error.message,
         templateId: id,
@@ -885,7 +885,7 @@ class ShiftTemplateService {
         userId
       });
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error deleting shift template', {
         error: error.message,
         templateId: id,
@@ -929,7 +929,7 @@ class ShiftTemplateService {
 
       return mapTemplatesToSummary(result.rows);
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error retrieving template summaries', {
         error: error.message,
         filters,
@@ -1175,7 +1175,7 @@ class ShiftTemplateService {
 
       return assignments;
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error assigning stations to shift template', {
         error: error.message,
         templateId,
@@ -1206,7 +1206,7 @@ class ShiftTemplateService {
         assignedAt: station.created_at
       }));
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting stations for shift template', {
         error: error.message,
         templateId,
@@ -1241,7 +1241,7 @@ class ShiftTemplateService {
         userId
       });
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error removing stations from shift template', {
         error: error.message,
         templateId,
@@ -1290,7 +1290,7 @@ class ShiftTemplateService {
         foundCount: foundStationIds.length
       });
 
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error validating stations', {
         error: error.message,
         stationIds,

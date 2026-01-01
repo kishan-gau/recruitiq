@@ -166,7 +166,7 @@ class TenantOnboardingService {
         message: 'Tenant initialized successfully. Admin must change password on first login.'
       }
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK')
       throw error
     } finally {

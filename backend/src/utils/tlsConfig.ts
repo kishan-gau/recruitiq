@@ -20,8 +20,36 @@
 import https from 'https';
 import tls from 'tls';
 import fs from 'fs';
+import http from 'http';
+import type { Express } from 'express';
+import type { RequestHandler } from 'express';
 import logger from './logger.js';
 import config from '../config/index.js';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+/**
+ * TLS server creation options
+ */
+interface TLSServerOptions {
+  cert?: Buffer | string;
+  key?: Buffer | string;
+  ca?: Buffer | string;
+  minVersion?: string;
+  maxVersion?: string;
+  ciphers?: string;
+  honorCipherOrder?: boolean;
+  secureOptions?: number;
+}
+
+/**
+ * HTTPS enforcement options
+ */
+interface EnforceHTTPSOptions {
+  maxAge?: number;
+}
 
 // ============================================================================
 // CONFIGURATION
@@ -83,11 +111,11 @@ const TLS_OPTIONS = {
 /**
  * Create HTTPS server with secure TLS configuration
  * 
- * @param {Object} app - Express app
- * @param {Object} [options] - Additional TLS options
- * @returns {https.Server} HTTPS server
+ * @param app - Express app
+ * @param options - Additional TLS options
+ * @returns HTTPS server
  */
-export function createSecureServer(app, options = {}) {
+export function createSecureServer(app: Express, options: TLSServerOptions = {}): https.Server {
   try {
     // Get certificate paths from config
     const certPath = config.tls?.certPath || process.env.TLS_CERT_PATH;
@@ -132,11 +160,11 @@ export function createSecureServer(app, options = {}) {
 /**
  * Create HTTPS server with fallback to HTTP in development
  * 
- * @param {Object} app - Express app
- * @param {Object} [options] - Additional TLS options
- * @returns {https.Server|http.Server} HTTPS or HTTP server
+ * @param app - Express app
+ * @param options - Additional TLS options
+ * @returns HTTPS or HTTP server
  */
-export function createServer(app, options = {}) {
+export function createServer(app: Express, options: TLSServerOptions = {}): https.Server | http.Server {
   const environment = config.env || process.env.NODE_ENV || 'development';
   
   // In production, always use HTTPS
@@ -390,10 +418,10 @@ export function getHSTSHeader(maxAge = 31536000) {
 /**
  * Middleware to enforce HTTPS and set HSTS header
  * 
- * @param {Object} [options] - HSTS options
- * @returns {Function} Express middleware
+ * @param options - HSTS options
+ * @returns Express middleware
  */
-export function enforceHTTPS(options = {}) {
+export function enforceHTTPS(options: EnforceHTTPSOptions = {}): RequestHandler {
   const maxAge = options.maxAge || 31536000; // 1 year
   const hstsHeader = getHSTSHeader(maxAge);
   

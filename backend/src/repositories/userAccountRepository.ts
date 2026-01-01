@@ -10,6 +10,14 @@
 import { query } from '../config/database.js';
 import logger from '../utils/logger.js';
 
+interface UserAccountFilters {
+  accountStatus?: string;
+  isActive?: boolean;
+  search?: string;
+  orderBy?: string;
+  orderDir?: 'asc' | 'desc';
+}
+
 class UserAccountRepository {
   /**
    * Create a new user account
@@ -260,9 +268,9 @@ class UserAccountRepository {
    * @param {Object} filters - Optional filters
    * @returns {Promise<Array>} User accounts
    */
-  async findAll(organizationId, filters = {}) {
+  async findAll(organizationId: string, filters: UserAccountFilters = {}) {
     let whereClause = 'WHERE ua.organization_id = $1 AND ua.deleted_at IS NULL';
-    const params = [organizationId];
+    const params: (string | boolean)[] = [organizationId];
     let paramCount = 1;
     
     if (filters.accountStatus) {

@@ -186,7 +186,7 @@ class ShiftService {
         message: 'Shift completed and time entry recorded'
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error clocking out shift', {
         shiftId: clockOutData.shiftId,
@@ -265,7 +265,7 @@ class ShiftService {
         message: 'Shift started successfully'
       };
 
-    } catch (_error) {
+    } catch (error) {
       await client.query('ROLLBACK');
       this.logger.error('Error clocking in shift', {
         shiftId,

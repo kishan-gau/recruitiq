@@ -1,7 +1,8 @@
 import pg from 'pg';
 import config from './index.js';
 import logger from '../utils/logger.js';
-import { logQuery, logSlowQuery, logQueryError, analyzeQuery } from '../middleware/queryLogger.js';
+import { logQuery, logSlowQuery, logQueryError, analyzeQuery, type QueryMetadata } from '../middleware/queryLogger.js';
+import type { QueryResult, PoolClient } from 'pg';
 
 const { Pool } = pg;
 
@@ -28,7 +29,7 @@ pool.on('connect', async (client) => {
     // RBAC tables (roles, permissions) are in public schema as platform infrastructure
     await client.query('SET search_path TO public, hris, payroll, scheduling');
     logger.info('✅ PostgreSQL connected with search_path configured');
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to set search_path:', error);
   }
 });
@@ -39,7 +40,12 @@ pool.on('error', (err) => {
 });
 
 // Helper to execute queries with automatic organization filtering and security logging
-export const query = async (text, params, organizationId = null, metadata = {}) => {
+export const query = async (
+  text: string,
+  params: unknown[] = [],
+  organizationId: string | null = null,
+  metadata: QueryMetadata = {}
+): Promise<QueryResult> => {
   const start = Date.now();
   
   // Declare these outside try block so they're accessible in catch
@@ -77,15 +83,15 @@ export const query = async (text, params, organizationId = null, metadata = {}) 
     logger.debug('Executed query', { text, duration, rows: result.rowCount });
     
     return result;
-  } catch (_error) {
-    logQueryError(modifiedText, modifiedParams, _error, metadata);
-    logger.error('Database query error:', { text, error: _error.message });
-    throw _error;
+  } catch (error) {
+    logQueryError(modifiedText, modifiedParams, error as Error, metadata);
+    logger.error('Database query error:', { text, error: (error as Error).message });
+    throw error;
   }
 };
 
 // Get a client from the pool for manual transaction management
-export const getClient = async () => {
+export const getClient = async (): Promise<PoolClient> => {
   return await pool.connect();
 };
 
@@ -93,7 +99,7 @@ export const getClient = async () => {
 query.getClient = getClient;
 
 // Transaction helper
-export const transaction = async (callback) => {
+export const transaction = async <T>(callback: (client: PoolClient) => Promise<T>): Promise<T> => {
   const client = await pool.connect();
   
   try {
@@ -101,7 +107,7 @@ export const transaction = async (callback) => {
     const result = await callback(client);
     await client.query('COMMIT');
     return result;
-  } catch (_error) {
+  } catch (error) {
     await client.query('ROLLBACK');
     throw error;
   } finally {
@@ -109,8 +115,20 @@ export const transaction = async (callback) => {
   }
 };
 
+interface HealthCheckResult {
+  status: 'healthy' | 'unhealthy';
+  timestamp?: Date;
+  version?: string;
+  pool?: {
+    total: number;
+    idle: number;
+    waiting: number;
+  };
+  error?: string;
+}
+
 // Health check
-export const healthCheck = async () => {
+export const healthCheck = async (): Promise<HealthCheckResult> => {
   try {
     const result = await pool.query('SELECT NOW() as now, version() as version');
     return {
@@ -123,20 +141,20 @@ export const healthCheck = async () => {
         waiting: pool.waitingCount,
       },
     };
-  } catch (_error) {
+  } catch (error) {
     return {
       status: 'unhealthy',
-      error: error.message,
+      error: (error as Error).message,
     };
   }
 };
 
 // Graceful shutdown
-export const closePool = async () => {
+export const closePool = async (): Promise<void> => {
   try {
     await pool.end();
     logger.info('Database pool closed');
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error closing database pool:', error);
   }
 };

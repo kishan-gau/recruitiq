@@ -149,7 +149,7 @@ export async function checkBreachedPassword(password) {
     
     return { breached: false, count: 0 };
     
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to check password breach status', {
       error: error.message,
     });
@@ -283,14 +283,28 @@ export function scorePasswordStrength(password) {
 }
 
 /**
+ * Options for password validation
+ */
+interface ValidatePasswordOptions {
+  minLength?: number;
+  maxLength?: number;
+  requireUppercase?: boolean;
+  requireLowercase?: boolean;
+  requireDigits?: boolean;
+  requireSpecialChars?: boolean;
+  checkBreached?: boolean;
+  checkCommon?: boolean;
+}
+
+/**
  * Validate password against security requirements
  * Implements NIST SP 800-63B guidelines
  * 
  * @param {string} password - Password to validate
- * @param {Object} options - Validation options
+ * @param {ValidatePasswordOptions} options - Validation options
  * @returns {Promise<{valid: boolean, errors: string[]}>}
  */
-export async function validatePassword(password, options = {}) {
+export async function validatePassword(password: string, options: ValidatePasswordOptions = {}): Promise<{ valid: boolean; errors: string[] }> {
   const {
     minLength = 12,
     maxLength = 128,
@@ -349,7 +363,7 @@ export async function validatePassword(password, options = {}) {
           'Please choose a different password'
         );
       }
-    } catch (_error) {
+    } catch (error) {
       // Log error but don't fail validation
       logger.warn('Could not check password breach status', {
         error: error.message,

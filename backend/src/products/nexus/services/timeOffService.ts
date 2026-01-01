@@ -65,7 +65,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error creating time-off request', { 
         error: error.message,
         organizationId,
@@ -115,7 +115,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error reviewing time-off request', { 
         error: error.message,
         id,
@@ -176,7 +176,7 @@ constructor() {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting worker time-off requests', { 
         error: error.message,
         employeeId,
@@ -212,7 +212,7 @@ constructor() {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting pending time-off requests', { 
         error: error.message,
         organizationId 
@@ -258,7 +258,7 @@ constructor() {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error cancelling time-off request', { 
         error: error.message,
         id,
@@ -303,7 +303,7 @@ constructor() {
       }
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting time-off request by ID', { 
         error: error.message,
         id,
@@ -389,7 +389,7 @@ constructor() {
         limit,
         offset
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error getting time-off requests', { 
         error: error.message,
         organizationId,

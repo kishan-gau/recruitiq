@@ -6,6 +6,14 @@
 import { BaseRepository } from './BaseRepository.js';
 import pool, { query } from '../config/database.js';
 
+// Interface for published job filters
+export interface PublishedJobFilters {
+  location?: string;
+  department?: string;
+  employment_type?: string;
+  limit?: number;
+}
+
 // Use the custom query function that supports organizationId filtering
 const db = { query };
 
@@ -52,7 +60,7 @@ export class JobRepository extends BaseRepository {
       // Import DTO mapper for specialized stats mapping
       const { mapJobWithStatsDto } = await import('../utils/dtoMapper');
       return mapJobWithStatsDto(dbRecord);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findByIdWithStats', {
         id,
         organizationId,
@@ -92,7 +100,7 @@ export class JobRepository extends BaseRepository {
       // Import DTO mapper
       const { mapDbToApi } = await import('../utils/dtoMapper');
       return mapDbToApi(dbRecord);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in findBySlug', {
         slug,
         error: error.message
@@ -232,7 +240,7 @@ export class JobRepository extends BaseRepository {
         limit: parseInt(limit, 10),
         totalPages: Math.ceil(total / limit)
       };
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in search', {
         params,
         organizationId,
@@ -268,7 +276,7 @@ export class JobRepository extends BaseRepository {
         acc[row.status] = parseInt(row.count, 10);
         return acc;
       }, {});
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getCountByStatus', {
         organizationId,
         error: error.message
@@ -283,7 +291,7 @@ export class JobRepository extends BaseRepository {
    * @param {Object} filters - Optional filters
    * @returns {Promise<Array>}
    */
-  async getPublishedJobs(organizationId, filters = {}) {
+  async getPublishedJobs(organizationId: string, filters: PublishedJobFilters = {}) {
     try {
       const { location, department, employment_type, limit = 50 } = filters;
       
@@ -346,7 +354,7 @@ export class JobRepository extends BaseRepository {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getPublishedJobs', {
         organizationId,
         filters,
@@ -396,7 +404,7 @@ export class JobRepository extends BaseRepository {
       }
 
       return uniqueSlug;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in generateUniqueSlug', {
         title,
         jobId,
@@ -428,7 +436,7 @@ export class JobRepository extends BaseRepository {
       }
 
       return await this.update(id, updates, organizationId);
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in updatePublishStatus', {
         id,
         isPublished,
@@ -471,7 +479,7 @@ export class JobRepository extends BaseRepository {
       );
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       this.logger.error('Error in getByHiringManager', {
         hiringManagerId,
         organizationId,

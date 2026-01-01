@@ -286,7 +286,7 @@ class User {
   /**
    * Find all users in organization
    */
-  static async findAll(organizationId, options = {}) {
+  static async findAll(organizationId: string, options: { role?: string; search?: string; limit?: number; offset?: number } = {}) {
     const { role, search, limit = 50, offset = 0 } = options;
     
     let query = `

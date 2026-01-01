@@ -49,7 +49,7 @@ const config = new Proxy({}, {
             ssl: process.env.CENTRAL_LOG_SSL !== 'false'
           }
         };
-      } catch (_error) {
+      } catch (error) {
         // Fallback if config module not available
         _configCache = {
           env: 'development',
@@ -323,7 +323,7 @@ class DatabaseTransport extends Transport {
       // NOTE: Using pool.query directly here to avoid circular dependency
       // with the custom query wrapper which uses this logger
       await this.pool.query(query);
-    } catch (_error) {
+    } catch (error) {
       // Don't throw - log locally instead to avoid logging loops
       // console.error('Failed to write logs to database:', error.message);
       // Could write to file as fallback here
@@ -392,7 +392,7 @@ if (config.deployment?.type === 'cloud' && config.centralLogging?.enabled) {
     // Test connection
     await centralLoggingPool.query('SELECT 1');
     // console.log('✓ Central logging database connected');
-  } catch (_error) {
+  } catch (error) {
     // console.error('✗ Failed to connect to central logging database:', error.message);
     centralLoggingPool = null;
   }

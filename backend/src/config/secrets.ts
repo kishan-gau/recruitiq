@@ -192,7 +192,7 @@ function loadFromEnvironment(environment) {
       const value = process.env[definition.envVar];
       const validated = validateSecret(secretName, value, definition, environment);
       secrets[secretName] = validated;
-    } catch (_error) {
+    } catch (error) {
       errors.push({
         secret: secretName,
         error: error.message,
@@ -271,7 +271,7 @@ async function loadFromBarbican(environment) {
           logger.debug(`Loaded secret from Barbican: ${secretName} (length: ${validated.length})`);
         }
         
-      } catch (_error) {
+      } catch (error) {
         if (definition.required || environment === 'production') {
           errors.push({
             secret: secretName,
@@ -296,7 +296,7 @@ async function loadFromBarbican(environment) {
     
     return secrets;
     
-  } catch (_error) {
+  } catch (error) {
     logger.error('Failed to initialize Barbican provider', {
       error: error.message,
     });

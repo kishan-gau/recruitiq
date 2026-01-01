@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Formula Engine Service
  * 
  * Business logic layer for formula evaluation and management.
@@ -56,13 +56,13 @@ constructor() {
       });
 
       return result;
-    } catch (err) {
+    } catch (error) {
       logger.error('Error evaluating formula', {
-        error: err.message,
+        error: error.message,
         formula,
         variables
       });
-      throw new Error(`Formula evaluation error: ${err.message}`);
+      throw new Error(`Formula evaluation error: ${error.message}`);
     }
   }
 
@@ -117,10 +117,10 @@ constructor() {
     }
 
     if (braceBalance !== 0) {
-      throw new Error('Unbalanced braces in formula');
+      throw new Error('Syntax error: Unbalanced braces in formula');
     }
     if (parenBalance !== 0) {
-      throw new Error('Unbalanced parentheses in formula');
+      throw new Error('Syntax error: Unbalanced parentheses in formula');
     }
 
     // Auto-wrap simple expressions with return statement
@@ -167,8 +167,8 @@ constructor() {
         const testCode = `${varDeclarations}\n${finalFormula}`;
         // eslint-disable-next-line no-new-func
         new Function(testCode);
-      } catch (err) {
-        throw new Error(`Syntax error: ${err.message}. Check your formula for typos or missing operators.`);
+      } catch (error) {
+        throw new Error(`Syntax error: ${error.message}. Check your formula for typos or missing operators.`);
       }
     }
 
@@ -193,18 +193,28 @@ constructor() {
       throw new Error('Formula must be a non-empty string');
     }
 
-    // Check for balanced parentheses
-    let balance = 0;
+    // Check for balanced parentheses and braces
+    let parenBalance = 0;
+    let braceBalance = 0;
     for (const char of formula) {
-      if (char === '(') balance++;
-      if (char === ')') balance--;
-      if (balance < 0) {
+      if (char === '(') parenBalance++;
+      if (char === ')') parenBalance--;
+      if (char === '{') braceBalance++;
+      if (char === '}') braceBalance--;
+      
+      if (parenBalance < 0) {
         throw new Error('Unbalanced parentheses in formula');
+      }
+      if (braceBalance < 0) {
+        throw new Error('Unbalanced braces in formula');
       }
     }
 
-    if (balance !== 0) {
+    if (parenBalance !== 0) {
       throw new Error('Unbalanced parentheses in formula');
+    }
+    if (braceBalance !== 0) {
+      throw new Error('Unbalanced braces in formula');
     }
 
     // MVP: Check for allowed characters only
@@ -291,8 +301,8 @@ constructor() {
       }
 
       return result;
-    } catch (err) {
-      throw new Error(`Expression evaluation failed: ${err.message}`);
+    } catch (error) {
+      throw new Error(`Expression evaluation failed: ${error.message}`);
     }
   }
 
@@ -313,12 +323,12 @@ constructor() {
         result,
         message: 'Formula is valid and evaluates successfully'
       };
-    } catch (err) {
+    } catch (error) {
       return {
         success: false,
         formula,
         sampleVariables,
-        error: err.message,
+        error: error.message,
         message: 'Formula validation failed'
       };
     }
@@ -472,12 +482,12 @@ constructor() {
       });
 
       return result;
-    } catch (err) {
+    } catch (error) {
       logger.error('Formula calculation failed', {
         context,
         formula,
         variables,
-        error: err.message
+        error: error.message
       });
 
       // Return 0 for failed calculations (graceful degradation)

@@ -289,7 +289,7 @@ class PlatformUser {
   /**
    * Find all platform users
    */
-  static async findAll(options = {}) {
+  static async findAll(options: { role?: string; search?: string; limit?: number; offset?: number } = {}) {
     const { role, search, limit = 50, offset = 0 } = options;
     
     let query = `

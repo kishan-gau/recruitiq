@@ -123,7 +123,7 @@ class CompensationService {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error creating initial compensation', {
         error: error.message,
         employeeId,
@@ -221,7 +221,7 @@ class CompensationService {
       });
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating compensation', {
         error: error.message,
         employeeId,
@@ -255,7 +255,7 @@ class CompensationService {
       );
 
       return result.rows[0] || null;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching current compensation', {
         error: error.message,
         employeeId,
@@ -299,7 +299,7 @@ class CompensationService {
       });
 
       return result.rows;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error fetching compensation history', {
         error: error.message,
         employeeId,

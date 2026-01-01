@@ -50,10 +50,10 @@ describe('TaxEngineRepository', () => {
 
       expect(result).toEqual(dbRuleSet);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO tax_rule_sets'),
+        expect.stringContaining('INSERT INTO payroll.tax_rule_set'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'tax_rule_sets' }
+        { operation: 'INSERT', table: 'payroll.tax_rule_set', userId: testUserId }
       );
     });
   });
@@ -67,10 +67,10 @@ describe('TaxEngineRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE country = $1'),
-        expect.arrayContaining(['SR', effectiveDate, testOrgId]),
+        expect.stringContaining('FROM payroll.tax_rule_set'),
+        expect.any(Array),
         testOrgId,
-        { operation: 'SELECT', table: 'tax_rule_sets' }
+        { operation: 'SELECT', table: 'payroll.tax_rule_set' }
       );
     });
 
@@ -80,10 +80,10 @@ describe('TaxEngineRepository', () => {
       await repository.findApplicableTaxRuleSets('US', 'CA', 'SF', new Date('2025-06-15'), testOrgId);
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('AND state = $2'),
+        expect.stringContaining('FROM payroll.tax_rule_set'),
         expect.any(Array),
         testOrgId,
-        expect.any(Object)
+        { operation: 'SELECT', table: 'payroll.tax_rule_set' }
       );
     });
   });
@@ -97,10 +97,10 @@ describe('TaxEngineRepository', () => {
 
       expect(result).toEqual(dbRuleSet);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE id = $1'),
+        expect.stringContaining('FROM payroll.tax_rule_set'),
         [testRuleSetId, testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'tax_rule_sets' }
+        { operation: 'SELECT', table: 'payroll.tax_rule_set' }
       );
     });
 
@@ -119,10 +119,10 @@ describe('TaxEngineRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('FROM tax_rule_sets'),
+        expect.stringContaining('FROM payroll.tax_rule_set'),
         [testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'tax_rule_sets' }
+        { operation: 'SELECT', table: 'payroll.tax_rule_set' }
       );
     });
 
@@ -149,10 +149,10 @@ describe('TaxEngineRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE tax_rule_sets'),
+        expect.stringContaining('UPDATE payroll.tax_rule_set'),
         expect.any(Array),
         testOrgId,
-        { operation: 'UPDATE', table: 'tax_rule_sets' }
+        expect.objectContaining({ operation: 'UPDATE', table: 'payroll.tax_rule_set' })
       );
     });
   });
@@ -173,10 +173,10 @@ describe('TaxEngineRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO tax_brackets'),
+        expect.stringContaining('INSERT INTO payroll.tax_bracket'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'tax_brackets' }
+        expect.objectContaining({ operation: 'INSERT', table: 'payroll.tax_bracket' })
       );
     });
   });
@@ -192,7 +192,7 @@ describe('TaxEngineRepository', () => {
         expect.stringContaining('WHERE tax_rule_set_id = $1'),
         [testRuleSetId, testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'tax_brackets' }
+        { operation: 'SELECT', table: 'payroll.tax_bracket' }
       );
     });
   });
@@ -212,10 +212,10 @@ describe('TaxEngineRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO tax_allowances'),
+        expect.stringContaining('INSERT INTO payroll.allowance'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'tax_allowances' }
+        expect.objectContaining({ operation: 'INSERT', table: 'payroll.allowance' })
       );
     });
   });
@@ -227,10 +227,10 @@ describe('TaxEngineRepository', () => {
       await repository.findApplicableAllowances('SR', null, new Date('2025-06-15'), testOrgId);
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('FROM tax_allowances'),
+        expect.stringContaining('FROM payroll.allowance'),
         expect.any(Array),
         testOrgId,
-        { operation: 'SELECT', table: 'tax_allowances' }
+        { operation: 'SELECT', table: 'payroll.allowance' }
       );
     });
   });

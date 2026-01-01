@@ -362,7 +362,7 @@ class TenantUser {
   /**
    * Find all tenant users in organization
    */
-  static async findAll(organizationId, options = {}) {
+  static async findAll(organizationId: string, options: { product?: string; search?: string; limit?: number; offset?: number } = {}) {
     const { product, search, limit = 50, offset = 0 } = options;
     
     let query = `

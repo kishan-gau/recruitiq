@@ -3,8 +3,51 @@
  * Validates request data against Joi schemas
  */
 
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import Joi from 'joi';
 import logger from '../utils/logger.js';
 import { sanitizeObject } from '../utils/sanitization.js';
+
+/**
+ * Valid sources for request validation
+ */
+export type ValidateSource = 'body' | 'query' | 'params' | 'headers';
+
+/**
+ * Options for file upload validation
+ */
+export interface ValidateFileUploadOptions {
+  required?: boolean;
+  maxSize?: number;
+  allowedMimeTypes?: string[];
+  allowedExtensions?: string[];
+  fieldName?: string;
+}
+
+/**
+ * Schema mapping for multiple source validation
+ */
+export interface ValidateMultipleSchemas {
+  body?: Joi.Schema;
+  query?: Joi.Schema;
+  params?: Joi.Schema;
+  headers?: Joi.Schema;
+}
+
+/**
+ * Custom validator result type
+ */
+export interface CustomValidatorResult {
+  error?: boolean;
+  statusCode?: number;
+  message?: string;
+  details?: unknown;
+}
+
+/**
+ * Custom validator function type
+ */
+export type CustomValidatorFn = (req: Request) => Promise<boolean | undefined | string | CustomValidatorResult> | boolean | undefined | string | CustomValidatorResult;
 
 /**
  * Validate request data against a Joi schema
@@ -12,14 +55,14 @@ import { sanitizeObject } from '../utils/sanitization.js';
  * @param {string} source - Source of data: 'body', 'query', 'params', 'headers'
  * @returns {Function} Express middleware
  */
-export function validate(schema, source = 'body') {
+export function validate(schema: Joi.Schema, source: ValidateSource = 'body'): RequestHandler {
   // Validate source parameter
-  const validSources = ['body', 'query', 'params', 'headers'];
+  const validSources: ValidateSource[] = ['body', 'query', 'params', 'headers'];
   if (!validSources.includes(source)) {
     throw new Error(`Invalid validation source: ${source}. Must be one of: ${validSources.join(', ')}`);
   }
 
-  return async (req, res, next) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       // Get data from the specified source
       const data = req[source];
@@ -85,7 +128,8 @@ export function validate(schema, source = 'body') {
       };
 
       next();
-    } catch (_err) {
+    } catch (error) {
+      const err = error as Error;
       logger.error('Validation middleware error', {
         error: err.message,
         stack: err.stack,
@@ -112,12 +156,12 @@ export function validate(schema, source = 'body') {
  *   query: paginationSchema
  * })
  */
-export function validateMultiple(schemas) {
-  const validSources = ['body', 'query', 'params', 'headers'];
+export function validateMultiple(schemas: ValidateMultipleSchemas): RequestHandler {
+  const validSources: ValidateSource[] = ['body', 'query', 'params', 'headers'];
   
   // Validate that all keys are valid sources
   const invalidSources = Object.keys(schemas).filter(
-    source => !validSources.includes(source)
+    source => !validSources.includes(source as ValidateSource)
   );
   
   if (invalidSources.length > 0) {
@@ -126,10 +170,10 @@ export function validateMultiple(schemas) {
     );
   }
 
-  return async (req, res, next) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const allErrors = [];
-      const sanitized = {};
+      const allErrors: Array<{ source: string; field: string; message: string; type: string }> = [];
+      const sanitized: Record<string, unknown> = {};
 
       // Validate each source
       for (const [source, schema] of Object.entries(schemas)) {
@@ -181,7 +225,8 @@ export function validateMultiple(schemas) {
       }
 
       next();
-    } catch (_err) {
+    } catch (error) {
+      const err = error as Error;
       logger.error('Multi-source validation middleware error', {
         error: err.message,
         stack: err.stack,
@@ -201,7 +246,7 @@ export function validateMultiple(schemas) {
  * @param {object} options - Validation options
  * @returns {Function} Express middleware
  */
-export function validateFileUpload(options = {}) {
+export function validateFileUpload(options: ValidateFileUploadOptions = {}): RequestHandler {
   const {
     required = true,
     maxSize = 10 * 1024 * 1024, // 10MB default
@@ -210,9 +255,9 @@ export function validateFileUpload(options = {}) {
     fieldName = 'file',
   } = options;
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     try {
-      const file = req.file || (req.files && req.files[fieldName]);
+      const file = req.file || (req.files && (req.files as Record<string, Express.Multer.File>)[fieldName]);
 
       // Check if file is required
       if (required && !file) {
@@ -283,7 +328,8 @@ export function validateFileUpload(options = {}) {
       });
 
       next();
-    } catch (_err) {
+    } catch (error) {
+      const err = error as Error;
       logger.error('File validation error', {
         error: err.message,
         stack: err.stack,
@@ -303,37 +349,40 @@ export function validateFileUpload(options = {}) {
  * @param {Function} validatorFn - Custom validation function
  * @returns {Function} Express middleware
  */
-export function customValidator(validatorFn) {
-  return async (req, res, next) => {
+export function customValidator(validatorFn: CustomValidatorFn): RequestHandler {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const result = await validatorFn(req);
 
       if (result === true || result === undefined) {
-        return next();
+        next();
+        return;
       }
 
       // If result is an object with error information
-      if (typeof result === 'object' && result.error) {
-        return res.status(result.statusCode || 400).json({
+      if (typeof result === 'object' && result !== null && 'error' in result && result.error) {
+        res.status((result as CustomValidatorResult).statusCode || 400).json({
           error: 'Validation Error',
-          message: result.message || 'Custom validation failed',
-          details: result.details,
+          message: (result as CustomValidatorResult).message || 'Custom validation failed',
+          details: (result as CustomValidatorResult).details,
         });
+        return;
       }
 
       // If result is false or a string
-      return res.status(400).json({
+      res.status(400).json({
         error: 'Validation Error',
         message: typeof result === 'string' ? result : 'Custom validation failed',
       });
-    } catch (_err) {
+    } catch (error) {
+      const err = error as Error;
       logger.error('Custom validator error', {
         error: err.message,
         stack: err.stack,
         path: req.path,
       });
 
-      return res.status(500).json({
+      res.status(500).json({
         error: 'Internal Server Error',
         message: 'An error occurred during validation',
       });

@@ -9,19 +9,38 @@
 
 import axios from 'axios';
 
+export interface LogReporterOptions {
+  portalUrl?: string;
+  tenantId?: string;
+  organizationSlug?: string;
+  tenantApiKey?: string;
+  maxBufferSize?: number;
+  flushInterval?: number;
+  localStoragePath?: string;
+}
+
+interface LogEntry {
+  level?: string;
+  message: string;
+  timestamp?: string;
+  context?: Record<string, unknown>;
+  userId?: string;
+  ip?: string;
+}
+
 class LogReporterService {
   
-  flushInterval: any;
+  flushInterval: number;
 
-  intervalId: any;
+  intervalId: ReturnType<typeof setInterval> | null;
 
   isRunning: boolean;
 
   localStoragePath: string;
 
-  logBuffer: any;
+  logBuffer: LogEntry[];
 
-  maxBufferSize: any;
+  maxBufferSize: number;
 
   organizationSlug: string | undefined;
 
@@ -31,7 +50,7 @@ class LogReporterService {
 
   tenantId: string | undefined;
 
-constructor(options = {}) {
+constructor(options: LogReporterOptions = {}) {
     this.portalUrl = options.portalUrl || process.env.PORTAL_API_URL || 'https://portal.recruitiq.nl';
     this.tenantId = options.tenantId || process.env.TENANT_ID;
     this.organizationSlug = options.organizationSlug || process.env.ORGANIZATION_SLUG;
@@ -59,7 +78,7 @@ constructor(options = {}) {
    * @param {string} [log.userId] - User ID if available
    * @param {string} [log.ip] - Client IP if available
    */
-  addLog(log) {
+  addLog(log: LogEntry): void {
     const entry = {
       level: log.level || 'info',
       message: log.message,
@@ -122,7 +141,7 @@ constructor(options = {}) {
       console.log(`[LogReporter] Sent ${logs.length} logs to portal`);
       return { success: true, count: logs.length };
 
-    } catch (_error) {
+    } catch (error) {
       console.error('[LogReporter] Failed to send logs:', error.message);
       
       // Store locally if portal is unreachable
@@ -151,7 +170,7 @@ constructor(options = {}) {
       await fs.writeFile(filepath, JSON.stringify(logs, null, 2));
       
       console.log(`[LogReporter] Stored ${logs.length} logs locally: ${filename}`);
-    } catch (_error) {
+    } catch (error) {
       console.error('[LogReporter] Failed to store logs locally:', error.message);
       // Re-add logs to buffer as last resort
       this.logBuffer.push(...logs);
@@ -207,7 +226,7 @@ constructor(options = {}) {
           await fs.unlink(filepath);
           totalSent += logs.length;
           
-        } catch (_error) {
+        } catch (error) {
           console.error(`[LogReporter] Failed to retry ${file}:`, error.message);
           errors++;
         }
@@ -219,7 +238,7 @@ constructor(options = {}) {
         errors
       };
 
-    } catch (_error) {
+    } catch (error) {
       return { success: false, error: error.message };
     }
   }
@@ -245,7 +264,7 @@ constructor(options = {}) {
         await this.sendLogBatch();
         // Also retry any locally stored logs
         await this.retryLocalLogs();
-      } catch (_error) {
+      } catch (error) {
         console.error('[LogReporter] Periodic flush error:', error.message);
       }
     }, this.flushInterval);
@@ -333,7 +352,7 @@ constructor(options = {}) {
       );
 
       return { success: true };
-    } catch (_error) {
+    } catch (error) {
       console.error(`[LogReporter] Failed to report event ${eventType}:`, error.message);
       return { success: false, error: error.message };
     }

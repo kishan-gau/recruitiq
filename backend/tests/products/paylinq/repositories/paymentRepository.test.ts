@@ -42,24 +42,26 @@ describe('PaymentRepository', () => {
   describe('createPaymentTransaction', () => {
     it('should create payment transaction', async () => {
       const transactionData = {
-        employeeId: testEmployeeId,
+        paycheckId: '923e4567-e89b-12d3-a456-426614174008',
         payrollRunId: testPayrollRunId,
-        amount: 5000,
+        employeeId: testEmployeeId,
         paymentMethod: 'ach',
-        scheduledDate: '2025-06-15'
+        paymentAmount: 5000,
+        scheduledDate: '2025-06-15',
+        paymentStatus: 'pending'
       };
       
-      const dbTransaction = { id: testTransactionId, ...transactionData, status: 'pending' };
+      const dbTransaction = { id: testTransactionId, ...transactionData };
       mockQuery.mockResolvedValue({ rows: [dbTransaction] });
 
       const result = await repository.createPaymentTransaction(transactionData, testOrgId, testUserId);
 
       expect(result).toEqual(dbTransaction);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO payment_transactions'),
-        expect.arrayContaining([testOrgId, transactionData.employeeId, transactionData.amount]),
+        expect.stringContaining('INSERT INTO payroll.payment_transaction'),
+        expect.arrayContaining([testOrgId, testEmployeeId, 5000]),
         testOrgId,
-        { operation: 'INSERT', table: 'payment_transactions' }
+        { operation: 'INSERT', table: 'payroll.payment_transaction', userId: testUserId }
       );
     });
   });
@@ -195,8 +197,8 @@ describe('PaymentRepository', () => {
   describe('findPendingPayments', () => {
     it('should return all pending payments', async () => {
       const dbTransactions = [
-        { id: testTransactionId, status: 'pending' },
-        { id: '723e4567-e89b-12d3-a456-426614174006', status: 'pending' }
+        { id: testTransactionId, payment_status: 'pending' },
+        { id: '723e4567-e89b-12d3-a456-426614174006', payment_status: 'pending' }
       ];
       
       mockQuery.mockResolvedValue({ rows: dbTransactions });
@@ -204,10 +206,10 @@ describe('PaymentRepository', () => {
 
       expect(result).toEqual(dbTransactions);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE status = \'pending\''),
+        expect.stringContaining('WHERE pt.payment_status = \'pending\''),
         [testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'payment_transactions' }
+        { operation: 'SELECT', table: 'payroll.payment_transaction' }
       );
     });
 
@@ -217,10 +219,10 @@ describe('PaymentRepository', () => {
       await repository.findPendingPayments(testOrgId, scheduledBefore);
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('AND scheduled_date <= $'),
+        expect.stringContaining('AND pt.scheduled_date <= $'),
         expect.arrayContaining([testOrgId, scheduledBefore]),
         testOrgId,
-        expect.any(Object)
+        { operation: 'SELECT', table: 'payroll.payment_transaction' }
       );
     });
   });
@@ -237,26 +239,26 @@ describe('PaymentRepository', () => {
 
       expect(result).toEqual(dbTransactions);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE employee_id = $1'),
+        expect.stringContaining('pt.employee_id = $1'),
         [testEmployeeId, testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'payment_transactions' }
+        { operation: 'SELECT', table: 'payroll.payment_transaction' }
       );
     });
 
     it('should filter by date range', async () => {
       const filters = {
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-12-31')
+        fromDate: new Date('2025-01-01'),
+        toDate: new Date('2025-12-31')
       };
       mockQuery.mockResolvedValue({ rows: [] });
       await repository.findPaymentsByEmployee(testEmployeeId, testOrgId, filters);
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('AND scheduled_date >= $'),
+        expect.stringContaining('pt.payment_date >= $'),
         expect.any(Array),
         testOrgId,
-        expect.any(Object)
+        { operation: 'SELECT', table: 'payroll.payment_transaction' }
       );
     });
   });
@@ -264,12 +266,14 @@ describe('PaymentRepository', () => {
   describe('getPaymentStatistics', () => {
     it('should return payment statistics for payroll run', async () => {
       const dbStats = {
-        total_transactions: 100,
-        pending_count: 10,
-        completed_count: 85,
-        failed_count: 5,
+        total_payments: 100,
+        pending_payments: 10,
+        processed_payments: 85,
+        failed_payments: 5,
+        reconciled_payments: 0,
         total_amount: 500000,
-        completed_amount: 425000
+        processed_amount: 425000,
+        failed_amount: 0
       };
       
       mockQuery.mockResolvedValue({ rows: [dbStats] });
@@ -277,10 +281,10 @@ describe('PaymentRepository', () => {
 
       expect(result).toEqual(dbStats);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE payroll_run_id = $1'),
+        expect.stringContaining('pt.payroll_run_id = $1'),
         [testPayrollRunId, testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'payment_transactions' }
+        { operation: 'SELECT', table: 'payroll.payment_transaction' }
       );
     });
   });

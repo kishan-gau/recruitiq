@@ -71,7 +71,7 @@ constructor() {
       });
 
       await this.redisClient.connect();
-    } catch (_error) {
+    } catch (error) {
       logger.warn('Redis initialization failed, falling back to NodeCache only', { error: _error.message });
       this.redisClient = null;
     }
@@ -117,7 +117,7 @@ constructor() {
           logger.debug('Exchange rate from L2 cache (Redis)', { fromCurrency, toCurrency });
           return rate;
         }
-      } catch (_error) {
+      } catch (error) {
         logger.warn('Redis cache read failed', { error: _error.message });
       }
     }
@@ -167,7 +167,7 @@ constructor() {
     if (this.redisClient && this.useRedisCache) {
       try {
         await this.redisClient.setEx(cacheKey, 3600, JSON.stringify(rate)); // 1 hour in Redis
-      } catch (_error) {
+      } catch (error) {
         logger.warn('Redis cache write failed', { error: _error.message });
       }
     }
@@ -197,7 +197,7 @@ constructor() {
       
       const result = await query(sqlQuery, [organizationId, fromCurrency, toCurrency], organizationId, { operation: 'SELECT', table: 'active_exchange_rates_mv' });
       return result.rows[0] || null;
-    } catch (_error) {
+    } catch (error) {
       logger.warn('Materialized view query failed, falling back to regular table', { error: _error.message });
       return null;
     }
@@ -275,7 +275,7 @@ constructor() {
           baseToTarget: baseToTarget.rate
         }
       };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error triangulating exchange rate', { fromCurrency, toCurrency, error });
       return null;
     }
@@ -364,7 +364,7 @@ constructor() {
         });
 
         result.conversionId = conversionRecord.id;
-      } catch (_error) {
+      } catch (error) {
         logger.error('Error logging conversion', { params, error });
         // Don't fail the conversion if logging fails
       }
@@ -500,7 +500,7 @@ constructor() {
           exchangeRateId: rate.id,
           source: rate.source
         };
-      } catch (_error) {
+      } catch (error) {
         logger.error('Batch conversion item error', { conversion, error });
         return {
           success: false,
@@ -668,7 +668,7 @@ constructor() {
     if (this.redisClient && this.useRedisCache) {
       try {
         await this.redisClient.del(cacheKey);
-      } catch (_error) {
+      } catch (error) {
         logger.warn('Redis cache invalidation failed', { error: _error.message });
       }
     }
@@ -689,7 +689,7 @@ constructor() {
           await this.redisClient.del(keys);
           logger.info('Redis rate cache cleared', { count: keys.length });
         }
-      } catch (_error) {
+      } catch (error) {
         logger.warn('Redis cache flush failed', { error: _error.message });
       }
     }
@@ -783,7 +783,7 @@ constructor() {
       }
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error getting org currency config', { organizationId, error });
       throw _error;
     }
@@ -850,7 +850,7 @@ constructor() {
       this.cache.flushAll();
 
       return result.rows[0];
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error updating org currency config', { organizationId, configData, error });
       throw _error;
     }
@@ -959,7 +959,7 @@ constructor() {
           });
 
           totalConvertedAmount += conversionResult.toAmount;
-        } catch (_error) {
+        } catch (error) {
           logger.error('Failed to convert payroll component', {
             componentId: id,
             componentName: name,
@@ -1125,7 +1125,7 @@ constructor() {
       await query('SELECT payroll.refresh_currency_materialized_views()', [], null, { operation: 'SELECT', table: 'function_call' });
       logger.info('Currency materialized views refreshed successfully');
       return { success: true };
-    } catch (_error) {
+    } catch (error) {
       logger.error('Failed to refresh materialized views', { error });
       throw _error;
     }
@@ -1193,7 +1193,7 @@ constructor() {
       });
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error checking conversion approval', { error, conversionData });
       throw _error;
     }
@@ -1225,7 +1225,7 @@ constructor() {
       });
 
       return result;
-    } catch (_error) {
+    } catch (error) {
       logger.error('Error checking rate change approval', { error, rateChangeData });
       throw _error;
     }

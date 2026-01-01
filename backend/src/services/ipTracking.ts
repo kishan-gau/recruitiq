@@ -8,6 +8,25 @@ import { createClient } from 'redis';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 
+// Interface for IP metadata
+interface IPMetadata {
+  country?: string;
+  city?: string;
+  region?: string;
+  isp?: string;
+  userAgent?: string;
+  [key: string]: unknown;
+}
+
+// Interface for IP history entry
+interface IPHistoryEntry {
+  ip: string;
+  firstSeen: number;
+  lastSeen: number;
+  count: number;
+  metadata: IPMetadata;
+}
+
 // Configuration
 const IP_HISTORY_MAX_COUNT = 10; // Keep last 10 IPs
 const IP_HISTORY_TTL_DAYS = 90; // Keep IP history for 90 days
@@ -72,7 +91,7 @@ constructor() {
    * @param {object} metadata - Optional metadata (country, city, etc.)
    * @returns {object} IP analysis
    */
-  async recordIP(userId, ip, metadata = {}) {
+  async recordIP(userId: string, ip: string, metadata: IPMetadata = {}) {
     try {
       const key = `ip:history:${userId}`;
       const now = Date.now();
@@ -182,7 +201,7 @@ constructor() {
    * @param {Array} ipHistory - IP history array
    * @returns {number} Number of unique IPs in last 24 hours
    */
-  countRecentIPChanges(ipHistory) {
+  countRecentIPChanges(ipHistory: IPHistoryEntry[]): number {
     const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
     const recentIPs = ipHistory.filter(entry => entry.lastSeen > oneDayAgo);
     return recentIPs.length;
@@ -193,7 +212,7 @@ constructor() {
    * @param {string} ip - IP address
    * @returns {boolean} True if private
    */
-  isPrivateIP(ip) {
+  isPrivateIP(ip: string): boolean {
     // IPv4 private ranges
     const privateRanges = [
       /^10\./,                    // 10.0.0.0/8
@@ -214,7 +233,7 @@ constructor() {
    * @param {string} userId - User ID
    * @returns {Array} IP history
    */
-  async getIPHistory(userId) {
+  async getIPHistory(userId: string): Promise<IPHistoryEntry[]> {
     try {
       const key = `ip:history:${userId}`;
 
@@ -236,7 +255,7 @@ constructor() {
    * @param {string} ip - IP address
    * @returns {boolean} True if IP is known
    */
-  async isKnownIP(userId, ip) {
+  async isKnownIP(userId: string, ip: string): Promise<boolean> {
     try {
       const history = await this.getIPHistory(userId);
       return history.some(entry => entry.ip === ip);
@@ -250,7 +269,7 @@ constructor() {
    * Clear IP history for user
    * @param {string} userId - User ID
    */
-  async clearIPHistory(userId) {
+  async clearIPHistory(userId: string): Promise<boolean> {
     try {
       const key = `ip:history:${userId}`;
 

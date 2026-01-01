@@ -216,7 +216,7 @@ export function createApp(options: any = {}) {
           const { default: TransIPService } = await import('./services/transip/TransIPService');
           const transipService = new TransIPService();
           transipHealth = await transipService.checkConnection();
-        } catch (_error) {
+        } catch (error) {
           transipHealth = {
             status: 'error',
             message: error.message,
@@ -253,7 +253,7 @@ export function createApp(options: any = {}) {
       
       const statusCode = dbHealth.status === 'healthy' ? 200 : 503;
       res.status(statusCode).json(health);
-    } catch (_error) {
+    } catch (error) {
       logger.error('Health check failed:', error);
       res.status(503).json({
         status: 'error',
@@ -275,7 +275,7 @@ export function createApp(options: any = {}) {
       } else {
         res.status(503).json({ status: 'not_ready', reason: 'database_unavailable' });
       }
-    } catch (_error) {
+    } catch (error) {
       res.status(503).json({ status: 'not_ready', reason: 'error' });
     }
   });

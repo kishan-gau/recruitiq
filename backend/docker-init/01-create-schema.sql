@@ -1,57 +1,19 @@
--- RecruitIQ Database Schema Creation
--- This script creates the basic schema structure for RecruitIQ
+-- RecruitIQ Database Extensions
+-- This script ONLY creates PostgreSQL extensions.
+-- All tables are created by Knex migrations (single source of truth).
 
--- Create extensions
+-- Create extensions required by the application
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Create organizations table (core tenant isolation table)
-CREATE TABLE IF NOT EXISTS organizations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
-    slug VARCHAR(100) UNIQUE NOT NULL,
-    domain VARCHAR(255),
-    settings JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP
-);
+-- NOTE: Tables are NOT created here.
+-- Knex migrations handle all schema creation:
+--   - migrations/20251201000001_create_base_schema.js
+--   - migrations/20251201000002_create_core_tables.js
+--   - etc.
+--
+-- Seeds are handled by Knex seed files:
+--   - seeds/production/ (product-based seeds)
+--   - seeds/development/ (development data)
 
--- Create users table with basic structure
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES organizations(id),
-    email VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255),
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
-    role VARCHAR(50) DEFAULT 'user',
-    is_active BOOLEAN DEFAULT true,
-    email_verified BOOLEAN DEFAULT false,
-    last_login TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP,
-    UNIQUE(email, organization_id)
-);
-
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_users_organization_id ON users(organization_id);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug);
-
--- Create a basic workspaces table for MVP
-CREATE TABLE IF NOT EXISTS workspaces (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    organization_id UUID NOT NULL REFERENCES organizations(id),
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_workspaces_organization_id ON workspaces(organization_id);
-
-NOTIFY system, 'Database schema created successfully';
+NOTIFY system, 'PostgreSQL extensions created successfully';

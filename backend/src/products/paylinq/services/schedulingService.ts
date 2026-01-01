@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Scheduling Service
  * 
  * Business logic layer for work schedule management and schedule change requests.
@@ -99,41 +99,44 @@ constructor() {
       }
       
       // Iterate through each date in the range
-      for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-        const dayOfWeek = date.getDay();
+      for (let date = new Date(start); date <= end; ) {
+        const dayOfWeek = date.getUTCDay();
         const shift = shiftsByDay[dayOfWeek];
         
         // Skip if no shift defined for this day of week
-        if (!shift) continue;
-        
-        const scheduleData = {
-          employee_id: employeeId,
-          schedule_date: date.toISOString().split('T')[0],
-          start_time: shift.startTime,
-          end_time: shift.endTime,
-          break_minutes: shift.breakMinutes || 0,
-          duration_hours: calculateDuration(shift.startTime, shift.endTime, shift.breakMinutes || 0),
-          schedule_type: scheduleType || 'regular',
-          status: 'scheduled'
-        };
-        
-        // Check for conflicts
-        const conflicts = await this.schedulingRepository.findScheduleConflicts(
-          employeeId,
-          scheduleData.schedule_date,
-          scheduleData.start_time,
-          scheduleData.end_time,
-          organizationId
-        );
-        
-        if (conflicts.length === 0) {
-          const schedule = await this.schedulingRepository.createWorkSchedule(
-            scheduleData,
-            organizationId,
-            userId
+        if (shift) {
+          const scheduleData = {
+            employee_id: employeeId,
+            schedule_date: date.toISOString().split('T')[0],
+            start_time: shift.startTime,
+            end_time: shift.endTime,
+            break_minutes: shift.breakMinutes || 0,
+            duration_hours: calculateDuration(shift.startTime, shift.endTime, shift.breakMinutes || 0),
+            schedule_type: scheduleType || 'regular',
+            status: 'scheduled'
+          };
+          
+          // Check for conflicts
+          const conflicts = await this.schedulingRepository.findScheduleConflicts(
+            employeeId,
+            scheduleData.schedule_date,
+            scheduleData.start_time,
+            scheduleData.end_time,
+            organizationId
           );
-          createdSchedules.push(schedule);
+          
+          if (conflicts.length === 0) {
+            const schedule = await this.schedulingRepository.createWorkSchedule(
+              scheduleData,
+              organizationId,
+              userId
+            );
+            createdSchedules.push(schedule);
+          }
         }
+        
+        // Move to next day
+        date.setDate(date.getDate() + 1);
       }
       
       logger.info('Bulk schedules created', {
@@ -143,9 +146,9 @@ constructor() {
       });
       
       return createdSchedules;
-    } catch (err) {
-      logger.error('Error creating bulk schedules', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating bulk schedules', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -209,9 +212,9 @@ constructor() {
       });
 
       return schedule;
-    } catch (err) {
-      logger.error('Error creating work schedule', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating work schedule', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -224,9 +227,9 @@ constructor() {
   async getWorkSchedules(organizationId, filters = {}) {
     try {
       return await this.schedulingRepository.findWorkSchedules(filters, organizationId);
-    } catch (err) {
-      logger.error('Error fetching work schedules', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching work schedules', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -257,12 +260,12 @@ constructor() {
       // No pagination - return all matching schedules
       const schedules = await this.getWorkSchedules(organizationId, filters);
       return schedules;
-    } catch (err) {
+    } catch (error) {
       logger.error('Error fetching schedules by organization', { 
-        error: err.message, 
+        error: error.message, 
         organizationId 
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -279,13 +282,13 @@ constructor() {
         { ...filters, employeeId },
         organizationId
       );
-    } catch (err) {
+    } catch (error) {
       logger.error('Error fetching schedules by employee', { 
-        error: err.message, 
+        error: error.message, 
         employeeId,
         organizationId 
       });
-      throw err;
+      throw error;
     }
   }
 
@@ -312,9 +315,9 @@ constructor() {
         throw new NotFoundError('Work schedule not found');
       }
       return schedule;
-    } catch (err) {
-      logger.error('Error fetching work schedule', { error: err.message, scheduleId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching work schedule', { error: error.message, scheduleId });
+      throw error;
     }
   }
 
@@ -360,9 +363,9 @@ constructor() {
       });
 
       return schedule;
-    } catch (err) {
-      logger.error('Error updating work schedule', { error: err.message, scheduleId });
-      throw err;
+    } catch (error) {
+      logger.error('Error updating work schedule', { error: error.message, scheduleId });
+      throw error;
     }
   }
 
@@ -386,9 +389,9 @@ constructor() {
       }
 
       return deleted;
-    } catch (err) {
-      logger.error('Error deleting work schedule', { error: err.message, scheduleId });
-      throw err;
+    } catch (error) {
+      logger.error('Error deleting work schedule', { error: error.message, scheduleId });
+      throw error;
     }
   }
 
@@ -407,10 +410,10 @@ constructor() {
         try {
           const result = await this.createWorkSchedule(schedule, organizationId, userId);
           results.push({ success: true, data: result });
-        } catch (err) {
+        } catch (error) {
           results.push({
             success: false,
-            error: err.message,
+            error: error.message,
             employeeId: schedule.employeeId,
             scheduleDate: schedule.scheduleDate
           });
@@ -425,9 +428,9 @@ constructor() {
       });
 
       return results;
-    } catch (err) {
-      logger.error('Error in bulk schedule creation', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error in bulk schedule creation', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -445,9 +448,9 @@ constructor() {
         endDate,
         organizationId
       );
-    } catch (err) {
-      logger.error('Error fetching schedule statistics', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching schedule statistics', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -491,9 +494,9 @@ constructor() {
       });
 
       return request;
-    } catch (err) {
-      logger.error('Error creating schedule change request', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error creating schedule change request', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -524,9 +527,9 @@ constructor() {
       // No pagination - return all matching requests
       const requests = await this.schedulingRepository.findScheduleChangeRequests(filters, organizationId);
       return requests;
-    } catch (err) {
-      logger.error('Error fetching schedule change requests', { error: err.message, organizationId });
-      throw err;
+    } catch (error) {
+      logger.error('Error fetching schedule change requests', { error: error.message, organizationId });
+      throw error;
     }
   }
 
@@ -594,9 +597,9 @@ constructor() {
       });
 
       return request;
-    } catch (err) {
-      logger.error('Error approving schedule change request', { error: err.message, requestId });
-      throw err;
+    } catch (error) {
+      logger.error('Error approving schedule change request', { error: error.message, requestId });
+      throw error;
     }
   }
 
@@ -623,9 +626,9 @@ constructor() {
       });
 
       return request;
-    } catch (err) {
-      logger.error('Error rejecting schedule change request', { error: err.message, requestId });
-      throw err;
+    } catch (error) {
+      logger.error('Error rejecting schedule change request', { error: error.message, requestId });
+      throw error;
     }
   }
 }
