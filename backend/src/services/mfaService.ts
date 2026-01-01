@@ -13,7 +13,7 @@ import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { query } from '../config/database.js';
+import { query, getClient } from '../config/database.js';
 import logger from '../utils/logger.js';
 
 class MFAService {
@@ -152,7 +152,7 @@ class MFAService {
    * @returns {Promise<void>}
    */
   async enableMFA(userId, secret, hashedBackupCodes) {
-    const client = await pool.connect();
+    const client = await getClient();
     
     try {
       await client.query('BEGIN');
@@ -187,7 +187,7 @@ class MFAService {
    * @returns {Promise<void>}
    */
   async disableMFA(userId) {
-    const client = await pool.connect();
+    const client = await getClient();
     
     try {
       await client.query('BEGIN');
@@ -223,7 +223,7 @@ class MFAService {
    * @returns {Promise<void>}
    */
   async markBackupCodeUsed(userId, codeIndex) {
-    const client = await pool.connect();
+    const client = await getClient();
     
     try {
       await client.query('BEGIN');
@@ -260,7 +260,7 @@ class MFAService {
    * @returns {Promise<string[]>} New backup codes (plain text)
    */
   async regenerateBackupCodes(userId) {
-    const client = await pool.connect();
+    const client = await getClient();
     
     try {
       await client.query('BEGIN');

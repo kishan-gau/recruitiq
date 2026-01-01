@@ -17,9 +17,16 @@ const mockTokenBlacklist = { blacklistAllUserTokens: jest.fn() };
 
 jest.unstable_mockModule('crypto', () => ({ default: mockCrypto }));
 jest.unstable_mockModule('bcryptjs', () => ({ default: mockBcrypt }));
-jest.unstable_mockModule('../../config/database.ts', () => ({ default: mockPool }));
-jest.unstable_mockModule('../../utils/logger.ts', () => ({ default: mockLogger }));
-jest.unstable_mockModule('../tokenBlacklist.ts', () => ({ default: mockTokenBlacklist }));
+jest.unstable_mockModule('../../config/database', () => ({ 
+  default: mockPool,
+  query: mockPool.query,
+  getClient: mockPool.connect,
+  transaction: jest.fn(),
+  healthCheck: jest.fn(),
+  closePool: jest.fn()
+}));
+jest.unstable_mockModule('../../utils/logger', () => ({ default: mockLogger }));
+jest.unstable_mockModule('../tokenBlacklist', () => ({ default: mockTokenBlacklist }));
 
 let passwordResetService;
 let mockClient;
@@ -260,7 +267,9 @@ describe('PasswordResetService', () => {
       expect(result.error).toContain('expired');
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE users'),
-        ['user-123']
+        ['user-123'],
+        null,
+        expect.any(Object)
       );
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Expired password reset token')
@@ -391,7 +400,10 @@ describe('PasswordResetService', () => {
 
       expect(count).toBe(3);
       expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('password_reset_expires_at < NOW()')
+        expect.stringContaining('password_reset_expires_at < NOW()'),
+        [],
+        null,
+        expect.any(Object)
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
         expect.stringContaining('Cleaned up 3 expired')
@@ -448,7 +460,9 @@ describe('PasswordResetService', () => {
 
       expect(mockPool.query).toHaveBeenCalledWith(
         expect.any(String),
-        expect.arrayContaining(['test@example.com'])
+        expect.arrayContaining(['test@example.com']),
+        null,
+        expect.any(Object)
       );
     });
 
