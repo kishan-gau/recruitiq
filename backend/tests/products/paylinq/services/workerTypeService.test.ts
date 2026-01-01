@@ -102,7 +102,8 @@ describe('WorkerTypeService', () => {
       findTemplateByCode: jest.fn(),
       findTemplates: jest.fn(),
       findCurrentTemplateByCode: jest.fn(),
-      getTemplateComponents: jest.fn()
+      getTemplateComponents: jest.fn(),
+      assignToEmployee: jest.fn()
     };
 
     // Inject mocks into service (dependency injection pattern)
@@ -651,6 +652,433 @@ describe('WorkerTypeService', () => {
       await expect(
         service.checkWorkerTypeLimit(testOrganizationId)
       ).resolves.toBeUndefined();
+    });
+  });
+
+  // ==================== GET WORKER TYPE TEMPLATES ====================
+
+  describe('getWorkerTypeTemplates', () => {
+    it('should return all worker type templates with DTO transformation', async () => {
+      const mockDbTemplates = [
+        createDbWorkerType(),
+        createDbWorkerType({ id: 'c23e4567-e89b-12d3-a456-426614174011', code: 'PTE' })
+      ];
+
+      mockWorkerTypeRepository.findAll.mockResolvedValue(mockDbTemplates);
+
+      const result = await service.getWorkerTypeTemplates(testOrganizationId);
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(mockWorkerTypeRepository.findAll).toHaveBeenCalledWith(
+        testOrganizationId,
+        {}
+      );
+    });
+
+    it('should pass filters to repository', async () => {
+      mockWorkerTypeRepository.findAll.mockResolvedValue([]);
+
+      const filters = { isActive: true };
+      await service.getWorkerTypeTemplates(testOrganizationId, filters);
+
+      expect(mockWorkerTypeRepository.findAll).toHaveBeenCalledWith(
+        testOrganizationId,
+        filters
+      );
+    });
+
+    it('should handle errors gracefully', async () => {
+      const error = new Error('Database error');
+      mockWorkerTypeRepository.findAll.mockRejectedValue(error);
+
+      await expect(
+        service.getWorkerTypeTemplates(testOrganizationId)
+      ).rejects.toThrow('Database error');
+    });
+  });
+
+  // ==================== GET EMPLOYEES BY WORKER TYPE ====================
+
+  describe('getEmployeesByWorkerType', () => {
+    it('should return paginated employees by worker type', async () => {
+      const mockEmployees = [
+        {
+          id: testEmployeeRecordId,
+          first_name: 'John',
+          last_name: 'Doe',
+          email: 'john@example.com'
+        }
+      ];
+
+      mockWorkerTypeRepository.getEmployeesByWorkerType.mockResolvedValue({
+        employees: mockEmployees,
+        pagination: { page: 1, limit: 30, total: 1 }
+      });
+
+      const result = await service.getEmployeesByWorkerType(
+        testWorkerTypeId,
+        testOrganizationId,
+        { page: 1, limit: 30 }
+      );
+
+      expect(result.employees).toEqual(mockEmployees);
+      expect(result.pagination.total).toBe(1);
+      expect(mockWorkerTypeRepository.getEmployeesByWorkerType).toHaveBeenCalledWith(
+        testWorkerTypeId,
+        testOrganizationId,
+        { page: 1, limit: 30 }
+      );
+    });
+
+    it('should use default pagination if not provided', async () => {
+      mockWorkerTypeRepository.getEmployeesByWorkerType.mockResolvedValue({
+        employees: [],
+        pagination: { page: 1, limit: 30, total: 0 }
+      });
+
+      await service.getEmployeesByWorkerType(testWorkerTypeId, testOrganizationId);
+
+      expect(mockWorkerTypeRepository.getEmployeesByWorkerType).toHaveBeenCalledWith(
+        testWorkerTypeId,
+        testOrganizationId,
+        {}
+      );
+    });
+  });
+
+  // ==================== VALIDATE TEMPLATE CODE ====================
+
+  describe('validateTemplateCode', () => {
+    it('should validate existing template code', async () => {
+      mockPayStructureRepository.findTemplateByCode.mockResolvedValue({
+        id: '923e4567-e89b-12d3-a456-426614174020',
+        code: 'STANDARD_PAY'
+      });
+
+      await expect(
+        service.validateTemplateCode('STANDARD_PAY', testOrganizationId)
+      ).resolves.not.toThrow();
+
+      expect(mockPayStructureRepository.findTemplateByCode).toHaveBeenCalledWith(
+        'STANDARD_PAY',
+        testOrganizationId
+      );
+    });
+
+    it('should throw ValidationError for non-existent template code', async () => {
+      mockPayStructureRepository.findTemplateByCode.mockResolvedValue(null);
+
+      await expect(
+        service.validateTemplateCode('INVALID_CODE', testOrganizationId)
+      ).rejects.toThrow();
+    });
+  });
+
+  // ==================== AUTO ASSIGN PAY STRUCTURE TEMPLATE ====================
+
+  describe('autoAssignPayStructureTemplate', () => {
+    it('should auto-assign pay structure template to employee', async () => {
+      const mockTemplate = {
+        id: '823e4567-e89b-12d3-a456-426614174019',
+        template_code: 'STANDARD_PAY'
+      };
+
+      mockPayStructureRepository.findTemplateByCode.mockResolvedValue(mockTemplate);
+      mockPayStructureRepository.assignToEmployee.mockResolvedValue({
+        id: '723e4567-e89b-12d3-a456-426614174018',
+        employee_record_id: testEmployeeRecordId,
+        template_id: mockTemplate.id
+      });
+
+      const result = await service.autoAssignPayStructureTemplate(
+        testEmployeeRecordId,
+        'STANDARD_PAY',
+        testOrganizationId,
+        testUserId
+      );
+
+      expect(result).toBeDefined();
+      expect(mockPayStructureRepository.assignToEmployee).toHaveBeenCalled();
+    });
+
+    it('should handle errors without throwing', async () => {
+      mockPayStructureRepository.findTemplateByCode.mockRejectedValue(
+        new Error('Database error')
+      );
+
+      // Should not throw - errors are logged only
+      await expect(
+        service.autoAssignPayStructureTemplate(
+          testEmployeeRecordId,
+          'STANDARD_PAY',
+          testOrganizationId,
+          testUserId
+        )
+      ).resolves.toBeUndefined();
+    });
+  });
+
+  // ==================== GET UPGRADE STATUS ====================
+
+  describe('getUpgradeStatus', () => {
+    it('should return upgrade status for worker type', async () => {
+      const mockWorkerType = createDbWorkerType();
+      const mockStatus = {
+        worker_type_id: testWorkerTypeId,
+        worker_type_name: 'Full-Time Employee',
+        worker_type_code: 'FTE',
+        target_template_code: 'STANDARD_PAY_V2',
+        total_workers: '10',
+        up_to_date_count: '5',
+        outdated_count: '5'
+      };
+
+      const mockEmployeesNeedingUpgrade = [
+        {
+          employee_id: testEmployeeRecordId,
+          employee_number: 'EMP001',
+          first_name: 'John',
+          last_name: 'Doe',
+          email: 'john@example.com',
+          hire_date: new Date('2025-01-01'),
+          worker_pay_structure_id: '123e4567-e89b-12d3-a456-426614174050',
+          current_template_id: '123e4567-e89b-12d3-a456-426614174051',
+          current_template_code: 'STANDARD_PAY_V1',
+          current_template_name: 'Standard Pay V1',
+          current_template_version: 1,
+          target_template_id: '123e4567-e89b-12d3-a456-426614174052',
+          target_template_code: 'STANDARD_PAY_V2',
+          target_template_name: 'Standard Pay V2',
+          target_template_version: 2
+        }
+      ];
+
+      mockWorkerTypeRepository.findById.mockResolvedValue(mockWorkerType);
+      mockWorkerTypeRepository.getTemplateUpgradeStatus.mockResolvedValue(mockStatus);
+      mockWorkerTypeRepository.getEmployeesNeedingTemplateUpgrade.mockResolvedValue(mockEmployeesNeedingUpgrade);
+
+      const result = await service.getUpgradeStatus(testWorkerTypeId, testOrganizationId);
+
+      expect(result).toBeDefined();
+      expect(result.workerTypeId).toBe(testWorkerTypeId);
+      expect(result.totalWorkers).toBe(10);
+      expect(result.outdatedCount).toBe(5);
+      expect(result.workers).toHaveLength(1);
+      expect(mockWorkerTypeRepository.getTemplateUpgradeStatus).toHaveBeenCalledWith(
+        testWorkerTypeId,
+        testOrganizationId
+      );
+    });
+
+    it('should handle template not found', async () => {
+      mockWorkerTypeRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.getUpgradeStatus(testWorkerTypeId, testOrganizationId)
+      ).rejects.toThrow('Worker type not found');
+    });
+  });
+
+  // ==================== PREVIEW TEMPLATE UPGRADE ====================
+
+  describe('previewTemplateUpgrade', () => {
+    it('should preview template upgrade changes', async () => {
+      const mockWorkerType = createDbWorkerType();
+      const mockStatus = {
+        worker_type_id: testWorkerTypeId,
+        worker_type_name: 'Full-Time Employee',
+        worker_type_code: 'FTE',
+        target_template_code: 'STANDARD_PAY_V2',
+        total_workers: '10',
+        up_to_date_count: '5',
+        outdated_count: '5'
+      };
+
+      const mockEmployeesNeedingUpgrade = [
+        {
+          employee_id: testEmployeeRecordId,
+          employee_number: 'EMP001',
+          first_name: 'John',
+          last_name: 'Doe',
+          email: 'john@example.com'
+        }
+      ];
+
+      mockWorkerTypeRepository.findById.mockResolvedValue(mockWorkerType);
+      mockWorkerTypeRepository.getTemplateUpgradeStatus.mockResolvedValue(mockStatus);
+      mockWorkerTypeRepository.getEmployeesNeedingTemplateUpgrade.mockResolvedValue(mockEmployeesNeedingUpgrade);
+
+      // Mock template components comparison
+      mockPayStructureRepository.getTemplateComponents
+        .mockResolvedValueOnce([]) // current template components
+        .mockResolvedValueOnce([]); // target template components
+
+      const result = await service.previewTemplateUpgrade(testWorkerTypeId, testOrganizationId);
+
+      expect(result).toBeDefined();
+      expect(result.affectedEmployees).toBeDefined();
+    });
+  });
+
+  // ==================== UPGRADE WORKERS TO TEMPLATE ====================
+
+  describe('upgradeWorkersToTemplate', () => {
+    it('should upgrade workers to new template', async () => {
+      const upgradeData = {
+        effectiveDate: new Date('2025-02-01')
+      };
+
+      const mockWorkerType = createDbWorkerType();
+      const mockStatus = {
+        worker_type_id: testWorkerTypeId,
+        target_template_code: 'STANDARD_PAY_V2',
+        outdated_count: '1'
+      };
+
+      const mockEmployeesNeedingUpgrade = [
+        {
+          employee_id: testEmployeeRecordId,
+          worker_pay_structure_id: '123e4567-e89b-12d3-a456-426614174050',
+          target_template_id: '123e4567-e89b-12d3-a456-426614174052'
+        }
+      ];
+
+      mockWorkerTypeRepository.findById.mockResolvedValue(mockWorkerType);
+      mockWorkerTypeRepository.getTemplateUpgradeStatus.mockResolvedValue(mockStatus);
+      mockWorkerTypeRepository.getEmployeesNeedingTemplateUpgrade.mockResolvedValue(mockEmployeesNeedingUpgrade);
+      mockWorkerTypeRepository.bulkUpdateWorkerTemplates.mockResolvedValue({
+        updated: 1,
+        failed: 0
+      });
+
+      const result = await service.upgradeWorkersToTemplate(
+        testWorkerTypeId,
+        upgradeData,
+        testOrganizationId,
+        testUserId
+      );
+
+      expect(result).toBeDefined();
+      expect(result.updated).toBe(1);
+      expect(result.failed).toBe(0);
+    });
+
+    it('should handle partial upgrade failures', async () => {
+      const mockWorkerType = createDbWorkerType();
+      const mockStatus = {
+        worker_type_id: testWorkerTypeId,
+        target_template_code: 'STANDARD_PAY_V2',
+        outdated_count: '2'
+      };
+
+      const mockEmployeesNeedingUpgrade = [
+        {
+          employee_id: testEmployeeRecordId,
+          worker_pay_structure_id: '123e4567-e89b-12d3-a456-426614174050',
+          target_template_id: '123e4567-e89b-12d3-a456-426614174052'
+        },
+        {
+          employee_id: 'a23e4567-e89b-12d3-a456-426614174025',
+          worker_pay_structure_id: '123e4567-e89b-12d3-a456-426614174053',
+          target_template_id: '123e4567-e89b-12d3-a456-426614174052'
+        }
+      ];
+
+      mockWorkerTypeRepository.findById.mockResolvedValue(mockWorkerType);
+      mockWorkerTypeRepository.getTemplateUpgradeStatus.mockResolvedValue(mockStatus);
+      mockWorkerTypeRepository.getEmployeesNeedingTemplateUpgrade.mockResolvedValue(mockEmployeesNeedingUpgrade);
+      mockWorkerTypeRepository.bulkUpdateWorkerTemplates.mockResolvedValue({
+        updated: 1,
+        failed: 1
+      });
+
+      const result = await service.upgradeWorkersToTemplate(
+        testWorkerTypeId,
+        { effectiveDate: new Date() },
+        testOrganizationId,
+        testUserId
+      );
+
+      expect(result.updated).toBe(1);
+      expect(result.failed).toBe(1);
+    });
+  });
+
+  // ==================== COMPARE TEMPLATES ====================
+
+  describe('compareTemplates', () => {
+    it('should compare two templates and show differences', async () => {
+      const template1 = createDbWorkerType({
+        id: testWorkerTypeId,
+        default_pay_frequency: 'monthly',
+        benefits_eligible: true
+      });
+
+      const template2 = createDbWorkerType({
+        id: 'b23e4567-e89b-12d3-a456-426614174026',
+        default_pay_frequency: 'biweekly',
+        benefits_eligible: false
+      });
+
+      const mockComponents1 = [
+        { component_code: 'BASE_SALARY', amount: 5000 }
+      ];
+
+      const mockComponents2 = [
+        { component_code: 'BASE_SALARY', amount: 6000 },
+        { component_code: 'BONUS', amount: 1000 }
+      ];
+
+      mockWorkerTypeRepository.findById
+        .mockResolvedValueOnce(template1)
+        .mockResolvedValueOnce(template2);
+
+      mockPayStructureRepository.getTemplateComponents
+        .mockResolvedValueOnce(mockComponents1)
+        .mockResolvedValueOnce(mockComponents2);
+
+      const result = await service.compareTemplates(
+        testWorkerTypeId,
+        'b23e4567-e89b-12d3-a456-426614174026',
+        testOrganizationId
+      );
+
+      expect(result).toBeDefined();
+      expect(result.differences).toBeDefined();
+    });
+
+    it('should handle template not found', async () => {
+      mockWorkerTypeRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.compareTemplates(testWorkerTypeId, 'invalid-id', testOrganizationId)
+      ).rejects.toThrow();
+    });
+  });
+
+  // ==================== ERROR HANDLING TESTS ====================
+
+  describe('Error Handling', () => {
+    it('should handle getWorkerTypes database errors', async () => {
+      mockWorkerTypeRepository.findAllWithPagination.mockRejectedValue(
+        new Error('Database connection lost')
+      );
+
+      await expect(
+        service.getWorkerTypes(testOrganizationId)
+      ).rejects.toThrow('Database connection lost');
+    });
+
+    it('should handle getCurrentWorkerType when no assignment found', async () => {
+      mockWorkerTypeRepository.findCurrentWorkerType.mockResolvedValue(null);
+
+      const result = await service.getCurrentWorkerType(
+        testEmployeeRecordId,
+        testOrganizationId
+      );
+
+      expect(result).toBeNull();
     });
   });
 });

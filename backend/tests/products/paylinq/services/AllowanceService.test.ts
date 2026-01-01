@@ -393,6 +393,12 @@ describe('AllowanceService', () => {
 
       expect(result).toBe(0);
     });
+
+    it('should throw ValidationError when organizationId is missing', async () => {
+      await expect(
+        service.getAvailableBonusAllowance(testEmployeeId, 2025, null)
+      ).rejects.toThrow('organizationId is required');
+    });
   });
 
   describe('applyBonusAllowance', () => {
