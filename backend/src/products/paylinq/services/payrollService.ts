@@ -2070,7 +2070,7 @@ class PayrollService {
       return await this.payrollRepository.findPaychecksByOrganization(organizationId, filters);
     } catch (_error) {
       logger.error('Error fetching paychecks by organization', {
-        error: error.message,
+        error: _error.message,
         organizationId,
         filters,
       });
@@ -2089,7 +2089,7 @@ class PayrollService {
       return await this.payrollRepository.findPaycheckById(paycheckId, organizationId);
     } catch (_error) {
       logger.error('Error fetching paycheck by ID', {
-        error: error.message,
+        error: _error.message,
         paycheckId,
         organizationId,
       });
@@ -2109,7 +2109,7 @@ class PayrollService {
       return await this.payrollRepository.findPaychecksByEmployee(employeeId, organizationId, filters);
     } catch (_error) {
       logger.error('Error fetching paychecks by employee', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         organizationId,
         filters,
@@ -2152,7 +2152,7 @@ class PayrollService {
       return updated;
     } catch (_error) {
       logger.error('Error updating paycheck', {
-        error: error.message,
+        error: _error.message,
         paycheckId,
         organizationId,
       });
@@ -2203,11 +2203,11 @@ class PayrollService {
       return updated;
     } catch (_error) {
       logger.error('Error voiding paycheck', {
-        error: error.message,
+        error: _error.message,
         paycheckId,
         organizationId,
       });
-      throw error;
+      throw _error;
     }
   }
 
@@ -2276,11 +2276,11 @@ class PayrollService {
       return this.payrollRepository.findPaycheckById(newPaycheck.id, organizationId);
     } catch (_error) {
       logger.error('Error reissuing paycheck', {
-        error: error.message,
+        error: _error.message,
         paycheckId,
         organizationId,
       });
-      throw error;
+      throw _error;
     }
   }
 
@@ -2316,11 +2316,11 @@ class PayrollService {
       return deleted;
     } catch (_error) {
       logger.error('Error deleting paycheck', {
-        error: error.message,
+        error: _error.message,
         paycheckId,
         organizationId,
       });
-      throw error;
+      throw _error;
     }
   }
 
@@ -2402,11 +2402,11 @@ class PayrollService {
       };
     } catch (_error) {
       logger.error('Error granting system access', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         organizationId
       });
-      throw error;
+      throw _error;
     }
   }
 
@@ -2465,11 +2465,11 @@ class PayrollService {
       };
     } catch (_error) {
       logger.error('Error revoking system access', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         organizationId
       });
-      throw error;
+      throw _error;
     }
   }
 
@@ -2515,11 +2515,11 @@ class PayrollService {
       };
     } catch (_error) {
       logger.error('Error getting user account status', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         organizationId
       });
-      throw error;
+      throw _error;
     }
   }
 
@@ -2567,11 +2567,11 @@ class PayrollService {
       };
     } catch (_error) {
       logger.error('Error updating employee access', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         organizationId
       });
-      throw error;
+      throw _error;
     }
   }
 }

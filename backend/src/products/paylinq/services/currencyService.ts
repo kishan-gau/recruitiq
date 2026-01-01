@@ -72,7 +72,7 @@ constructor() {
 
       await this.redisClient.connect();
     } catch (_error) {
-      logger.warn('Redis initialization failed, falling back to NodeCache only', { error: error.message });
+      logger.warn('Redis initialization failed, falling back to NodeCache only', { error: _error.message });
       this.redisClient = null;
     }
   }
@@ -118,7 +118,7 @@ constructor() {
           return rate;
         }
       } catch (_error) {
-        logger.warn('Redis cache read failed', { error: error.message });
+        logger.warn('Redis cache read failed', { error: _error.message });
       }
     }
 
@@ -168,7 +168,7 @@ constructor() {
       try {
         await this.redisClient.setEx(cacheKey, 3600, JSON.stringify(rate)); // 1 hour in Redis
       } catch (_error) {
-        logger.warn('Redis cache write failed', { error: error.message });
+        logger.warn('Redis cache write failed', { error: _error.message });
       }
     }
 
@@ -198,7 +198,7 @@ constructor() {
       const result = await query(sqlQuery, [organizationId, fromCurrency, toCurrency], organizationId, { operation: 'SELECT', table: 'active_exchange_rates_mv' });
       return result.rows[0] || null;
     } catch (_error) {
-      logger.warn('Materialized view query failed, falling back to regular table', { error: error.message });
+      logger.warn('Materialized view query failed, falling back to regular table', { error: _error.message });
       return null;
     }
   }
@@ -504,7 +504,7 @@ constructor() {
         logger.error('Batch conversion item error', { conversion, error });
         return {
           success: false,
-          error: error.message,
+          error: _error.message,
           fromCurrency: conversion.fromCurrency,
           toCurrency: conversion.toCurrency,
           fromAmount: conversion.amount
@@ -669,7 +669,7 @@ constructor() {
       try {
         await this.redisClient.del(cacheKey);
       } catch (_error) {
-        logger.warn('Redis cache invalidation failed', { error: error.message });
+        logger.warn('Redis cache invalidation failed', { error: _error.message });
       }
     }
   }
@@ -690,7 +690,7 @@ constructor() {
           logger.info('Redis rate cache cleared', { count: keys.length });
         }
       } catch (_error) {
-        logger.warn('Redis cache flush failed', { error: error.message });
+        logger.warn('Redis cache flush failed', { error: _error.message });
       }
     }
   }
@@ -785,7 +785,7 @@ constructor() {
       return result.rows[0];
     } catch (_error) {
       logger.error('Error getting org currency config', { organizationId, error });
-      throw error;
+      throw _error;
     }
   }
 
@@ -852,7 +852,7 @@ constructor() {
       return result.rows[0];
     } catch (_error) {
       logger.error('Error updating org currency config', { organizationId, configData, error });
-      throw error;
+      throw _error;
     }
   }
 
@@ -966,7 +966,7 @@ constructor() {
             fromCurrency: componentCurrency,
             toCurrency: targetCurrency,
             amount,
-            error: error.message
+            error: _error.message
           });
           throw new Error(`Failed to convert component "${name}": ${error.message}`);
         }
@@ -1127,7 +1127,7 @@ constructor() {
       return { success: true };
     } catch (_error) {
       logger.error('Failed to refresh materialized views', { error });
-      throw error;
+      throw _error;
     }
   }
 
@@ -1195,7 +1195,7 @@ constructor() {
       return result;
     } catch (_error) {
       logger.error('Error checking conversion approval', { error, conversionData });
-      throw error;
+      throw _error;
     }
   }
 
@@ -1227,7 +1227,7 @@ constructor() {
       return result;
     } catch (_error) {
       logger.error('Error checking rate change approval', { error, rateChangeData });
-      throw error;
+      throw _error;
     }
   }
 }

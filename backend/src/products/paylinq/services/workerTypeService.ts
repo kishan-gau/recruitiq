@@ -822,7 +822,7 @@ constructor(repository = null, payStructureRepository = null) {
 
       } catch (_error) {
         await client.query('ROLLBACK');
-        throw error;
+        throw _error;
       } finally {
         client.release();
       }
