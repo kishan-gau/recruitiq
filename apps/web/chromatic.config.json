@@ -1,0 +1,17 @@
+{
+  "projectId": "CHROMATIC_PROJECT_ID",
+  "buildScriptName": "build",
+  "exitZeroOnChanges": true,
+  "exitOnceUploaded": true,
+  "autoAcceptChanges": false,
+  "debug": false,
+  "zip": true,
+  "externals": [
+    "public/**"
+  ],
+  "fileHashing": true,
+  "untraced": [
+    "**/*.stories.tsx",
+    "src/__tests__/**"
+  ]
+}

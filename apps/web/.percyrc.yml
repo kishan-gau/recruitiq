@@ -1,0 +1,39 @@
+version: 2
+# Percy visual testing configuration for payroll frontend
+
+static:
+  # Build output directory
+  static-snapshots: true
+  
+snapshot:
+  # Widths to capture for responsive testing
+  widths:
+    - 375  # Mobile
+    - 768  # Tablet
+    - 1280 # Desktop
+    - 1920 # Large Desktop
+  
+  # Minimum height for snapshots
+  min-height: 1024
+  
+  # Enable JavaScript rendering
+  enable-javascript: true
+  
+  # Percy-specific options
+  percy-css: ''
+  
+# Discovery options for automatic snapshot detection
+discovery:
+  # Allowed hostnames for asset discovery
+  allowed-hostnames:
+    - localhost
+  
+  # Network idle timeout
+  network-idle-timeout: 750
+
+# Additional options
+agent:
+  # Asset discovery settings
+  asset-discovery:
+    # Network idle timeout for asset discovery
+    network-idle-timeout: 125
