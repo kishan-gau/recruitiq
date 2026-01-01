@@ -41,7 +41,7 @@ async function createReconciliation(req, res) {
       reconciliation: mapReconciliationDbToApi(reconciliation),
       message: 'Reconciliation created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating reconciliation', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -94,7 +94,7 @@ async function getReconciliations(req, res) {
       reconciliations: mapReconciliationDbArrayToApi(reconciliations),
       count: reconciliations.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching reconciliations', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -123,7 +123,7 @@ async function getReconciliationById(req, res) {
       success: true,
       reconciliation: mapReconciliationDbToApi(reconciliation),
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching reconciliation', {
       error: error.message,
       reconciliationId: req.params.id,
@@ -178,7 +178,7 @@ async function updateReconciliation(req, res) {
       reconciliation: mapReconciliationDbToApi(reconciliation),
       message: 'Reconciliation updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating reconciliation', {
       error: error.message,
       reconciliationId: req.params.id,
@@ -240,7 +240,7 @@ async function completeReconciliation(req, res) {
       reconciliation: mapReconciliationDbToApi(reconciliation),
       message: 'Reconciliation completed successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error completing reconciliation', {
       error: error.message,
       reconciliationId: req.params.id,
@@ -295,7 +295,7 @@ async function deleteReconciliation(req, res) {
       success: true,
       message: 'Reconciliation deleted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting reconciliation', {
       error: error.message,
       reconciliationId: req.params.id,
@@ -349,7 +349,7 @@ async function addReconciliationItem(req, res) {
       item: mapReconciliationItemDbToApi(item),
       message: 'Reconciliation item added successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error adding reconciliation item', {
       error: error.message,
       reconciliationId: req.params.id,
@@ -386,7 +386,7 @@ async function getReconciliationItems(req, res) {
       items: mapReconciliationItemDbArrayToApi(items),
       count: items.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching reconciliation items', {
       error: error.message,
       reconciliationId: req.params.id,
@@ -432,7 +432,7 @@ async function updateReconciliationItem(req, res) {
       item: mapReconciliationItemDbToApi(item),
       message: 'Reconciliation item updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating reconciliation item', {
       error: error.message,
       itemId: req.params.id,
@@ -494,7 +494,7 @@ async function resolveReconciliationItem(req, res) {
       item: mapReconciliationItemDbToApi(item),
       message: 'Reconciliation item resolved successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error resolving reconciliation item', {
       error: error.message,
       itemId: req.params.id,

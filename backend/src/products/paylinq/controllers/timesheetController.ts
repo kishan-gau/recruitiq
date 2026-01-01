@@ -34,7 +34,7 @@ async function createTimesheet(req, res) {
       timesheet: timesheet,
       message: 'Timesheet created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating timesheet', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -76,7 +76,7 @@ async function getTimesheets(req, res) {
       timesheets: timesheets,
       count: timesheets.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching timesheets', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -112,7 +112,7 @@ async function getEmployeeTimesheets(req, res) {
       timesheets: timesheets,
       count: timesheets.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching employee timesheets', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -146,7 +146,7 @@ async function getPayrollRunTimesheets(req, res) {
       timesheets: timesheets,
       count: timesheets.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching payroll run timesheets', {
       error: error.message,
       payrollRunId: req.params.payrollRunId,
@@ -184,7 +184,7 @@ async function getTimesheetById(req, res) {
       success: true,
       timesheet: timesheet,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching timesheet', {
       error: error.message,
       timesheetId: req.params.id,
@@ -234,7 +234,7 @@ async function updateTimesheet(req, res) {
       timesheet: timesheet,
       message: 'Timesheet updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating timesheet', {
       error: error.message,
       timesheetId: req.params.id,
@@ -272,7 +272,7 @@ async function submitTimesheet(req, res) {
       timesheet: timesheet,
       message: 'Timesheet submitted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error submitting timesheet', {
       error: error.message,
       timesheetId: req.params.id,
@@ -318,7 +318,7 @@ async function approveTimesheet(req, res) {
       timesheet: timesheet,
       message: 'Timesheet approved successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error approving timesheet', {
       error: error.message,
       timesheetId: req.params.id,
@@ -370,7 +370,7 @@ async function rejectTimesheet(req, res) {
       timesheet: timesheet,
       message: 'Timesheet rejected successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error rejecting timesheet', {
       error: error.message,
       timesheetId: req.params.id,
@@ -422,7 +422,7 @@ async function createRatedTimeLines(req, res) {
       count: ratedLines.length,
       message: 'Rated time lines created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating rated time lines', {
       error: error.message,
       timesheetId: req.params.id,
@@ -475,7 +475,7 @@ async function deleteTimesheet(req, res) {
       success: true,
       message: 'Timesheet deleted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting timesheet', {
       error: error.message,
       timesheetId: req.params.id,
