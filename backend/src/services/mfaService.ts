@@ -13,7 +13,7 @@ import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import pool from '../config/database.js';
+import { query } from '../config/database.js';
 import logger from '../utils/logger.js';
 
 class MFAService {
@@ -299,14 +299,16 @@ class MFAService {
    */
   async getMFAStatus(userId) {
     try {
-      const result = await pool.query(
+      const result = await query(
         `SELECT mfa_enabled, 
                 mfa_backup_codes,
                 mfa_backup_codes_used,
                 mfa_enabled_at
          FROM users 
          WHERE id = $1`,
-        [userId]
+        [userId],
+        null,
+        { operation: 'SELECT', table: 'users' }
       );
 
       if (result.rows.length === 0) {
@@ -337,11 +339,13 @@ class MFAService {
    */
   async checkMFARequired(userId) {
     try {
-      const result = await pool.query(
+      const result = await query(
         `SELECT mfa_enabled, mfa_secret 
          FROM users 
          WHERE id = $1`,
-        [userId]
+        [userId],
+        null,
+        { operation: 'SELECT', table: 'users' }
       );
 
       if (result.rows.length === 0) {
