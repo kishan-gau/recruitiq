@@ -19,8 +19,12 @@ class PaymentService {
   
   paymentRepository: any;
 
-constructor() {
-    this.paymentRepository = new PaymentRepository();
+  /**
+   * Constructor with dependency injection
+   * @param {PaymentRepository} paymentRepository - Payment repository instance
+   */
+  constructor(paymentRepository = null) {
+    this.paymentRepository = paymentRepository || new PaymentRepository();
   }
 
   // ==================== VALIDATION SCHEMAS ====================

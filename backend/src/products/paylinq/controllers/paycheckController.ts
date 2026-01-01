@@ -4,13 +4,14 @@
  */
 
 import PayrollService from '../services/payrollService.js';
-
-const payrollService = new PayrollService();
-import payslipPdfService from '../services/payslipPdfService.js';
+import PayslipPdfService from '../services/payslipPdfService.js';
 import emailService from '../../../services/emailService.js';
 import { query as db } from '../../../config/database.js';
 import { mapApiToDb, mapPaycheckDbToApi, mapPaycheckDbArrayToApi } from '../utils/dtoMapper.js';
 import logger from '../../../utils/logger.js';
+
+const payrollService = new PayrollService();
+const payslipPdfService = new PayslipPdfService();
 
 /**
  * Get all paychecks

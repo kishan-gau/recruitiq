@@ -3,9 +3,11 @@
  * Handles HTTP requests for payment transaction management
  */
 
-import paymentService from '../services/paymentService.js';
+import PaymentService from '../services/paymentService.js';
 import { mapApiToDb } from '../utils/dtoMapper.js';
 import logger from '../../../utils/logger.js';
+
+const paymentService = new PaymentService();
 
 /**
  * Create a payment transaction

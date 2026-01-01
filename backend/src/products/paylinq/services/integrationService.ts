@@ -17,10 +17,16 @@ class PaylinqIntegrationService {
 
   payrollRepository: any;
 
-constructor() {
-    this.payrollRepository = new PayrollRepository();
-    this.logger = logger;
-    this.errorHandler = integrationErrorHandler;
+  /**
+   * Constructor with dependency injection
+   * @param {PayrollRepository} payrollRepository - Payroll repository instance
+   * @param {Object} loggerInstance - Logger instance
+   * @param {Object} errorHandlerInstance - Error handler instance
+   */
+  constructor(payrollRepository = null, loggerInstance = null, errorHandlerInstance = null) {
+    this.payrollRepository = payrollRepository || new PayrollRepository();
+    this.logger = loggerInstance || logger;
+    this.errorHandler = errorHandlerInstance || integrationErrorHandler;
   }
 
   /**
