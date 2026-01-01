@@ -78,6 +78,13 @@ router.get(
   paycheckController.getEmployeePaychecks
 );
 
+router.get(
+  '/employees/:employeeId/ytd-summary',
+  requirePermission('payroll:paychecks:read'),
+  validate(employeeIdParamSchema, 'params'),
+  paycheckController.getEmployeeYtdSummary
+);
+
 router.put(
   '/:id',
   requirePermission('payroll:paychecks:update'),

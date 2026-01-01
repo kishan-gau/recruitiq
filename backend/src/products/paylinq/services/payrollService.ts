@@ -2574,6 +2574,72 @@ class PayrollService {
       throw _error;
     }
   }
+
+  /**
+   * Get YTD (Year-to-Date) payroll summary for an employee
+   * @param {string} employeeId - Employee UUID
+   * @param {string} organizationId - Organization UUID
+   * @param {number} year - Year for YTD summary (defaults to current year)
+   * @returns {Promise<Object>} YTD summary with totals
+   */
+  async getEmployeeYtdSummary(employeeId, organizationId, year = null) {
+    try {
+      const targetYear = year || new Date().getFullYear();
+      
+      const sql = `
+        SELECT 
+          COUNT(*) as paycheck_count,
+          SUM(gross_pay) as ytd_gross_pay,
+          SUM(net_pay) as ytd_net_pay,
+          SUM(total_taxes) as ytd_taxes,
+          SUM(total_deductions) as ytd_deductions,
+          MIN(pay_period_start_date) as first_pay_period,
+          MAX(pay_period_end_date) as last_pay_period
+        FROM payroll.paycheck
+        WHERE employee_id = $1
+          AND organization_id = $2
+          AND EXTRACT(YEAR FROM pay_period_end_date) = $3
+          AND status IN ('approved', 'paid')
+          AND deleted_at IS NULL
+      `;
+
+      const result = await db(sql, [employeeId, organizationId, targetYear], organizationId);
+
+      if (result.rows.length === 0 || result.rows[0].paycheck_count === 0) {
+        return {
+          year: targetYear,
+          paycheckCount: 0,
+          ytdGrossPay: 0,
+          ytdNetPay: 0,
+          ytdTaxes: 0,
+          ytdDeductions: 0,
+          firstPayPeriod: null,
+          lastPayPeriod: null
+        };
+      }
+
+      const row = result.rows[0];
+
+      return {
+        year: targetYear,
+        paycheckCount: parseInt(row.paycheck_count) || 0,
+        ytdGrossPay: parseFloat(row.ytd_gross_pay) || 0,
+        ytdNetPay: parseFloat(row.ytd_net_pay) || 0,
+        ytdTaxes: parseFloat(row.ytd_taxes) || 0,
+        ytdDeductions: parseFloat(row.ytd_deductions) || 0,
+        firstPayPeriod: row.first_pay_period,
+        lastPayPeriod: row.last_pay_period
+      };
+    } catch (_error) {
+      logger.error('Error fetching employee YTD summary', {
+        error: _error.message,
+        employeeId,
+        organizationId,
+        year: year || new Date().getFullYear()
+      });
+      throw new Error('Failed to fetch YTD summary');
+    }
+  }
 }
 
 export default PayrollService;

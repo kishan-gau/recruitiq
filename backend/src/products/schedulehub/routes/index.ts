@@ -14,6 +14,7 @@ import ShiftTemplateController from '../controllers/shiftTemplateController.js';
 import RoleController from '../controllers/roleController.js';
 import StationController from '../controllers/stationController.js';
 import StatsController from '../controllers/statsController.js';
+import EmployeeController from '../controllers/employeeController.js';
 
 const router: Router = express.Router();
 
@@ -31,12 +32,25 @@ const shiftTemplateController = new ShiftTemplateController();
 const roleController = new RoleController();
 const stationController = new StationController();
 const statsController = new StatsController();
+const employeeController = new EmployeeController();
 
 // ============================================================================
 // STATS ROUTES
 // ============================================================================
 
 router.get('/stats', requirePermission('scheduling:stats:read'), statsController.getStats);
+
+// ============================================================================
+// EMPLOYEE SELF-SERVICE ROUTES (Mobile App)
+// ============================================================================
+
+// Clock-in/out endpoints (employee-centric, no shift ID required)
+router.post('/clock-in', employeeController.clockIn);
+router.post('/clock-out', employeeController.clockOut);
+router.get('/clock-status', employeeController.getClockStatus);
+
+// Employee shifts query
+router.get('/employee-shifts', employeeController.getEmployeeShifts);
 
 // ============================================================================
 // WORKER ROUTES
