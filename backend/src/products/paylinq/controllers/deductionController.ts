@@ -35,7 +35,7 @@ async function createDeduction(req, res) {
       deduction: deduction,
       message: 'Deduction created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating deduction', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -75,7 +75,7 @@ async function getDeductions(req, res) {
       deductions: deductions,
       count: deductions.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching deductions', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -110,7 +110,7 @@ async function getEmployeeDeductions(req, res) {
       deductions: deductions,
       count: deductions.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching employee deductions', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -148,7 +148,7 @@ async function getDeductionById(req, res) {
       success: true,
       deduction: deduction,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching deduction', {
       error: error.message,
       deductionId: req.params.id,
@@ -200,7 +200,7 @@ async function updateDeduction(req, res) {
       deduction: deduction,
       message: 'Deduction updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating deduction', {
       error: error.message,
       deductionId: req.params.id,
@@ -254,7 +254,7 @@ async function deleteDeduction(req, res) {
       success: true,
       message: 'Deduction deleted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting deduction', {
       error: error.message,
       deductionId: req.params.id,

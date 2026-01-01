@@ -38,7 +38,7 @@ async function getPaychecks(req, res) {
       paychecks: mapPaycheckDbArrayToApi(paychecks),
       count: paychecks.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching paychecks', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -75,7 +75,7 @@ async function getPaycheckById(req, res) {
       success: true,
       paycheck: mapPaycheckDbToApi(paycheck),
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching paycheck', {
       error: error.message,
       paycheckId: req.params.id,
@@ -150,7 +150,7 @@ async function getPaycheckComponents(req, res) {
       success: true,
       components,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching paycheck components', {
       error: error.message,
       stack: error.stack,
@@ -193,7 +193,7 @@ async function getEmployeePaychecks(req, res) {
       paychecks: mapPaycheckDbArrayToApi(paychecks),
       count: paychecks.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching employee paychecks', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -255,7 +255,7 @@ async function updatePaycheck(req, res) {
       paycheck: mapPaycheckDbToApi(paycheck),
       message: 'Paycheck updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating paycheck', {
       error: error.message,
       paycheckId: req.params.id,
@@ -303,7 +303,7 @@ async function voidPaycheck(req, res) {
       paycheck: mapPaycheckDbToApi(paycheck),
       message: 'Paycheck voided successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error voiding paycheck', {
       error: error.message,
       paycheckId: req.params.id,
@@ -364,7 +364,7 @@ async function reissuePaycheck(req, res) {
       paycheck: mapPaycheckDbToApi(newPaycheck),
       message: 'Paycheck reissued successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error reissuing paycheck', {
       error: error.message,
       paycheckId: req.params.id,
@@ -425,7 +425,7 @@ async function deletePaycheck(req, res) {
       success: true,
       message: 'Paycheck deleted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting paycheck', {
       error: error.message,
       paycheckId: req.params.id,
@@ -487,7 +487,7 @@ async function downloadPayslipPdf(req, res) {
     // Send PDF
     res.send(pdfBuffer);
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error generating payslip PDF', {
       error: error.message,
       stack: error.stack,
@@ -635,7 +635,7 @@ This payslip is confidential and intended only for the recipient.
       },
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error sending payslip', {
       error: error.message,
       stack: error.stack,

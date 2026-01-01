@@ -32,7 +32,7 @@ export async function setForfaitRule(req, res, next) {
       success: true,
       forfaitRule: result
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error setting forfait rule', {
       error: error.message,
       componentCode: req.params.componentCode,
@@ -57,7 +57,7 @@ export async function getForfaitRule(req, res, next) {
       success: true,
       forfaitRule: forfaitRule || { enabled: false }
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting forfait rule', {
       error: error.message,
       componentCode: req.params.componentCode
@@ -81,7 +81,7 @@ export async function removeForfaitRule(req, res, next) {
       success: true,
       message: 'Forfait rule removed successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error removing forfait rule', {
       error: error.message,
       componentCode: req.params.componentCode
@@ -102,7 +102,7 @@ export async function getForfaitRuleTemplates(req, res, next) {
       success: true,
       templates
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error getting forfait rule templates', {
       error: error.message
     });
@@ -141,7 +141,7 @@ export async function previewForfaitCalculation(req, res, next) {
         description: forfaitRule.description
       }
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error previewing forfait calculation', {
       error: error.message,
       body: req.body

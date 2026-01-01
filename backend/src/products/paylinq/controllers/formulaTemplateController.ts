@@ -29,7 +29,7 @@ export const getTemplates = async (req, res, next) => {
       count: templates.length,
       data: templates
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -49,7 +49,7 @@ export const getTemplateById = async (req, res, next) => {
       success: true,
       data: template
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -69,7 +69,7 @@ export const getTemplateByCode = async (req, res, next) => {
       success: true,
       data: template
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -92,7 +92,7 @@ export const createTemplate = async (req, res, next) => {
       message: 'Template created successfully',
       data: template
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -118,7 +118,7 @@ export const updateTemplate = async (req, res, next) => {
       message: 'Template updated successfully',
       data: template
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -139,7 +139,7 @@ export const deleteTemplate = async (req, res, next) => {
       message: 'Template deleted successfully',
       data: result
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -165,7 +165,7 @@ export const applyTemplate = async (req, res, next) => {
       message: 'Template applied successfully',
       data: result
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -186,7 +186,7 @@ export const getPopularTemplates = async (req, res, next) => {
       count: templates.length,
       data: templates
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -207,7 +207,7 @@ export const getRecommendedTemplates = async (req, res, next) => {
       count: templates.length,
       data: templates
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };
@@ -232,7 +232,7 @@ export const searchByTags = async (req, res, next) => {
       count: templates.length,
       data: templates
     });
-  } catch (_error) {
+  } catch (error) {
     next(error);
   }
 };

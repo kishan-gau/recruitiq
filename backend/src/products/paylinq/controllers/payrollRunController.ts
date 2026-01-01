@@ -40,7 +40,7 @@ async function createPayrollRun(req, res) {
       payrollRun: mapPayrollRunDbToApi(payrollRun),
       message: 'Payroll run created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating payroll run', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -113,7 +113,7 @@ async function getPayrollRuns(req, res) {
       page: filters.page || 1,
       limit: filters.limit || payrollRuns.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching payroll runs', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -196,7 +196,7 @@ async function getPayrollRunById(req, res) {
       success: true,
       payrollRun: apiData,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching payroll run', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -261,7 +261,7 @@ async function calculatePayroll(req, res) {
       result: resultWithSummary,
       message: 'Payroll calculated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error calculating payroll', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -316,7 +316,7 @@ async function updatePayrollRun(req, res) {
       payrollRun: mapPayrollRunDbToApi(payrollRun),
       message: 'Payroll run updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating payroll run', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -362,7 +362,7 @@ async function finalizePayrollRun(req, res) {
       payrollRun: mapPayrollRunDbToApi(payrollRun),
       message: 'Payroll run finalized successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error finalizing payroll run', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -415,7 +415,7 @@ async function deletePayrollRun(req, res) {
       success: true,
       message: 'Payroll run deleted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting payroll run', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -505,7 +505,7 @@ async function getPayrollRunPaychecks(req, res) {
       paychecks: enrichedPaychecks,
       count: enrichedPaychecks.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching payroll run paychecks', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -542,7 +542,7 @@ async function markPayrollRunForReview(req, res) {
       payrollRun: mapPayrollRunDbToApi(payrollRun),
       message: 'Payroll run marked for review successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error marking payroll run for review', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -605,7 +605,7 @@ async function processPayrollRun(req, res) {
       payrollRun: mapPayrollRunDbToApi(finalizedRun),
       message: 'Payroll run processed successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error processing payroll run', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -651,7 +651,7 @@ async function approvePayrollRun(req, res) {
       payrollRun: mapPayrollRunDbToApi(payrollRun),
       message: 'Payroll run approved successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error approving payroll run', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -719,7 +719,7 @@ async function cancelPayrollRun(req, res) {
       payrollRun: mapPayrollRunDbToApi(cancelledRun),
       message: 'Payroll run cancelled successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error cancelling payroll run', {
       error: error.message,
       payrollRunId: req.params.id,
@@ -904,7 +904,7 @@ async function sendPayslips(req, res) {
       },
     });
 
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error sending payslips', {
       error: error.message,
       payrollRunId: req.params.id,

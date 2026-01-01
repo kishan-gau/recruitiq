@@ -120,7 +120,7 @@ async function createSchedule(req, res) {
       schedule: mapScheduleDbToApi(schedule),
       message: 'Schedule created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating schedule', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -182,7 +182,7 @@ async function getSchedules(req, res) {
       pagination: result.pagination,
       count: result.schedules ? result.schedules.length : result.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching schedules', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -222,7 +222,7 @@ async function getEmployeeSchedules(req, res) {
       schedules: mapSchedulesDbToApi(schedules),
       count: schedules.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching employee schedules', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -262,7 +262,7 @@ async function getScheduleById(req, res) {
       success: true,
       schedule: mapScheduleDbToApi(schedule),
     });
-  } catch (_error) {
+  } catch (error) {
     // Handle NotFoundError with 404 status
     if (error.name === 'NotFoundError' || error.message?.includes('not found')) {
       return res.status(404).json({
@@ -327,7 +327,7 @@ async function updateSchedule(req, res) {
       schedule: mapScheduleDbToApi(schedule),
       message: 'Schedule updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating schedule', {
       error: error.message,
       scheduleId: req.params.id,
@@ -383,7 +383,7 @@ async function deleteSchedule(req, res) {
       success: true,
       message: 'Schedule deleted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting schedule', {
       error: error.message,
       scheduleId: req.params.id,
@@ -442,7 +442,7 @@ async function createChangeRequest(req, res) {
       request: request,
       message: 'Change request created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating schedule change request', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -491,7 +491,7 @@ async function getChangeRequests(req, res) {
       pagination: result.pagination,
       count: result.requests ? result.requests.length : result.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching schedule change requests', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -542,7 +542,7 @@ async function reviewChangeRequest(req, res) {
       result: result,
       message: `Change request ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error reviewing schedule change request', {
       error: error.message,
       requestId: req.params.id,

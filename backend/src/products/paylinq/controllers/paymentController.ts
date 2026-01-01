@@ -32,7 +32,7 @@ async function createPayment(req, res) {
       payment: payment,
       message: 'Payment created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating payment', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -71,7 +71,7 @@ async function getPayments(req, res) {
       payments: payments,
       count: payments.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching payments', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -108,7 +108,7 @@ async function getPaymentById(req, res) {
       success: true,
       payment: payment,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching payment', {
       error: error.message,
       paymentId: req.params.id,
@@ -146,7 +146,7 @@ async function getEmployeePayments(req, res) {
       payments: payments,
       count: payments.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching employee payments', {
       error: error.message,
       employeeId: req.params.employeeId,
@@ -192,7 +192,7 @@ async function updatePayment(req, res) {
       payment: payment,
       message: 'Payment updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating payment', {
       error: error.message,
       paymentId: req.params.id,
@@ -230,7 +230,7 @@ async function processPayment(req, res) {
       payment: payment,
       message: 'Payment processed successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error processing payment', {
       error: error.message,
       paymentId: req.params.id,
@@ -276,7 +276,7 @@ async function retryPayment(req, res) {
       payment: payment,
       message: 'Payment retry initiated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error retrying payment', {
       error: error.message,
       paymentId: req.params.id,
@@ -323,7 +323,7 @@ async function cancelPayment(req, res) {
       payment: payment,
       message: 'Payment cancelled successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error cancelling payment', {
       error: error.message,
       paymentId: req.params.id,
@@ -362,7 +362,7 @@ async function getPendingPayments(req, res) {
       payments: payments,
       count: payments.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching pending payments', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -405,7 +405,7 @@ async function deletePayment(req, res) {
       success: true,
       message: 'Payment deleted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting payment', {
       error: error.message,
       paymentId: req.params.id,

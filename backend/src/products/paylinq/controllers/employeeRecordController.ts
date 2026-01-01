@@ -32,7 +32,7 @@ async function createEmployeeRecord(req, res) {
       employee: mapEmployeeDbToApi(employee),
       message: 'Employee record created successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating employee record', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -92,7 +92,7 @@ async function getEmployeeRecords(req, res) {
       pagination: result.pagination,
       count: result.employees.length,
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching employee records', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -129,7 +129,7 @@ async function getEmployeeRecordById(req, res) {
       success: true,
       employee: mapEmployeeDbToApi(employee),
     });
-  } catch (_error) {
+  } catch (error) {
     // Handle NotFoundError
     if (error.message === 'Employee record not found' || error.name === 'NotFoundError') {
       return res.status(404).json({
@@ -185,7 +185,7 @@ async function updateEmployeeRecord(req, res) {
       employee: mapEmployeeDbToApi(employee),
       message: 'Employee record updated successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating employee record', {
       error: error.message,
       employeeId: req.params.id,
@@ -240,7 +240,7 @@ async function deleteEmployeeRecord(req, res) {
       success: true,
       message: 'Employee record deleted successfully',
     });
-  } catch (_error) {
+  } catch (error) {
     // Handle NotFoundError
     if (error.message === 'Employee record not found' || error.name === 'NotFoundError') {
       return res.status(404).json({
@@ -288,7 +288,7 @@ async function getEmployeePayrollHistory(req, res) {
       history: history,
       count: history.length,
     });
-  } catch (_error) {
+  } catch (error) {
     // Handle NotFoundError
     if (error.message === 'Employee record not found' || error.name === 'NotFoundError') {
       return res.status(404).json({

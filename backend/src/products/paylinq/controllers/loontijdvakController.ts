@@ -35,7 +35,7 @@ async function create(req, res) {
       loontijdvak,
       message: 'Loontijdvak period created successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error creating loontijdvak period', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -82,7 +82,7 @@ async function list(req, res) {
       loontijdvakken: result.loontijdvakken,
       pagination: result.pagination
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error listing loontijdvak periods', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -120,7 +120,7 @@ async function getById(req, res) {
       success: true,
       loontijdvak
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error fetching loontijdvak period', {
       error: error.message,
       loontijdvakId: req.params.id,
@@ -170,7 +170,7 @@ async function update(req, res) {
       loontijdvak,
       message: 'Loontijdvak period updated successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error updating loontijdvak period', {
       error: error.message,
       loontijdvakId: req.params.id,
@@ -215,7 +215,7 @@ async function deleteLoontijdvak(req, res) {
       success: true,
       message: 'Loontijdvak period deleted successfully'
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error deleting loontijdvak period', {
       error: error.message,
       loontijdvakId: req.params.id,
@@ -258,7 +258,7 @@ async function findByDate(req, res) {
       success: true,
       loontijdvak
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error finding loontijdvak by date', {
       error: error.message,
       date: req.query.date,
@@ -304,7 +304,7 @@ async function bulkGenerate(req, res) {
       result,
       message: `Successfully generated ${result.created.length} loontijdvak periods for ${year}`
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error bulk generating loontijdvak periods', {
       error: error.message,
       organizationId: req.user?.organization_id,
@@ -337,7 +337,7 @@ async function checkOverlaps(req, res) {
       hasOverlaps: overlaps.length > 0,
       count: overlaps.length
     });
-  } catch (_error) {
+  } catch (error) {
     logger.error('Error checking loontijdvak overlaps', {
       error: error.message,
       organizationId: req.user?.organization_id
