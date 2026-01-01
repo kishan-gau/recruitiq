@@ -5,7 +5,7 @@
 
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { query } from '../config/database.js';
+import { query, getClient } from '../config/database.js';
 import logger from '../utils/logger.js';
 import tokenBlacklist from './tokenBlacklist.js';
 
@@ -57,7 +57,7 @@ class PasswordResetService {
    * @returns {Promise<Object>} { token: string, expiresAt: Date, userId: string }
    */
   async requestPasswordReset(email) {
-    const client = await pool.connect();
+    const client = await getClient();
     
     try {
       await client.query('BEGIN');
@@ -187,7 +187,7 @@ class PasswordResetService {
    * @returns {Promise<boolean>} Success status
    */
   async resetPassword(token, newPassword) {
-    const client = await pool.connect();
+    const client = await getClient();
     
     try {
       // Verify token first

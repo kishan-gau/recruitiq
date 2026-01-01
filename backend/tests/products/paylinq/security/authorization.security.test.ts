@@ -36,6 +36,7 @@ describe('PayLinQ Authorization Security Tests', () => {
       mockRepository = {
         findById: jest.fn(),
         findAll: jest.fn(),
+        findByCode: jest.fn(),
         findTemplateById: jest.fn(),
         findTemplatesByOrganization: jest.fn(),
         createTemplate: jest.fn(),
@@ -52,7 +53,7 @@ describe('PayLinQ Authorization Security Tests', () => {
       // Org1's worker type
       mockRepository.findById.mockResolvedValue(null);
 
-      const result = await workerTypeService.getWorkerTypeById(
+      const result = await workerTypeService.getWorkerTypeTemplateById(
         workerType1Id,
         org2Id // Different org trying to access org1's data
       );
@@ -76,7 +77,7 @@ describe('PayLinQ Authorization Security Tests', () => {
 
       mockRepository.findTemplatesByOrganization.mockResolvedValue(org1WorkerTypes);
 
-      const result = await workerTypeService.listWorkerTypeTemplates(org1Id);
+      const result = await workerTypeService.getWorkerTypeTemplates(org1Id);
 
       expect(mockRepository.findTemplatesByOrganization).toHaveBeenCalledWith(org1Id);
       
@@ -101,6 +102,7 @@ describe('PayLinQ Authorization Security Tests', () => {
         created_by: user1Id,
       };
 
+      mockRepository.findByCode.mockResolvedValue(null); // No duplicate
       mockRepository.createTemplate.mockResolvedValue(createdTemplate);
 
       await workerTypeService.createWorkerTypeTemplate(templateData, org1Id, user1Id);

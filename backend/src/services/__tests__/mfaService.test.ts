@@ -17,8 +17,15 @@ jest.unstable_mockModule('speakeasy', () => ({ default: mockSpeakeasy }));
 jest.unstable_mockModule('qrcode', () => ({ default: mockQRCode }));
 jest.unstable_mockModule('crypto', () => ({ default: mockCrypto }));
 jest.unstable_mockModule('bcryptjs', () => ({ default: mockBcrypt }));
-jest.unstable_mockModule('../../config/database.ts', () => ({ default: mockPool }));
-jest.unstable_mockModule('../../utils/logger.ts', () => ({ default: mockLogger }));
+jest.unstable_mockModule('../../config/database', () => ({ 
+  default: mockPool,
+  query: mockPool.query,
+  getClient: mockPool.connect,
+  transaction: jest.fn(),
+  healthCheck: jest.fn(),
+  closePool: jest.fn()
+}));
+jest.unstable_mockModule('../../utils/logger', () => ({ default: mockLogger }));
 
 let mfaService;
 let mockClient;

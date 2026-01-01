@@ -181,7 +181,7 @@ describe('ForfaitRuleRepository', () => {
         expect.stringContaining('UPDATE forfait_rules'),
         expect.arrayContaining([testUserId, testRuleId, testOrgId]),
         testOrgId,
-        { operation: 'UPDATE', table: 'forfait_rules' }
+        { operation: 'DELETE', table: 'forfait_rules' }
       );
     });
   });
