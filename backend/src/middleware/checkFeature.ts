@@ -24,7 +24,7 @@ export const checkFeature = (featureName) => {
       }
 
       // Get user's organization
-      const userResult = await pool.query(
+      const userResult = await dbQuery(
         'SELECT organization_id FROM users WHERE id = $1',
         [userId]
       );
