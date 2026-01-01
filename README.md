@@ -15,6 +15,7 @@ RecruitIQ is a comprehensive recruitment management platform built for modern hi
 - 🔒 **Multi-Tenant Security** - Enterprise-grade security with organization-level data isolation
 - 🌐 **API-First Design** - RESTful API for integrations and custom workflows
 - ⚡ **Performance Optimized** - Fast response times with caching and query optimization
+- 🤖 **Workflow Automation** - ActivePieces integration for no-code automation with 400+ apps
 
 ## 🏗️ Architecture
 
@@ -106,6 +107,13 @@ RecruitIQ follows a layered architecture pattern:
 - **[Mobile UX Strategy](./docs/mobile/)** - Progressive Web App proposal for employee portal
   - [Full Proposal](./docs/mobile/EMPLOYEE_MOBILE_UX_PROPOSAL.md) - Comprehensive 50-page analysis
   - [Quick Reference](./docs/mobile/MOBILE_UX_QUICK_REFERENCE.md) - Executive summary (5 min read)
+
+### Integrations & Automation
+- **[ActivePieces Integration Plan](./ACTIVEPIECES_INTEGRATION_PLAN.md)** - Workflow automation platform integration
+  - [Quick Start Guide](./docs/integrations/ACTIVEPIECES_QUICK_START.md) - 30-minute setup guide
+  - Connect to 400+ apps (Slack, Gmail, OpenAI, etc.)
+  - No-code workflow builder for custom automation
+  - AI-powered recruitment workflows
 
 ## 📦 Installation
 
