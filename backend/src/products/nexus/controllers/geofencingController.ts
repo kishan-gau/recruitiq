@@ -75,7 +75,7 @@ class GeofencingAdminController {
       if (enabled) {
         parsedLatitude = parseFloat(latitude);
         parsedLongitude = parseFloat(longitude);
-        parsedRadiusMeters = parseInt(radiusMeters);
+        parsedRadiusMeters = parseFloat(radiusMeters); // Use parseFloat instead of parseInt for decimal precision
         
         // Validate parsed values
         if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
@@ -92,6 +92,7 @@ class GeofencingAdminController {
           });
         }
         
+        // Use parseFloat for radius to preserve decimal precision
         if (isNaN(parsedRadiusMeters) || parsedRadiusMeters <= 0 || parsedRadiusMeters > 100000) {
           return res.status(400).json({
             success: false,
@@ -107,7 +108,7 @@ class GeofencingAdminController {
           enabled,
           latitude: parsedLatitude,
           longitude: parsedLongitude,
-          radiusMeters: parsedRadiusMeters,
+          radiusMeters: parsedRadiusMeters, // Now properly preserves decimal precision
           strict: strict || false,
         },
         userId

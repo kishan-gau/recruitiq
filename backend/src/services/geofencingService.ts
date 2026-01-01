@@ -254,7 +254,12 @@ class GeofencingService {
         employeeLocation
       );
       
-      const withinGeofence = distance <= geofenceConfig.radiusMeters;
+      // GPS_ACCURACY_BUFFER: Typical GPS accuracy is 5-10m
+      // Consider adding small tolerance for GPS precision issues
+      // For now, using exact distance for strict enforcement
+      // Future enhancement: Make buffer configurable per location
+      const GPS_ACCURACY_BUFFER = 0; // Can be increased to 5-10m if needed
+      const withinGeofence = distance <= (geofenceConfig.radiusMeters + GPS_ACCURACY_BUFFER);
       
       // Log the validation
       this.logger.info('Geofence validation', {
@@ -299,9 +304,24 @@ class GeofencingService {
     } catch (error: any) {
       this.logger.error('Error validating clock-in location:', error);
       
+      // SECURITY NOTE: Fail-safe mechanism for production
+      // Consider implementing:
+      // - Circuit breaker pattern to detect systematic failures
+      // - Manual approval queue for failed validations
+      // - Alerts to administrators when validation fails
+      // - Rate limiting to prevent exploitation
+      // Current fail-safe allows clock-in to avoid blocking legitimate users
+      // but logs error for investigation
+      
       // On error, fail safe based on environment
       if (process.env.NODE_ENV === 'production') {
         // In production, allow but log error
+        this.logger.warn('Geofencing validation failed, allowing clock-in', {
+          employeeId,
+          organizationId,
+          error: error.message,
+        });
+        
         return {
           allowed: true,
           withinGeofence: false,

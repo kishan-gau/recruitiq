@@ -154,8 +154,13 @@ class BiometricAuthService {
         timeout: 60000,
       });
       
-      // Store challenge temporarily (in production, use Redis or session)
-      // For now, return it to be stored client-side
+      // SECURITY NOTE: Challenge should be stored server-side with TTL in production
+      // Current implementation returns challenge to client for simplicity
+      // Production recommendation:
+      // - Store challenge in Redis with 60-second TTL
+      // - Associate challenge with user session
+      // - Validate challenge on verification endpoint
+      // This prevents challenge manipulation and replay attacks
       
       this.logger.info('Generated biometric registration options', {
         employeeId: validated.employeeId,
