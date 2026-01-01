@@ -6,12 +6,15 @@
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import * as Joi from 'joi';
+import GeofencingService from '../../../services/geofencingService.js';
 
 class EmployeeScheduleService {
   private logger: typeof logger;
+  private geofencingService: GeofencingService;
 
   constructor() {
     this.logger = logger;
+    this.geofencingService = new GeofencingService();
   }
 
   /**
@@ -50,6 +53,27 @@ class EmployeeScheduleService {
       if (checkResult.rows.length > 0) {
         throw new Error('Employee already has an active clock-in for today. Please clock out first.');
       }
+      
+      // Validate geofencing if location provided
+      const geofenceValidation = await this.geofencingService.validateClockInLocation(
+        employeeId,
+        organizationId,
+        location ? {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        } : undefined
+      );
+      
+      // If strict geofencing is enabled and validation failed, reject clock-in
+      if (!geofenceValidation.allowed) {
+        this.logger.warn('Clock-in rejected due to geofencing', {
+          employeeId,
+          organizationId,
+          distance: geofenceValidation.distance,
+          errorMessage: geofenceValidation.errorMessage,
+        });
+        throw new Error(geofenceValidation.errorMessage || 'Clock-in not allowed at this location');
+      }
 
       // Create clock-in event
       const insertSql = `
@@ -82,10 +106,23 @@ class EmployeeScheduleService {
       this.logger.info('Employee clocked in successfully', {
         employeeId,
         organizationId,
-        eventId: result.rows[0].id
+        eventId: result.rows[0].id,
+        geofenceValidation: {
+          withinGeofence: geofenceValidation.withinGeofence,
+          distance: geofenceValidation.distance,
+          warning: geofenceValidation.warningMessage,
+        },
       });
 
-      return result.rows[0];
+      // Return result with geofencing info
+      return {
+        ...result.rows[0],
+        geofenceValidation: {
+          withinGeofence: geofenceValidation.withinGeofence,
+          distance: geofenceValidation.distance,
+          warning: geofenceValidation.warningMessage,
+        },
+      };
     } catch (error: any) {
       this.logger.error('Error in clockIn service:', error);
       throw error;

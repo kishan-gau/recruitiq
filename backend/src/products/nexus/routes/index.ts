@@ -14,6 +14,7 @@ import BenefitsController from '../controllers/benefitsController.js';
 import AttendanceController from '../controllers/attendanceController.js';
 import DepartmentController from '../controllers/departmentController.js';
 import LocationController from '../controllers/locationController.js';
+import GeofencingAdminController from '../controllers/geofencingController.js';
 import DocumentController from '../controllers/documentController.js';
 import ReportsController from '../controllers/reportsController.js';
 import * as userAccessController from '../controllers/userAccessController.js';
@@ -36,6 +37,7 @@ const benefitsController = new BenefitsController();
 const attendanceController = new AttendanceController();
 const departmentController = new DepartmentController();
 const locationController = new LocationController();
+const geofencingController = new GeofencingAdminController();
 const documentController = new DocumentController();
 const reportsController = new ReportsController();
 
@@ -197,6 +199,11 @@ router.get('/locations', requirePermission('locations:read'), locationController
 router.post('/locations', requirePermission('locations:manage'), locationController.createLocation);
 router.patch('/locations/:id', requirePermission('locations:manage'), locationController.updateLocation);
 router.delete('/locations/:id', requirePermission('locations:manage'), locationController.deleteLocation);
+
+// Geofencing management - require 'locations:manage'
+router.get('/locations/:locationId/geofence', requirePermission('locations:read'), geofencingController.getLocationGeofence);
+router.put('/locations/:locationId/geofence', requirePermission('locations:manage'), geofencingController.updateLocationGeofence);
+router.post('/locations/:locationId/geofence/test', requirePermission('locations:manage'), geofencingController.testGeofence);
 
 // ========== DOCUMENT ROUTES ==========
 router.post('/documents', documentController.createDocument);
