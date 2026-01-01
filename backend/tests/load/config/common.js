@@ -107,7 +107,7 @@ export const CHECKS = {
     try {
       JSON.parse(r.body);
       return true;
-    } catch (e) {
+    } catch (error) {
       return false;
     }
   }},

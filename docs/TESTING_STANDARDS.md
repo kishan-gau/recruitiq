@@ -3508,6 +3508,178 @@ beforeEach(() => {
 });
 ```
 
+### Error Handling in Tests: Catch Block Naming Standard (MANDATORY)
+
+**CRITICAL:** All tests MUST use consistent naming for error parameters in catch blocks.
+
+#### The Standard
+
+**ALWAYS use `error` as the catch block parameter name. NEVER use `_error`, `err`, `e`, or other variations.**
+
+```javascript
+// ✅ CORRECT: Use "error" consistently
+try {
+  await service.doSomething();
+} catch (error) {
+  // Handle or verify error
+  expect(error.message).toBe('Expected error');
+}
+
+// ❌ WRONG: Don't use underscore prefix
+try {
+  await service.doSomething();
+} catch (_error) {  // ❌ Inconsistent!
+  expect(_error.message).toBe('Expected error');
+}
+
+// ❌ WRONG: Don't use abbreviations
+try {
+  await service.doSomething();
+} catch (err) {  // ❌ Inconsistent!
+  expect(err.message).toBe('Expected error');
+}
+
+// ❌ WRONG: Don't use single letter
+try {
+  await service.doSomething();
+} catch (e) {  // ❌ Inconsistent!
+  expect(e.message).toBe('Expected error');
+}
+```
+
+#### Common Patterns
+
+**Pattern 1: Testing error logging**
+```javascript
+it('should log errors with proper context', async () => {
+  // Arrange
+  const dbError = new Error('Database connection failed');
+  mockQuery.mockRejectedValue(dbError);
+
+  // Act
+  try {
+    await repository.findById(mockId);
+  } catch (error) {
+    // ✅ Expected to throw - catch to verify logging
+  }
+
+  // Assert
+  expect(mockLogger.error).toHaveBeenCalledWith(
+    'Error finding product by ID',
+    expect.objectContaining({
+      id: mockId,
+      error: 'Database connection failed'
+    })
+  );
+});
+```
+
+**Pattern 2: Testing error cleanup (transactions)**
+```javascript
+it('should rollback transaction on error', async () => {
+  // Arrange
+  mockClient.query.mockImplementation((sql) => {
+    if (sql === 'BEGIN') return Promise.resolve();
+    if (sql.includes('UPDATE')) throw new Error('Database error');
+  });
+
+  // Act & Assert
+  await expect(
+    service.terminateEmployee('emp-id', 'org-id', 'user-id')
+  ).rejects.toThrow();
+
+  // Verify rollback was called
+  expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+  expect(mockClient.release).toHaveBeenCalled();
+});
+```
+
+**Pattern 3: Intentional catch-and-suppress**
+```javascript
+it('should handle server cleanup errors gracefully', async () => {
+  // Arrange
+  mockProcess.kill.mockImplementation(() => {
+    throw new Error('Process already stopped');
+  });
+
+  // Act
+  try {
+    await stopServer();
+  } catch (error) {
+    // ✅ Expected - server cleanup should not fail tests
+  }
+
+  // Assert
+  expect(mockLogger.warn).toHaveBeenCalledWith(
+    'Error stopping server',
+    expect.objectContaining({ error: 'Process already stopped' })
+  );
+});
+```
+
+#### Why This Standard Matters
+
+1. **Consistency:** All developers and AI assistants use the same convention
+2. **Readability:** `error` is more descriptive than `e`, `err`, or `_error`
+3. **Searchability:** Easy to find all error handling with `grep "catch (error)"`
+4. **Linting:** Most linters expect `error` as the standard parameter name
+5. **Industry Standard:** Used by Node.js, Express, Jest documentation, and most major projects
+6. **No Underscore Prefix:** The `_error` pattern suggests "unused" which is misleading in error handling
+
+#### When Error Variable is Intentionally Unused
+
+If you're catching an error but not using it (rare in tests), use a comment:
+
+```javascript
+try {
+  await service.doSomething();
+} catch (error) {  // ✅ Still use "error" even if unused
+  // Intentionally suppressing error - verified by other means
+}
+
+// NEVER do this:
+} catch (_error) {  // ❌ WRONG - underscore suggests "unused" anti-pattern
+```
+
+**Better approach for unused errors:**
+```javascript
+// ✅ BEST: Use expect().rejects when possible (no catch needed)
+await expect(service.doSomething()).rejects.toThrow();
+
+// ✅ GOOD: Document why error is unused
+try {
+  await service.doSomething();
+} catch (error) {
+  // Error caught to prevent test failure - validation done via mock calls
+}
+```
+
+#### Enforcement
+
+**Acceptance Criteria:**
+- ✅ ALL catch blocks use `error` parameter (never `_error`, `err`, `e`)
+- ✅ Consistent across unit, integration, and E2E tests
+- ✅ Code reviews enforce this standard
+- ✅ ESLint configuration can enforce this (optional)
+
+**Example ESLint Rule (optional):**
+```json
+{
+  "rules": {
+    "id-match": [
+      "error",
+      "^[a-zA-Z][a-zA-Z0-9]*$",
+      {
+        "onlyDeclarations": false,
+        "properties": false,
+        "ignoreDestructuring": false,
+        "exceptPatterns": ["^error$"]
+      }
+    ]
+  }
+}
+```
+
 ### Advanced Pattern: Proxy-Based Mocks for Functions with Methods
 
 **Use Case:** When mocking a function that also has methods attached (e.g., `query()` function with `query.getClient()` method), standard property assignment doesn't work with ES Modules.

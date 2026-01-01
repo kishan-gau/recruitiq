@@ -1927,16 +1927,16 @@ export async function down(knex) {
   try {
     await knex.raw('DROP SCHEMA IF EXISTS payroll CASCADE');
     console.log('✅ PayLinQ schema dropped successfully');
-  } catch (e) {
-    console.log(`Warning: Error dropping schema: ${e.message}`);
+  } catch (error) {
+    console.log(`Warning: Error dropping schema: ${error.message}`);
     // If cascade fails, try to drop the extension that might be blocking
     try {
       await knex.raw('DROP EXTENSION IF EXISTS btree_gist CASCADE');
       await knex.raw('DROP SCHEMA IF EXISTS payroll CASCADE');
       console.log('✅ PayLinQ schema dropped successfully after cleanup');
-    } catch (e2) {
-      console.log(`Error: Could not drop schema: ${e2.message}`);
-      throw e2;
+    } catch (error2) {
+      console.log(`Error: Could not drop schema: ${error2.message}`);
+      throw error2;
     }
   }
 };

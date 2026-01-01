@@ -310,6 +310,29 @@ describe('ServiceName', () => {
 });
 ```
 
+**Error Handling in Tests (MANDATORY):**
+
+All catch blocks MUST use `error` as the parameter name:
+
+```javascript
+// ✅ CORRECT: Use "error" consistently
+try {
+  await service.doSomething();
+} catch (error) {
+  // Handle or verify error
+  expect(error.message).toBe('Expected error');
+}
+
+// ❌ WRONG: Don't use _error, err, or e
+try {
+  await service.doSomething();
+} catch (_error) {  // ❌ Inconsistent!
+  expect(_error.message).toBe('Expected error');
+}
+```
+
+See [TESTING_STANDARDS.md - Error Handling in Tests](./docs/TESTING_STANDARDS.md#error-handling-in-tests-catch-block-naming-standard-mandatory) for complete guidelines.
+
 ---
 
 ## Security Standards
@@ -462,10 +485,12 @@ Before submitting code for review, verify:
 - [ ] Integration tests cover new endpoints
 - [ ] All tests pass locally
 - [ ] Test names clearly describe what they test
+- [ ] All catch blocks use `error` parameter (not `_error`, `err`, `e`)
 
 ### Code Quality
 - [ ] No console.log statements (use logger)
 - [ ] Error handling is comprehensive
+- [ ] Catch blocks use consistent `error` parameter naming
 - [ ] Code is DRY (Don't Repeat Yourself)
 - [ ] Functions are small and focused (< 50 lines)
 - [ ] Variables have descriptive names
