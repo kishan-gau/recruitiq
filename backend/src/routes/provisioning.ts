@@ -14,7 +14,7 @@ import transipService from '../services/transip/TransIPService.js';
 import deploymentOrchestrator from '../services/deploymentOrchestrator.js';
 import sharedVPSOrchestrator from '../services/sharedVPSOrchestrator.js';
 import deploymentServiceClient from '../services/DeploymentServiceClient.js';
-import pool from '../config/database.js';
+import { query as dbQuery } from '../config/database.js';
 import logger from '../utils/logger.js';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
@@ -156,7 +156,7 @@ async function deployTenantViaDeploymentService(deploymentId, organizationId, or
     logger.info(`🚀 Starting tenant deployment via Deployment Service for ${slug}`);
 
     // Update status to show we're deploying
-    await pool.query(
+    await dbQuery(
       `UPDATE instance_deployments 
        SET status = 'provisioning', 
            status_message = 'Initiating deployment via Deployment Service...'
@@ -188,7 +188,7 @@ async function deployTenantViaDeploymentService(deploymentId, organizationId, or
     logger.error(`❌ Deployment Service deployment failed for ${slug}:`, error);
     
     // Update deployment status to failed
-    await pool.query(
+    await dbQuery(
       `UPDATE instance_deployments 
        SET status = 'failed', 
            error_message = $1,
@@ -372,7 +372,7 @@ router.post('/instances',
         createDedicatedVPSAsync(deploymentId, organizationId, slug, tier, adminEmail, adminName)
           .catch(error => {
             logger.error('VPS creation failed:', error);
-            pool.query(
+            dbQuery(
               `UPDATE instance_deployments 
                SET status = 'failed', error_message = $1 WHERE id = $2`,
               [error.message, deploymentId]
@@ -409,7 +409,7 @@ router.post('/instances',
 async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier, adminEmail, adminName) {
   try {
     // Update status
-    await pool.query(
+    await dbQuery(
       `UPDATE instance_deployments SET status = 'creating_vps', status_message = 'Provisioning VPS via TransIP API...' WHERE id = $1`,
       [deploymentId]
     );
@@ -438,7 +438,7 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
     });
 
     // Update deployment with VPS details
-    await pool.query(
+    await dbQuery(
       `UPDATE instance_deployments 
        SET vps_id = $1, status = 'configuring'
        WHERE id = $2`,
@@ -446,7 +446,7 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
     );
 
     // Assign VPS to organization
-    await pool.query(
+    await dbQuery(
       `UPDATE organizations SET vps_id = $1 WHERE id = $2`,
       [registeredVPS.id, organizationId]
     );
@@ -456,7 +456,7 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
     await transipService.waitForVPSReady(vpsDetails.vpsName, 300000); // 5 minute timeout
 
     // Deploy applications to VPS
-    await pool.query(
+    await dbQuery(
       `UPDATE instance_deployments SET status = 'deploying', status_message = 'Deploying applications to VPS...' WHERE id = $1`,
       [deploymentId]
     );
@@ -481,14 +481,14 @@ async function createDedicatedVPSAsync(deploymentId, organizationId, slug, tier,
     const firstName = nameParts[0] || 'Admin';
     const lastName = nameParts.slice(1).join(' ') || 'User';
     
-    await pool.query(
+    await dbQuery(
       `INSERT INTO users (organization_id, email, password_hash, name, first_name, last_name, legacy_role, email_verified)
        VALUES ($1, $2, $3, $4, $5, $6, 'owner', true)`,
       [organizationId, adminEmail, passwordHash, adminName, firstName, lastName]
     );
 
     // Mark as active (deployment orchestrator already set this if successful)
-    await pool.query(
+    await dbQuery(
       `UPDATE instance_deployments 
        SET status = 'active', completed_at = NOW(), 
            access_url = $1, status_message = 'Deployment completed successfully'
@@ -527,7 +527,7 @@ router.get('/instances/:deploymentId/status',
     try {
       const { deploymentId } = req.params;
 
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT 
           id.*, 
           o.name as organization_name,
@@ -597,7 +597,7 @@ router.get('/clients',
   requirePlatformRole(['platform_admin']),
   async (req, res) => {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT 
           o.*,
           v.vps_name,
@@ -704,7 +704,7 @@ router.get('/deployments/:id/logs',
       const { id } = req.params;
       
       // First check which deployment model this is
-      const deploymentResult = await pool.query(
+      const deploymentResult = await dbQuery(
         'SELECT deployment_model FROM instance_deployments WHERE id = $1',
         [id]
       );
