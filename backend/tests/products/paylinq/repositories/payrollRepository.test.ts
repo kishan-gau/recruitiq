@@ -33,7 +33,7 @@ describe('PayrollRepository', () => {
 
   beforeEach(() => {
     mockQuery = jest.fn();
-    repository = new PayrollRepository({ query: mockQuery });
+    repository = new PayrollRepository(null, mockQuery);
   });
 
   describe('createEmployeeRecord', () => {
@@ -52,35 +52,41 @@ describe('PayrollRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO payroll.employee_records'),
+        expect.stringContaining('INSERT INTO payroll.employee_payroll_config'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'employee_records' }
+        { operation: 'INSERT', table: 'payroll.employee_payroll_config', userId: testUserId }
       );
     });
   });
 
   describe('findByOrganization', () => {
     it('should return all employees for organization', async () => {
-      mockQuery.mockResolvedValue({ rows: [{ id: testEmployeeId }] });
+      // Mock both count query and data query
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ total: '1' }] })  // Count query
+        .mockResolvedValueOnce({ rows: [{ id: testEmployeeId }] });  // Data query
 
       const result = await repository.findByOrganization(testOrgId);
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('FROM payroll.employee_records'),
+        expect.stringContaining('FROM payroll.employee_payroll_config'),
         [testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'employee_records' }
+        { operation: 'SELECT', table: 'payroll.employee_payroll_config' }
       );
     });
 
     it('should filter by status', async () => {
-      mockQuery.mockResolvedValue({ rows: [] });
+      // Mock both count query and data query
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ total: '0' }] })  // Count query
+        .mockResolvedValueOnce({ rows: [] });                // Data query
       await repository.findByOrganization(testOrgId, { status: 'active' });
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('AND status = $'),
+        expect.stringContaining('AND e.employment_status = $'),
         expect.arrayContaining([testOrgId, 'active']),
         testOrgId,
         expect.any(Object)
@@ -96,27 +102,27 @@ describe('PayrollRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE id = $1'),
+        expect.stringContaining('WHERE (epc.id = $1 OR epc.employee_id = $1)'),
         [testEmployeeId, testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'employee_records' }
+        { operation: 'SELECT', table: 'payroll.employee_payroll_config' }
       );
     });
   });
 
   describe('updateEmployeeRecord', () => {
     it('should update employee record', async () => {
-      const updates = { email: 'newemail@example.com' };
+      const updates = { pay_frequency: 'WEEKLY' };
       mockQuery.mockResolvedValue({ rows: [{ id: testEmployeeId, ...updates }] });
 
       const result = await repository.updateEmployeeRecord(testEmployeeId, updates, testOrgId, testUserId);
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE payroll.employee_records'),
+        expect.stringContaining('UPDATE payroll.employee_payroll_config'),
         expect.any(Array),
         testOrgId,
-        { operation: 'UPDATE', table: 'employee_records' }
+        { operation: 'UPDATE', table: 'payroll.employee_payroll_config', userId: testUserId }
       );
     });
   });
@@ -140,7 +146,7 @@ describe('PayrollRepository', () => {
         expect.stringContaining('INSERT INTO payroll.compensation'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'compensation' }
+        { operation: 'UPSERT', table: 'payroll.compensation', userId: testUserId }
       );
     });
   });
@@ -156,7 +162,7 @@ describe('PayrollRepository', () => {
         expect.stringContaining('WHERE employee_id = $1'),
         expect.arrayContaining([testEmployeeId, testOrgId]),
         testOrgId,
-        { operation: 'SELECT', table: 'compensation' }
+        { operation: 'SELECT', table: 'payroll.compensation' }
       );
     });
   });
@@ -181,7 +187,7 @@ describe('PayrollRepository', () => {
         expect.stringContaining('INSERT INTO payroll.payroll_run'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'payroll_run' }
+        { operation: 'INSERT', table: 'payroll.payroll_run', userId: testUserId }
       );
     });
   });
@@ -194,10 +200,10 @@ describe('PayrollRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE id = $1'),
+        expect.stringContaining('WHERE pr.id = $1'),
         [testPayrollRunId, testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'payroll_run' }
+        { operation: 'SELECT', table: 'payroll.payroll_run' }
       );
     });
   });
@@ -213,7 +219,7 @@ describe('PayrollRepository', () => {
         expect.stringContaining('FROM payroll.payroll_run'),
         [testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'payroll_run' }
+        { operation: 'SELECT', table: 'payroll.payroll_run' }
       );
     });
 
@@ -250,7 +256,7 @@ describe('PayrollRepository', () => {
         expect.stringContaining('INSERT INTO payroll.paycheck'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'paycheck' }
+        { operation: 'INSERT', table: 'payroll.paycheck', userId: testUserId }
       );
     });
   });

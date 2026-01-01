@@ -48,10 +48,10 @@ describe('SchedulingRepository', () => {
 
       expect(result).toEqual(dbSchedule);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO work_schedules'),
+        expect.stringContaining('INSERT INTO payroll.work_schedule'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'work_schedules' }
+        { operation: 'INSERT', table: 'payroll.work_schedule', userId: testUserId }
       );
     });
   });
@@ -64,10 +64,10 @@ describe('SchedulingRepository', () => {
       await repository.findWorkSchedules(criteria, testOrgId);
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('FROM work_schedules'),
+        expect.stringContaining('FROM payroll.work_schedule'),
         expect.arrayContaining([testOrgId]),
         testOrgId,
-        { operation: 'SELECT', table: 'work_schedules' }
+        { operation: 'SELECT', table: 'payroll.work_schedule' }
       );
     });
   });
@@ -81,10 +81,10 @@ describe('SchedulingRepository', () => {
 
       expect(result).toEqual(dbSchedule);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE id = $1'),
+        expect.stringContaining('WHERE ws.id = $1'),
         [testScheduleId, testOrgId],
         testOrgId,
-        { operation: 'SELECT', table: 'work_schedules' }
+        { operation: 'SELECT', table: 'payroll.work_schedule' }
       );
     });
 
@@ -97,17 +97,17 @@ describe('SchedulingRepository', () => {
 
   describe('updateWorkSchedule', () => {
     it('should update work schedule', async () => {
-      const updates = { startTime: '10:00', endTime: '18:00' };
+      const updates = { start_time: '10:00', end_time: '18:00' };
       mockQuery.mockResolvedValue({ rows: [{ id: testScheduleId, ...updates }] });
 
       const result = await repository.updateWorkSchedule(testScheduleId, updates, testOrgId, testUserId);
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE work_schedules'),
+        expect.stringContaining('UPDATE payroll.work_schedule'),
         expect.any(Array),
         testOrgId,
-        { operation: 'UPDATE', table: 'work_schedules' }
+        { operation: 'UPDATE', table: 'payroll.work_schedule', userId: testUserId }
       );
     });
   });
@@ -127,10 +127,10 @@ describe('SchedulingRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO schedule_change_requests'),
+        expect.stringContaining('INSERT INTO payroll.schedule_change_request'),
         expect.any(Array),
         testOrgId,
-        { operation: 'INSERT', table: 'schedule_change_requests' }
+        { operation: 'INSERT', table: 'payroll.schedule_change_request', userId: testUserId }
       );
     });
   });
@@ -143,10 +143,10 @@ describe('SchedulingRepository', () => {
       await repository.findScheduleChangeRequests(criteria, testOrgId);
 
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('FROM schedule_change_requests'),
+        expect.stringContaining('FROM payroll.schedule_change_request'),
         expect.arrayContaining([testOrgId]),
         testOrgId,
-        { operation: 'SELECT', table: 'schedule_change_requests' }
+        { operation: 'SELECT', table: 'payroll.schedule_change_request' }
       );
     });
   });
@@ -160,10 +160,10 @@ describe('SchedulingRepository', () => {
 
       expect(result).toBeDefined();
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE schedule_change_requests'),
+        expect.stringContaining('UPDATE payroll.schedule_change_request'),
         expect.arrayContaining(['approved', testUserId, requestId, testOrgId]),
         testOrgId,
-        { operation: 'UPDATE', table: 'schedule_change_requests' }
+        { operation: 'UPDATE', table: 'payroll.schedule_change_request', userId: testUserId }
       );
     });
   });

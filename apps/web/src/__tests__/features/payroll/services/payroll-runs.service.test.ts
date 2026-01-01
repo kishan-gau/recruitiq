@@ -6,20 +6,25 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PaylinqClient, APIClient } from '@recruitiq/api-client';
-import { payrollRunsService } from '@/features/payroll/services/payroll-runs.service';
 
-// Mock the API client packages
+// Create mock instances that will be used by the service
+const mockApiClientInstance = {};
+const mockPaylinqClientInstance = {
+  getPayrollRuns: vi.fn(),
+  getPayrollRun: vi.fn(),
+  createPayrollRun: vi.fn(),
+  updatePayrollRun: vi.fn(),
+  processPayrollRun: vi.fn(),
+};
+
+// Mock the API client packages before importing the service
 vi.mock('@recruitiq/api-client', () => ({
-  APIClient: vi.fn().mockImplementation(() => ({})),
-  PaylinqClient: vi.fn().mockImplementation(() => ({
-    getPayrollRuns: vi.fn(),
-    getPayrollRun: vi.fn(),
-    createPayrollRun: vi.fn(),
-    updatePayrollRun: vi.fn(),
-    processPayrollRun: vi.fn(),
-  })),
+  APIClient: vi.fn(() => mockApiClientInstance),
+  PaylinqClient: vi.fn(() => mockPaylinqClientInstance),
 }));
+
+// Now import the service after mocks are set up
+import { payrollRunsService } from '@/features/payroll/services/payroll-runs.service';
 
 describe('payrollRunsService', () => {
   let mockPaylinqClient: any;
@@ -27,6 +32,7 @@ describe('payrollRunsService', () => {
   beforeEach(() => {
     // Clear all mocks before each test
     vi.clearAllMocks();
+    mockPaylinqClient = mockPaylinqClientInstance;
 
     // Get the mocked PaylinqClient instance
     const PaylinqClientConstructor = vi.mocked(PaylinqClient);
