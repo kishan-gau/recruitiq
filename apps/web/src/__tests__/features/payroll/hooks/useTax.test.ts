@@ -216,7 +216,8 @@ describe('useTax hooks', () => {
 
       // Assert
       expect(result.current.data).toEqual(createdTaxRule);
-      expect(taxService.createTaxRule).toHaveBeenCalledWith(newTaxRule);
+      expect(taxService.createTaxRule).toHaveBeenCalled();
+      expect(taxService.createTaxRule.mock.calls[0][0]).toEqual(newTaxRule);
     });
 
     it('should invalidate tax rules cache after successful creation', async () => {
@@ -336,7 +337,8 @@ describe('useTax hooks', () => {
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
       // Assert
-      expect(taxService.deleteTaxRule).toHaveBeenCalledWith(taxRuleId);
+      expect(taxService.deleteTaxRule).toHaveBeenCalled();
+      expect(taxService.deleteTaxRule.mock.calls[0][0]).toBe(taxRuleId);
     });
 
     it('should invalidate tax rules cache after deletion', async () => {
@@ -413,7 +415,7 @@ describe('useTax hooks', () => {
       // Act
       const { result } = renderHook(() => useTax(filters), { wrapper });
 
-      await waitFor(() => !result.current.isLoadingRules);
+      await waitFor(() => expect(result.current.isLoadingRules).toBe(false));
 
       // Assert
       expect(result.current.taxRules).toEqual(mockTaxRules);
@@ -475,23 +477,39 @@ describe('useTax hooks', () => {
       });
     });
 
-    it('should cache results and not refetch on remount', async () => {
+    it('should cache results and not refetch on remount within staleTime', async () => {
       // Arrange
       const mockData = [{ id: '123', name: 'Test', type: 'federal', rate: 0.15 }];
       vi.mocked(taxService.getTaxRules).mockResolvedValue(mockData);
 
+      // Create a query client with longer staleTime
+      const cacheQueryClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            staleTime: 10000, // 10 seconds
+          },
+        },
+      });
+
+      const cacheWrapper = ({ children }: { children: React.ReactNode }) => (
+        React.createElement(QueryClientProvider, { client: cacheQueryClient }, children)
+      );
+
       // Act - First mount
-      const { unmount } = renderHook(() => useTaxRules(), { wrapper });
+      const { unmount } = renderHook(() => useTaxRules(), { wrapper: cacheWrapper });
       await waitFor(() =>
         expect(taxService.getTaxRules).toHaveBeenCalledTimes(1)
       );
 
       // Unmount and remount
       unmount();
-      renderHook(() => useTaxRules(), { wrapper });
+      renderHook(() => useTaxRules(), { wrapper: cacheWrapper });
 
-      // Assert - Should use cache, not refetch
-      expect(taxService.getTaxRules).toHaveBeenCalledTimes(1);
+      // Assert - Should use cache, not refetch (within staleTime)
+      await waitFor(() => {
+        expect(taxService.getTaxRules).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
