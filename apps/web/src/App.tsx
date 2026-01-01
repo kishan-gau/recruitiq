@@ -5,10 +5,12 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 
 import { routes } from '@core/routing/router';
 import { InstallPWAPrompt } from './components/InstallPWAPrompt';
+import OfflineIndicator from './components/OfflineIndicator';
 
 function App() {
   return (
     <>
+      <OfflineIndicator />
       <Suspense fallback={
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-lg">Laden...</div>

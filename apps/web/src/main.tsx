@@ -10,10 +10,14 @@ import { ToastProvider } from './contexts/ToastContext';
 import { queryClient } from './core/store/queryClient';
 import ErrorBoundary from './shared/components/ui/ErrorBoundary';
 import { registerServiceWorker } from './serviceWorker';
+import { initWebVitals } from './services/performance';
 import './index.css';
 
 // Register service worker for PWA functionality
 registerServiceWorker();
+
+// Initialize Web Vitals monitoring (Phase 3: Performance Optimization)
+initWebVitals();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
