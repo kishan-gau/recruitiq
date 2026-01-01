@@ -3,7 +3,7 @@
  * Business logic for schedule and shift management
  */
 
-import pool, { query } from '../../../config/database.js';
+import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import type { ScheduleData, ShiftData, ScheduleSearchFilters, ShiftConflict } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';
@@ -336,7 +336,7 @@ class ScheduleService {
   async getScheduleById(scheduleId, organizationId) {
     try {
       // Get schedule details
-      const scheduleResult = await pool.query(
+      const scheduleResult = await query(
         `SELECT s.*,
           u1.email as created_by_email,
           u2.email as updated_by_email,
@@ -346,7 +346,9 @@ class ScheduleService {
         LEFT JOIN hris.user_account u1 ON s.created_by = u1.id
         LEFT JOIN hris.user_account u2 ON s.updated_by = u2.id
         WHERE s.id = $1 AND s.organization_id = $2`,
-        [scheduleId, organizationId]
+        [scheduleId, organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'schedules' }
       );
 
       if (scheduleResult.rows.length === 0) {
@@ -354,7 +356,7 @@ class ScheduleService {
       }
 
       // Get all shifts for this schedule
-      const shiftsResult = await pool.query(
+      const shiftsResult = await query(
         `SELECT s.*,
           w.first_name || ' ' || w.last_name as worker_name,
           w.employee_number as worker_number,
@@ -371,7 +373,9 @@ class ScheduleService {
         LEFT JOIN scheduling.shift_templates tmpl ON s.template_id = tmpl.id
         WHERE s.schedule_id = $1
         ORDER BY s.shift_date, s.start_time`,
-        [scheduleId]
+        [scheduleId],
+        organizationId,
+        { operation: 'SELECT', table: 'shifts' }
       );
 
       return {
@@ -395,7 +399,7 @@ class ScheduleService {
     try {
       const { status, startDate, endDate, page = 1, limit = 20 } = filters;
 
-      let query = `
+      let sqlQuery = `
         SELECT s.*,
           (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id) as total_shifts,
           (SELECT COUNT(*) FROM scheduling.shifts WHERE schedule_id = s.id AND employee_id IS NULL) as unassigned_shifts
@@ -407,40 +411,40 @@ class ScheduleService {
 
       if (status) {
         paramCount++;
-        query += ` AND s.status = $${paramCount}`;
+        sqlQuery += ` AND s.status = $${paramCount}`;
         params.push(status);
       }
 
       if (startDate) {
         paramCount++;
-        query += ` AND s.end_date >= $${paramCount}`;
+        sqlQuery += ` AND s.end_date >= $${paramCount}`;
         params.push(startDate);
       }
 
       if (endDate) {
         paramCount++;
-        query += ` AND s.start_date <= $${paramCount}`;
+        sqlQuery += ` AND s.start_date <= $${paramCount}`;
         params.push(endDate);
       }
 
-      query += ` ORDER BY s.start_date DESC`;
+      sqlQuery += ` ORDER BY s.start_date DESC`;
       
       const offset = (page - 1) * limit;
       paramCount++;
-      query += ` LIMIT $${paramCount}`;
+      sqlQuery += ` LIMIT $${paramCount}`;
       params.push(limit);
       paramCount++;
-      query += ` OFFSET $${paramCount}`;
+      sqlQuery += ` OFFSET $${paramCount}`;
       params.push(offset);
 
-      const result = await pool.query(query, params);
+      const result = await query(sqlQuery, params, organizationId, { operation: 'SELECT', table: 'schedules' });
 
       // Get total count
       let countQuery = `SELECT COUNT(*) FROM scheduling.schedules WHERE organization_id = $1`;
       const countParams = [organizationId];
       if (status) countQuery += ` AND status = $2`;
       
-      const countResult = await pool.query(countQuery, countParams);
+      const countResult = await query(countQuery, countParams, organizationId, { operation: 'SELECT', table: 'schedules' });
       const totalCount = parseInt(countResult.rows[0].count);
 
       return {
@@ -775,7 +779,7 @@ class ScheduleService {
   async validateScheduleForPublication(scheduleId, organizationId) {
     try {
       // Get all shifts in the schedule to be published
-      const scheduleShiftsResult = await pool.query(`
+      const scheduleShiftsResult = await query(`
         SELECT 
           s.id as shift_id,
           s.employee_id,
@@ -793,7 +797,7 @@ class ScheduleService {
           AND s.deleted_at IS NULL
           AND s.status != 'cancelled'
         ORDER BY s.date, s.start_time
-      `, [scheduleId, organizationId]);
+      `, [scheduleId, organizationId], organizationId, { operation: 'SELECT', table: 'shifts' });
 
       const scheduleShifts = scheduleShiftsResult.rows;
       
@@ -837,14 +841,14 @@ class ScheduleService {
             )
         `;
 
-        const conflictResult = await pool.query(conflictQuery, [
+        const conflictResult = await query(conflictQuery, [
           shift.employee_id,
           organizationId,
           scheduleId,
           shift.date,
           shift.start_time, // $5
           shift.end_time    // $6
-        ]);
+        ], organizationId, { operation: 'SELECT', table: 'shifts' });
 
         if (conflictResult.rows.length > 0) {
           // Add conflict details for this shift
@@ -1118,7 +1122,7 @@ class ScheduleService {
    */
   async getWorkerShifts(workerId, startDate, endDate, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await query(
         `SELECT s.*,
           r.role_name,
           r.color as role_color,
@@ -1136,7 +1140,9 @@ class ScheduleService {
         AND s.organization_id = $4
         AND s.shift_date BETWEEN $2 AND $3
         ORDER BY s.shift_date, s.start_time`,
-        [workerId, startDate, endDate, organizationId]
+        [workerId, startDate, endDate, organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'shifts' }
       );
 
       return result.rows;
@@ -2136,7 +2142,7 @@ class ScheduleService {
     try {
       const { date, stationId, status } = filters;
       
-      let query = `
+      let sqlQuery = `
         SELECT 
           s.id,
           s.schedule_id,
@@ -2168,25 +2174,25 @@ class ScheduleService {
       
       if (date) {
         paramCount++;
-        query += ` AND s.shift_date = $${paramCount}`;
+        sqlQuery += ` AND s.shift_date = $${paramCount}`;
         params.push(date);
       }
       
       if (stationId) {
         paramCount++;
-        query += ` AND s.station_id = $${paramCount}`;
+        sqlQuery += ` AND s.station_id = $${paramCount}`;
         params.push(stationId);
       }
       
       if (status) {
         paramCount++;
-        query += ` AND s.status = $${paramCount}`;
+        sqlQuery += ` AND s.status = $${paramCount}`;
         params.push(status);
       }
       
-      query += ` ORDER BY s.shift_date DESC, s.start_time`;
+      sqlQuery += ` ORDER BY s.shift_date DESC, s.start_time`;
       
-      const result = await pool.query(query, params);
+      const result = await query(sqlQuery, params, organizationId, { operation: 'SELECT', table: 'shifts' });
       
       return {
         success: true,
@@ -2204,7 +2210,7 @@ class ScheduleService {
   async getStationCoverageStats(organizationId, date) {
     try {
       // Get station coverage for the specified date
-      const query = `
+      const sqlQuery = `
         WITH station_requirements AS (
           -- Get required staffing from shift templates
           SELECT 
@@ -2271,7 +2277,7 @@ class ScheduleService {
         ORDER BY sr.station_name
       `;
       
-      const result = await pool.query(query, [organizationId, date]);
+      const result = await query(sqlQuery, [organizationId, date], organizationId, { operation: 'SELECT', table: 'stations' });
       
       return {
         success: true,
