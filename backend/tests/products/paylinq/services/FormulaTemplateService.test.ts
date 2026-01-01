@@ -19,7 +19,12 @@ const mockFormulaEngine = {
 };
 
 jest.unstable_mockModule('../../../../src/config/database.js', () => ({
-  default: mockPool
+  default: mockPool,
+  query: mockPool.query,
+  getClient: jest.fn(),
+  transaction: jest.fn(),
+  healthCheck: jest.fn(),
+  closePool: jest.fn()
 }));
 
 jest.unstable_mockModule('../../../../src/services/formula/FormulaEngine.js', () => ({
