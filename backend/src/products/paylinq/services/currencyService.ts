@@ -184,7 +184,7 @@ constructor() {
    */
   async getFromMaterializedView(organizationId, fromCurrency, toCurrency) {
     try {
-      const query = `
+      const sqlQuery = `
         SELECT 
           id, organization_id, from_currency, to_currency, rate,
           effective_from, source, metadata, updated_at
@@ -1122,7 +1122,7 @@ constructor() {
    */
   async refreshMaterializedViews() {
     try {
-      await query('SELECT payroll.refresh_currency_materialized_views()', [], null, { operation: 'SELECT', table: 'refresh_currency_materialized_views' });
+      await query('SELECT payroll.refresh_currency_materialized_views()', [], null, { operation: 'SELECT', table: 'function_call' });
       logger.info('Currency materialized views refreshed successfully');
       return { success: true };
     } catch (_error) {

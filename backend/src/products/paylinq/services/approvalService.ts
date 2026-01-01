@@ -547,7 +547,7 @@ class ApprovalService {
    */
   async expireOldRequests() {
     try {
-      const result = await query('SELECT payroll.expire_old_approval_requests()', [], null, { operation: 'SELECT', table: 'expire_old_approval_requests' });
+      const result = await query('SELECT payroll.expire_old_approval_requests()', [], null, { operation: 'SELECT', table: 'function_call' });
       const expiredCount = result.rows[0].expire_old_approval_requests;
       
       if (expiredCount > 0) {
