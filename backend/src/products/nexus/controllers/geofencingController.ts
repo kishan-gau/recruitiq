@@ -3,8 +3,8 @@
  * Handles location geofencing configuration for administrators
  */
 
-import GeofencingService from '../../services/geofencingService.js';
-import logger from '../../utils/logger.js';
+import GeofencingService from '../../../services/geofencingService.js';
+import logger from '../../../utils/logger.js';
 
 class GeofencingAdminController {
   private service: GeofencingService;
