@@ -1,9 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, useMemo } from 'react';
+import { z } from 'zod';
 
 import type { PayrollRun, PayrollRunFilters, CreatePayrollRunRequest } from '@recruitiq/types';
 
 import { handleApiError } from '@/utils/errorHandler';
+import EnhancedError, { parseApiError, type EnhancedErrorProps } from '@/components/EnhancedError';
 
 import {
   usePayrollRuns,
@@ -12,6 +14,51 @@ import {
   useApprovePayroll,
   useProcessPayroll,
 } from '../hooks/usePayrollRuns';
+import { WorkflowStepper } from '../components/WorkflowStepper';
+import PayslipsList from '../components/payslips/PayslipsList';
+
+// Zod validation schema for payroll run creation
+const payrollRunSchema = z.object({
+  payrollName: z.string()
+    .min(3, 'Naam moet minimaal 3 tekens bevatten')
+    .max(100, 'Naam mag niet langer zijn dan 100 tekens'),
+  periodStart: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ongeldige datum (YYYY-MM-DD)')
+    .refine((date) => {
+      const d = new Date(date);
+      return !isNaN(d.getTime());
+    }, 'Ongeldige datum'),
+  periodEnd: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ongeldige datum (YYYY-MM-DD)')
+    .refine((date) => {
+      const d = new Date(date);
+      return !isNaN(d.getTime());
+    }, 'Ongeldige datum'),
+  paymentDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ongeldige datum (YYYY-MM-DD)')
+    .refine((date) => {
+      const d = new Date(date);
+      return !isNaN(d.getTime());
+    }, 'Ongeldige datum'),
+  runType: z.enum(['REGULAR', 'VAKANTIEGELD', 'BONUS', 'CORRECTION']),
+  status: z.enum(['draft', 'calculating', 'calculated', 'approved', 'processing', 'processed', 'cancelled']).optional(),
+}).refine((data) => {
+  // Validate that periodEnd is after periodStart
+  const start = new Date(data.periodStart);
+  const end = new Date(data.periodEnd);
+  return end > start;
+}, {
+  message: 'Periode eind moet na periode start zijn',
+  path: ['periodEnd'],
+}).refine((data) => {
+  // Validate that paymentDate is not before periodStart
+  const start = new Date(data.periodStart);
+  const payment = new Date(data.paymentDate);
+  return payment >= start;
+}, {
+  message: 'Betaaldatum mag niet voor periode start zijn',
+  path: ['paymentDate'],
+});
 
 // StatusBadge component
 function StatusBadge({ status }: { status: string }) {
@@ -64,18 +111,88 @@ function CreatePayrollRunModal({
     runType: 'REGULAR',
     status: 'draft',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // Validate a single field
+  const validateField = (name: string, value: any) => {
+    try {
+      const fieldSchema = payrollRunSchema.shape[name as keyof typeof payrollRunSchema.shape];
+      if (fieldSchema) {
+        fieldSchema.parse(value);
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]: error.errors[0]?.message || 'Validatiefout',
+        }));
+      }
+    }
+  };
+
+  // Validate entire form with cross-field validations
+  const validateForm = (): boolean => {
+    try {
+      payrollRunSchema.parse(formData);
+      setErrors({});
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          const path = err.path[0] as string;
+          newErrors[path] = err.message;
+        });
+        setErrors(newErrors);
+        return false;
+      }
+      return false;
+    }
+  };
+
+  const handleChange = (name: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Validate on change if field has been touched
+    if (touched[name]) {
+      setTimeout(() => validateField(name, value), 100);
+    }
+  };
+
+  const handleBlur = (name: string) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    validateField(name, formData[name as keyof typeof formData]);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
-    setFormData({
-      payrollName: '',
-      periodStart: '',
-      periodEnd: '',
-      paymentDate: '',
-      runType: 'REGULAR',
-      status: 'draft',
-    });
+    
+    // Mark all fields as touched
+    const allTouched: Record<string, boolean> = {};
+    Object.keys(formData).forEach(key => { allTouched[key] = true; });
+    setTouched(allTouched);
+    
+    // Validate entire form
+    if (validateForm()) {
+      onSubmit(formData);
+      // Reset form
+      setFormData({
+        payrollName: '',
+        periodStart: '',
+        periodEnd: '',
+        paymentDate: '',
+        runType: 'REGULAR',
+        status: 'draft',
+      });
+      setErrors({});
+      setTouched({});
+    }
   };
 
   if (!isOpen) return null;
@@ -89,26 +206,40 @@ function CreatePayrollRunModal({
           <h3 className="text-lg font-medium text-gray-900 mb-4">Nieuwe Loonrun</h3>
           
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Run Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Run Naam
+                Run Naam <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                required
                 value={formData.payrollName}
-                onChange={(e) => setFormData({ ...formData, payrollName: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                onChange={(e) => handleChange('payrollName', e.target.value)}
+                onBlur={() => handleBlur('payrollName')}
+                className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                  errors.payrollName 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                }`}
+                placeholder="bijv. Loonrun Januari 2026"
               />
+              {errors.payrollName && (
+                <p className="mt-1 text-xs text-red-600">{errors.payrollName}</p>
+              )}
+              {!errors.payrollName && !touched.payrollName && (
+                <p className="mt-1 text-xs text-gray-500">Minimaal 3 tekens, maximaal 100 tekens</p>
+              )}
             </div>
 
+            {/* Run Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Run Type
               </label>
               <select
                 value={formData.runType}
-                onChange={(e) => setFormData({ ...formData, runType: e.target.value })}
+                onChange={(e) => handleChange('runType', e.target.value)}
+                onBlur={() => handleBlur('runType')}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               >
                 <option value="REGULAR">Regulier</option>
@@ -116,47 +247,79 @@ function CreatePayrollRunModal({
                 <option value="BONUS">Bonus</option>
                 <option value="CORRECTION">Correctie</option>
               </select>
+              <p className="mt-1 text-xs text-gray-500">Type loonrun dat verwerkt wordt</p>
             </div>
 
+            {/* Period Start */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Periode Start
+                Periode Start <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
-                required
                 value={formData.periodStart}
-                onChange={(e) => setFormData({ ...formData, periodStart: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                onChange={(e) => handleChange('periodStart', e.target.value)}
+                onBlur={() => handleBlur('periodStart')}
+                className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                  errors.periodStart 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                }`}
               />
+              {errors.periodStart && (
+                <p className="mt-1 text-xs text-red-600">{errors.periodStart}</p>
+              )}
             </div>
 
+            {/* Period End */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Periode Eind
+                Periode Eind <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
-                required
                 value={formData.periodEnd}
-                onChange={(e) => setFormData({ ...formData, periodEnd: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                onChange={(e) => handleChange('periodEnd', e.target.value)}
+                onBlur={() => handleBlur('periodEnd')}
+                className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                  errors.periodEnd 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                }`}
               />
+              {errors.periodEnd && (
+                <p className="mt-1 text-xs text-red-600">{errors.periodEnd}</p>
+              )}
+              {!errors.periodEnd && (
+                <p className="mt-1 text-xs text-gray-500">Moet na periode start zijn</p>
+              )}
             </div>
 
+            {/* Payment Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Betaaldatum
+                Betaaldatum <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
-                required
                 value={formData.paymentDate}
-                onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                onChange={(e) => handleChange('paymentDate', e.target.value)}
+                onBlur={() => handleBlur('paymentDate')}
+                className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                  errors.paymentDate 
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                }`}
               />
+              {errors.paymentDate && (
+                <p className="mt-1 text-xs text-red-600">{errors.paymentDate}</p>
+              )}
+              {!errors.paymentDate && (
+                <p className="mt-1 text-xs text-gray-500">Mag niet voor periode start zijn</p>
+              )}
             </div>
 
+            {/* Form Actions */}
             <div className="flex justify-end gap-3 mt-6">
               <button
                 type="button"
@@ -186,6 +349,8 @@ export default function PayrollRunsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRun, setSelectedRun] = useState<PayrollRun | null>(null);
+  const [showPayslips, setShowPayslips] = useState<PayrollRun | null>(null);
+  const [enhancedError, setEnhancedError] = useState<EnhancedErrorProps | null>(null);
 
   // Build filters
   const filters: PayrollRunFilters = useMemo(() => {
@@ -236,20 +401,32 @@ export default function PayrollRunsPage() {
   const handleApprove = async (runId: string) => {
     if (!confirm('Weet u zeker dat u deze loonrun wilt goedkeuren?')) return;
     try {
+      setEnhancedError(null); // Clear previous errors
       await approveMutation.mutateAsync({ payrollRunId: runId });
       queryClient.invalidateQueries({ queryKey: ['payroll-runs'] });
     } catch (err: any) {
-      handleApiError(err, { defaultMessage: 'Fout bij goedkeuren loonrun' });
+      const errorProps = parseApiError(err);
+      setEnhancedError({
+        ...errorProps,
+        title: errorProps.title || 'Fout bij goedkeuren loonrun',
+        onClose: () => setEnhancedError(null),
+      });
     }
   };
 
   const handleProcess = async (runId: string) => {
     if (!confirm('Weet u zeker dat u deze loonrun wilt verwerken?')) return;
     try {
+      setEnhancedError(null); // Clear previous errors
       await processMutation.mutateAsync({ payrollRunId: runId });
       queryClient.invalidateQueries({ queryKey: ['payroll-runs'] });
     } catch (err: any) {
-      handleApiError(err, { defaultMessage: 'Fout bij verwerken loonrun' });
+      const errorProps = parseApiError(err);
+      setEnhancedError({
+        ...errorProps,
+        title: errorProps.title || 'Fout bij verwerken loonrun',
+        onClose: () => setEnhancedError(null),
+      });
     }
   };
 
@@ -330,6 +507,13 @@ export default function PayrollRunsPage() {
           </button>
         </div>
       </div>
+
+      {/* Enhanced Error Display */}
+      {enhancedError && (
+        <div className="mb-6">
+          <EnhancedError {...enhancedError} />
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
@@ -452,6 +636,14 @@ export default function PayrollRunsPage() {
                           Verwerken
                         </button>
                       )}
+                      {run.status === 'processed' && (
+                        <button
+                          onClick={() => setShowPayslips(run)}
+                          className="text-blue-600 hover:text-blue-900 font-medium"
+                        >
+                          Loonstroken
+                        </button>
+                      )}
                       <button
                         onClick={() => setSelectedRun(run)}
                         className="text-gray-600 hover:text-gray-900"
@@ -482,8 +674,19 @@ export default function PayrollRunsPage() {
               className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
               onClick={() => setSelectedRun(null)}
             />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Loonrun Details</h3>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-6">Loonrun Details</h3>
+              
+              {/* Workflow Progress Indicator */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-4">Workflow Status</h4>
+                <WorkflowStepper 
+                  currentStatus={selectedRun.status} 
+                  showLabels={true}
+                  showDescriptions={false}
+                />
+              </div>
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -603,6 +806,17 @@ export default function PayrollRunsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Payslips List Modal */}
+      {showPayslips && (
+        <PayslipsList
+          payrollRunId={showPayslips.id}
+          runNumber={showPayslips.runNumber}
+          runName={showPayslips.runName}
+          isOpen={true}
+          onClose={() => setShowPayslips(null)}
+        />
       )}
     </div>
   );

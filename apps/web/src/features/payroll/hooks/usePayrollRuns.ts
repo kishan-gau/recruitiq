@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { payrollRunsService } from '../services/payroll-runs.service';
+import { usePaylinqAPI } from './usePaylinqAPI';
 
 /**
  * Hook for fetching payroll runs list
@@ -72,14 +73,15 @@ export function useExecutePayrollRun() {
  */
 export function useCalculatePayroll() {
   const queryClient = useQueryClient();
+  const { paylinq } = usePaylinqAPI();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      // TODO: Implement calculate payroll API endpoint
-      throw new Error('Calculate payroll not yet implemented');
+    mutationFn: async ({ payrollRunId, ...options }: { payrollRunId: string; employeeIds?: string[]; includeTimesheets?: boolean; includeDeductions?: boolean; includeTaxes?: boolean }) => {
+      return await paylinq.calculatePayroll({ payrollRunId, ...options });
     },
-    onSuccess: () => {
+    onSuccess: (_, { payrollRunId }) => {
       queryClient.invalidateQueries({ queryKey: ['payrollRuns'] });
+      queryClient.invalidateQueries({ queryKey: ['payrollRuns', payrollRunId] });
     },
   });
 }
@@ -89,14 +91,15 @@ export function useCalculatePayroll() {
  */
 export function useApprovePayroll() {
   const queryClient = useQueryClient();
+  const { paylinq } = usePaylinqAPI();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      // TODO: Implement approve payroll API endpoint
-      throw new Error('Approve payroll not yet implemented');
+    mutationFn: async ({ payrollRunId, approvalNotes }: { payrollRunId: string; approvalNotes?: string }) => {
+      return await paylinq.approvePayrollRun({ payrollRunId, approvalNotes });
     },
-    onSuccess: () => {
+    onSuccess: (_, { payrollRunId }) => {
       queryClient.invalidateQueries({ queryKey: ['payrollRuns'] });
+      queryClient.invalidateQueries({ queryKey: ['payrollRuns', payrollRunId] });
     },
   });
 }
@@ -106,14 +109,15 @@ export function useApprovePayroll() {
  */
 export function useProcessPayroll() {
   const queryClient = useQueryClient();
+  const { paylinq } = usePaylinqAPI();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      // TODO: Implement process payroll API endpoint
-      throw new Error('Process payroll not yet implemented');
+    mutationFn: async ({ payrollRunId, paymentDate }: { payrollRunId: string; paymentDate?: string }) => {
+      return await paylinq.processPayrollRun({ payrollRunId, paymentDate });
     },
-    onSuccess: () => {
+    onSuccess: (_, { payrollRunId }) => {
       queryClient.invalidateQueries({ queryKey: ['payrollRuns'] });
+      queryClient.invalidateQueries({ queryKey: ['payrollRuns', payrollRunId] });
     },
   });
 }
