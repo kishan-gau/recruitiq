@@ -115,7 +115,10 @@ The initialization system uses these npm scripts:
 ```
 backend/
 ├── docker-init/
-│   ├── docker-entrypoint-init.sh     # Main Docker initialization script
+│   ├── docker-entrypoint-init.sh     # Main Docker initialization script (auto-path detection)
+│   ├── 01-create-schema.sql          # Database schema creation
+│   ├── 02-production-seeds.sql       # Production seed data
+│   ├── 03-create-tenant.sql          # Default tenant creation
 │   ├── init-database.sh              # Alternative comprehensive init script
 │   └── setup-schema.sh               # Simple setup script
 ├── migrations/                       # Database schema migrations
@@ -124,6 +127,16 @@ backend/
 │   └── onboard-tenant.js            # Tenant onboarding script
 └── docker-compose.yml               # Docker configuration
 ```
+
+## 🔄 Multi-Configuration Support
+
+The initialization script automatically detects the correct path for SQL files based on the Docker Compose configuration being used:
+
+- **Root `docker-compose.yml`**: Mounts `./backend:/backend` → Uses `/backend/docker-init/*.sql`
+- **Backend `docker-compose.yml`**: Mounts `./docker-init:/docker-init` → Uses `/docker-init/*.sql`
+- **Production `docker-compose.production.yml`**: Mounts `./backend:/backend` → Uses `/backend/docker-init/*.sql`
+
+The script automatically chooses the correct path, so initialization works seamlessly regardless of which Docker Compose file you use.
 
 ## 🐛 Troubleshooting
 
@@ -137,6 +150,18 @@ backend/
    ```bash
    docker-compose config
    ```
+
+3. Verify SQL scripts are accessible:
+   - The script will show which path it's using: `/backend/docker-init` or `/docker-init`
+   - If initialization fails with "cannot find SQL scripts", check volume mounts in your docker-compose file
+
+### Path Detection Issues
+The initialization script automatically detects the correct path. If you see errors:
+- Ensure `docker-compose.yml` mounts the backend directory or docker-init directory
+- Check Docker logs for the "Using SQL scripts from:" message
+- Supported mounts:
+  - `./backend:/backend:ro` (root compose)
+  - `./docker-init:/docker-init` (backend compose)
 
 ### Tenant Creation Fails
 - The script continues even if tenant creation fails (tenant may already exist)
