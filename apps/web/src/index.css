@@ -60,3 +60,53 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* PWA - Mobile-first styles */
+@layer utilities {
+  /* Safe area insets for notched devices (iPhone X and newer) */
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-inset-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-area-inset-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Touch-optimized interaction */
+  .touch-manipulation {
+    touch-action: manipulation; /* Disable 300ms tap delay */
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
+  }
+
+  /* Smooth scrolling for better mobile experience */
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Pull-to-refresh styling */
+  .pull-to-refresh {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* iOS-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Fix for iOS Safari bottom bar hiding */
+  body {
+    min-height: -webkit-fill-available;
+  }
+  
+  /* Prevent zoom on input focus (iOS) */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}

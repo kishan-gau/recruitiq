@@ -3,7 +3,7 @@ import { Route, Navigate } from 'react-router-dom';
 
 import { ProtectedRoute } from '@core/routing/ProtectedRoute';
 import { AuthLayout } from '@shared/layouts/AuthLayout';
-import { MainLayout } from '@shared/layouts/MainLayout';
+import { AdaptiveLayout } from '@shared/layouts/AdaptiveLayout';
 
 // Lazy load feature modules
 
@@ -88,7 +88,7 @@ export const routes = (
       path="/"
       element={
         <ProtectedRoute>
-          <MainLayout />
+          <AdaptiveLayout />
         </ProtectedRoute>
       }
     >
