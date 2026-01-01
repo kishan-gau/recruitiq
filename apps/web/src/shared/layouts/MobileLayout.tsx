@@ -16,29 +16,30 @@ import ProfileMenu from '@shared/components/ProfileMenu';
 /**
  * Bottom navigation items for mobile layout
  * Simplified navigation focused on employee self-service features
+ * Updated for Phase 2: Employee Portal routes
  */
 const mobileNavigation = [
   { 
     name: 'Home', 
-    path: '/', 
+    path: '/employee', 
     icon: Home,
     description: 'Dashboard and quick actions'
   },
   { 
     name: 'Schedule', 
-    path: '/scheduling', 
+    path: '/employee/schedule', 
     icon: Calendar,
     description: 'View schedule and time off'
   },
   { 
     name: 'Pay', 
-    path: '/payroll', 
+    path: '/employee/pay', 
     icon: DollarSign,
     description: 'Payslips and tax documents'
   },
   { 
     name: 'Profile', 
-    path: '/hris', 
+    path: '/employee/profile', 
     icon: User,
     description: 'Personal info and settings'
   },
@@ -132,10 +133,8 @@ export function MobileLayout() {
         <div className="flex justify-around items-center h-16">
           {mobileNavigation.map((item) => {
             const Icon = item.icon;
-            const isActive = 
-              item.path === '/' 
-                ? location.pathname === '/'
-                : location.pathname.startsWith(item.path);
+            const isActive = location.pathname === item.path ||
+              (item.path !== '/employee' && location.pathname.startsWith(item.path));
 
             return (
               <Link

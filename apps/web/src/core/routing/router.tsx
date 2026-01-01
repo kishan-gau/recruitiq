@@ -69,6 +69,13 @@ const PayrollRolesPermissions = lazy(() => import('@features/payroll/pages/setti
 const HRISRolesPermissions = lazy(() => import('@features/hris/pages/settings/RolesPermissions'));
 const BulkUserAccessManagement = lazy(() => import('@features/hris/pages/settings/BulkUserAccessManagement'));
 
+// Employee Portal (Mobile-first PWA features - Phase 2)
+const EmployeeHome = lazy(() => import('@features/employee/pages/EmployeeHome'));
+const EmployeeSchedule = lazy(() => import('@features/employee/pages/EmployeeSchedule'));
+const EmployeePayslips = lazy(() => import('@features/employee/pages/EmployeePayslips'));
+const EmployeeProfile = lazy(() => import('@features/employee/pages/EmployeeProfile'));
+const EmployeeTimeOff = lazy(() => import('@features/employee/pages/EmployeeTimeOff'));
+
 /**
  * Application routes
  * Exported as JSX elements for use with <Routes> component
@@ -158,6 +165,15 @@ export const routes = (
 
       {/* User Settings (accessible from profile menu) */}
       <Route path="settings" element={<UserSettingsPage />} />
+
+      {/* Employee Portal - Mobile-first self-service (Phase 2) */}
+      <Route path="employee">
+        <Route index element={<EmployeeHome />} />
+        <Route path="schedule" element={<EmployeeSchedule />} />
+        <Route path="pay" element={<EmployeePayslips />} />
+        <Route path="profile" element={<EmployeeProfile />} />
+        <Route path="time-off" element={<EmployeeTimeOff />} />
+      </Route>
     </Route>
   </>
 );
