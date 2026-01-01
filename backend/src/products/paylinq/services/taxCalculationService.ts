@@ -677,7 +677,7 @@ class TaxCalculationService {
       };
     } catch (_error) {
       logger.error('Error fetching employee residence status', {
-        error: error.message,
+        error: _error.message,
         employeeRecordId,
         organizationId
       });

@@ -99,8 +99,8 @@ constructor(repository = null, formulaEngineInstance = null) {
       }
     } catch (_error) {
       // Convert FormulaParseError to ValidationError for proper 400 status
-      if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
-        throw new ValidationError(`Invalid formula syntax: ${error.message}`);
+      if (error.name === 'FormulaParseError' || _error.message.includes('token') || _error.message.includes('parse')) {
+        throw new ValidationError(`Invalid formula syntax: ${_error.message}`);
       }
       throw error;
     }
@@ -118,7 +118,7 @@ constructor(repository = null, formulaEngineInstance = null) {
       parsed = await this.formulaEngine.parse(formulaToValidate);
     } catch (_error) {
       // If validation passed but parsing failed, re-throw as ValidationError
-      throw new ValidationError(`Formula parsing failed: ${error.message}`);
+      throw new ValidationError(`Formula parsing failed: ${_error.message}`);
     }
 
     const result = await this.repository.create({
@@ -191,8 +191,8 @@ constructor(repository = null, formulaEngineInstance = null) {
             }
           } catch (_error) {
             // Convert FormulaParseError to ValidationError
-            if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
-              throw new ValidationError(`Invalid formula syntax: ${error.message}`);
+            if (error.name === 'FormulaParseError' || _error.message.includes('token') || _error.message.includes('parse')) {
+              throw new ValidationError(`Invalid formula syntax: ${_error.message}`);
             }
             throw error;
           }
@@ -202,7 +202,7 @@ constructor(repository = null, formulaEngineInstance = null) {
           try {
             parsed = await this.formulaEngine.parse(formulaToValidate);
           } catch (_error) {
-            throw new ValidationError(`Formula parsing failed: ${error.message}`);
+            throw new ValidationError(`Formula parsing failed: ${_error.message}`);
           }
           updates['formula_ast'] = JSON.stringify(parsed);  // Fixed: parsed IS the AST
         }
@@ -229,9 +229,9 @@ constructor(repository = null, formulaEngineInstance = null) {
     } catch (_error) {
       console.error('❌ FormulaTemplateService.updateTemplate ERROR:');
       console.error('  Error type:', error.constructor.name);
-      console.error('  Error message:', error.message);
+      console.error('  Error message:', _error.message);
       console.error('  Error stack:', error.stack);
-      throw error;
+      throw _error;
     }
   }
 
@@ -313,8 +313,8 @@ constructor(repository = null, formulaEngineInstance = null) {
       }
     } catch (_error) {
       // Convert FormulaParseError to ValidationError
-      if (error.name === 'FormulaParseError' || error.message.includes('token') || error.message.includes('parse')) {
-        throw new ValidationError(`Invalid formula syntax in generated formula: ${error.message}`);
+      if (error.name === 'FormulaParseError' || _error.message.includes('token') || _error.message.includes('parse')) {
+        throw new ValidationError(`Invalid formula syntax in generated formula: ${_error.message}`);
       }
       throw error;
     }
@@ -328,7 +328,7 @@ constructor(repository = null, formulaEngineInstance = null) {
       parameters: parameterValues
       };
     } catch (_error) {
-      throw error;
+      throw _error;
     }
   }  /**
    * Get popular templates

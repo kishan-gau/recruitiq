@@ -108,8 +108,8 @@ class PayslipTemplateService {
 
       return result.rows;
     } catch (_error) {
-      logger.error('Error fetching payslip templates', { error: error.message, organizationId });
-      throw error;
+      logger.error('Error fetching payslip templates', { error: _error.message, organizationId });
+      throw _error;
     }
   }
 
@@ -131,8 +131,8 @@ class PayslipTemplateService {
 
       return result.rows[0];
     } catch (_error) {
-      logger.error('Error fetching template by ID', { error: error.message, templateId, organizationId });
-      throw error;
+      logger.error('Error fetching template by ID', { error: _error.message, templateId, organizationId });
+      throw _error;
     }
   }
 
@@ -225,8 +225,8 @@ class PayslipTemplateService {
       logger.info('Created payslip template', { templateId: result.rows[0].id, organizationId, userId });
       return result.rows[0];
     } catch (_error) {
-      logger.error('Error creating template', { error: error.message, organizationId, userId });
-      throw error;
+      logger.error('Error creating template', { error: _error.message, organizationId, userId });
+      throw _error;
     }
   }
 
@@ -344,8 +344,8 @@ class PayslipTemplateService {
       logger.info('Updated payslip template', { templateId, organizationId, userId });
       return result.rows[0];
     } catch (_error) {
-      logger.error('Error updating template', { error: error.message, templateId, organizationId });
-      throw error;
+      logger.error('Error updating template', { error: _error.message, templateId, organizationId });
+      throw _error;
     }
   }
 
@@ -377,8 +377,8 @@ class PayslipTemplateService {
       logger.info('Deleted payslip template', { templateId, organizationId, userId });
       return { success: true };
     } catch (_error) {
-      logger.error('Error deleting template', { error: error.message, templateId, organizationId });
-      throw error;
+      logger.error('Error deleting template', { error: _error.message, templateId, organizationId });
+      throw _error;
     }
   }
 
@@ -407,8 +407,8 @@ class PayslipTemplateService {
 
       return await this.createTemplate(newTemplate, organizationId, userId);
     } catch (_error) {
-      logger.error('Error duplicating template', { error: error.message, templateId, organizationId });
-      throw error;
+      logger.error('Error duplicating template', { error: _error.message, templateId, organizationId });
+      throw _error;
     }
   }
 
@@ -419,8 +419,8 @@ class PayslipTemplateService {
     try {
       return await this.updateTemplate(templateId, { status: 'active' }, organizationId, userId);
     } catch (_error) {
-      logger.error('Error activating template', { error: error.message, templateId, organizationId });
-      throw error;
+      logger.error('Error activating template', { error: _error.message, templateId, organizationId });
+      throw _error;
     }
   }
 
@@ -431,8 +431,8 @@ class PayslipTemplateService {
     try {
       return await this.updateTemplate(templateId, { status: 'archived' }, organizationId, userId);
     } catch (_error) {
-      logger.error('Error archiving template', { error: error.message, templateId, organizationId });
-      throw error;
+      logger.error('Error archiving template', { error: _error.message, templateId, organizationId });
+      throw _error;
     }
   }
 
@@ -460,8 +460,8 @@ class PayslipTemplateService {
 
       return result.rows;
     } catch (_error) {
-      logger.error('Error fetching template assignments', { error: error.message, templateId, organizationId });
-      throw error;
+      logger.error('Error fetching template assignments', { error: _error.message, templateId, organizationId });
+      throw _error;
     }
   }
 
@@ -503,8 +503,8 @@ class PayslipTemplateService {
       logger.info('Created template assignment', { assignmentId: result.rows[0].id, templateId: value.templateId, organizationId });
       return result.rows[0];
     } catch (_error) {
-      logger.error('Error creating assignment', { error: error.message, organizationId });
-      throw error;
+      logger.error('Error creating assignment', { error: _error.message, organizationId });
+      throw _error;
     }
   }
 
@@ -555,8 +555,8 @@ class PayslipTemplateService {
       logger.info('Updated template assignment', { assignmentId, organizationId });
       return result.rows[0];
     } catch (_error) {
-      logger.error('Error updating assignment', { error: error.message, assignmentId, organizationId });
-      throw error;
+      logger.error('Error updating assignment', { error: _error.message, assignmentId, organizationId });
+      throw _error;
     }
   }
 
@@ -575,8 +575,8 @@ class PayslipTemplateService {
       logger.info('Deleted template assignment', { assignmentId, organizationId });
       return { success: true };
     } catch (_error) {
-      logger.error('Error deleting assignment', { error: error.message, assignmentId, organizationId });
-      throw error;
+      logger.error('Error deleting assignment', { error: _error.message, assignmentId, organizationId });
+      throw _error;
     }
   }
 }

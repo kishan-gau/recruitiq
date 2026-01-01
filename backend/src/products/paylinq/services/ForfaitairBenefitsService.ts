@@ -122,7 +122,7 @@ constructor(repository = null, formulaEngine = null) {
       return components;
     } catch (_error) {
       logger.error('Error fetching tenant benefit library', {
-        error: error.message,
+        error: _error.message,
         organizationId,
         filters
       });
@@ -155,7 +155,7 @@ constructor(repository = null, formulaEngine = null) {
       return component;
     } catch (_error) {
       logger.error('Error fetching global benefit', {
-        error: error.message,
+        error: _error.message,
         componentCode
       });
       throw error;
@@ -226,7 +226,7 @@ constructor(repository = null, formulaEngine = null) {
       return component;
     } catch (_error) {
       logger.error('Error creating custom benefit', {
-        error: error.message,
+        error: _error.message,
         organizationId,
         componentData
       });
@@ -285,7 +285,7 @@ constructor(repository = null, formulaEngine = null) {
       return created;
     } catch (_error) {
       logger.error('Error cloning global benefit', {
-        error: error.message,
+        error: _error.message,
         globalComponentCode,
         organizationId
       });
@@ -329,7 +329,7 @@ constructor(repository = null, formulaEngine = null) {
       };
     } catch (_error) {
       logger.error('Error fetching available benefits', {
-        error: error.message,
+        error: _error.message,
         organizationId
       });
       throw error;
@@ -399,7 +399,7 @@ constructor(repository = null, formulaEngine = null) {
       return assignment;
     } catch (_error) {
       logger.error('Error assigning benefit to employee', {
-        error: error.message,
+        error: _error.message,
         organizationId,
         assignmentData
       });
@@ -441,7 +441,7 @@ constructor(repository = null, formulaEngine = null) {
       return benefits;
     } catch (_error) {
       logger.error('Error fetching employee benefits', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         organizationId
       });
@@ -535,7 +535,7 @@ constructor(repository = null, formulaEngine = null) {
       return result;
     } catch (_error) {
       logger.error('Error calculating employee benefit', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         componentCode,
         organizationId
@@ -568,7 +568,7 @@ constructor(repository = null, formulaEngine = null) {
       logger.info('Benefit assignment removed', { assignmentId });
     } catch (_error) {
       logger.error('Error removing benefit assignment', {
-        error: error.message,
+        error: _error.message,
         assignmentId,
         organizationId
       });
@@ -598,7 +598,7 @@ constructor(repository = null, formulaEngine = null) {
       return stats;
     } catch (_error) {
       logger.error('Error fetching benefit statistics', {
-        error: error.message,
+        error: _error.message,
         organizationId
       });
       throw error;

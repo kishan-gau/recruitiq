@@ -98,7 +98,7 @@ constructor(loontijdvakService = null) {
       };
     } catch (_error) {
       logger.error('Error calculating payroll run components', {
-        error: error.message,
+        error: _error.message,
         organizationId
       });
       throw error;
@@ -228,7 +228,7 @@ constructor(loontijdvakService = null) {
       };
     } catch (_error) {
       logger.error('Error processing employee components', {
-        error: error.message,
+        error: _error.message,
         employeeRecordId: employee.employeeRecordId,
         organizationId
       });

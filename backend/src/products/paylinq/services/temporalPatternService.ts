@@ -676,7 +676,7 @@ constructor(timeAttendanceRepository = null, queryFn = null) {
       } catch (_error) {
         logger.error('Error testing pattern for employee', {
           employeeId,
-          error: error.message,
+          error: _error.message,
         });
         const employee = employeeMap.get(employeeId);
         results.push({

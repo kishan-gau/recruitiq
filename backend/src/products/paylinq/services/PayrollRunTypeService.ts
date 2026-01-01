@@ -420,7 +420,7 @@ constructor(repository = null, payStructureService = null) {
             });
           } catch (_error) {
             logger.error('Failed to resolve template components', {
-              error: error.message,
+              error: _error.message,
               templateId: runType.default_template_id,
               typeCode,
               organizationId
@@ -452,7 +452,7 @@ constructor(repository = null, payStructureService = null) {
             });
           } catch (_error) {
             logger.error('Failed to load template components for hybrid mode', {
-              error: error.message,
+              error: _error.message,
               templateId: runType.default_template_id,
               typeCode,
               organizationId
@@ -533,7 +533,7 @@ constructor(repository = null, payStructureService = null) {
       }
 
     } catch (_error) {
-      errors.push(error.message);
+      errors.push(_error.message);
     }
 
     return {

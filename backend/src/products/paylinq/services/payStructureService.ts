@@ -193,7 +193,7 @@ class PayStructureService {
       return template;
     } catch (_error) {
       logger.error('Failed to create pay structure template:', error);
-      throw error;
+      throw _error;
     }
   }
 
@@ -629,7 +629,7 @@ class PayStructureService {
       return assignment;
     } catch (_error) {
       // Handle constraint violation for overlapping assignments
-      if (error.message && error.message.includes('unique_current_worker_structure')) {
+      if (_error.message && _error.message.includes('unique_current_worker_structure')) {
         throw new ValidationError(
           'This worker already has a pay structure assigned for this date range. ' +
           'Please choose a different effective date or the assignment will replace the existing one.'
@@ -1454,11 +1454,11 @@ class PayStructureService {
 
         results.successful++;
       } catch (_error) {
-        logger.error('Error upgrading worker', { workerId, error: error.message });
+        logger.error('Error upgrading worker', { workerId, error: _error.message });
         results.failed++;
         results.errors.push({
           workerId,
-          error: error.message
+          error: _error.message
         });
       }
     }
@@ -1544,7 +1544,7 @@ class PayStructureService {
       return await this.repository.getCurrentWorkerStructure(employeeId, organizationId, asOfDate);
     } catch (_error) {
       logger.error('Error fetching current worker structure', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         organizationId
       });
@@ -1563,7 +1563,7 @@ class PayStructureService {
       return await this.repository.getWorkerStructureHistory(employeeId, organizationId);
     } catch (_error) {
       logger.error('Error fetching worker structure history', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         organizationId
       });
@@ -1627,7 +1627,7 @@ class PayStructureService {
       );
     } catch (_error) {
       logger.error('Error assigning template to worker', {
-        error: error.message,
+        error: _error.message,
         employeeId,
         templateId,
         organizationId
@@ -1766,7 +1766,7 @@ class PayStructureService {
       return dtoMapper.mapTemplateInclusionDbToApi(inclusion);
     } catch (_error) {
       logger.error('Error adding included template', {
-        error: error.message,
+        error: _error.message,
         parentTemplateId,
         includedTemplateCode: inclusionData.includedTemplateCode,
         organizationId
@@ -1789,7 +1789,7 @@ class PayStructureService {
       return inclusions.map(inc => dtoMapper.mapTemplateInclusionDbToApi(inc));
     } catch (_error) {
       logger.error('Error getting included templates', {
-        error: error.message,
+        error: _error.message,
         parentTemplateId,
         organizationId
       });
@@ -1872,7 +1872,7 @@ class PayStructureService {
       return dtoMapper.mapTemplateInclusionDbToApi(updated);
     } catch (_error) {
       logger.error('Error updating included template', {
-        error: error.message,
+        error: _error.message,
         inclusionId,
         organizationId
       });
@@ -1928,7 +1928,7 @@ class PayStructureService {
       return { success: true };
     } catch (_error) {
       logger.error('Error removing included template', {
-        error: error.message,
+        error: _error.message,
         inclusionId,
         organizationId
       });
@@ -1958,7 +1958,7 @@ class PayStructureService {
       };
     } catch (_error) {
       logger.error('Error getting composite structure', {
-        error: error.message,
+        error: _error.message,
         templateId,
         organizationId
       });

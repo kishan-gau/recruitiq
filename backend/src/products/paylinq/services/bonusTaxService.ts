@@ -206,11 +206,11 @@ constructor(taxCalculationService = null, loontijdvakService = null) {
 
     } catch (_error) {
       logger.error('Bonus tax calculation failed', {
-        error: error.message,
+        error: _error.message,
         params: validated,
         organizationId
       });
-      throw error;
+      throw _error;
     }
   }
 
