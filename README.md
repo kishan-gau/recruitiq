@@ -103,6 +103,9 @@ RecruitIQ follows a layered architecture pattern:
 - [Security Audit Report](./SECURITY_AUDIT_REPORT.md)
 - **[Feature Management System](./FEATURE_MANAGEMENT_IMPLEMENTATION_COMPLETE.md)** - Tier-based access control
   - [Quick Start Guide](./FEATURE_MANAGEMENT_QUICK_START.md) - Developer reference with examples
+- **[Mobile UX Strategy](./docs/mobile/)** - Progressive Web App proposal for employee portal
+  - [Full Proposal](./docs/mobile/EMPLOYEE_MOBILE_UX_PROPOSAL.md) - Comprehensive 50-page analysis
+  - [Quick Reference](./docs/mobile/MOBILE_UX_QUICK_REFERENCE.md) - Executive summary (5 min read)
 
 ## 📦 Installation
 
@@ -492,8 +495,13 @@ See [Performance Standards](./docs/PERFORMANCE_STANDARDS.md) for optimization gu
 - [x] Controller to Service layer migration
 - [x] Comprehensive test coverage
 - [x] Complete coding standards documentation
+- [x] Mobile UX strategy proposal (PWA recommendation)
 
-### Next Phase (Phase 3)
+### Next Phase (Phase 3) - In Planning
+- [ ] **Progressive Web App (PWA) for Employees** - Mobile-first employee portal (Q1 2026)
+  - [ ] PWA infrastructure (service worker, manifest)
+  - [ ] Employee self-service features (attendance, payroll, profile)
+  - [ ] Offline capabilities and push notifications
 - [ ] Advanced search and filtering
 - [ ] Email notifications
 - [ ] Resume parsing with AI
@@ -501,7 +509,7 @@ See [Performance Standards](./docs/PERFORMANCE_STANDARDS.md) for optimization gu
 - [ ] Advanced analytics dashboard
 
 ### Future Phases
-- [ ] Mobile applications (iOS/Android)
+- [ ] Native mobile applications (iOS/Android) - Evaluate after PWA adoption
 - [ ] Video interview integration
 - [ ] AI-powered candidate matching
 - [ ] Multi-language support
