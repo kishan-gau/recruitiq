@@ -13,6 +13,7 @@ import {
   useProcessPayroll,
 } from '../hooks/usePayrollRuns';
 import { WorkflowStepper } from '../components/WorkflowStepper';
+import PayslipsList from '../components/payslips/PayslipsList';
 
 // StatusBadge component
 function StatusBadge({ status }: { status: string }) {
@@ -187,6 +188,7 @@ export default function PayrollRunsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRun, setSelectedRun] = useState<PayrollRun | null>(null);
+  const [showPayslips, setShowPayslips] = useState<PayrollRun | null>(null);
 
   // Build filters
   const filters: PayrollRunFilters = useMemo(() => {
@@ -453,6 +455,14 @@ export default function PayrollRunsPage() {
                           Verwerken
                         </button>
                       )}
+                      {run.status === 'processed' && (
+                        <button
+                          onClick={() => setShowPayslips(run)}
+                          className="text-blue-600 hover:text-blue-900 font-medium"
+                        >
+                          Loonstroken
+                        </button>
+                      )}
                       <button
                         onClick={() => setSelectedRun(run)}
                         className="text-gray-600 hover:text-gray-900"
@@ -615,6 +625,17 @@ export default function PayrollRunsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Payslips List Modal */}
+      {showPayslips && (
+        <PayslipsList
+          payrollRunId={showPayslips.id}
+          runNumber={showPayslips.runNumber}
+          runName={showPayslips.runName}
+          isOpen={true}
+          onClose={() => setShowPayslips(null)}
+        />
       )}
     </div>
   );
