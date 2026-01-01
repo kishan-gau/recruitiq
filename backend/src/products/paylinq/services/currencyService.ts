@@ -3,7 +3,7 @@ import ApprovalService from './approvalService.js';
 import logger from '../../../utils/logger.js';
 import NodeCache from 'node-cache';
 import { createClient } from 'redis';
-import pool from '../../../config/database.js';
+import { query } from '../../../config/database.js';
 
 /**
  * Currency Service - Handles all currency conversion operations
@@ -184,7 +184,7 @@ constructor() {
    */
   async getFromMaterializedView(organizationId, fromCurrency, toCurrency) {
     try {
-      const query = `
+      const sqlQuery = `
         SELECT 
           id, organization_id, from_currency, to_currency, rate,
           effective_from, source, metadata, updated_at
@@ -195,7 +195,7 @@ constructor() {
         LIMIT 1
       `;
       
-      const result = await pool.query(query, [organizationId, fromCurrency, toCurrency]);
+      const result = await query(sqlQuery, [organizationId, fromCurrency, toCurrency], organizationId, { operation: 'SELECT', table: 'active_exchange_rates_mv' });
       return result.rows[0] || null;
     } catch (_error) {
       logger.warn('Materialized view query failed, falling back to regular table', { error: error.message });
@@ -214,9 +214,11 @@ constructor() {
   async triangulateRate(organizationId, fromCurrency, toCurrency, effectiveDate) {
     try {
       // Get organization's base currency
-      const configResult = await pool.query(
+      const configResult = await query(
         'SELECT base_currency FROM payroll.organization_currency_config WHERE organization_id = $1',
-        [organizationId]
+        [organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'organization_currency_config' }
       );
 
       if (configResult.rows.length === 0) {
@@ -760,19 +762,23 @@ constructor() {
    */
   async getOrCreateOrgConfig(organizationId) {
     try {
-      let result = await pool.query(
+      let result = await query(
         'SELECT * FROM payroll.organization_currency_config WHERE organization_id = $1',
-        [organizationId]
+        [organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'organization_currency_config' }
       );
 
       if (result.rows.length === 0) {
         // Create default config
-        result = await pool.query(
+        result = await query(
           `INSERT INTO payroll.organization_currency_config (
             organization_id, base_currency, supported_currencies
           ) VALUES ($1, $2, $3)
           RETURNING *`,
-          [organizationId, 'SRD', ['SRD']]
+          [organizationId, 'SRD', ['SRD']],
+          organizationId,
+          { operation: 'INSERT', table: 'organization_currency_config' }
         );
       }
 
@@ -803,7 +809,7 @@ constructor() {
       updatedBy
     } = configData;
 
-    const query = `
+    const sqlQuery = `
       UPDATE payroll.organization_currency_config
       SET 
         base_currency = COALESCE($1, base_currency),
@@ -822,7 +828,7 @@ constructor() {
     `;
 
     try {
-      const result = await pool.query(query, [
+      const result = await query(sqlQuery, [
         baseCurrency,
         supportedCurrencies,
         autoUpdateRates,
@@ -834,7 +840,7 @@ constructor() {
         requireApprovalForRateChanges,
         updatedBy,
         organizationId
-      ]);
+      ], organizationId, { operation: 'UPDATE', table: 'organization_currency_config' });
 
       if (result.rows.length === 0) {
         throw new Error(`Currency config for organization ${organizationId} not found`);
@@ -1116,7 +1122,7 @@ constructor() {
    */
   async refreshMaterializedViews() {
     try {
-      await pool.query('SELECT payroll.refresh_currency_materialized_views()');
+      await query('SELECT payroll.refresh_currency_materialized_views()', [], null, { operation: 'SELECT', table: 'function_call' });
       logger.info('Currency materialized views refreshed successfully');
       return { success: true };
     } catch (_error) {

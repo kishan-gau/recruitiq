@@ -4,7 +4,7 @@
  */
 
 import { BaseRepository } from './BaseRepository.js';
-import pool, { query } from '../config/database.js';
+import { query } from '../config/database.js';
 
 // Use the custom query function that supports organizationId filtering
 const db = { query };
@@ -21,9 +21,11 @@ export class InterviewRepository extends BaseRepository {
   async create(data, organizationId) {
     try {
       // Verify the application exists and belongs to the organization
-      const appCheck = await pool.query(
+      const appCheck = await query(
         'SELECT id FROM applications WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL',
-        [data.application_id, organizationId]
+        [data.application_id, organizationId],
+        organizationId,
+        { operation: 'SELECT', table: 'applications' }
       );
 
       if (appCheck.rows.length === 0) {

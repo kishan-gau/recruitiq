@@ -5,7 +5,7 @@
 
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import pool from '../config/database.js';
+import { query } from '../config/database.js';
 import logger from '../utils/logger.js';
 import tokenBlacklist from './tokenBlacklist.js';
 
@@ -133,12 +133,14 @@ class PasswordResetService {
       const hashedToken = this.hashToken(token);
 
       // Find user with this token
-      const result = await pool.query(
+      const result = await query(
         `SELECT id, email, name, password_reset_token, password_reset_expires_at
          FROM users
          WHERE password_reset_token = $1
          AND deleted_at IS NULL`,
-        [hashedToken]
+        [hashedToken],
+        null,
+        { operation: 'SELECT', table: 'users' }
       );
 
       if (result.rows.length === 0) {
@@ -153,12 +155,14 @@ class PasswordResetService {
         logger.warn(`Expired password reset token used for user: ${user.id}`);
         
         // Clean up expired token
-        await pool.query(
+        await query(
           `UPDATE users 
            SET password_reset_token = NULL,
                password_reset_expires_at = NULL
            WHERE id = $1`,
-          [user.id]
+          [user.id],
+          null,
+          { operation: 'UPDATE', table: 'users' }
         );
         
         return { valid: false, error: 'Reset token has expired. Please request a new one.' };
@@ -249,13 +253,16 @@ class PasswordResetService {
    */
   async cleanupExpiredTokens() {
     try {
-      const result = await pool.query(
+      const result = await query(
         `UPDATE users
          SET password_reset_token = NULL,
              password_reset_expires_at = NULL
          WHERE password_reset_expires_at < NOW()
          AND password_reset_token IS NOT NULL
-         RETURNING id`
+         RETURNING id`,
+        [],
+        null,
+        { operation: 'UPDATE', table: 'users' }
       );
 
       const count = result.rowCount;
@@ -277,13 +284,15 @@ class PasswordResetService {
    */
   async canRequestReset(email) {
     try {
-      const result = await pool.query(
+      const result = await query(
         `SELECT password_reset_expires_at
          FROM users
          WHERE email = $1
          AND password_reset_expires_at > NOW()
          AND deleted_at IS NULL`,
-        [email.toLowerCase()]
+        [email.toLowerCase()],
+        null,
+        { operation: 'SELECT', table: 'users' }
       );
 
       if (result.rows.length > 0) {

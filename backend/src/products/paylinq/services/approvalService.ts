@@ -1,4 +1,4 @@
-import pool from '../../../config/database.js';
+import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 
 /**
@@ -36,7 +36,7 @@ class ApprovalService {
     const requiredApprovals = applicableRule.required_approvals;
     const expirationHours = applicableRule.expiration_hours;
 
-    const query = `
+    const sqlQuery = `
       INSERT INTO payroll.currency_approval_request (
         organization_id, request_type, reference_type, reference_id,
         request_data, reason, priority, required_approvals,
@@ -52,7 +52,7 @@ class ApprovalService {
       : null;
 
     try {
-      const result = await pool.query(query, [
+      const result = await query(sqlQuery, [
         organizationId,
         requestType,
         referenceType,
@@ -63,7 +63,7 @@ class ApprovalService {
         requiredApprovals,
         expiresAt,
         createdBy
-      ]);
+      ], organizationId, { operation: 'INSERT', table: 'currency_approval_request' });
 
       const approvalRequest = result.rows[0];
 
@@ -94,7 +94,7 @@ class ApprovalService {
    * @returns {Array} Array of applicable rules
    */
   async getApplicableRules(organizationId, requestType, requestData) {
-    const query = `
+    const sqlQuery = `
       SELECT 
         id, name, rule_type, conditions, required_approvals,
         approver_role, approver_user_ids, expiration_hours, priority
@@ -105,7 +105,7 @@ class ApprovalService {
     `;
 
     try {
-      const result = await pool.query(query, [organizationId]);
+      const result = await query(sqlQuery, [organizationId], organizationId, { operation: 'SELECT', table: 'currency_approval_rule' });
       const rules = result.rows;
 
       // Filter rules that match the request
@@ -408,7 +408,7 @@ class ApprovalService {
     queryText += ' ORDER BY priority DESC, created_at ASC';
 
     try {
-      const result = await pool.query(queryText, params);
+      const result = await query(queryText, params, organizationId, { operation: 'SELECT', table: 'currency_approval_request' });
       return result.rows;
     } catch (error) {
       logger.error('Error getting pending approvals', { error, organizationId });
@@ -423,7 +423,7 @@ class ApprovalService {
    * @returns {Array} Approval history
    */
   async getApprovalHistory(referenceType, referenceId) {
-    const query = `
+    const sqlQuery = `
       SELECT 
         ar.id as request_id,
         ar.request_type,
@@ -455,7 +455,7 @@ class ApprovalService {
     `;
 
     try {
-      const result = await pool.query(query, [referenceType, referenceId]);
+      const result = await query(sqlQuery, [referenceType, referenceId], null, { operation: 'SELECT', table: 'currency_approval_request' });
       return result.rows;
     } catch (error) {
       logger.error('Error getting approval history', { error, referenceType, referenceId });
@@ -477,7 +477,7 @@ class ApprovalService {
       return;
     }
 
-    const query = `
+    const sqlQuery = `
       INSERT INTO payroll.currency_approval_notification (
         approval_request_id, recipient_user_id, notification_type,
         delivery_method, subject, message
@@ -492,7 +492,7 @@ class ApprovalService {
     `;
 
     try {
-      await pool.query(query, [requestId, approverIds]);
+      await query(sqlQuery, [requestId, approverIds], null, { operation: 'INSERT', table: 'currency_approval_notification' });
       logger.info('Approval notifications created', { requestId, count: approverIds.length });
     } catch (error) {
       logger.error('Error creating notifications', { error, requestId });
@@ -505,7 +505,7 @@ class ApprovalService {
    * @param {Object} request - Approval request
    */
   async sendApprovedNotification(request) {
-    const query = `
+    const sqlQuery = `
       INSERT INTO payroll.currency_approval_notification (
         approval_request_id, recipient_user_id, notification_type,
         delivery_method, subject, message
@@ -513,7 +513,7 @@ class ApprovalService {
     `;
 
     try {
-      await pool.query(query, [request.id, request.created_by]);
+      await query(sqlQuery, [request.id, request.created_by], null, { operation: 'INSERT', table: 'currency_approval_notification' });
     } catch (error) {
       logger.error('Error sending approved notification', { error, requestId: request.id });
     }
@@ -525,7 +525,7 @@ class ApprovalService {
    * @param {string} comments - Rejection reason
    */
   async sendRejectedNotification(request, comments) {
-    const query = `
+    const sqlQuery = `
       INSERT INTO payroll.currency_approval_notification (
         approval_request_id, recipient_user_id, notification_type,
         delivery_method, subject, message
@@ -535,7 +535,7 @@ class ApprovalService {
     const message = `Your currency request has been rejected. Reason: ${comments || 'No reason provided'}`;
 
     try {
-      await pool.query(query, [request.id, request.created_by, message]);
+      await query(sqlQuery, [request.id, request.created_by, message], null, { operation: 'INSERT', table: 'currency_approval_notification' });
     } catch (error) {
       logger.error('Error sending rejected notification', { error, requestId: request.id });
     }
@@ -547,7 +547,7 @@ class ApprovalService {
    */
   async expireOldRequests() {
     try {
-      const result = await pool.query('SELECT payroll.expire_old_approval_requests()');
+      const result = await query('SELECT payroll.expire_old_approval_requests()', [], null, { operation: 'SELECT', table: 'function_call' });
       const expiredCount = result.rows[0].expire_old_approval_requests;
       
       if (expiredCount > 0) {

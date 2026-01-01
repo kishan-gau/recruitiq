@@ -10,7 +10,7 @@ import jwt from 'jsonwebtoken';
 import config from '../config/index.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import pool from '../config/database.js';
+import { query } from '../config/database.js';
 import RefreshToken from '../models/RefreshToken.js';
 import Organization from '../models/Organization.js';
 
@@ -166,12 +166,14 @@ export const verifyMFA = async (req, res) => {
     }
 
     // Get full user details
-    const result = await pool.query(
+    const result = await query(
       `SELECT u.*, r.name as role_name, r.level as role_level
        FROM users u
        LEFT JOIN roles r ON u.role_id = r.id
        WHERE u.id = $1`,
-      [userId]
+      [userId],
+      null,
+      { operation: 'SELECT', table: 'users' }
     );
 
     if (result.rows.length === 0) {
@@ -330,11 +332,13 @@ export const useBackupCode = async (req, res) => {
     const userId = decoded.userId;
 
     // Get user's backup codes
-    const result = await pool.query(
+    const result = await query(
       `SELECT mfa_enabled, mfa_backup_codes 
        FROM users 
        WHERE id = $1`,
-      [userId]
+      [userId],
+      null,
+      { operation: 'SELECT', table: 'users' }
     );
 
     if (result.rows.length === 0) {
@@ -371,12 +375,14 @@ export const useBackupCode = async (req, res) => {
     const remainingCodes = user.mfa_backup_codes.length - 1;
 
     // Get full user details for token generation
-    const userResult = await pool.query(
+    const userResult = await query(
       `SELECT u.*, r.name as role_name, r.level as role_level
        FROM users u
        LEFT JOIN roles r ON u.role_id = r.id
        WHERE u.id = $1`,
-      [userId]
+      [userId],
+      null,
+      { operation: 'SELECT', table: 'users' }
     );
 
     const fullUser = userResult.rows[0];
@@ -402,10 +408,12 @@ export const useBackupCode = async (req, res) => {
     );
 
     // Store refresh token
-    await pool.query(
+    await query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
        VALUES ($1, $2, NOW() + INTERVAL '${config.jwt.refreshExpiresIn}')`,
-      [fullUser.id, refreshToken]
+      [fullUser.id, refreshToken],
+      null,
+      { operation: 'INSERT', table: 'refresh_tokens' }
     );
 
     // Set cookies
@@ -471,13 +479,15 @@ export const disableMFA = async (req, res) => {
     }
 
     // Get user details and organization MFA policy
-    const result = await pool.query(
+    const result = await query(
       `SELECT u.password_hash, u.mfa_enabled, u.mfa_secret, u.mfa_backup_codes, 
               u.organization_id, o.mfa_required, o.mfa_enforcement_date
        FROM users u
        LEFT JOIN organizations o ON u.organization_id = o.id
        WHERE u.id = $1`,
-      [userId]
+      [userId],
+      null,
+      { operation: 'SELECT', table: 'users' }
     );
 
     if (result.rows.length === 0) {
@@ -577,11 +587,13 @@ export const regenerateBackupCodes = async (req, res) => {
     }
 
     // Get user details
-    const result = await pool.query(
+    const result = await query(
       `SELECT password_hash, mfa_enabled, mfa_secret
        FROM users 
        WHERE id = $1`,
-      [userId]
+      [userId],
+      null,
+      { operation: 'SELECT', table: 'users' }
     );
 
     if (result.rows.length === 0) {
