@@ -6,28 +6,32 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PaylinqClient, APIClient } from '@recruitiq/api-client';
-import { taxService } from '@/features/payroll/services/tax.service';
 
-// Mock the API client packages
+// Create mock instances that will be used by the service
+const mockApiClientInstance = {};
+const mockPaylinqClientInstance = {
+  getTaxRules: vi.fn(),
+  getTaxRule: vi.fn(),
+  createTaxRule: vi.fn(),
+  updateTaxRule: vi.fn(),
+  deleteTaxRule: vi.fn(),
+};
+
+// Mock the API client packages before importing the service
 vi.mock('@recruitiq/api-client', () => ({
-  APIClient: vi.fn().mockImplementation(() => ({})),
-  PaylinqClient: vi.fn().mockImplementation(() => ({
-    getTaxRules: vi.fn(),
-    getTaxRule: vi.fn(),
-    createTaxRule: vi.fn(),
-    updateTaxRule: vi.fn(),
-    deleteTaxRule: vi.fn(),
-  })),
+  APIClient: vi.fn(() => mockApiClientInstance),
+  PaylinqClient: vi.fn(() => mockPaylinqClientInstance),
 }));
+
+// Now import the service after mocks are set up
+import { taxService } from '@/features/payroll/services/tax.service';
 
 describe('taxService', () => {
   let mockPaylinqClient: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    const PaylinqClientConstructor = vi.mocked(PaylinqClient);
-    mockPaylinqClient = PaylinqClientConstructor.mock.results[0]?.value;
+    mockPaylinqClient = mockPaylinqClientInstance;
   });
 
   describe('getTaxRules', () => {
