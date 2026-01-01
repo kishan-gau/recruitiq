@@ -513,4 +513,17 @@ describe('ComplianceService', () => {
       expect(result.warnings).toEqual([]);
     });
   });
+
+  describe('generateComplianceReport (legacy)', () => {
+    it('should generate compliance report for backward compatibility', async () => {
+      const period = { start: '2025-01-01', end: '2025-01-31' };
+      const result = await service.generateComplianceReport(testOrganizationId, period);
+
+      expect(result).toBeDefined();
+      expect(result.period).toEqual(period);
+      expect(result.complianceScore).toBe(100);
+      expect(result.issues).toEqual([]);
+      expect(result.recommendations).toEqual([]);
+    });
+  });
 });
