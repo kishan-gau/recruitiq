@@ -23,3 +23,4 @@ uploads/
 *.sqlite
 *.db
 .cache/
+dist_temp/
