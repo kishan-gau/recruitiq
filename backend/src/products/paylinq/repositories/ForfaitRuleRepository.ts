@@ -4,6 +4,7 @@
  */
 
 import { query } from '../../../config/database.js';
+import { mapForfaitRuleApiToDb } from '../dto/forfaitRuleDto.js';
 
 class ForfaitRuleRepository {
   
@@ -142,6 +143,9 @@ class ForfaitRuleRepository {
    * Create a new forfait rule
    */
   async create(ruleData, organizationId, userId) {
+    // Convert camelCase API format to snake_case DB format
+    const dbData = mapForfaitRuleApiToDb(ruleData);
+    
     const sql = `
       INSERT INTO forfait_rules (
         organization_id, rule_name, description,
@@ -157,19 +161,19 @@ class ForfaitRuleRepository {
 
     const params = [
       organizationId,
-      ruleData.rule_name,
-      ruleData.description,
-      ruleData.source_component_id,
-      ruleData.forfait_component_id,
-      ruleData.percentage_rate,
-      ruleData.apply_on_gross,
-      ruleData.min_amount,
-      ruleData.max_amount,
-      ruleData.catalog_value,
-      ruleData.effective_from,
-      ruleData.effective_to,
-      ruleData.is_active,
-      ruleData.metadata,
+      dbData.rule_name,
+      dbData.description,
+      dbData.source_component_id,
+      dbData.forfait_component_id,
+      dbData.percentage_rate,
+      dbData.apply_on_gross,
+      dbData.min_amount,
+      dbData.max_amount,
+      dbData.catalog_value,
+      dbData.effective_from,
+      dbData.effective_to,
+      dbData.is_active,
+      dbData.metadata,
       userId
     ];
 
@@ -185,20 +189,24 @@ class ForfaitRuleRepository {
    * Update a forfait rule
    */
   async update(id, updates, organizationId, userId) {
+    // Convert camelCase API format to snake_case DB format
+    const dbUpdates = mapForfaitRuleApiToDb(updates);
+    
     const fields = [];
     const values = [id, organizationId];
     let paramCount = 2;
 
-    Object.keys(updates).forEach(key => {
-      if (updates[key] !== undefined) {
+    Object.keys(dbUpdates).forEach(key => {
+      if (dbUpdates[key] !== undefined) {
         paramCount++;
         fields.push(`${key} = $${paramCount}`);
-        values.push(updates[key]);
+        values.push(dbUpdates[key]);
       }
     });
 
     if (fields.length === 0) {
-      throw new Error('No fields to update');
+      // No fields to update, return null
+      return null;
     }
 
     // Always update updated_by and updated_at
@@ -238,12 +246,15 @@ class ForfaitRuleRepository {
       WHERE id = $2
         AND organization_id = $3
         AND deleted_at IS NULL
+      RETURNING *
     `;
 
-    await this.query(sql, [userId, id, organizationId], organizationId, {
+    const result = await this.query(sql, [userId, id, organizationId], organizationId, {
       operation: 'DELETE',
       table: 'forfait_rules'
     });
+    
+    return result.rows[0];
   }
 
   /**
