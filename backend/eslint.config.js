@@ -7,6 +7,7 @@
  * - Security standards (tenant isolation, no hardcoded secrets, input validation)
  * - Database query standards (parameterized queries, organization_id filtering)
  * - Error handling and logging patterns
+ * - **Catch block naming: Always use "error" (never "_error", "err", "e")**
  * - Test coverage requirements
  * - Code organization and naming conventions
  *
@@ -15,7 +16,7 @@
  * - BACKEND_STANDARDS.md - Layer architecture and service patterns
  * - DATABASE_STANDARDS.md - Query patterns and multi-tenant safety
  * - SECURITY_STANDARDS.md - Security best practices
- * - TESTING_STANDARDS.md - Testing patterns and coverage requirements
+ * - TESTING_STANDARDS.md - Testing patterns and coverage requirements (includes catch block naming)
  * - API_STANDARDS.md - REST API conventions and response formats
  */
 
@@ -119,7 +120,7 @@ const eslintConfig = [
       '@typescript-eslint/no-unused-vars': ['warn', { 
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
-        caughtErrorsIgnorePattern: '^_'
+        // NOTE: No caughtErrorsIgnorePattern - catch parameters should always be "error" (see TESTING_STANDARDS.md)
       }],
       
       // Base rules that work for both JS and TS
