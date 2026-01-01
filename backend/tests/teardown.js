@@ -8,8 +8,8 @@
 export default async function globalTeardown() {
   // Close database pool to prevent connection leaks
   try {
-    // Import dynamically to avoid .ts extension issues
-    const { closePool } = await import('../src/config/database.js');
+    // Import from TypeScript source file
+    const { closePool } = await import('../src/config/database.ts');
     await closePool();
     console.error('🧹 Database pool closed');
   } catch (error) {
