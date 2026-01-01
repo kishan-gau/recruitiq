@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import type { PayrollRun, PayrollRunFilters, CreatePayrollRunRequest } from '@recruitiq/types';
 
 import { handleApiError } from '@/utils/errorHandler';
+import EnhancedError, { parseApiError, type EnhancedErrorProps } from '@/components/EnhancedError';
 
 import {
   usePayrollRuns,
@@ -189,6 +190,7 @@ export default function PayrollRunsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRun, setSelectedRun] = useState<PayrollRun | null>(null);
   const [showPayslips, setShowPayslips] = useState<PayrollRun | null>(null);
+  const [enhancedError, setEnhancedError] = useState<EnhancedErrorProps | null>(null);
 
   // Build filters
   const filters: PayrollRunFilters = useMemo(() => {
@@ -239,20 +241,32 @@ export default function PayrollRunsPage() {
   const handleApprove = async (runId: string) => {
     if (!confirm('Weet u zeker dat u deze loonrun wilt goedkeuren?')) return;
     try {
+      setEnhancedError(null); // Clear previous errors
       await approveMutation.mutateAsync({ payrollRunId: runId });
       queryClient.invalidateQueries({ queryKey: ['payroll-runs'] });
     } catch (err: any) {
-      handleApiError(err, { defaultMessage: 'Fout bij goedkeuren loonrun' });
+      const errorProps = parseApiError(err);
+      setEnhancedError({
+        ...errorProps,
+        title: errorProps.title || 'Fout bij goedkeuren loonrun',
+        onClose: () => setEnhancedError(null),
+      });
     }
   };
 
   const handleProcess = async (runId: string) => {
     if (!confirm('Weet u zeker dat u deze loonrun wilt verwerken?')) return;
     try {
+      setEnhancedError(null); // Clear previous errors
       await processMutation.mutateAsync({ payrollRunId: runId });
       queryClient.invalidateQueries({ queryKey: ['payroll-runs'] });
     } catch (err: any) {
-      handleApiError(err, { defaultMessage: 'Fout bij verwerken loonrun' });
+      const errorProps = parseApiError(err);
+      setEnhancedError({
+        ...errorProps,
+        title: errorProps.title || 'Fout bij verwerken loonrun',
+        onClose: () => setEnhancedError(null),
+      });
     }
   };
 
@@ -333,6 +347,13 @@ export default function PayrollRunsPage() {
           </button>
         </div>
       </div>
+
+      {/* Enhanced Error Display */}
+      {enhancedError && (
+        <div className="mb-6">
+          <EnhancedError {...enhancedError} />
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
