@@ -18,13 +18,8 @@ import React from 'react';
 import { 
   usePayrollRuns, 
   useCreatePayrollRun,
-  useCalculatePayroll,
 } from '@/features/payroll/hooks/usePayrollRuns';
-import { useWorkers } from '@/features/payroll/hooks/useWorkers';
-import { useCompensation } from '@/features/payroll/hooks/useCompensation';
 import { payrollRunsService } from '@/features/payroll/services/payroll-runs.service';
-import { workersService } from '@/features/payroll/services/workers.service';
-import { compensationService } from '@/features/payroll/services/compensation.service';
 
 // Mock services
 vi.mock('@/features/payroll/services/payroll-runs.service', () => ({
@@ -37,19 +32,17 @@ vi.mock('@/features/payroll/services/payroll-runs.service', () => ({
   },
 }));
 
-vi.mock('@/features/payroll/services/workers.service', () => ({
-  workersService: {
-    getWorkers: vi.fn(),
-    getWorker: vi.fn(),
-  },
-}));
+// Mock workers service (doesn't exist in frontend yet, simulating data)
+const mockWorkersService = {
+  getWorkers: vi.fn(),
+  getWorker: vi.fn(),
+};
 
-vi.mock('@/features/payroll/services/compensation.service', () => ({
-  compensationService: {
-    getCompensation: vi.fn(),
-    getCurrentCompensation: vi.fn(),
-  },
-}));
+// Mock compensation service
+const mockCompensationService = {
+  getCompensation: vi.fn(),
+  getCurrentCompensation: vi.fn(),
+};
 
 describe('Payroll Calculation Workflow Integration Tests', () => {
   let queryClient: QueryClient;
@@ -119,7 +112,7 @@ describe('Payroll Calculation Workflow Integration Tests', () => {
         calculatedAt: new Date().toISOString(),
       };
 
-      vi.mocked(workersService.getWorkers).mockResolvedValue({ workers: mockWorkers });
+      mockWorkersService.getWorkers.mockResolvedValue({ workers: mockWorkers });
       vi.mocked(payrollRunsService.createPayrollRun).mockResolvedValue(mockPayrollRun);
       vi.mocked(payrollRunsService.calculatePayroll).mockResolvedValue(mockCalculatedRun);
 
@@ -202,7 +195,7 @@ describe('Payroll Calculation Workflow Integration Tests', () => {
         ],
       };
 
-      vi.mocked(workersService.getWorkers).mockResolvedValue({ workers: mockWorkers });
+      mockWorkersService.getWorkers.mockResolvedValue({ workers: mockWorkers });
       vi.mocked(payrollRunsService.calculatePayroll).mockResolvedValue(mockCalculation);
 
       // Act - Calculate
@@ -266,7 +259,7 @@ describe('Payroll Calculation Workflow Integration Tests', () => {
         ],
       };
 
-      vi.mocked(workersService.getWorkers).mockResolvedValue({ 
+      mockWorkersService.getWorkers.mockResolvedValue({ 
         workers: mockWorkers.filter(w => w.status === 'active')
       });
       vi.mocked(payrollRunsService.calculatePayroll).mockResolvedValue(mockCalculation);
@@ -294,7 +287,7 @@ describe('Payroll Calculation Workflow Integration Tests', () => {
 
       const error = new Error('Failed to calculate payroll: Missing compensation data');
 
-      vi.mocked(workersService.getWorkers).mockResolvedValue({ workers: mockWorkers });
+      mockWorkersService.getWorkers.mockResolvedValue({ workers: mockWorkers });
       vi.mocked(payrollRunsService.calculatePayroll).mockRejectedValue(error);
 
       // Act & Assert
@@ -576,7 +569,7 @@ describe('Payroll Calculation Workflow Integration Tests', () => {
         })),
       };
 
-      vi.mocked(workersService.getWorkers).mockResolvedValue({ workers: mockWorkers });
+      mockWorkersService.getWorkers.mockResolvedValue({ workers: mockWorkers });
       vi.mocked(payrollRunsService.calculatePayroll).mockResolvedValue(mockCalculation);
 
       // Act
