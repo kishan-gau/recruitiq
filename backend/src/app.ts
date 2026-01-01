@@ -42,6 +42,7 @@ import provisioningRoutes from './routes/provisioning.js';
 import emailSettingsRoutes from './routes/emailSettings.js';
 import adminRouter from './routes/admin/index.js';
 import featuresRoutes from './routes/features.js';
+import notificationRoutes from './routes/notifications.js';
 import licenseAdminRoutes from './modules/license/routes/admin.js';
 import licenseValidationRoutes from './modules/license/routes/validation.js';
 import licenseTelemetryRoutes from './modules/license/routes/telemetry.js';
@@ -324,6 +325,7 @@ export function createApp(options: any = {}) {
   apiRouter.use('/communications', communicationRoutes);
   apiRouter.use('/settings/email', emailSettingsRoutes);
   apiRouter.use('/features', authenticate, featuresRoutes);
+  apiRouter.use('/notifications', notificationRoutes);
 
   // Portal/Platform Admin Routes (all under /api/portal)
   apiRouter.use('/portal', portalRoutes);

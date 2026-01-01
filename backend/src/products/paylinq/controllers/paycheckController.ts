@@ -665,11 +665,47 @@ This payslip is confidential and intended only for the recipient.
   }
 }
 
+/**
+ * Get employee YTD summary
+ * GET /api/paylinq/employees/:employeeId/ytd-summary
+ */
+async function getEmployeeYtdSummary(req, res) {
+  try {
+    const { organization_id: organizationId } = req.user;
+    const { employeeId } = req.params;
+    const { year } = req.query;
+
+    const ytdSummary = await payrollService.getEmployeeYtdSummary(
+      employeeId,
+      organizationId,
+      year ? parseInt(year) : null
+    );
+
+    res.status(200).json({
+      success: true,
+      ytdSummary,
+    });
+  } catch (error) {
+    logger.error('Error fetching employee YTD summary', {
+      error: error.message,
+      employeeId: req.params.employeeId,
+      organizationId: req.user?.organization_id,
+    });
+
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch YTD summary',
+    });
+  }
+}
+
 export default {
   getPaychecks,
   getPaycheckById,
   getPaycheckComponents, // PHASE 2: Component breakdown endpoint
   getEmployeePaychecks,
+  getEmployeeYtdSummary,
   updatePaycheck,
   voidPaycheck,
   reissuePaycheck,
