@@ -5,7 +5,7 @@
 
 import { query } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
-import Joi from 'joi';
+import * as Joi from 'joi';
 
 class EmployeeScheduleService {
   private logger: typeof logger;

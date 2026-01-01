@@ -7,7 +7,7 @@
 import { query } from '../../config/database.js';
 import logger from '../../utils/logger.js';
 import webpush from 'web-push';
-import Joi from 'joi';
+import * as Joi from 'joi';
 
 class PushNotificationService {
   private logger: typeof logger;
