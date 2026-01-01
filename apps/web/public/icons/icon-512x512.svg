@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#0ea5e9" rx="76"/>
+  <g transform="translate(76, 128)">
+    <text x="0" y="179" font-family="Arial, sans-serif" font-size="153" font-weight="bold" fill="white">RIQ</text>
+  </g>
+</svg>

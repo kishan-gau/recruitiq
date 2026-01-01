@@ -651,23 +651,3 @@ export function useBulkShiftTemplateOperations() {
   };
 }
 
-/**
- * Hook to get shift template usage statistics
- */
-export function useShiftTemplateUsage(templateId: string) {
-  return useQuery({
-    queryKey: shiftTemplateKeys.template(templateId, 'usage'),
-    queryFn: async () => 
-      // This would call an API endpoint to get usage stats
-      // For now, return mock data
-       ({
-        totalShifts: 0,
-        activeShifts: 0,
-        upcomingShifts: 0,
-        completedShifts: 0,
-      })
-    ,
-    enabled: !!templateId,
-  });
-}
-
