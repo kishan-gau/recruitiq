@@ -33,6 +33,12 @@ interface BiometricCredential {
   is_active: boolean;
   last_used_at: Date | null;
   use_count: number;
+  created_at: Date;
+  updated_at: Date;
+  deleted_at: Date | null;
+  created_by: string | null;
+  updated_by: string | null;
+  deleted_by: string | null;
 }
 
 class BiometricAuthService {
@@ -132,8 +138,7 @@ class BiometricAuthService {
         
         // Exclude already registered credentials
         excludeCredentials: existingCredentials.map(cred => ({
-          id: Buffer.from(cred.credential_id, 'base64url'),
-          type: 'public-key',
+          id: cred.credential_id, // Already base64url string
           transports: cred.transports as any,
         })),
         
@@ -251,11 +256,11 @@ class BiometricAuthService {
       const params = [
         organizationId,
         validated.employeeId,
-        Buffer.from(registrationInfo.credentialID).toString('base64url'),
-        Buffer.from(registrationInfo.credentialPublicKey).toString('base64'),
-        registrationInfo.counter,
+        registrationInfo.credential.id, // Already base64url string
+        Buffer.from(registrationInfo.credential.publicKey).toString('base64'),
+        registrationInfo.credential.counter,
         registrationInfo.credentialType,
-        JSON.stringify(validated.response.response?.transports || []),
+        JSON.stringify(registrationInfo.credential.transports || []),
         deviceInfo?.deviceName || `${deviceInfo?.platform || 'Device'} - ${new Date().toLocaleDateString()}`,
         deviceInfo?.deviceType || null,
         deviceInfo?.browser || null,
@@ -313,8 +318,7 @@ class BiometricAuthService {
         
         // Allow any registered credential
         allowCredentials: credentials.map(cred => ({
-          id: Buffer.from(cred.credential_id, 'base64url'),
-          type: 'public-key',
+          id: cred.credential_id, // Already base64url string
           transports: cred.transports as any,
         })),
         
@@ -392,9 +396,9 @@ class BiometricAuthService {
           expectedChallenge,
           expectedOrigin: this.origin,
           expectedRPID: this.rpID,
-          authenticator: {
-            credentialID: Buffer.from(credential.credential_id, 'base64url'),
-            credentialPublicKey: Buffer.from(credential.public_key, 'base64'),
+          credential: {
+            id: credential.credential_id, // Already base64url string
+            publicKey: Buffer.from(credential.public_key, 'base64'),
             counter: credential.counter,
             transports: credential.transports,
           },
