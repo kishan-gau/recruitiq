@@ -1065,8 +1065,8 @@ export async function down(knex) {
   for (const table of tables) {
     try {
       await knex.schema.withSchema('scheduling').dropTableIfExists(table);
-    } catch (e) {
-      console.log(`Warning: Could not drop ${table}: ${e.message}`);
+    } catch (error) {
+      console.log(`Warning: Could not drop ${table}: ${error.message}`);
     }
   }
   
