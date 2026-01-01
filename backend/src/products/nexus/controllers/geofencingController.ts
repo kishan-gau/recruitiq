@@ -67,14 +67,47 @@ class GeofencingAdminController {
         });
       }
       
+      // Validate and parse numeric values
+      let parsedLatitude: number | undefined;
+      let parsedLongitude: number | undefined;
+      let parsedRadiusMeters: number | undefined;
+      
+      if (enabled) {
+        parsedLatitude = parseFloat(latitude);
+        parsedLongitude = parseFloat(longitude);
+        parsedRadiusMeters = parseInt(radiusMeters);
+        
+        // Validate parsed values
+        if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
+          return res.status(400).json({
+            success: false,
+            error: 'Latitude must be a valid number between -90 and 90',
+          });
+        }
+        
+        if (isNaN(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
+          return res.status(400).json({
+            success: false,
+            error: 'Longitude must be a valid number between -180 and 180',
+          });
+        }
+        
+        if (isNaN(parsedRadiusMeters) || parsedRadiusMeters <= 0 || parsedRadiusMeters > 100000) {
+          return res.status(400).json({
+            success: false,
+            error: 'Radius must be a valid number between 1 and 100000 meters',
+          });
+        }
+      }
+      
       const result = await this.service.updateLocationGeofence(
         locationId,
         organizationId,
         {
           enabled,
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
-          radiusMeters: parseInt(radiusMeters),
+          latitude: parsedLatitude,
+          longitude: parsedLongitude,
+          radiusMeters: parsedRadiusMeters,
           strict: strict || false,
         },
         userId
@@ -118,6 +151,24 @@ class GeofencingAdminController {
         });
       }
       
+      // Validate and parse coordinates
+      const parsedLatitude = parseFloat(latitude);
+      const parsedLongitude = parseFloat(longitude);
+      
+      if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
+        return res.status(400).json({
+          success: false,
+          error: 'Latitude must be a valid number between -90 and 90',
+        });
+      }
+      
+      if (isNaN(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
+        return res.status(400).json({
+          success: false,
+          error: 'Longitude must be a valid number between -180 and 180',
+        });
+      }
+      
       // Get location geofence config
       const config = await this.service.getLocationGeofenceConfig(
         locationId,
@@ -133,7 +184,7 @@ class GeofencingAdminController {
       
       // Test the coordinates
       const result = this.service.isWithinGeofence(
-        { latitude: parseFloat(latitude), longitude: parseFloat(longitude) },
+        { latitude: parsedLatitude, longitude: parsedLongitude },
         { latitude: config.latitude, longitude: config.longitude },
         config.radiusMeters
       );
