@@ -37,9 +37,8 @@ describe('PaymentService', () => {
       getPaymentMethodBreakdown: jest.fn()
     };
 
-    // Create service instance
-    service = new PaymentService();
-    service.paymentRepository = mockRepository;
+    // Instantiate service with injected mock repository
+    service = new PaymentService(mockRepository);
   });
 
   describe('initiatePayment', () => {

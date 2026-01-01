@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import reconciliationServiceInstance from '../../../../src/products/paylinq/services/reconciliationService.js';
+import ReconciliationService from '../../../../src/products/paylinq/services/reconciliationService.js';
 
 describe('ReconciliationService', () => {
   let service: any;
@@ -33,9 +33,8 @@ describe('ReconciliationService', () => {
       findReconciliationItems: jest.fn()
     };
 
-    // Use singleton service instance and inject mock repository
-    service = reconciliationServiceInstance;
-    service.reconciliationRepository = mockRepository;
+    // Instantiate service with injected mock repository
+    service = new ReconciliationService(mockRepository);
   });
 
   describe('startReconciliation / createReconciliation', () => {

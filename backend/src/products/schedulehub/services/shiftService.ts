@@ -15,9 +15,14 @@ class ShiftService {
 
   paylinqIntegration: any;
 
-constructor() {
-    this.paylinqIntegration = new PaylinqIntegrationService();
-    this.logger = logger;
+  /**
+   * Constructor with dependency injection
+   * @param {PaylinqIntegrationService} paylinqIntegration - Paylinq integration service instance
+   * @param {Object} loggerInstance - Logger instance
+   */
+  constructor(paylinqIntegration = null, loggerInstance = null) {
+    this.paylinqIntegration = paylinqIntegration || new PaylinqIntegrationService();
+    this.logger = loggerInstance || logger;
   }
 
   // Validation schemas

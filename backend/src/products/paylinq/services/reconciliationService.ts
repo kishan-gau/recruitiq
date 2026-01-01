@@ -19,8 +19,12 @@ class ReconciliationService {
   
   reconciliationRepository: any;
 
-constructor() {
-    this.reconciliationRepository = new ReconciliationRepository();
+  /**
+   * Constructor with dependency injection
+   * @param {ReconciliationRepository} reconciliationRepository - Reconciliation repository instance
+   */
+  constructor(reconciliationRepository = null) {
+    this.reconciliationRepository = reconciliationRepository || new ReconciliationRepository();
   }
 
   // ==================== VALIDATION SCHEMAS ====================
@@ -553,5 +557,5 @@ constructor() {
   }
 }
 
-// Export singleton instance
-export default new ReconciliationService();
+// Export class for dependency injection and testing
+export default ReconciliationService;

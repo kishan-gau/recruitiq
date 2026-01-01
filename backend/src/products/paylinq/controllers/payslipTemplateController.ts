@@ -4,8 +4,10 @@
  */
 
 import payslipTemplateService from '../services/payslipTemplateService.js';
-import payslipPdfService from '../services/payslipPdfService.js';
+import PayslipPdfService from '../services/payslipPdfService.js';
 import logger from '../../../utils/logger.js';
+
+const payslipPdfService = new PayslipPdfService();
 
 /**
  * Get all templates

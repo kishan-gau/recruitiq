@@ -61,11 +61,8 @@ describe('PaylinqIntegrationService', () => {
       debug: jest.fn()
     };
 
-    // Create service instance (uses pool directly, no full DI)
-    service = new PaylinqIntegrationService();
-    service.payrollRepository = mockPayrollRepository;
-    service.errorHandler = mockErrorHandler;
-    service.logger = mockLogger;
+    // Instantiate service with injected mock dependencies
+    service = new PaylinqIntegrationService(mockPayrollRepository, mockLogger, mockErrorHandler);
   });
 
   // ==================== Helper Methods (Pure Logic - Fully Testable) ====================

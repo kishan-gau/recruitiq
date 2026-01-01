@@ -13,12 +13,22 @@ import logger from '../../../utils/logger.js';
 
 class PayslipPdfService {
   /**
+   * Constructor with dependency injection
+   * @param {Function} queryFn - Database query function
+   * @param {Object} loggerInstance - Logger instance
+   */
+  constructor(queryFn = null, loggerInstance = null) {
+    this.query = queryFn || query;
+    this.logger = loggerInstance || logger;
+  }
+
+  /**
    * Get the appropriate template for a paycheck
    */
   async getTemplateForPaycheck(paycheckId, organizationId) {
     try {
       // Get paycheck details with employee info
-      const paycheckResult = await query(
+      const paycheckResult = await this.query(
         `SELECT 
           pc.*,
           e.id as employee_id,
@@ -49,7 +59,7 @@ class PayslipPdfService {
       // 3. Worker type assignment
       // 4. Department assignment
       // 5. Organization default template
-      const templateResult = await query(
+      const templateResult = await this.query(
         `SELECT 
           pt.*,
           pta.priority,
@@ -104,8 +114,8 @@ class PayslipPdfService {
       }
 
       return templateResult.rows[0];
-    } catch (_error) {
-      logger.error('Error getting payslip template', { error: error.message, paycheckId, organizationId });
+    } catch (error) {
+      this.logger.error('Error getting payslip template', { error: error.message, paycheckId, organizationId });
       throw error;
     }
   }
@@ -158,7 +168,7 @@ class PayslipPdfService {
       const pdfBuffer = await this.createPdf(paycheckData, template);
 
       // Store template snapshot in paycheck record
-      await query(
+      await this.query(
         `UPDATE payroll.paycheck 
          SET payslip_template_id = $1,
              payslip_template_snapshot = $2,
@@ -168,8 +178,8 @@ class PayslipPdfService {
       );
 
       return pdfBuffer;
-    } catch (_error) {
-      logger.error('Error generating payslip PDF', { error: error.message, paycheckId, organizationId });
+    } catch (error) {
+      this.logger.error('Error generating payslip PDF', { error: error.message, paycheckId, organizationId });
       throw error;
     }
   }
@@ -179,7 +189,7 @@ class PayslipPdfService {
    */
   async getPaycheckData(paycheckId, organizationId) {
     // Get paycheck
-    const paycheckResult = await query(
+    const paycheckResult = await this.query(
       `SELECT 
         pc.*,
         e.employee_number,
@@ -204,8 +214,8 @@ class PayslipPdfService {
     const paycheck = paycheckResult.rows[0];
 
     // Get component breakdown
-    logger.debug('Fetching components', { paycheckId, organizationId });
-    const componentsResult = await query(
+    this.logger.debug('Fetching components', { paycheckId, organizationId });
+    const componentsResult = await this.query(
       `SELECT 
         component_type,
         component_code,
@@ -227,10 +237,10 @@ class PayslipPdfService {
       [paycheckId, organizationId]
     );
     
-    logger.debug('Components fetched', { count: componentsResult.rows.length, components: componentsResult.rows });
+    this.logger.debug('Components fetched', { count: componentsResult.rows.length, components: componentsResult.rows });
 
     // Get organization details
-    const orgResult = await query(
+    const orgResult = await this.query(
       `SELECT name, logo_url, address, phone, email, website
        FROM organizations
        WHERE id = $1`,
@@ -252,7 +262,7 @@ class PayslipPdfService {
       try {
         const { paycheck, components, organization } = data;
         
-        logger.debug('Creating PDF', { 
+        this.logger.debug('Creating PDF', { 
           paycheckId: paycheck.id, 
           templateType: template.layout_type,
           componentsCount: components?.length || 0
@@ -269,15 +279,15 @@ class PayslipPdfService {
         const chunks = [];
         doc.on('data', chunk => {
           chunks.push(chunk);
-          logger.debug('PDF chunk received', { size: chunk.length });
+          this.logger.debug('PDF chunk received', { size: chunk.length });
         });
         doc.on('end', () => {
           const buffer = Buffer.concat(chunks);
-          logger.info('PDF generation complete', { bufferSize: buffer.length });
+          this.logger.info('PDF generation complete', { bufferSize: buffer.length });
           resolve(buffer);
         });
         doc.on('error', (err) => {
-          logger.error('PDF generation error', { error: err.message });
+          this.logger.error('PDF generation error', { error: err.message });
           reject(err);
         });
 
@@ -749,4 +759,5 @@ class PayslipPdfService {
   }
 }
 
-export default new PayslipPdfService();
+// Export class for dependency injection and testing
+export default PayslipPdfService;

@@ -4,9 +4,7 @@
  * Tests for PayLinQ payslip PDF generation service following TESTING_STANDARDS.md:
  * - ES modules with @jest/globals
  * - Focus on testable business logic
- * 
- * NOTE: Service currently exports singleton instance. For better testability,
- * should be refactored to export class with DI pattern.
+ * - Dependency injection pattern
  * 
  * VERIFIED METHODS (from grep analysis):
  * 1. getTemplateForPaycheck(paycheckId, organizationId)
@@ -18,23 +16,40 @@
  * 7. formatDate(date, format) - Helper
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import PayslipPdfService from '../../../../src/products/paylinq/services/payslipPdfService.js';
 
 describe('PayslipPdfService', () => {
+  let service: any;
+  let mockQuery: any;
+  let mockLogger: any;
+
   // Valid UUID v4 test constants
   const testOrganizationId = '123e4567-e89b-12d3-a456-426614174000';
   const testPaycheckId = '223e4567-e89b-12d3-a456-426614174001';
 
-  // NOTE: Service is a singleton, so we test it directly
-  // For better testability, service should be refactored to export class
+  beforeEach(() => {
+    // Mock query function
+    mockQuery = jest.fn();
+    
+    // Mock logger
+    mockLogger = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn()
+    };
+
+    // Instantiate service with injected mock dependencies
+    service = new PayslipPdfService(mockQuery, mockLogger);
+  });
 
   // ==================== Helper Methods (Pure Logic - Fully Testable) ====================
 
   describe('formatCurrency', () => {
     it('should format positive amount with SRD currency', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(1234.56);
+      const result = service.formatCurrency(1234.56);
 
       // Assert
       expect(result).toContain('1,234.56');
@@ -43,7 +58,7 @@ describe('PayslipPdfService', () => {
 
     it('should format zero amount', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(0);
+      const result = service.formatCurrency(0);
 
       // Assert
       expect(result).toContain('0.00');
@@ -51,7 +66,7 @@ describe('PayslipPdfService', () => {
 
     it('should format negative amount', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(-500.25);
+      const result = service.formatCurrency(-500.25);
 
       // Assert
       expect(result).toContain('500.25');
@@ -60,7 +75,7 @@ describe('PayslipPdfService', () => {
 
     it('should handle null amount as zero', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(null as any);
+      const result = service.formatCurrency(null as any);
 
       // Assert
       expect(result).toContain('0.00');
@@ -68,7 +83,7 @@ describe('PayslipPdfService', () => {
 
     it('should handle undefined amount as zero', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(undefined as any);
+      const result = service.formatCurrency(undefined as any);
 
       // Assert
       expect(result).toContain('0.00');
@@ -76,7 +91,7 @@ describe('PayslipPdfService', () => {
 
     it('should format large amounts with proper thousands separators', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(1234567.89);
+      const result = service.formatCurrency(1234567.89);
 
       // Assert
       expect(result).toContain('1,234,567.89');
@@ -84,7 +99,7 @@ describe('PayslipPdfService', () => {
 
     it('should always show two decimal places', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(100);
+      const result = service.formatCurrency(100);
 
       // Assert
       expect(result).toContain('100.00');
@@ -92,7 +107,7 @@ describe('PayslipPdfService', () => {
 
     it('should round to two decimal places', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(123.456);
+      const result = service.formatCurrency(123.456);
 
       // Assert
       expect(result).toContain('123.46'); // Rounded up
@@ -105,7 +120,7 @@ describe('PayslipPdfService', () => {
       const date = new Date('2025-01-15T12:00:00Z');
 
       // Act
-      const result = PayslipPdfService.formatDate(date);
+      const result = service.formatDate(date);
 
       // Assert
       expect(result).toContain('Jan');
@@ -118,7 +133,7 @@ describe('PayslipPdfService', () => {
       const date = new Date('2025-01-15T12:00:00Z');
 
       // Act
-      const result = PayslipPdfService.formatDate(date, 'MMM YYYY');
+      const result = service.formatDate(date, 'MMM YYYY');
 
       // Assert
       expect(result).toContain('Jan');
@@ -128,7 +143,7 @@ describe('PayslipPdfService', () => {
 
     it('should return N/A for null date', () => {
       // Act
-      const result = PayslipPdfService.formatDate(null);
+      const result = service.formatDate(null);
 
       // Assert
       expect(result).toBe('N/A');
@@ -136,7 +151,7 @@ describe('PayslipPdfService', () => {
 
     it('should return N/A for undefined date', () => {
       // Act
-      const result = PayslipPdfService.formatDate(undefined as any);
+      const result = service.formatDate(undefined as any);
 
       // Assert
       expect(result).toBe('N/A');
@@ -147,7 +162,7 @@ describe('PayslipPdfService', () => {
       const dateString = '2025-06-30';
 
       // Act
-      const result = PayslipPdfService.formatDate(dateString as any);
+      const result = service.formatDate(dateString as any);
 
       // Assert
       expect(result).toContain('Jun');
@@ -174,7 +189,7 @@ describe('PayslipPdfService', () => {
 
       // Act & Assert
       dates.forEach(({ date, month }) => {
-        const result = PayslipPdfService.formatDate(date);
+        const result = service.formatDate(date);
         expect(result).toContain(month);
       });
     });
@@ -184,7 +199,7 @@ describe('PayslipPdfService', () => {
       const date = new Date('2025-12-31T23:59:59Z');
 
       // Act
-      const result = PayslipPdfService.formatDate(date);
+      const result = service.formatDate(date);
 
       // Assert
       expect(result).toContain('Dec');
@@ -197,7 +212,7 @@ describe('PayslipPdfService', () => {
       const date = new Date('2025-01-01T00:00:00Z');
 
       // Act
-      const result = PayslipPdfService.formatDate(date);
+      const result = service.formatDate(date);
 
       // Assert
       expect(result).toContain('Jan');
@@ -210,7 +225,7 @@ describe('PayslipPdfService', () => {
       const date = new Date('2024-02-29T12:00:00Z');
 
       // Act
-      const result = PayslipPdfService.formatDate(date);
+      const result = service.formatDate(date);
 
       // Assert
       expect(result).toContain('Feb');
@@ -222,7 +237,7 @@ describe('PayslipPdfService', () => {
   describe('getDefaultTemplate', () => {
     it('should return default template configuration', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(template).toHaveProperty('template_name', 'Default Template');
@@ -233,7 +248,7 @@ describe('PayslipPdfService', () => {
 
     it('should have proper display settings', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(template.show_company_logo).toBe(false); // Default is false
@@ -249,7 +264,7 @@ describe('PayslipPdfService', () => {
 
     it('should have proper styling settings', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(template.font_family).toBe('Helvetica'); // Default is Helvetica
@@ -260,7 +275,7 @@ describe('PayslipPdfService', () => {
 
     it('should have proper page settings', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(template.page_size).toBe('A4');
@@ -269,7 +284,7 @@ describe('PayslipPdfService', () => {
 
     it('should have proper format settings', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(template.currency_display_format).toBe('SRD #,##0.00');
@@ -282,7 +297,7 @@ describe('PayslipPdfService', () => {
   describe('Edge Cases', () => {
     it('should handle very small currency amounts', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(0.01);
+      const result = service.formatCurrency(0.01);
 
       // Assert
       expect(result).toContain('0.01');
@@ -290,7 +305,7 @@ describe('PayslipPdfService', () => {
 
     it('should handle very large currency amounts', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(999999999.99);
+      const result = service.formatCurrency(999999999.99);
 
       // Assert
       expect(result).toContain('999,999,999.99');
@@ -298,7 +313,7 @@ describe('PayslipPdfService', () => {
 
     it('should handle fractional cents in currency', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(123.456);
+      const result = service.formatCurrency(123.456);
 
       // Assert
       // Should round to 2 decimal places
@@ -310,7 +325,7 @@ describe('PayslipPdfService', () => {
       const date = new Date('2000-01-01T00:00:00Z');
 
       // Act
-      const result = PayslipPdfService.formatDate(date);
+      const result = service.formatDate(date);
 
       // Assert
       expect(result).toContain('Jan');
@@ -323,7 +338,7 @@ describe('PayslipPdfService', () => {
       const date = new Date('2099-12-31T23:59:59Z');
 
       // Act
-      const result = PayslipPdfService.formatDate(date);
+      const result = service.formatDate(date);
 
       // Assert
       expect(result).toContain('Dec');
@@ -336,7 +351,7 @@ describe('PayslipPdfService', () => {
       const invalidDate = 'not-a-date';
 
       // Act
-      const result = PayslipPdfService.formatDate(invalidDate as any);
+      const result = service.formatDate(invalidDate as any);
 
       // Assert
       // Will create an Invalid Date object, which toString includes 'Invalid'
@@ -345,7 +360,7 @@ describe('PayslipPdfService', () => {
 
     it('should format zero as currency properly', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(0.00);
+      const result = service.formatCurrency(0.00);
 
       // Assert
       expect(result).toContain('0.00');
@@ -353,7 +368,7 @@ describe('PayslipPdfService', () => {
 
     it('should handle negative zero', () => {
       // Act
-      const result = PayslipPdfService.formatCurrency(-0);
+      const result = service.formatCurrency(-0);
 
       // Assert
       expect(result).toContain('0.00');
@@ -366,8 +381,8 @@ describe('PayslipPdfService', () => {
   describe('Template Configuration', () => {
     it('should provide consistent default template', () => {
       // Act
-      const template1 = PayslipPdfService.getDefaultTemplate();
-      const template2 = PayslipPdfService.getDefaultTemplate();
+      const template1 = service.getDefaultTemplate();
+      const template2 = service.getDefaultTemplate();
 
       // Assert
       expect(template1).toEqual(template2);
@@ -375,7 +390,7 @@ describe('PayslipPdfService', () => {
 
     it('should include all required template fields', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       const requiredFields = [
@@ -409,7 +424,7 @@ describe('PayslipPdfService', () => {
 
     it('should have valid color codes in default template', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(template.primary_color).toMatch(/^#[0-9a-fA-F]{6}$/);
@@ -418,7 +433,7 @@ describe('PayslipPdfService', () => {
 
     it('should have valid page size in default template', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(['A4', 'Letter', 'Legal']).toContain(template.page_size);
@@ -426,7 +441,7 @@ describe('PayslipPdfService', () => {
 
     it('should have valid page orientation in default template', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(['portrait', 'landscape']).toContain(template.page_orientation);
@@ -434,7 +449,7 @@ describe('PayslipPdfService', () => {
 
     it('should have valid layout type in default template', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(['standard', 'compact', 'detailed', 'custom']).toContain(template.layout_type);
@@ -442,7 +457,7 @@ describe('PayslipPdfService', () => {
 
     it('should have reasonable font size in default template', () => {
       // Act
-      const template = PayslipPdfService.getDefaultTemplate();
+      const template = service.getDefaultTemplate();
 
       // Assert
       expect(template.font_size).toBeGreaterThanOrEqual(6);
@@ -455,8 +470,8 @@ describe('PayslipPdfService', () => {
   describe('Format Consistency', () => {
     it('should format same amount consistently', () => {
       // Act
-      const result1 = PayslipPdfService.formatCurrency(1234.56);
-      const result2 = PayslipPdfService.formatCurrency(1234.56);
+      const result1 = service.formatCurrency(1234.56);
+      const result2 = service.formatCurrency(1234.56);
 
       // Assert
       expect(result1).toBe(result2);
@@ -467,8 +482,8 @@ describe('PayslipPdfService', () => {
       const date = new Date('2025-01-15T12:00:00Z');
 
       // Act
-      const result1 = PayslipPdfService.formatDate(date);
-      const result2 = PayslipPdfService.formatDate(date);
+      const result1 = service.formatDate(date);
+      const result2 = service.formatDate(date);
 
       // Assert
       expect(result1).toBe(result2);
@@ -480,8 +495,8 @@ describe('PayslipPdfService', () => {
       const date2 = new Date('2025-01-15T23:59:59Z');
 
       // Act
-      const result1 = PayslipPdfService.formatDate(date1);
-      const result2 = PayslipPdfService.formatDate(date2);
+      const result1 = service.formatDate(date1);
+      const result2 = service.formatDate(date2);
 
       // Assert
       // Both should format to same date string (excluding time)
