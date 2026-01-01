@@ -21,6 +21,15 @@ export type {
   FeatureAdoptionReport,
 } from './core/features';
 
+export { NotificationsAPI } from './core/notifications';
+export type {
+  PushSubscription,
+  DeviceInfo,
+  NotificationSubscription,
+  NotificationPreferences,
+  TestNotificationRequest,
+} from './core/notifications';
+
 // Product exports
 export { RecruitIQAPI } from './products/recruitiq';
 export { PortalAPI } from './products/portal';
@@ -33,6 +42,7 @@ export { ScheduleHubClient } from './products/schedulehub';
 import { APIClient, APIClientConfig, TokenStorage } from './core/client';
 import { AuthAPI } from './core/auth';
 import { FeaturesAPI } from './core/features';
+import { NotificationsAPI } from './core/notifications';
 import { RecruitIQAPI } from './products/recruitiq';
 import { PortalAPI } from './products/portal';
 import { PaylinqClient } from './products/paylinq';
@@ -48,6 +58,7 @@ export class RecruitIQPlatformAPI {
   
   public auth: AuthAPI;
   public features: FeaturesAPI;
+  public notifications: NotificationsAPI;
   public recruitiq: RecruitIQAPI;
   public portal: PortalAPI;
   public paylinq: PaylinqClient;
@@ -60,6 +71,7 @@ export class RecruitIQPlatformAPI {
     // Initialize product APIs
     this.auth = new AuthAPI(this.apiClient);
     this.features = new FeaturesAPI(this.apiClient);
+    this.notifications = new NotificationsAPI(this.apiClient);
     this.recruitiq = new RecruitIQAPI(this.apiClient);
     this.portal = new PortalAPI(this.apiClient);
     this.paylinq = new PaylinqClient(this.apiClient);

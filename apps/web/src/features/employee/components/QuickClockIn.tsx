@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Clock, MapPin, Check } from 'lucide-react';
+import { apiClient } from '@recruitiq/api-client';
 
 /**
  * Quick Clock-In/Out Widget
@@ -10,6 +11,7 @@ import { Clock, MapPin, Check } from 'lucide-react';
  * - Location display
  * - Visual feedback on clock in/out
  * - Optimistic UI updates
+ * - Real API integration with ScheduleHub
  * 
  * From PWA Proposal Phase 2: Time & Attendance Module
  */
@@ -28,10 +30,20 @@ export default function QuickClockIn() {
     return () => clearInterval(timer);
   }, []);
 
-  // TODO: Load actual clock-in status from API
+  // Load actual clock-in status from API
   useEffect(() => {
-    // This would fetch the current status from the backend
-    // For now, we'll use a placeholder
+    const fetchClockStatus = async () => {
+      try {
+        const response = await apiClient.schedulehub.getClockStatus();
+        if (response.data) {
+          setIsClockedIn(response.data.isClockedIn);
+        }
+      } catch (error) {
+        console.error('Failed to fetch clock status:', error);
+      }
+    };
+
+    fetchClockStatus();
   }, []);
 
   const handleClockAction = async () => {
@@ -39,7 +51,7 @@ export default function QuickClockIn() {
     
     try {
       // Get location if permitted (optional feature)
-      let location = null;
+      let location: { latitude: number; longitude: number } | undefined;
       if ('geolocation' in navigator) {
         try {
           const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -58,11 +70,12 @@ export default function QuickClockIn() {
         }
       }
 
-      // TODO: Send clock-in/out request to API
-      // const response = await clockInOut(location);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Send clock-in/out request to API
+      if (isClockedIn) {
+        await apiClient.schedulehub.clockOut(location);
+      } else {
+        await apiClient.schedulehub.clockIn(location);
+      }
       
       // Toggle state
       setIsClockedIn(!isClockedIn);

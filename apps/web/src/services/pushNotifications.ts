@@ -11,8 +11,7 @@
  * From PWA Proposal Phase 3: Push Notifications
  */
 
-// VAPID public key - TODO: Replace with actual key from backend
-const VAPID_PUBLIC_KEY = 'YOUR_VAPID_PUBLIC_KEY_HERE';
+import { apiClient } from '@recruitiq/api-client';
 
 /**
  * Check if push notifications are supported
@@ -72,6 +71,28 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 /**
+ * Get device information
+ */
+function getDeviceInfo(): { deviceType: 'mobile' | 'desktop' | 'tablet'; browser: string } {
+  const userAgent = navigator.userAgent;
+  
+  // Detect device type
+  let deviceType: 'mobile' | 'desktop' | 'tablet' = 'desktop';
+  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)) {
+    deviceType = /iPad|Android(?!.*Mobile)/i.test(userAgent) ? 'tablet' : 'mobile';
+  }
+  
+  // Detect browser
+  let browser = 'Unknown';
+  if (userAgent.indexOf('Chrome') > -1) browser = 'Chrome';
+  else if (userAgent.indexOf('Safari') > -1) browser = 'Safari';
+  else if (userAgent.indexOf('Firefox') > -1) browser = 'Firefox';
+  else if (userAgent.indexOf('Edge') > -1) browser = 'Edge';
+  
+  return { deviceType, browser };
+}
+
+/**
  * Subscribe to push notifications
  */
 export async function subscribeToPush(): Promise<PushSubscription | null> {
@@ -91,13 +112,140 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
       return existingSubscription;
     }
 
+    // Fetch VAPID public key from backend
+    const { data } = await apiClient.notifications.getVapidPublicKey();
+    const vapidPublicKey = data.publicKey;
+
     // Subscribe to push
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
 
-    // TODO: Send subscription to backend
+    // Send subscription to backend
+    const deviceInfo = getDeviceInfo();
+    await apiClient.notifications.subscribe(
+      {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: arrayBufferToBase64(subscription.getKey('p256dh')!),
+          auth: arrayBufferToBase64(subscription.getKey('auth')!),
+        },
+      },
+      deviceInfo
+    );
+
+    return subscription;
+  } catch (error) {
+    console.error('Failed to subscribe to push notifications:', error);
+    throw error;
+  }
+}
+
+/**
+ * Convert ArrayBuffer to base64 string
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
+/**
+ * Unsubscribe from push notifications
+ */
+export async function unsubscribeFromPush(subscriptionId: string): Promise<void> {
+  try {
+    // Get service worker registration
+    const registration = await navigator.serviceWorker.ready;
+    
+    // Get current subscription
+    const subscription = await registration.pushManager.getSubscription();
+    
+    // Unsubscribe from push manager
+    if (subscription) {
+      await subscription.unsubscribe();
+    }
+    
+    // Remove from backend
+    await apiClient.notifications.unsubscribe(subscriptionId);
+  } catch (error) {
+    console.error('Failed to unsubscribe from push notifications:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get current push subscription
+ */
+export async function getCurrentSubscription(): Promise<PushSubscription | null> {
+  try {
+    if (!('serviceWorker' in navigator)) {
+      return null;
+    }
+    
+    const registration = await navigator.serviceWorker.ready;
+    return await registration.pushManager.getSubscription();
+  } catch (error) {
+    console.error('Failed to get current subscription:', error);
+    return null;
+  }
+}
+
+/**
+ * Get all subscriptions from backend
+ */
+export async function getSubscriptions() {
+  try {
+    const response = await apiClient.notifications.getSubscriptions();
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get subscriptions:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get notification preferences
+ */
+export async function getPreferences() {
+  try {
+    const response = await apiClient.notifications.getPreferences();
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get preferences:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update notification preferences
+ */
+export async function updatePreferences(preferences: any) {
+  try {
+    const response = await apiClient.notifications.updatePreferences(preferences);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to update preferences:', error);
+    throw error;
+  }
+}
+
+/**
+ * Send test notification
+ */
+export async function sendTestNotification(title?: string, body?: string) {
+  try {
+    const response = await apiClient.notifications.sendTestNotification({ title, body });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to send test notification:', error);
+    throw error;
+  }
+}
     console.log('Push subscription:', subscription);
 
     return subscription;

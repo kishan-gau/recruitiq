@@ -1024,6 +1024,31 @@ export class PaylinqClient {
   }
 
   /**
+   * Get year-to-date payroll summary for employee (Phase 2 & 3)
+   * @param employeeId Employee ID
+   * @param year Optional year (defaults to current year)
+   */
+  async getEmployeeYtdSummary(employeeId: string, year?: number) {
+    const queryParams = new URLSearchParams();
+    if (year) queryParams.append('year', String(year));
+    
+    const queryString = queryParams.toString();
+    const url = `${this.basePath}/employees/${employeeId}/ytd-summary${queryString ? `?${queryString}` : ''}`;
+    
+    return this.client.get<ApiResponse<{
+      employeeId: string;
+      year: number;
+      paycheckCount: number;
+      ytdGrossPay: number;
+      ytdNetPay: number;
+      ytdTaxes: number;
+      ytdDeductions: number;
+      firstPayDate: string;
+      lastPayDate: string;
+    }>>(url);
+  }
+
+  /**
    * Update paycheck
    */
   async updatePaycheck(id: string, data: any) {

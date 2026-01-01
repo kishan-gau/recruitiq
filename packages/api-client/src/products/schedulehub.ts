@@ -411,4 +411,66 @@ export class ScheduleHubClient {
       `${this.basePath}/stations/coverage/stats?date=${date}`
     );
   }
+
+  // ============================================================================
+  // Employee Self-Service - Time & Attendance (Phase 2 & 3)
+  // ============================================================================
+
+  /**
+   * Clock in (employee self-service)
+   * @param location Optional geolocation coordinates
+   */
+  async clockIn(location?: { latitude: number; longitude: number }) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/clock-in`,
+      { location }
+    );
+  }
+
+  /**
+   * Clock out (employee self-service)
+   * @param location Optional geolocation coordinates
+   */
+  async clockOut(location?: { latitude: number; longitude: number }) {
+    return this.client.post<ApiResponse<any>>(
+      `${this.basePath}/clock-out`,
+      { location }
+    );
+  }
+
+  /**
+   * Get current clock status for authenticated employee
+   */
+  async getClockStatus() {
+    return this.client.get<ApiResponse<{
+      isClockedIn: boolean;
+      currentEvent: any | null;
+      lastClockIn: string | null;
+      lastClockOut: string | null;
+    }>>(
+      `${this.basePath}/clock-status`
+    );
+  }
+
+  /**
+   * Get employee shifts (employee self-service)
+   * @param filters Optional date and range filters
+   */
+  async getEmployeeShifts(filters?: {
+    date?: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (filters?.date) queryParams.append('date', filters.date);
+    if (filters?.startDate) queryParams.append('startDate', filters.startDate);
+    if (filters?.endDate) queryParams.append('endDate', filters.endDate);
+    if (filters?.status) queryParams.append('status', filters.status);
+
+    const queryString = queryParams.toString();
+    const url = `${this.basePath}/employee-shifts${queryString ? `?${queryString}` : ''}`;
+    
+    return this.client.get<ApiResponse<Shift[]>>(url);
+  }
 }
