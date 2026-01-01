@@ -275,6 +275,24 @@ describe('FormulaEngineService', () => {
       expect(result.variables).toContain('commission');
       expect(result.variables.length).toBe(3);
     });
+
+    it('should reject complex formula without return statement', async () => {
+      // Arrange: Complex formula (has semicolon but no return)
+      const formula = 'let x = 5; x + y';
+
+      // Act & Assert: Should reject complex formula without return
+      await expect(service.parseFormula(formula)).rejects.toThrow(
+        'Complex formulas must contain a return statement'
+      );
+    });
+
+    it('should reject formula with severe syntax errors', async () => {
+      // Arrange: Formula with clear syntax error (incomplete function call)
+      const formula = 'return Math.ceil(;';
+
+      // Act & Assert: Should reject with syntax error
+      await expect(service.parseFormula(formula)).rejects.toThrow('Syntax error');
+    });
   });
 
   // ==================== validateFormula ====================
@@ -342,6 +360,30 @@ describe('FormulaEngineService', () => {
 
       // Act & Assert: Should not throw
       expect(() => service.validateFormula(formula)).not.toThrow();
+    });
+
+    it('should reject formula with unbalanced braces in the middle', () => {
+      // Arrange: Unbalanced braces
+      const formula = '{a + b';
+
+      // Act & Assert: Should throw
+      expect(() => service.validateFormula(formula)).toThrow('Unbalanced');
+    });
+
+    it('should reject formula with more closing than opening braces', () => {
+      // Arrange: More closing braces than opening (caught later)
+      const formula = 'a} + b}';
+
+      // Act & Assert: Should throw about unbalanced braces or parentheses
+      expect(() => service.validateFormula(formula)).toThrow();
+    });
+
+    it('should reject formula with more closing than opening parens', () => {
+      // Arrange: More closing parens than opening
+      const formula = 'a) + b)';
+
+      // Act & Assert: Should throw about unbalanced parentheses
+      expect(() => service.validateFormula(formula)).toThrow('Unbalanced');
     });
   });
 
