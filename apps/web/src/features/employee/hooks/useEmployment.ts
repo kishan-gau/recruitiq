@@ -2,53 +2,79 @@
  * React Query hooks for Employment feature
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { employmentService } from '../services';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { employmentService } from '@/services/employee/employment.service';
 
-/**
- * Hook to fetch current contract
- */
-export const useCurrentContract = (employeeId: string) => {
-  return useQuery({
-    queryKey: ['employment', 'contract', employeeId],
-    queryFn: () => employmentService.getCurrentContract(employeeId),
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    enabled: !!employeeId,
-  });
+// Query Keys
+const employmentKeys = {
+  all: ['employment'] as const,
+  currentContract: () => [...employmentKeys.all, 'current-contract'] as const,
+  contracts: () => [...employmentKeys.all, 'contracts'] as const,
+  history: () => [...employmentKeys.all, 'history'] as const,
+  status: () => [...employmentKeys.all, 'status'] as const,
+  compensation: () => [...employmentKeys.all, 'compensation'] as const,
 };
 
 /**
- * Hook to fetch employment history
+ * Hook for current contract
  */
-export const useEmploymentHistory = (employeeId: string) => {
+export function useCurrentContract() {
   return useQuery({
-    queryKey: ['employment', 'history', employeeId],
-    queryFn: () => employmentService.getEmploymentHistory(employeeId),
-    staleTime: 30 * 60 * 1000, // 30 minutes (historical data rarely changes)
-    enabled: !!employeeId,
+    queryKey: employmentKeys.currentContract(),
+    queryFn: () => employmentService.getCurrentContract(),
+    staleTime: 15 * 60 * 1000,
   });
-};
+}
 
 /**
- * Hook to fetch manager info
+ * Hook for all contracts
  */
-export const useManagerInfo = (employeeId: string) => {
+export function useContracts() {
   return useQuery({
-    queryKey: ['employment', 'manager', employeeId],
-    queryFn: () => employmentService.getManagerInfo(employeeId),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!employeeId,
+    queryKey: employmentKeys.contracts(),
+    queryFn: () => employmentService.listContracts(),
+    staleTime: 15 * 60 * 1000,
   });
-};
+}
 
 /**
- * Hook to fetch employment details
+ * Hook for employment history
  */
-export const useEmploymentDetails = (employeeId: string) => {
+export function useEmploymentHistory() {
   return useQuery({
-    queryKey: ['employment', 'details', employeeId],
-    queryFn: () => employmentService.getEmploymentDetails(employeeId),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!employeeId,
+    queryKey: employmentKeys.history(),
+    queryFn: () => employmentService.getEmploymentHistory(),
+    staleTime: 30 * 60 * 1000, // Historical data rarely changes
   });
-};
+}
+
+/**
+ * Hook for employment status
+ */
+export function useEmploymentStatus() {
+  return useQuery({
+    queryKey: employmentKeys.status(),
+    queryFn: () => employmentService.getEmploymentStatus(),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook for compensation package
+ */
+export function useCompensationPackage() {
+  return useQuery({
+    queryKey: employmentKeys.compensation(),
+    queryFn: () => employmentService.getCompensationPackage(),
+    staleTime: 15 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook for downloading contract document
+ */
+export function useDownloadContract() {
+  return useMutation({
+    mutationFn: (contractId: string) => employmentService.downloadContract(contractId),
+  });
+}

@@ -106,6 +106,33 @@ constructor(loontijdvakService = null) {
   }
 
   /**
+   * Calculate employee pay with full loontijdvak integration
+   * 
+   * @TODO: This method is planned for future implementation.
+   * Currently throws NotImplementedError to trigger fallback to standard tax calculation
+   * in payrollService.ts which uses taxCalculationService.calculateEmployeeTaxesWithComponents()
+   * 
+   * @param {string} _employeeId - Employee ID
+   * @param {Array} _earningComponents - Array of earning components
+   * @param {Date} _periodStart - Pay period start date
+   * @param {Date} _periodEnd - Pay period end date  
+   * @param {string} _payPeriod - Pay period type (monthly, biweekly, etc.)
+   * @param {string} _organizationId - Organization UUID
+   * @returns {Promise<never>} Always throws NotImplementedError
+   * @throws {Error} NotImplementedError to trigger fallback behavior
+   */
+  async calculateEmployeePayWithLoontijdvak(
+    _employeeId: string,
+    _earningComponents: unknown[],
+    _periodStart: Date,
+    _periodEnd: Date,
+    _payPeriod: string,
+    _organizationId: string
+  ): Promise<never> {
+    throw new Error('NotImplementedError: calculateEmployeePayWithLoontijdvak is planned for future implementation. Fallback to taxCalculationService.calculateEmployeeTaxesWithComponents() is expected.');
+  }
+
+  /**
    * Calculate prorating factor for partial periods
    * Per Article 13.3: Wages must be prorated if employment period differs from standard loontijdvak
    * 

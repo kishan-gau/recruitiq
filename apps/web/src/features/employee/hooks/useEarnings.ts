@@ -2,77 +2,81 @@
  * React Query hooks for Earnings feature
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { earningsService } from '../services';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { earningsService } from '@/services/employee/earnings.service';
 
-/**
- * Hook to fetch pay structure
- */
-export const usePayStructure = (employeeId: string) => {
-  return useQuery({
-    queryKey: ['earnings', 'pay-structure', employeeId],
-    queryFn: () => earningsService.getPayStructure(employeeId),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!employeeId,
-  });
+// Query Keys
+const earningsKeys = {
+  all: ['earnings'] as const,
+  compensation: () => [...earningsKeys.all, 'compensation'] as const,
+  payComponents: () => [...earningsKeys.all, 'pay-components'] as const,
+  ytd: (year?: number) => [...earningsKeys.all, 'ytd', year] as const,
+  breakdown: (payrollRunId: string) => [...earningsKeys.all, 'breakdown', payrollRunId] as const,
+  byPeriod: (period: string, year: number) => [...earningsKeys.all, 'period', period, year] as const,
 };
 
 /**
- * Hook to fetch year-to-date earnings
+ * Hook for compensation summary
  */
-export const useYTDEarnings = (employeeId: string) => {
+export function useCompensationSummary() {
   return useQuery({
-    queryKey: ['earnings', 'ytd', employeeId],
-    queryFn: () => earningsService.getYTDEarnings(employeeId),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!employeeId,
+    queryKey: earningsKeys.compensation(),
+    queryFn: () => earningsService.getCompensationSummary(),
+    staleTime: 10 * 60 * 1000,
   });
-};
+}
 
 /**
- * Hook to fetch deductions
+ * Hook for pay components
  */
-export const useDeductions = (employeeId: string) => {
+export function usePayComponents() {
   return useQuery({
-    queryKey: ['earnings', 'deductions', employeeId],
-    queryFn: () => earningsService.getDeductions(employeeId),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!employeeId,
+    queryKey: earningsKeys.payComponents(),
+    queryFn: () => earningsService.listPayComponents(),
+    staleTime: 15 * 60 * 1000,
   });
-};
+}
 
 /**
- * Hook to fetch payroll run breakdown
+ * Hook for year-to-date earnings
  */
-export const usePayrollRunBreakdown = (runId: string) => {
+export function useYTDEarnings(year?: number) {
   return useQuery({
-    queryKey: ['earnings', 'payroll-run', runId],
-    queryFn: () => earningsService.getPayrollRunBreakdown(runId),
-    staleTime: 30 * 60 * 1000, // 30 minutes (historical data rarely changes)
-    enabled: !!runId,
+    queryKey: earningsKeys.ytd(year),
+    queryFn: () => earningsService.getYTDEarnings(year),
+    staleTime: 5 * 60 * 1000,
   });
-};
+}
 
 /**
- * Hook to fetch earnings trends
+ * Hook for earnings breakdown by payroll run
  */
-export const useEarningsTrends = (employeeId: string, period?: string) => {
+export function useEarningsBreakdown(payrollRunId: string) {
   return useQuery({
-    queryKey: ['earnings', 'trends', employeeId, period],
-    queryFn: () => earningsService.getEarningsTrends(employeeId, period),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!employeeId,
+    queryKey: earningsKeys.breakdown(payrollRunId),
+    queryFn: () => earningsService.getEarningsBreakdown(payrollRunId),
+    staleTime: 30 * 60 * 1000, // Historical data rarely changes
+    enabled: !!payrollRunId,
   });
-};
+}
 
 /**
- * Hook to fetch allowances
+ * Hook for earnings by period
  */
-export const useAllowances = (employeeId: string) => {
+export function useEarningsByPeriod(period: 'monthly' | 'quarterly' | 'yearly', year: number) {
   return useQuery({
-    queryKey: ['earnings', 'allowances', employeeId],
-    queryFn: () => earningsService.getAllowances(employeeId),
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!employeeId,
+    queryKey: earningsKeys.byPeriod(period, year),
+    queryFn: () => earningsService.getEarningsByPeriod(period, year),
+    staleTime: 10 * 60 * 1000,
+    enabled: !!period && !!year,
   });
-};
+}
+
+/**
+ * Mutation hook for downloading pay statement
+ */
+export function useDownloadStatement() {
+  return useMutation({
+    mutationFn: (payrollRunId: string) => earningsService.downloadStatement(payrollRunId),
+  });
+}
