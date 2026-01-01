@@ -3,7 +3,7 @@
  * Business logic for shift swapping and marketplace
  */
 
-import pool from '../../../config/database.js';
+import { query as dbQuery } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import type { ShiftTradeData } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';
@@ -254,7 +254,10 @@ constructor() {
       }
 
       query += ` ORDER BY s.shift_date, s.start_time`;
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.shift_swap_offers'
+      });
       return { success: true, data: result.rows };
     } catch (_error) {
       this.logger.error('Error fetching open offers:', error);
@@ -264,12 +267,18 @@ constructor() {
 
   async cancelOffer(offerId, organizationId, userId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `UPDATE scheduling.shift_swap_offers
          SET status = 'cancelled'
          WHERE id = $1 AND organization_id = $2 AND status IN ('open', 'pending_approval')
          RETURNING *`,
-        [offerId, organizationId]
+        [offerId, organizationId],
+        organizationId,
+        {
+          operation: 'UPDATE',
+          table: 'scheduling.shift_swap_offers',
+          userId
+        }
       );
 
       if (result.rows.length === 0) throw new Error('Offer not found or cannot be cancelled');
@@ -282,7 +291,7 @@ constructor() {
 
   async getOfferById(offerId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT o.*, s.shift_date, s.start_time, s.end_time, r.role_name,
                 e.first_name || ' ' || e.last_name as offering_worker_name,
                 st.station_name
@@ -292,7 +301,12 @@ constructor() {
          JOIN hris.employee e ON o.offering_employee_id = e.id
          LEFT JOIN scheduling.stations st ON s.station_id = st.id
          WHERE o.id = $1 AND o.organization_id = $2`,
-        [offerId, organizationId]
+        [offerId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.shift_swap_offers'
+        }
       );
 
       if (result.rows.length === 0) {
@@ -325,7 +339,10 @@ constructor() {
       }
 
       query += ` ORDER BY o.created_at DESC`;
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.shift_swap_offers'
+      });
       return { success: true, data: result.rows };
     } catch (_error) {
       this.logger.error('Error fetching worker offers:', error);
@@ -335,14 +352,19 @@ constructor() {
 
   async getOfferRequests(offerId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT r.*, e.first_name || ' ' || e.last_name as requester_name,
                 e.employee_number as requester_number
          FROM scheduling.shift_swap_requests r
          JOIN hris.employee e ON r.requesting_employee_id = e.id
          WHERE r.swap_offer_id = $1 AND r.organization_id = $2
          ORDER BY r.created_at DESC`,
-        [offerId, organizationId]
+        [offerId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.shift_swap_requests'
+        }
       );
       return { success: true, data: result.rows };
     } catch (_error) {
@@ -353,7 +375,7 @@ constructor() {
 
   async getPendingApprovals(organizationId, managerId = null) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT o.*, s.shift_date, s.start_time, s.end_time, r.role_name,
                 e.first_name || ' ' || e.last_name as offering_worker_name,
                 re.first_name || ' ' || re.last_name as requester_name,
@@ -367,7 +389,12 @@ constructor() {
          LEFT JOIN scheduling.stations st ON s.station_id = st.id
          WHERE o.organization_id = $1 AND o.status = 'pending_approval'
          ORDER BY o.created_at ASC`,
-        [organizationId]
+        [organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.shift_swap_offers'
+        }
       );
       return { success: true, data: result.rows };
     } catch (_error) {

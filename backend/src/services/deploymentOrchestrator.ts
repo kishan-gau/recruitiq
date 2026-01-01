@@ -10,7 +10,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import logger from '../utils/logger.js';
 import transipService from './transip/TransIPService.js';
-import pool from '../config/database.js';
+import { query as dbQuery } from '../config/database.js';
 
 const execAsync = promisify(exec);
 
@@ -372,7 +372,7 @@ DOMAIN=${slug}.recruitiq.nl
    * Update deployment status in database
    */
   async updateDeploymentStatus(deploymentId, status, message) {
-    await pool.query(
+    await dbQuery(
       `UPDATE instance_deployments 
        SET status = $1, status_message = $2, updated_at = NOW()
        WHERE id = $3`,

@@ -3,7 +3,7 @@
  * Manages VPS pool, capacity tracking, and organization assignments
  */
 
-import pool from '../config/database.js';
+import { query as dbQuery } from '../config/database.js';
 
 class VPSManager {
   /**
@@ -24,7 +24,7 @@ class VPSManager {
       notes = null
     } = vpsData;
 
-    const result = await pool.query(
+    const result = await dbQuery(
       `INSERT INTO vps_instances (
         vps_name, vps_ip, hostname, deployment_type, organization_id,
         location, cpu_cores, memory_mb, disk_gb, max_tenants, status, notes
@@ -45,7 +45,7 @@ class VPSManager {
    * Get all available shared VPS instances
    */
   async getAvailableSharedVPS() {
-    const result = await pool.query(
+    const result = await dbQuery(
       `SELECT 
         v.*,
         v.current_tenants as tenant_count,
@@ -66,7 +66,7 @@ class VPSManager {
    * Get all VPS instances (for management UI)
    */
   async getAllVPS() {
-    const result = await pool.query(
+    const result = await dbQuery(
       `SELECT 
         v.*,
         v.current_tenants as tenant_count,
@@ -85,7 +85,7 @@ class VPSManager {
    * Get VPS with least load (for automatic assignment)
    */
   async getOptimalSharedVPS() {
-    const result = await pool.query(
+    const result = await dbQuery(
       `SELECT *
        FROM vps_instances
        WHERE deployment_type = 'shared'
@@ -109,7 +109,7 @@ class VPSManager {
    * Get VPS details by ID
    */
   async getVPSById(vpsId) {
-    const result = await pool.query(
+    const result = await dbQuery(
       `SELECT v.*, 
         COUNT(o.id) as actual_tenant_count,
         array_agg(
@@ -232,7 +232,7 @@ class VPSManager {
    * Update VPS health metrics
    */
   async updateVPSHealth(vpsId, metrics) {
-    await pool.query(
+    await dbQuery(
       `UPDATE vps_instances 
        SET cpu_usage_percent = $1,
            memory_usage_percent = $2,
@@ -248,7 +248,7 @@ class VPSManager {
    * Update VPS status
    */
   async updateVPSStatus(vpsId, status, notes = null) {
-    await pool.query(
+    await dbQuery(
       `UPDATE vps_instances 
        SET status = $1,
            notes = COALESCE($2, notes),
@@ -262,7 +262,7 @@ class VPSManager {
    * Get VPS statistics
    */
   async getVPSStatistics() {
-    const result = await pool.query(
+    const result = await dbQuery(
       `SELECT 
         COUNT(*) as total_vps,
         SUM(CASE WHEN deployment_type = 'shared' THEN 1 ELSE 0 END) as shared_vps,

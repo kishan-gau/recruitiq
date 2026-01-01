@@ -132,8 +132,11 @@ router.get('/:id', requirePermission('approvals:read'), async (req, res) => {
       GROUP BY ar.id, creator_emp.first_name, creator_emp.last_name, creator_ua.email
     `;
 
-    const { pool } = await import('../../../config/database');
-    const result = await pool.query(query, [id, req.user.organizationId]);
+    const { query: dbQuery } = await import('../../../config/database.js');
+    const result = await dbQuery(query, [id, req.user.organizationId], req.user.organizationId, {
+      operation: 'SELECT',
+      table: 'payroll.currency_approval_request'
+    });
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -317,8 +320,11 @@ router.get('/statistics', requirePermission('approvals:read'), async (req, res) 
       ORDER BY request_type
     `;
 
-    const { pool } = await import('../../../config/database');
-    const result = await pool.query(query, [req.user.organizationId]);
+    const { query: dbQuery } = await import('../../../config/database.js');
+    const result = await dbQuery(query, [req.user.organizationId], req.user.organizationId, {
+      operation: 'SELECT',
+      table: 'payroll.approval_statistics'
+    });
 
     res.json({
       success: true,

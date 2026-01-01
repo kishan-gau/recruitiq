@@ -3,7 +3,7 @@
  * Verifies if a specific feature is enabled for the user's organization/license
  */
 
-import pool from '../config/database.js';
+import { query as dbQuery } from '../config/database.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -24,7 +24,7 @@ export const checkFeature = (featureName) => {
       }
 
       // Get user's organization
-      const userResult = await pool.query(
+      const userResult = await dbQuery(
         'SELECT organization_id FROM users WHERE id = $1',
         [userId]
       );
@@ -49,7 +49,7 @@ export const checkFeature = (featureName) => {
 
       // Get organization's tier and check if feature is enabled
       // Check in organizations table settings or via license
-      const orgResult = await pool.query(
+      const orgResult = await dbQuery(
         `SELECT o.tier, o.settings, l.features
          FROM organizations o
          LEFT JOIN (
@@ -66,7 +66,12 @@ export const checkFeature = (featureName) => {
            SELECT id FROM customers WHERE organization_id = $1 LIMIT 1
          )
          WHERE o.id = $1`,
-        [organizationId]
+        [organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'organizations'
+        }
       );
 
       if (orgResult.rows.length === 0) {
@@ -132,9 +137,14 @@ export const checkFeatures = (featureNames) => {
       }
 
       // Get user's organization
-      const userResult = await pool.query(
+      const userResult = await dbQuery(
         'SELECT organization_id FROM users WHERE id = $1',
-        [userId]
+        [userId],
+        null,
+        {
+          operation: 'SELECT',
+          table: 'users'
+        }
       );
 
       if (userResult.rows.length === 0) {
@@ -155,7 +165,7 @@ export const checkFeatures = (featureNames) => {
       }
 
       // Get organization's features
-      const orgResult = await pool.query(
+      const orgResult = await dbQuery(
         `SELECT o.tier, l.features
          FROM organizations o
          LEFT JOIN (
@@ -172,7 +182,12 @@ export const checkFeatures = (featureNames) => {
            SELECT id FROM customers WHERE organization_id = $1 LIMIT 1
          )
          WHERE o.id = $1`,
-        [organizationId]
+        [organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'organizations'
+        }
       );
 
       if (orgResult.rows.length === 0) {

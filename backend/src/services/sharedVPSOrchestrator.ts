@@ -13,7 +13,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import logger from '../utils/logger.js';
-import pool from '../config/database.js';
+import { query as dbQuery } from '../config/database.js';
 
 const execAsync = promisify(exec);
 
@@ -59,7 +59,7 @@ constructor() {
    */
   async updateDeploymentStatus(deploymentId, status, statusMessage = null, errorMessage = null) {
     try {
-      await pool.query(
+      await dbQuery(
         `UPDATE instance_deployments 
          SET status = $1, status_message = $2, error_message = $3, updated_at = NOW()
          WHERE id = $4`,

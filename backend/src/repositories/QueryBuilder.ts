@@ -282,7 +282,7 @@ export class QueryBuilder {
    * 
    * @example
    * const { sql, values } = builder.build();
-   * const result = await pool.query(sql, values);
+   * const result = await query(sql, values, organizationId, { operation: 'SELECT', table: 'table_name' });
    */
   build(): { sql: string; values: any[] } {
     const parts: string[] = [];

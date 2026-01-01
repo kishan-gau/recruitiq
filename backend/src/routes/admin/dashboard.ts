@@ -7,7 +7,7 @@
 
 import express, { Router } from 'express';
 import { requirePlatformPermission } from '../../middleware/auth.js';
-import pool from '../../config/database.js';
+import { query as dbQuery } from '../../config/database.js';
 import logger from '../../utils/logger.js';
 
 const router: Router = express.Router();
@@ -19,7 +19,7 @@ const router: Router = express.Router();
 router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
     // Get VPS statistics
-    const vpsStats = await pool.query(`
+    const vpsStats = await dbQuery(`
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE status = 'active') as active,
@@ -30,7 +30,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
     `);
 
     // Get customer/organization statistics
-    const customerStats = await pool.query(`
+    const customerStats = await dbQuery(`
       SELECT 
         COUNT(DISTINCT id) as total_customers,
         COUNT(DISTINCT id) FILTER (WHERE subscription_status = 'active') as active_customers,
@@ -40,7 +40,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
     `);
 
     // Get user statistics
-    const userStats = await pool.query(`
+    const userStats = await dbQuery(`
       SELECT 
         COUNT(DISTINCT u.id) as total_users,
         COUNT(DISTINCT u.id) FILTER (WHERE u.last_login_at > NOW() - INTERVAL '7 days') as active_last_7_days,
@@ -50,7 +50,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
     `);
 
     // Get license statistics
-    const licenseStats = await pool.query(`
+    const licenseStats = await dbQuery(`
       SELECT 
         COUNT(*) as total_licenses,
         COUNT(*) FILTER (WHERE status = 'active') as active,
@@ -60,7 +60,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
     `);
 
     // Get recent security events (last 24 hours)
-    const securityEvents = await pool.query(`
+    const securityEvents = await dbQuery(`
       SELECT 
         event_type,
         COUNT(*) as count
@@ -73,7 +73,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
     `);
 
     // Get deployment statistics
-    const deploymentStats = await pool.query(`
+    const deploymentStats = await dbQuery(`
       SELECT 
         COUNT(*) as total_deployments,
         COUNT(*) FILTER (WHERE status = 'provisioning') as pending,
@@ -99,7 +99,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
     const systemHealth = Math.round((vpsHealth + licenseHealth + deploymentHealth) / 3);
 
     // Get upcoming license renewals
-    const upcomingRenewals = await pool.query(`
+    const upcomingRenewals = await dbQuery(`
       SELECT 
         l.id,
         l.license_key,
@@ -194,7 +194,7 @@ router.get('/analytics', requirePlatformPermission('portal.view'), async (req, r
     }
 
     // Get time-series data for the period
-    const deploymentTrend = await pool.query(`
+    const deploymentTrend = await dbQuery(`
       SELECT 
         DATE(created_at) as date,
         COUNT(*) as total,
@@ -206,7 +206,7 @@ router.get('/analytics', requirePlatformPermission('portal.view'), async (req, r
       ORDER BY date ASC
     `);
 
-    const userGrowth = await pool.query(`
+    const userGrowth = await dbQuery(`
       SELECT 
         DATE(created_at) as date,
         COUNT(*) as new_users
@@ -217,7 +217,7 @@ router.get('/analytics', requirePlatformPermission('portal.view'), async (req, r
       ORDER BY date ASC
     `);
 
-    const licenseActivity = await pool.query(`
+    const licenseActivity = await dbQuery(`
       SELECT 
         DATE(issued_at) as date,
         COUNT(*) as new_licenses,

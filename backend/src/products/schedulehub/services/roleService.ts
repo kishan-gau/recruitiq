@@ -3,7 +3,7 @@
  * Business logic for role and worker role assignment management
  */
 
-import pool from '../../../config/database.js';
+import { query as dbQuery } from '../../../config/database.js';
 import logger from '../../../utils/logger.js';
 import type { RoleData } from '../../../types/schedulehub.types.js';
 import Joi from 'joi';
@@ -128,7 +128,10 @@ constructor() {
       }
 
       query += ` ORDER BY r.role_name`;
-      const result = await pool.query(query, params);
+      const result = await dbQuery(query, params, organizationId, {
+        operation: 'SELECT',
+        table: 'scheduling.roles'
+      });
       
       // Transform database results to API format
       return { success: true, data: mapRolesDbToApi(result.rows) };
@@ -140,12 +143,17 @@ constructor() {
 
   async getRoleById(roleId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT r.*,
           (SELECT COUNT(*) FROM scheduling.worker_roles WHERE role_id = r.id AND removed_date IS NULL) as worker_count
         FROM scheduling.roles r
         WHERE r.id = $1 AND r.organization_id = $2`,
-        [roleId, organizationId]
+        [roleId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.roles'
+        }
       );
 
       if (result.rows.length === 0) return { success: false, error: 'Role not found' };
@@ -259,12 +267,17 @@ constructor() {
 
   async removeWorkerFromRole(workerId, roleId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `UPDATE scheduling.worker_roles
          SET removed_date = NOW()
          WHERE employee_id = $1 AND role_id = $2 AND organization_id = $3 AND removed_date IS NULL
          RETURNING *`,
-        [workerId, roleId, organizationId]
+        [workerId, roleId, organizationId],
+        organizationId,
+        {
+          operation: 'UPDATE',
+          table: 'scheduling.worker_roles'
+        }
       );
 
       if (result.rows.length === 0) throw new Error('Assignment not found');
@@ -277,13 +290,18 @@ constructor() {
 
   async getWorkerRoles(workerId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT wr.*, r.role_name, r.role_code, r.color
          FROM scheduling.worker_roles wr
          JOIN scheduling.roles r ON wr.role_id = r.id
          WHERE wr.employee_id = $1 AND wr.organization_id = $2 AND wr.removed_date IS NULL
          ORDER BY r.role_name`,
-        [workerId, organizationId]
+        [workerId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.worker_roles'
+        }
       );
       return { success: true, data: result.rows };
     } catch (_error) {
@@ -294,14 +312,19 @@ constructor() {
 
   async getRoleWorkers(roleId, organizationId) {
     try {
-      const result = await pool.query(
+      const result = await dbQuery(
         `SELECT wr.*, e.id, e.first_name, e.last_name, e.employee_number as worker_number, e.employment_status as status
          FROM scheduling.worker_roles wr
          JOIN hris.employee e ON wr.employee_id = e.id
          WHERE wr.role_id = $1 AND wr.organization_id = $2 AND wr.removed_date IS NULL
          AND e.employment_status = 'active'
          ORDER BY e.last_name, e.first_name`,
-        [roleId, organizationId]
+        [roleId, organizationId],
+        organizationId,
+        {
+          operation: 'SELECT',
+          table: 'scheduling.worker_roles'
+        }
       );
       const workers = mapRoleWorkersDbToApi(result.rows);
       return { success: true, workers };
