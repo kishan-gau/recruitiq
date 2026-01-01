@@ -4,7 +4,7 @@
 
 import express from 'express';
 import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
-import pool from '../config/database.js';
+import { query } from '../config/database.js';
 import logger from '../utils/logger.js';
 
 const router = express.Router();
@@ -22,7 +22,7 @@ router.use(authenticatePlatform);
  */
 router.get('/roles', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
-    const query = `
+    const sqlQuery = `
       SELECT 
         r.id,
         r.name,
@@ -45,7 +45,7 @@ router.get('/roles', requirePlatformPermission('portal.view'), async (req, res) 
       ORDER BY r.name
     `;
     
-    const result = await pool.query(query);
+    const result = await query(sqlQuery, [], null, { operation: 'SELECT', table: 'roles' });
     
     res.json({
       success: true,
@@ -69,7 +69,7 @@ router.get('/roles/:id', requirePlatformPermission('portal.view'), async (req, r
   try {
     const { id } = req.params;
     
-    const query = `
+    const sqlQuery = `
       SELECT 
         r.*,
         array_agg(DISTINCT p.id) FILTER (WHERE p.id IS NOT NULL) as permission_ids,
@@ -81,7 +81,7 @@ router.get('/roles/:id', requirePlatformPermission('portal.view'), async (req, r
       GROUP BY r.id
     `;
     
-    const result = await pool.query(query, [id]);
+    const result = await query(sqlQuery, [id], null, { operation: 'SELECT', table: 'roles' });
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -281,10 +281,10 @@ router.delete('/roles/:id', requirePlatformPermission('portal.manage'), async (r
     }
     
     // Delete role permissions first (foreign key constraint)
-    await pool.query('DELETE FROM role_permissions WHERE role_id = $1', [id]);
+    await query('DELETE FROM role_permissions WHERE role_id = $1', [id], null, { operation: 'DELETE', table: 'role_permissions' });
     
     // Then delete the role
-    await pool.query('DELETE FROM roles WHERE id = $1', [id]);
+    await query('DELETE FROM roles WHERE id = $1', [id], null, { operation: 'DELETE', table: 'roles' });
     
     logger.warn('Role deleted', {
       roleId: id,
@@ -315,7 +315,7 @@ router.delete('/roles/:id', requirePlatformPermission('portal.manage'), async (r
  */
 router.get('/permissions', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
-    const query = `
+    const sqlQuery = `
       SELECT 
         p.*,
         COUNT(DISTINCT rp.role_id) FILTER (WHERE r.role_type = 'platform' AND r.organization_id IS NULL) as role_count,
@@ -328,7 +328,7 @@ router.get('/permissions', requirePlatformPermission('portal.view'), async (req,
       ORDER BY p.category, p.name
     `;
     
-    const result = await pool.query(query);
+    const result = await query(sqlQuery, [], null, { operation: 'SELECT', table: 'permissions' });
     
     res.json({
       success: true,
@@ -359,11 +359,13 @@ router.post('/permissions', requirePlatformPermission('portal.manage'), async (r
       });
     }
     
-    const result = await pool.query(
+    const result = await query(
       `INSERT INTO permissions (name, category, description)
        VALUES ($1, $2, $3)
        RETURNING *`,
-      [name, category, description]
+      [name, category, description],
+      null,
+      { operation: 'INSERT', table: 'permissions' }
     );
     
     logger.info('Permission created', {
@@ -419,9 +421,11 @@ router.put('/permissions/:id', requirePlatformPermission('portal.manage'), async
     
     values.push(id);
     
-    const result = await pool.query(
+    const result = await query(
       `UPDATE permissions SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
-      values
+      values,
+      null,
+      { operation: 'UPDATE', table: 'permissions' }
     );
     
     if (result.rows.length === 0) {
@@ -457,7 +461,7 @@ router.delete('/permissions/:id', requirePlatformPermission('portal.manage'), as
   try {
     const { id } = req.params;
     
-    await pool.query('DELETE FROM permissions WHERE id = $1', [id]);
+    await query('DELETE FROM permissions WHERE id = $1', [id], null, { operation: 'DELETE', table: 'permissions' });
     
     logger.warn('Permission deleted', {
       permissionId: id,

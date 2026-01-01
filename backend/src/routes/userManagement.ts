@@ -5,7 +5,7 @@
 
 import express from 'express';
 import { authenticatePlatform, requirePlatformPermission } from '../middleware/auth.js';
-import pool from '../config/database.js';
+import { query as dbQuery } from '../config/database.js';
 import logger from '../utils/logger.js';
 import bcrypt from 'bcryptjs';
 
@@ -22,7 +22,7 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
   try {
     const { role, search } = req.query;
     
-    let query = `
+    let sqlQuery = `
       SELECT 
         u.id,
         u.email,
@@ -46,20 +46,20 @@ router.get('/', requirePlatformPermission('portal.view'), async (req, res) => {
     let paramIndex = 1;
     
     if (role) {
-      query += ` AND u.role = $${paramIndex}`;
+      sqlQuery += ` AND u.role = $${paramIndex}`;
       values.push(role);
       paramIndex++;
     }
     
     if (search) {
-      query += ` AND (u.name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`;
+      sqlQuery += ` AND (u.name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex})`;
       values.push(`%${search}%`);
       paramIndex++;
     }
     
-    query += ' ORDER BY u.created_at DESC';
+    sqlQuery += ' ORDER BY u.created_at DESC';
     
-    const result = await pool.query(query, values);
+    const result = await dbQuery(sqlQuery, values, null, { operation: 'SELECT', table: 'platform_users' });
     
     res.json({
       success: true,
@@ -82,7 +82,7 @@ router.get('/:id', requirePlatformPermission('portal.view'), async (req, res) =>
   try {
     const { id } = req.params;
     
-    const query = `
+    const sqlQuery = `
       SELECT 
         u.id,
         u.email,
@@ -125,7 +125,7 @@ router.get('/:id', requirePlatformPermission('portal.view'), async (req, res) =>
       GROUP BY u.id
     `;
     
-    const result = await pool.query(query, [id]);
+    const result = await dbQuery(sqlQuery, [id], null, { operation: 'SELECT', table: 'platform_users' });
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -323,14 +323,14 @@ router.put('/:id', requirePlatformPermission('portal.manage'), async (req, res) 
     updates.push(`updated_at = NOW()`);
     values.push(id);
     
-    const query = `
+    const sqlQuery = `
       UPDATE platform_users 
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex} AND deleted_at IS NULL
       RETURNING id, email, name, first_name, last_name, role, phone, timezone, is_active, permissions, mfa_enabled, created_at, updated_at
     `;
     
-    const result = await pool.query(query, values);
+    const result = await dbQuery(sqlQuery, values, null, { operation: 'UPDATE', table: 'platform_users' });
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -374,12 +374,14 @@ router.put('/:id/permissions', requirePlatformPermission('portal.manage'), async
     }
     
     // Store permissions as JSONB array (platform_users.permissions is JSONB)
-    const result = await pool.query(
+    const result = await dbQuery(
       `UPDATE platform_users 
        SET permissions = $1, updated_at = NOW()
        WHERE id = $2 AND deleted_at IS NULL
        RETURNING id, email, name, role, permissions`,
-      [JSON.stringify(permissions), id]
+      [JSON.stringify(permissions), id],
+      null,
+      { operation: 'UPDATE', table: 'platform_users' }
     );
     
     if (result.rows.length === 0) {
@@ -424,12 +426,14 @@ router.delete('/:id', requirePlatformPermission('portal.manage'), async (req, re
       });
     }
     
-    const result = await pool.query(
+    const result = await dbQuery(
       `UPDATE platform_users 
        SET deleted_at = NOW()
        WHERE id = $1 AND deleted_at IS NULL
        RETURNING id, email`,
-      [id]
+      [id],
+      null,
+      { operation: 'UPDATE', table: 'platform_users' }
     );
     
     if (result.rows.length === 0) {
