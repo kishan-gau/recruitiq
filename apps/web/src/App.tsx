@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import { routes } from '@core/routing/router';
+import { InstallPWAPrompt } from './components/InstallPWAPrompt';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           },
         }}
       />
+      <InstallPWAPrompt />
       <ReactQueryDevtools initialIsOpen={false} />
     </>
   );
