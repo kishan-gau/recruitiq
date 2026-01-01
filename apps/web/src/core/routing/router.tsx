@@ -75,7 +75,7 @@ const EmployeeSchedule = lazy(() => import('@features/employee/pages/EmployeeSch
 const EmployeePayslips = lazy(() => import('@features/employee/pages/EmployeePayslips'));
 const EmployeeProfile = lazy(() => import('@features/employee/pages/EmployeeProfile'));
 const EmployeeTimeOff = lazy(() => import('@features/employee/pages/EmployeeTimeOff'));
-const NotificationSettings = lazy(() => import('@features/employee/pages/NotificationSettings'));
+const EmployeeNotificationSettings = lazy(() => import('@features/employee/pages/NotificationSettings'));
 
 /**
  * Application routes
@@ -174,7 +174,7 @@ export const routes = (
         <Route path="pay" element={<EmployeePayslips />} />
         <Route path="profile" element={<EmployeeProfile />} />
         <Route path="time-off" element={<EmployeeTimeOff />} />
-        <Route path="settings/notifications" element={<NotificationSettings />} />
+        <Route path="settings/notifications" element={<EmployeeNotificationSettings />} />
       </Route>
     </Route>
   </>
